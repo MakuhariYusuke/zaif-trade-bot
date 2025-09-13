@@ -6,14 +6,13 @@ import { strategyOnce } from "../../index";
 import { logInfo, logWarn, logAssert } from "../../utils/logger";
 import { getOrderBook } from "../../api/public";
 import { loadPairs } from "../../utils/config";
+import { todayStr } from "../../utils/toolkit";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 function initMarket(api: any) { return; }
 function initExec(api: any) { return; }
-
-function todayStr(d: Date){ return d.toISOString().slice(0,10); }
 
 async function run(){
   process.env.USE_PRIVATE_MOCK = '1';
@@ -32,12 +31,12 @@ async function run(){
   logInfo('[SCENARIO] Balance', bal.funds);
   const entry = await submitOrderWithRetry({ currency_pair: pair, side:'bid', limitPrice: 1000000, amount: 0.001 });
   logInfo('[SCENARIO] Entry summary', entry);
-  appendSummary(todayStr(new Date()), entry as any);
+  appendSummary(todayStr(), entry as any);
   const sleepMs = Number(process.env.SCENARIO_SLEEP_MS || 300);
   await new Promise(r=>setTimeout(r,sleepMs));
   const exit = await submitOrderWithRetry({ currency_pair: pair, side:'ask', limitPrice: 1000000, amount: entry.filledQty || 0.001 });
   logInfo('[SCENARIO] Exit summary', exit);
-  appendSummary(todayStr(new Date()), exit as any);
+  appendSummary(todayStr(), exit as any);
   const hist = await fetchTradeHistory(pair, { count: 50 });
   logInfo('[SCENARIO] Recent fills', hist.slice(-10));
   logInfo('[SCENARIO] Active orders', await getActiveOrders(pair));
