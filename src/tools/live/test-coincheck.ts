@@ -17,6 +17,15 @@ import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../
   if (process.env.SAFETY_MODE==='1'){
     try{ const funds = await fetchBalances(api); amount = clampAmountForSafety('bid', amount, rate, funds, pair); }catch{}
   }
+  // exposure check
+  try {
+    const funds = await fetchBalances(api);
+    const base = baseFromPair(pair).toLowerCase();
+    const jpy = Number((funds as any).jpy||0); const balBase = Number((funds as any)[base]||0);
+    logInfo('[EXPOSURE]', { jpy, [base]: balBase });
+    const notional = amount * rate;
+    if (jpy>0 && notional > jpy*0.05) logWarn(`[WARN][BALANCE] bid notional ${notional} exceeds 5% of JPY ${jpy}`);
+  } catch {}
   logInfo('[TEST] Place BUY', { pair, rate, amount });
   const tr = await api.trade({ currency_pair: pair, action: 'bid', price: rate, amount });
   logInfo('[TEST] Placed', tr);

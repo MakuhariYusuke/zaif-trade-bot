@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/32</span>
+                <span class='fraction'>0/33</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/32</span>
+                <span class='fraction'>0/33</span>
             </div>
         
             
@@ -95,7 +95,8 @@
 <a name='L30'></a><a href='#L30'>30</a>
 <a name='L31'></a><a href='#L31'>31</a>
 <a name='L32'></a><a href='#L32'>32</a>
-<a name='L33'></a><a href='#L33'>33</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -127,9 +128,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >export interface GuardContext {<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import type { Side } from "../types/domain";<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cstat-no" title="statement not covered" >export interface GuardContext {</span>
 <span class="cstat-no" title="statement not covered" >  now: number;</span>
-<span class="cstat-no" title="statement not covered" >  side: "BUY"|"SELL";</span>
+<span class="cstat-no" title="statement not covered" >  side: Side;</span>
 <span class="cstat-no" title="statement not covered" >  price: number;</span>
 <span class="cstat-no" title="statement not covered" >  qty: number;</span>
 <span class="cstat-no" title="statement not covered" >  baseSymbol: string;</span>
@@ -137,7 +140,7 @@
 <span class="cstat-no" title="statement not covered" >  positionQty: number;</span>
 <span class="cstat-no" title="statement not covered" >  lastExitAt?: number;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" >export interface GuardResult { ok: boolean; reason?: string; }</span>
+<span class="cstat-no" title="statement not covered" >export interface GuardResult { isAllowed: boolean; reason?: string; }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >/**</span>
 <span class="cstat-no" title="statement not covered" > * Check if an order can be placed based on risk parameters.</span>
@@ -152,12 +155,12 @@
 <span class="cstat-no" title="statement not covered" >  const cooldownSec = Number(process.env.COOLDOWN_SEC || "10");</span>
 <span class="cstat-no" title="statement not covered" >  const maxOpen = Number(process.env.MAX_OPEN_ORDERS || "3");</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  if (ctx.qty &lt; minQty) return { ok:false, reason:`min trade size ${minQty}` };</span>
-<span class="cstat-no" title="statement not covered" >  if (ctx.positionQty + (ctx.side==="BUY"?ctx.qty:0) &gt; maxPos) return { ok:false, reason:`max position ${maxPos}` };</span>
-<span class="cstat-no" title="statement not covered" >  if (ctx.price * ctx.qty &gt; maxNotional) return { ok:false, reason:`max notional ${maxNotional}` };</span>
-<span class="cstat-no" title="statement not covered" >  if (ctx.openOrdersCount &gt;= maxOpen) return { ok:false, reason:`max open orders ${maxOpen}` };</span>
-<span class="cstat-no" title="statement not covered" >  if (ctx.lastExitAt &amp;&amp; (ctx.now - ctx.lastExitAt) &lt; cooldownSec*1000) return { ok:false, reason:`cooldown ${cooldownSec}s` };</span>
-<span class="cstat-no" title="statement not covered" >  return { ok:true };</span>
+<span class="cstat-no" title="statement not covered" >  if (ctx.qty &lt; minQty) return { isAllowed:false, reason:`min trade size ${minQty}` };</span>
+<span class="cstat-no" title="statement not covered" >  if (ctx.positionQty + (ctx.side==="BUY"?ctx.qty:0) &gt; maxPos) return { isAllowed:false, reason:`max position ${maxPos}` };</span>
+<span class="cstat-no" title="statement not covered" >  if (ctx.price * ctx.qty &gt; maxNotional) return { isAllowed:false, reason:`max notional ${maxNotional}` };</span>
+<span class="cstat-no" title="statement not covered" >  if (ctx.openOrdersCount &gt;= maxOpen) return { isAllowed:false, reason:`max open orders ${maxOpen}` };</span>
+<span class="cstat-no" title="statement not covered" >  if (ctx.lastExitAt &amp;&amp; (ctx.now - ctx.lastExitAt) &lt; cooldownSec*1000) return { isAllowed:false, reason:`cooldown ${cooldownSec}s` };</span>
+<span class="cstat-no" title="statement not covered" >  return { isAllowed:true };</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
@@ -166,7 +169,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

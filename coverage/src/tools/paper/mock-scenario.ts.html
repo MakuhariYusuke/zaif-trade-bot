@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/tools/stats-today.ts</title>
+    <title>Code coverage report for src/tools/paper/mock-scenario.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/tools</a> stats-today.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/tools/paper</a> mock-scenario.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/59</span>
+                <span class='fraction'>0/62</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/59</span>
+                <span class='fraction'>0/62</span>
             </div>
         
             
@@ -122,7 +122,10 @@
 <a name='L57'></a><a href='#L57'>57</a>
 <a name='L58'></a><a href='#L58'>58</a>
 <a name='L59'></a><a href='#L59'>59</a>
-<a name='L60'></a><a href='#L60'>60</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -181,65 +184,71 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import dotenv from 'dotenv';</span></span></span>
-<span class="cstat-no" title="statement not covered" >dotenv.config();</span>
-<span class="cstat-no" title="statement not covered" >import path from 'path';</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { createPrivateApi } from "../../api/adapters";</span></span></span>
+<span class="cstat-no" title="statement not covered" >import { fetchTradeHistory, getActiveOrders } from "../../core/market";</span>
+<span class="cstat-no" title="statement not covered" >import { submitOrderWithRetry } from "../../core/execution";</span>
+<span class="cstat-no" title="statement not covered" >import { appendSummary, loadDaily } from "../../utils/daily-stats";</span>
+<span class="cstat-no" title="statement not covered" >import { strategyOnce } from "../../index";</span>
+<span class="cstat-no" title="statement not covered" >import { logInfo, logWarn, logAssert } from "../../utils/logger";</span>
+<span class="cstat-no" title="statement not covered" >import { getOrderBook } from "../../api/public";</span>
+<span class="cstat-no" title="statement not covered" >import { loadPairs } from "../../utils/config";</span>
+<span class="cstat-no" title="statement not covered" >import { todayStr } from "../../utils/toolkit";</span>
+<span class="cstat-no" title="statement not covered" >import { fetchBalances, clampAmountForSafety } from "../../utils/toolkit";</span>
 <span class="cstat-no" title="statement not covered" >import fs from 'fs';</span>
-<span class="cstat-no" title="statement not covered" >import { loadDaily } from '../utils/daily-stats';</span>
-<span class="cstat-no" title="statement not covered" >import { loadPairs } from '../utils/config';</span>
+<span class="cstat-no" title="statement not covered" >import path from 'path';</span>
+<span class="cstat-no" title="statement not covered" >import os from 'os';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >function todayStr(){ return new Date().toISOString().slice(0,10); }</span>
-<span class="cstat-no" title="statement not covered" >const KEYS = ['buyEntries','sellEntries','rsiExits','trailExitTotal','trailStops','realizedPnl','wins','trades','streakWin','streakLoss'] as const;</span>
-<span class="cstat-no" title="statement not covered" >type Keys = typeof KEYS[number];</span>
+<span class="cstat-no" title="statement not covered" >function initMarket(api: any) { return; }</span>
+<span class="cstat-no" title="statement not covered" >function initExec(api: any) { return; }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >function pick(obj: Record&lt;string, any&gt;){</span>
-<span class="cstat-no" title="statement not covered" >  const out: Record&lt;string, any&gt; = {};</span>
-<span class="cstat-no" title="statement not covered" >  for (const k of KEYS) out[k] = obj[k] ?? 0;</span>
-<span class="cstat-no" title="statement not covered" >  return out;</span>
-<span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >(async ()=&gt;{</span>
-<span class="cstat-no" title="statement not covered" >  const args = process.argv.slice(2);</span>
-<span class="cstat-no" title="statement not covered" >  const wantDiff = args.includes('--diff');</span>
-<span class="cstat-no" title="statement not covered" >  const date = todayStr();</span>
+<span class="cstat-no" title="statement not covered" >async function run(){</span>
+<span class="cstat-no" title="statement not covered" >  process.env.USE_PRIVATE_MOCK = '1';</span>
+<span class="cstat-no" title="statement not covered" >  process.env.DRY_RUN = '1';</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.SCENARIO_PAPER_ERROR_RATE) process.env.PAPER_ERROR_RATE = process.env.SCENARIO_PAPER_ERROR_RATE;</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.SCENARIO_PAPER_LATENCY_MS) process.env.PAPER_LATENCY_MS = process.env.SCENARIO_PAPER_LATENCY_MS;</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.SCENARIO_PAPER_FILL_MODE) process.env.PAPER_FILL_MODE = process.env.SCENARIO_PAPER_FILL_MODE;</span>
+<span class="cstat-no" title="statement not covered" >  const api = createPrivateApi();</span>
+<span class="cstat-no" title="statement not covered" >  initMarket(api); initExec(api);</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[SCENARIO] Starting MOCK scenario');</span>
 <span class="cstat-no" title="statement not covered" >  const pairs = loadPairs();</span>
-<span class="cstat-no" title="statement not covered" >  const stats = loadDaily(date) as any;</span>
-<span class="cstat-no" title="statement not covered" >  const logsDir = process.env.STATS_DIR || path.resolve(process.cwd(), 'logs');</span>
-<span class="cstat-no" title="statement not covered" >  const snapPath = path.join(logsDir, `.stats-snapshot-${date}.json`);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  let diff: Record&lt;string, number&gt; | null = null;</span>
-<span class="cstat-no" title="statement not covered" >  if (wantDiff &amp;&amp; fs.existsSync(snapPath)){</span>
-<span class="cstat-no" title="statement not covered" >    const before = JSON.parse(fs.readFileSync(snapPath,'utf8')) as Record&lt;string, any&gt;;</span>
-<span class="cstat-no" title="statement not covered" >    diff = {};</span>
-<span class="cstat-no" title="statement not covered" >    for (const k of KEYS){ (diff as any)[k] = (stats[k]||0) - (before[k]||0); }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // per-pair values and diffs</span>
-<span class="cstat-no" title="statement not covered" >  const pairsData = pairs.map(pair =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    const s = loadDaily(date, pair) as any;</span>
-<span class="cstat-no" title="statement not covered" >    return { pair, values: pick(s) };</span>
-<span class="cstat-no" title="statement not covered" >  });</span>
-<span class="cstat-no" title="statement not covered" >  let pairsDiff: Array&lt;{pair:string; diff: Record&lt;string, number&gt;}&gt; | null = null;</span>
-<span class="cstat-no" title="statement not covered" >  if (wantDiff &amp;&amp; fs.existsSync(snapPath)){</span>
+<span class="cstat-no" title="statement not covered" >  const pair = pairs[0] || 'btc_jpy';</span>
+<span class="cstat-no" title="statement not covered" >  const forceRsi = process.env.SCENARIO_FORCE_RSI === '1';</span>
+<span class="cstat-no" title="statement not covered" >  const forceTrail = process.env.SCENARIO_FORCE_TRAIL === '1';</span>
+<span class="cstat-no" title="statement not covered" >  const bal = { funds: {} as any };</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[SCENARIO] Balance', bal.funds);</span>
+<span class="cstat-no" title="statement not covered" >  let entryAmt = 0.001;</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.SAFETY_MODE === '1') {</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      const before = JSON.parse(fs.readFileSync(snapPath,'utf8')) as any;</span>
-<span class="cstat-no" title="statement not covered" >      const beforePairs: any[] = before.pairs || [];</span>
-<span class="cstat-no" title="statement not covered" >      pairsDiff = pairs.map(pair =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        const prev = beforePairs.find(p=&gt;p.pair===pair)?.values || {};</span>
-<span class="cstat-no" title="statement not covered" >        const now = loadDaily(date, pair) as any;</span>
-<span class="cstat-no" title="statement not covered" >        const d: Record&lt;string, number&gt; = {};</span>
-<span class="cstat-no" title="statement not covered" >        for (const k of KEYS){ d[k] = (now[k]||0) - (prev[k]||0); }</span>
-<span class="cstat-no" title="statement not covered" >        return { pair, diff: d };</span>
-<span class="cstat-no" title="statement not covered" >      });</span>
+<span class="cstat-no" title="statement not covered" >      const funds = await (createPrivateApi()).get_info2();</span>
+<span class="cstat-no" title="statement not covered" >      const f = (funds as any)?.return?.funds || {};</span>
+<span class="cstat-no" title="statement not covered" >      entryAmt = clampAmountForSafety('bid', entryAmt, 1000000, f, pair);</span>
 <span class="cstat-no" title="statement not covered" >    } catch {}</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const result = { date, values: pick(stats), diff, pairs: pairsData, pairsDiff } as const;</span>
-<span class="cstat-no" title="statement not covered" >  console.log(JSON.stringify(result));</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Update snapshot to current (after printing)</span>
-<span class="cstat-no" title="statement not covered" >  try{ if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true }); fs.writeFileSync(snapPath, JSON.stringify({ ...stats, pairs: pairsData }, null, 2)); } catch {}</span>
-<span class="cstat-no" title="statement not covered" >})();</span>
+<span class="cstat-no" title="statement not covered" >  const entry = await submitOrderWithRetry({ currency_pair: pair, side:'bid', limitPrice: 1000000, amount: entryAmt });</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[SCENARIO] Entry summary', entry);</span>
+<span class="cstat-no" title="statement not covered" >  appendSummary(todayStr(), entry as any);</span>
+<span class="cstat-no" title="statement not covered" >  const sleepMs = Number(process.env.SCENARIO_SLEEP_MS || 300);</span>
+<span class="cstat-no" title="statement not covered" >  await new Promise(r=&gt;setTimeout(r,sleepMs));</span>
+<span class="cstat-no" title="statement not covered" >  let exitAmt = entry.filledQty || 0.001;</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.SAFETY_MODE === '1') {</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      const funds = await (createPrivateApi()).get_info2();</span>
+<span class="cstat-no" title="statement not covered" >      const f = (funds as any)?.return?.funds || {};</span>
+<span class="cstat-no" title="statement not covered" >      exitAmt = clampAmountForSafety('ask', exitAmt, 1000000, f, pair);</span>
+<span class="cstat-no" title="statement not covered" >    } catch {}</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const exit = await submitOrderWithRetry({ currency_pair: pair, side:'ask', limitPrice: 1000000, amount: exitAmt });</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[SCENARIO] Exit summary', exit);</span>
+<span class="cstat-no" title="statement not covered" >  appendSummary(todayStr(), exit as any);</span>
+<span class="cstat-no" title="statement not covered" >  const hist = await fetchTradeHistory(pair, { count: 50 });</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[SCENARIO] Recent fills', hist.slice(-10));</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[SCENARIO] Active orders', await getActiveOrders(pair));</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[SCENARIO] Done');</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" >run().catch(e=&gt;{ logWarn('[SCENARIO] error', e?.message||e); process.exit(1); });</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -247,16 +256,16 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     
