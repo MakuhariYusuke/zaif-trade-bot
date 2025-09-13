@@ -3,6 +3,10 @@ on:
   schedule:
     - cron: "0 15 * * *"   # JST 0:00
   workflow_dispatch: {}
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   paper:
@@ -90,8 +94,11 @@ jobs:
               }
             }
             body += `\n[Open Run / Artifacts](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+            async function safeCall(fn, args){ try { return await fn(args); } catch (e){ core.warning(`Comment failed: ${e.message}`); }}
             if (context.payload.pull_request) {
-              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+              await safeCall(github.rest.issues.createComment, { owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            } else if (context.eventName === 'push') {
+              await safeCall(github.rest.repos.createCommitComment, { owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
             } else {
-              await github.rest.repos.createCommitComment({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
+              core.info('No PR or push context; skip commenting.');
             }

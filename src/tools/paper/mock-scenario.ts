@@ -1,6 +1,6 @@
 import { createPrivateApi } from "../../api/adapters";
-import { fetchTradeHistory, getActiveOrders } from "../../core/market";
-import { submitOrderWithRetry } from "../../core/execution";
+import { fetchTradeHistory, getActiveOrders, initMarket } from "../../core/market";
+import { submitOrderWithRetry, initExecution } from "../../core/execution";
 import { appendSummary, loadDaily } from "../../utils/daily-stats";
 import { strategyOnce } from "../../index";
 import { logInfo, logWarn, logAssert } from "../../utils/logger";
@@ -12,8 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-function initMarket(api: any) { return; }
-function initExec(api: any) { return; }
+// initialize market/execution modules with the selected private API
 
 async function run(){
   process.env.USE_PRIVATE_MOCK = '1';
@@ -22,7 +21,7 @@ async function run(){
   if (process.env.SCENARIO_PAPER_LATENCY_MS) process.env.PAPER_LATENCY_MS = process.env.SCENARIO_PAPER_LATENCY_MS;
   if (process.env.SCENARIO_PAPER_FILL_MODE) process.env.PAPER_FILL_MODE = process.env.SCENARIO_PAPER_FILL_MODE;
   const api = createPrivateApi();
-  initMarket(api); initExec(api);
+  initMarket(api); initExecution(api as any);
   logInfo('[SCENARIO] Starting MOCK scenario');
   const pairs = loadPairs();
   const pair = pairs[0] || 'btc_jpy';
