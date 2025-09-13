@@ -10,41 +10,10 @@ import type { PrivateApi } from '../../types/private';
 import { logFeatureSample } from '../../utils/features-logger';
 import { appendPriceSamples, getPriceSeries } from '../../utils/price-cache';
 import { calculateSma, calculateRsi } from '../../core/risk';
+import { todayStr, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';
 
 type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
-const todayStr = () => new Date().toISOString().slice(0, 10);
-
-function baseFromPair(pair: string) { return (pair || 'btc_jpy').split('_')[0]; }
-
-async function fetchBalances(api: PrivateApi) {
-    const r = await api.get_info2();
-    if (!r.success || !r.return) throw new Error(r.error || 'get_info2 failed');
-    return r.return.funds || {};
-}
-
-function clampAmountForSafety(side: 'bid' | 'ask', amount: number, price: number, funds: Record<string, number>, pair: string) {
-    if (process.env.SAFETY_MODE !== '1') return amount;
-    const base = baseFromPair(pair);
-    if (side === 'bid') {
-        const jpy = Number(funds.jpy || 0);
-        const maxSpend = jpy * 0.10;
-        if (maxSpend <= 0 || price <= 0) return amount;
-        const maxQty = maxSpend / price;
-        if (amount > maxQty) {
-            logInfo(`[SAFETY] amount clamped BUY from ${amount} to ${maxQty.toFixed(8)} by 10% JPY`);
-            return maxQty;
-        }
-        return amount;
-    } else {
-        const bal = Number((funds as any)[base] || 0);
-        const maxQty = bal * 0.10;
-        if (amount > maxQty) {
-            logInfo(`[SAFETY] amount clamped SELL from ${amount} to ${maxQty.toFixed(8)} by 10% ${base.toUpperCase()}`);
-            return maxQty;
-        }
-        return amount;
-    }
-}
+// moved to utils/toolkit
 
 async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'ask', price: number, qty: number, opts?: { market?: boolean; refPx?: number }) {
     const market = !!opts?.market;
