@@ -5,18 +5,19 @@ import { logTradeError, logTradeInfo } from "../utils/trade-logger";
 export interface StoredPosition { pair: string; qty: number; avgPrice: number; dcaCount: number; openOrderIds: number[]; dcaRemainder?: number; highestPrice?: number; trailArmed?: boolean; trailStop?: number; lastTrailAt?: number; side?: 'long' | 'short'; }
 export interface FillEvent { pair: string; side: 'bid' | 'ask'; price: number; amount: number; ts: number; matchMethod?: string; }
 
-const STORE_FILE = path.resolve(process.cwd(), process.env.POSITION_STORE_FILE || ".positions.store.json");
-const STORE_DIR = path.resolve(process.cwd(), process.env.POSITION_STORE_DIR || ".positions");
+function getStoreFile(){ return path.resolve(process.cwd(), process.env.POSITION_STORE_FILE || ".positions.store.json"); }
+function getStoreDir(){ return path.resolve(process.cwd(), process.env.POSITION_STORE_DIR || ".positions"); }
 const DCA_MIN_INCREMENT = Number(process.env.DCA_MIN_INCREMENT || 0.00005);
-function pairFile(pair: string) { return path.join(STORE_DIR, `${pair}.json`); }
+function pairFile(pair: string) { return path.join(getStoreDir(), `${pair}.json`); }
 function readLegacyStore(): Record<string, StoredPosition> {
-	try { if (!fs.existsSync(STORE_FILE)) return {}; return JSON.parse(fs.readFileSync(STORE_FILE, 'utf8')); } catch { return {}; }
+	const f = getStoreFile();
+	try { if (!fs.existsSync(f)) return {}; return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return {}; }
 }
 function loadFromPerPair(pair: string): StoredPosition | undefined {
 	try { const f = pairFile(pair); if (!fs.existsSync(f)) return undefined; return JSON.parse(fs.readFileSync(f,'utf8')); } catch { return undefined; }
 }
 function savePerPair(pos: StoredPosition) {
-	try { if (!fs.existsSync(STORE_DIR)) fs.mkdirSync(STORE_DIR, { recursive: true }); fs.writeFileSync(pairFile(pos.pair), JSON.stringify(pos, null, 2)); } catch (err:any) { logTradeError('Position store write failed', { error: err?.message||String(err) }); }
+	try { const dir = getStoreDir(); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(pairFile(pos.pair), JSON.stringify(pos, null, 2)); } catch (err:any) { logTradeError('Position store write failed', { error: err?.message||String(err) }); }
 }
 export function loadPosition(pair: string) {
 	// Prefer per-pair file

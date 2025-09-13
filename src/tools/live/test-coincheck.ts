@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { createPrivateApi } from '../../api/adapters';
 import { logInfo, logWarn } from '../../utils/logger';
-import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';
+import { sleep, fetchBalances, clampAmountForSafety, baseFromPair, getExposureWarnPct, computeExposureRatio } from '../../utils/toolkit';
 
 (async ()=>{
   process.env.EXCHANGE = 'coincheck';
@@ -23,8 +23,9 @@ import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../
     const base = baseFromPair(pair).toLowerCase();
     const jpy = Number((funds as any).jpy||0); const balBase = Number((funds as any)[base]||0);
     logInfo('[EXPOSURE]', { jpy, [base]: balBase });
-    const notional = amount * rate;
-    if (jpy>0 && notional > jpy*0.05) logWarn(`[WARN][BALANCE] bid notional ${notional} exceeds 5% of JPY ${jpy}`);
+    const ratio = computeExposureRatio('bid', amount, rate, funds, pair);
+    const pct = getExposureWarnPct();
+    if (ratio > pct) logWarn(`[WARN][BALANCE] bid notional exceeds ${(pct*100).toFixed(1)}% of JPY (ratio ${(ratio*100).toFixed(1)}%)`);
   } catch {}
   logInfo('[TEST] Place BUY', { pair, rate, amount });
   const tr = await api.trade({ currency_pair: pair, action: 'bid', price: rate, amount });
