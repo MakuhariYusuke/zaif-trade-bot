@@ -30,7 +30,7 @@ jobs:
           npm run stats:today -- --diff > stats-diff.json
           npm run ml:export
           npm run ml:search
-          npx ts-node src/tools/stats-graph.ts --timeline stats-timeline.svg
+          npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
