@@ -51,9 +51,10 @@ export async function placeLimitOrder(pair: string, side: Side, price: number, a
     } catch (e: any) {
       lastErr = e;
       const msg = String(e?.message || e?.error || '').toLowerCase();
-      const isNonce = msg.includes('nonce') || msg.includes('invalid nonce');
-      if (!isNonce || i === 2) throw e;
-      await new Promise(r=>setTimeout(r, 100 * (i+1)));
+  const isNonce = msg.includes('nonce') || msg.includes('invalid nonce');
+  const isRateLimit = msg.includes('429') || msg.includes('too many requests') || msg.includes('rate limit');
+  if (!(isNonce || isRateLimit) || i === 2) throw e;
+  await new Promise(r=>setTimeout(r, 100 * (i+1)));
       continue;
     }
   }

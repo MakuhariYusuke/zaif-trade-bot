@@ -144,6 +144,7 @@ src/
 | `LOG_JSON` | ログを1行JSONで出力（`1`で有効） | `1` |
 | `MAX_NONCE_RETRIES` | Nonce リトライ回数 | `5` |
 | `RETRY_BACKOFF_MS` | リトライ初期待機（指数バックオフの基準） | `300` |
+| `RETRY_ATTEMPTS` | 公開API取得など withRetry の試行回数（services 層）。`1` で 1 回試行のみ | `2` |
 | `RETRY_BACKOFF_FACTOR` | バックオフ係数（指数） | `1.5` |
 | `RETRY_MAX_BACKOFF_MS` | バックオフ上限 | `3000` |
 | `RETRY_JITTER_MS` | バックオフに加えるジッター | `100` |
@@ -152,6 +153,11 @@ src/
 | `SAFETY_MODE` | 安全クランプ有効化（10%デフォルト） | `1` |
 | `SAFETY_CLAMP_PCT` | クランプ割合（0-1）。例: 0.1=10% | `0.1` |
 | `EXPOSURE_WARN_PCT` | 露出警告閾値（0-1）。既定 0.05=5% | `0.05` |
+| `ML_SEARCH_MODE` | ML 探索モード `grid`/`random`/`earlystop` | `grid` |
+| `ML_RANDOM_STEPS` | `random` モードでの試行回数 | `200` |
+| `ML_EARLY_PATIENCE` | `earlystop` の打ち切り猶予ステップ | `10` |
+| `ML_EARLY_MAX_STEPS` | `earlystop` の最大試行ステップ | `300` |
+| `ML_MAX_WORKERS` | ML 探索の並列ワーカー数（CI では 1 推奨） | `1` |
 
 追加: `RETRY_TIMEOUT_MS`, `RETRY_PRICE_OFFSET_PCT`, `CLOCK_SKEW_TOLERANCE_MS` などはコード参照。
 
@@ -264,7 +270,99 @@ main ブランチへの push または手動実行で `coverage-pages` ワーク
 	 - 本ワークフローは `coverage/` 配下を Pages ルートに配置するため、トップで coverage レポート（index.html）が表示されます。
 	 - 404 の場合は GitHub Pages 有効化を確認し、`/index.html` で直接参照してください。
 
+#### 通知（Slack / GitHub コメント）: Trend7dWin%
 
+`report-summary-*.json` を各ワークフロー（live-ml / live-trade / paper-ml / paper-nightly）で生成し、Totals に PnL/Win%/MaxDD に加えて 7 日移動の勝率 `Trend7dWin%` を含めて通知します。
+
+例（Totals 1 行表示）:
+
+```
+Totals: pnl=+12.34, winRate=61.1%, maxDD=3.2, Trend7dWin%=64.3
+```
+
+サマリー JSON（抜粋）:
+
+```json
+{
+	"source": "live",
+	"totals": {
+		"pnl": 12.34,
+		"winRate": 0.611,
+		"maxDrawdown": 3.2,
+		"trend7dWinRate": 0.643
+	}
+}
+```
+
+---
+
+## 🧰 Paper Matrix（シナリオ実行）
+
+GitHub Actions の `paper-matrix` では、モック駆動の多様なシナリオを並列実行して統計/レポートを生成・アーカイブします（tar.gz）。主なプリセットと用途:
+
+- normal: 既定の軽負荷動作
+- error: エラー頻度を上げる（`SCENARIO_PAPER_ERROR_RATE=0.2`）
+- latency: レイテンシ付加（`SCENARIO_PAPER_LATENCY_MS=200`）
+- timeout: API タイムアウト付加（`SCENARIO_PAPER_TIMEOUT_MS=1000`）
+- composite: error+latency の複合
+- hf-light: 高頻度ライト（`LOOP=2000`）
+- hf-mid: 高頻度ミドル（`LOOP=5000`）
+- hf-stress: 高頻度ストレス（`LOOP=10000`）
+- sweep-rsi: RSI しきい値スイープ
+- sweep-sma: SMA パラメータスイープ
+- high-error: 高エラー率（`SCENARIO_PAPER_ERROR_RATE=0.5`）
+- stress: レイテンシと軽負荷ループ（`SCENARIO_PAPER_LATENCY_MS=500`, `LOOP=1000`）
+
+ローカル実行の例（PowerShell）:
+
+```powershell
+$env:USE_PRIVATE_MOCK="1"; $env:DRY_RUN="1"; $env:SCENARIO_PAPER_LATENCY_MS="200"; npm run mock:scenario
+```
+
+CI ではシナリオごとに `stats-<scenario>.json/.svg` と `report-summary-<scenario>.json` をまとめて `stats-<scenario>.tar.gz` としてアップロードしています。
+
+---
+## 🧠 ML 検索/レポート（grid/random/earlystop）
+
+ツール群（`src/tools/ml/*`）で特徴量の集約/探索/レポート生成を行います。データセットには以下の列が含まれます（抜粋）。
+
+- 時系列特徴: 価格、SMA、RSI 等
+- 付加列: `source`（paper/live）、`tradeFlow`、`durationSec`（エントリー〜エグジットの概算秒）
+
+探索モード（`ML_SEARCH_MODE`）
+- `grid`: しきい値の格子探索（従来）
+- `random`: ランダム探索。`ML_RANDOM_STEPS` で試行回数を制御
+- `earlystop`: 早期打ち切り探索。`ML_EARLY_PATIENCE` と `ML_EARLY_MAX_STEPS` で制御
+- 並列度は `ML_MAX_WORKERS`（CI では 1 推奨）
+
+生成物（ルート直下）
+- `ml-dataset.csv`（特徴量データ）
+- `ml-search-results.csv`（全試行） / `ml-search-top.json`（上位）
+- `report-ml-<mode>.json` / `report-ml-<mode>.csv`（mode は `grid|random|earlystop`）
+
+ローカル実行例（PowerShell）
+
+```powershell
+# 特徴量のエクスポート
+npm run tool -- ml:export
+
+# grid 探索
+$env:ML_SEARCH_MODE="grid"; npm run tool -- ml:search
+
+# random 探索（200 ステップ）
+$env:ML_SEARCH_MODE="random"; $env:ML_RANDOM_STEPS="200"; npm run tool -- ml:search
+
+# early stopping 探索（猶予 10、最大 300）
+$env:ML_SEARCH_MODE="earlystop"; $env:ML_EARLY_PATIENCE="10"; $env:ML_EARLY_MAX_STEPS="300"; npm run tool -- ml:search
+```
+
+CI 連携
+- `paper-ml` / `live-ml` ワークフローで `grid` の後に `random` を実行し、`report-ml-random.json/.csv` をアーティファクト化
+- 通知（Slack/GitHub コメント）に「ML(random) Top: Win%/PnL/params」の 1 行サマリを含めます
+
+備考: `stats-graph` は paper / live の PnL・勝率のテキストオーバーレイを含む SVG を出力します。
+
+---
 ### テスト実行時の環境変数の注意
 
 テストはファイル出力（統計やポジションストア）を行うため、実データと混ざらないよう一時ディレクトリを使うことを推奨します。テストコード側でも設定していますが、手動実行時は以下を任意のパスに設定してください。
@@ -281,7 +379,21 @@ $env:STATS_DIR=".tmp-stats\\logs"; $env:POSITION_STORE_DIR=".positions-test"; np
 
 ---
 
-## 📊 ログ & 日次統計
+## � SAFETY_MODE=1（数量クランプと WARN ログ）
+
+`SAFETY_MODE=1` を指定すると、発注数量は残高の一定割合（既定 10%: `SAFETY_CLAMP_PCT=0.1`）にクランプされます。クランプが発生した場合は WARN ログが出力されます。
+
+例:
+
+```
+[WARN] [SAFETY] amount clamped side=bid requested=20000 clamped=10000 pct=10.0%
+```
+
+この挙動はユニットテストで検証済みで、CI でも維持されます。
+
+---
+
+## �📊 ログ & 日次統計
 
 ログ種別: SIGNAL / ORDER / EXECUTION / ERROR / INFO。`logs/trades-YYYY-MM-DD.log` に JSON 追記。
 

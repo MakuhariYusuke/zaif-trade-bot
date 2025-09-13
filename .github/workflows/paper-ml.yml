@@ -39,6 +39,13 @@ jobs:
           PAIRS: eth_jpy,xrp_jpy
           ML_MAX_WORKERS: '2'
         run: npm run ml:search > ml-search.json
+      - name: Random search (artifact)
+        env:
+          PAIRS: eth_jpy,xrp_jpy
+          ML_MAX_WORKERS: '1'
+          ML_SEARCH_MODE: random
+          ML_RANDOM_STEPS: '120'
+        run: npm run ml:search > ml-search-random.json
       - name: Run stats graph timeline
         run: npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
       - name: Build summary report (paper)
@@ -54,6 +61,8 @@ jobs:
             ml-dataset.csv
             ml-search-results.csv
             ml-search-top.json
+            report-ml-random.json
+            report-ml-random.csv
             top3.csv
             stats-timeline.svg
             stats-diff.json
@@ -63,6 +72,7 @@ jobs:
         run: |
           tar -czf paper-ml-bundle.tar.gz \
             ml-dataset.csv ml-search-results.csv ml-search-top.json top3.csv \
+            report-ml-random.json report-ml-random.csv \
             stats-timeline.svg stats-diff.json report-summary-paper.json || true
       - name: Upload summary bundle
         if: always()
@@ -79,6 +89,7 @@ jobs:
           if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
           DIFF=$(cat stats-diff.json 2>/dev/null || echo '{}')
           RPT=$(cat report-summary-paper.json 2>/dev/null || echo '{}')
+          ML=$(cat report-ml-random.json 2>/dev/null || echo '{}')
           ICON="✅"; STATUS="passed"
           if [ "${{ job.status }}" != "success" ]; then ICON="❌"; STATUS="failed"; fi
           incBuy=$(echo "$DIFF" | jq -r '.diff.buyEntries // 0')
@@ -87,7 +98,8 @@ jobs:
           win=$(echo "$RPT" | jq -r '.totals.winRate // 0')
           maxdd=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
           t7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
-          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd Trend7dWin%=$((t7*100))"
+          TOP=$(echo "$ML" | jq -r '.top[0] | select(.) | "Win%="+((.winRate//0)*100|tostring)+" PnL="+((.pnl//0)|tostring)+" params={S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)+"}"' || true)
+          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd Trend7dWin%=$((t7*100))\nML(random) Top: ${TOP:-N/A}"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
       - name: GitHub comment with perPair
         if: always()

@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-  scenario: [normal, error, latency, timeout, hf-light, hf-stress, composite, sweep-rsi, sweep-sma, high-error, stress]
+        scenario: [normal, error, latency, timeout, hf-light, hf-mid, hf-stress, composite, sweep-rsi, sweep-sma, high-error, stress]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,6 +42,8 @@ jobs:
               echo "SCENARIO_PAPER_TIMEOUT_MS=1000" >> $GITHUB_ENV ;;
             hf-light)
               echo "LOOP=2000" >> $GITHUB_ENV ;;
+            hf-mid)
+              echo "LOOP=5000" >> $GITHUB_ENV ;;
             hf-stress)
               echo "LOOP=10000" >> $GITHUB_ENV ;;
             composite)
