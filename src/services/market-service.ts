@@ -1,5 +1,6 @@
 import { getTicker, getOrderBook, getTrades } from "../api/public";
 import { PrivateApi, CancelOrderParams, TradeResult } from "../types/private";
+import type { Side } from "../types/domain";
 let priv: PrivateApi;
 export function init(privateApi: PrivateApi) { priv = privateApi; }
 
@@ -28,7 +29,7 @@ export async function fetchBalance() {
   return res.return!;
 }
 
-export async function placeLimitOrder(pair: string, side: "BUY"|"SELL", price: number, amount: number) {
+export async function placeLimitOrder(pair: string, side: Side, price: number, amount: number) {
   const action = side === 'BUY' ? 'bid' : 'ask';
   const res: TradeResult = await priv.trade({ currency_pair: pair, action, price, amount });
   return res.return; // { order_id }

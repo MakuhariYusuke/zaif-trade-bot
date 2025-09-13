@@ -7,6 +7,7 @@ import { logInfo, logWarn, logAssert } from "../../utils/logger";
 import { getOrderBook } from "../../api/public";
 import { loadPairs } from "../../utils/config";
 import { todayStr } from "../../utils/toolkit";
+import { fetchBalances, clampAmountForSafety } from "../../utils/toolkit";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -29,12 +30,28 @@ async function run(){
   const forceTrail = process.env.SCENARIO_FORCE_TRAIL === '1';
   const bal = { funds: {} as any };
   logInfo('[SCENARIO] Balance', bal.funds);
-  const entry = await submitOrderWithRetry({ currency_pair: pair, side:'bid', limitPrice: 1000000, amount: 0.001 });
+  let entryAmt = 0.001;
+  if (process.env.SAFETY_MODE === '1') {
+    try {
+      const funds = await (createPrivateApi()).get_info2();
+      const f = (funds as any)?.return?.funds || {};
+      entryAmt = clampAmountForSafety('bid', entryAmt, 1000000, f, pair);
+    } catch {}
+  }
+  const entry = await submitOrderWithRetry({ currency_pair: pair, side:'bid', limitPrice: 1000000, amount: entryAmt });
   logInfo('[SCENARIO] Entry summary', entry);
   appendSummary(todayStr(), entry as any);
   const sleepMs = Number(process.env.SCENARIO_SLEEP_MS || 300);
   await new Promise(r=>setTimeout(r,sleepMs));
-  const exit = await submitOrderWithRetry({ currency_pair: pair, side:'ask', limitPrice: 1000000, amount: entry.filledQty || 0.001 });
+  let exitAmt = entry.filledQty || 0.001;
+  if (process.env.SAFETY_MODE === '1') {
+    try {
+      const funds = await (createPrivateApi()).get_info2();
+      const f = (funds as any)?.return?.funds || {};
+      exitAmt = clampAmountForSafety('ask', exitAmt, 1000000, f, pair);
+    } catch {}
+  }
+  const exit = await submitOrderWithRetry({ currency_pair: pair, side:'ask', limitPrice: 1000000, amount: exitAmt });
   logInfo('[SCENARIO] Exit summary', exit);
   appendSummary(todayStr(), exit as any);
   const hist = await fetchTradeHistory(pair, { count: 50 });

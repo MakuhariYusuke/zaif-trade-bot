@@ -1,11 +1,16 @@
 import { createPrivateApi } from "../../api/adapters";
 import { logInfo } from "../../utils/logger";
+import { clampAmountForSafety, fetchBalances } from "../../utils/toolkit";
 
 (async () => {
   process.env.USE_PRIVATE_MOCK = '1';
   process.env.MOCK_FORCE_EXIT = process.env.MOCK_FORCE_EXIT || '1';
   const api = createPrivateApi();
-  const r:any = await api.trade({ currency_pair: 'btc_jpy', action: 'bid', price: 1000000, amount: 0.001 });
+  let amt = 0.001;
+  if (process.env.SAFETY_MODE==='1'){
+    try { const funds = await fetchBalances(api as any); amt = clampAmountForSafety('bid', amt, 1000000, funds, 'btc_jpy'); } catch {}
+  }
+  const r:any = await api.trade({ currency_pair: 'btc_jpy', action: 'bid', price: 1000000, amount: amt });
   const id = String(r.return.order_id);
   const open1:any = await api.active_orders({ currency_pair: 'btc_jpy' });
   logInfo('OPEN_RAW', open1);
