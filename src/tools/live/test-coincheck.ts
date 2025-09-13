@@ -2,8 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { createPrivateApi } from '../../api/adapters';
 import { logInfo, logWarn } from '../../utils/logger';
-
-function sleep(ms:number){ return new Promise(r=>setTimeout(r,ms)); }
+import { sleep } from '../../utils/toolkit';
 
 (async ()=>{
   process.env.EXCHANGE = 'coincheck';

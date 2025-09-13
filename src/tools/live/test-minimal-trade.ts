@@ -3,8 +3,7 @@ dotenv.config();
 import { createPrivateApi } from '../../api/adapters';
 import { getOrderBook } from '../../api/public';
 import { logInfo, logWarn, logError } from '../../utils/logger';
-
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+import { sleep } from '../../utils/toolkit';
 
 type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
 
