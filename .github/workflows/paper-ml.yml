@@ -1,0 +1,52 @@
+name: Paper ML Nightly
+
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Run mock-scenario for pairs
+        env:
+          EXCHANGE: paper
+          DRY_RUN: '1'
+          PAIRS: eth_jpy,xrp_jpy
+        run: npm run mock:scenario
+      - name: Stats diff
+        run: npm run stats:today -- --diff > stats-diff.json
+      - name: Export ML dataset
+        run: npm run ml:export
+      - name: Grid search
+        env:
+          PAIRS: eth_jpy,xrp_jpy
+          ML_MAX_WORKERS: '2'
+        run: npm run ml:search > ml-search.json
+      - name: Run stats graph timeline
+        run: ts-node src/tools/stats-graph.ts --timeline stats-timeline.svg
+      - name: Top3 summary
+        run: |
+          cat ml-search-top.json | jq -r '.top[:3] | ("pair,RSI_OVER,RSI_UNDER,SMA_S,SMA_L,Win(%) ,PnL,Trades"), (.[] | [ .pair, .SELL_RSI_OVERBOUGHT, .BUY_RSI_OVERSOLD, .SMA_SHORT, .SMA_LONG, (.winRate*100|floor), .pnl, .trades ] | @csv )' > top3.csv
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-ml
+          path: |
+            ml-dataset.csv
+            ml-search-results.csv
+            ml-search-top.json
+            top3.csv
+            stats-timeline.svg
+            stats-diff.json
