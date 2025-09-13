@@ -4,7 +4,7 @@ import { submitOrderWithRetry } from "../core/execution";
 import { appendSummary, loadDaily } from "../utils/daily-stats";
 import { strategyOnce } from "../index";
 import { logInfo, logWarn, logAssert } from "../utils/logger";
-import { getOrderBook } from "../api/public-router";
+import { getOrderBook } from "../api/public";
 import { loadPairs } from "../utils/config";
 import fs from 'fs';
 import path from 'path';
