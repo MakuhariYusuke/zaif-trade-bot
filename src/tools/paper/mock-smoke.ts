@@ -16,5 +16,10 @@ import { clampAmountForSafety, fetchBalances } from "../../utils/toolkit";
   logInfo('OPEN_RAW', open1);
   const found1 = Array.isArray(open1) ? open1.find((o:any) => o.order_id === id) : undefined;
   const hist1:any = await api.trade_history({ currency_pair: 'btc_jpy', count: 50 });
-  logInfo('MOCK SUM', { id, remain: found1?.amount, filled: found1?.filled, fills: hist1.filter((h:any)=> String(h.order_id)===id) });
+  logInfo('MOCK SUM', { 
+    id,
+    remain: found1?.amount, 
+    filled: found1?.filled, 
+    fills: hist1.filter((h:any)=> String(h.order_id)===id) 
+});
 })();

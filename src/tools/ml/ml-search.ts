@@ -3,7 +3,12 @@ import { runMlSimulate } from '../../utils/toolkit';
 
 function* range(start: number, end: number, step: number){ for (let v=start; v<=end; v+=step) yield v; }
 
-interface Trial { SELL_RSI_OVERBOUGHT: number; BUY_RSI_OVERSOLD: number; SMA_SHORT: number; SMA_LONG: number; }
+interface Trial { 
+    SELL_RSI_OVERBOUGHT: number;
+    BUY_RSI_OVERSOLD: number;
+    SMA_SHORT: number;
+    SMA_LONG: number;
+}
 
 function runSim(params: Trial){
   return runMlSimulate(params as any, process.env.PAIR || 'btc_jpy');
@@ -20,7 +25,12 @@ function runGridForPair(pair: string){
       for (const ss of sShort){
         for (const sl of sLong){
           if (ss >= sl) continue;
-          const p = { SELL_RSI_OVERBOUGHT: ro, BUY_RSI_OVERSOLD: ru, SMA_SHORT: ss, SMA_LONG: sl };
+          const p = { 
+            SELL_RSI_OVERBOUGHT: ro, 
+            BUY_RSI_OVERSOLD: ru, 
+            SMA_SHORT: ss, 
+            SMA_LONG: sl 
+          };
           const res = runSim(p);
           if (res) results.push({ pair, ...p, ...res });
         }
@@ -68,7 +78,17 @@ if (!isMainThread){
     const fs = await import('fs');
     const csv = [
       'pair,SELL_RSI_OVERBOUGHT,BUY_RSI_OVERSOLD,SMA_SHORT,SMA_LONG,winRate,pnl,trades,avgHoldSec',
-      ...results.map(r=> [r.pair,r.SELL_RSI_OVERBOUGHT,r.BUY_RSI_OVERSOLD,r.SMA_SHORT,r.SMA_LONG,r.winRate,r.pnl,r.trades,r.avgHoldSec].join(','))
+      ...results.map(r=> [
+        r.pair,
+        r.SELL_RSI_OVERBOUGHT,
+        r.BUY_RSI_OVERSOLD,
+        r.SMA_SHORT,
+        r.SMA_LONG,
+        r.winRate,
+        r.pnl,
+        r.trades,
+        r.avgHoldSec
+      ].join(','))
     ].join('\n');
     fs.writeFileSync('ml-search-results.csv', csv);
     const top = results.sort((a,b)=> b.winRate - a.winRate || b.pnl - a.pnl).slice(0,5);

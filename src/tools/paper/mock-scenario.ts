@@ -1,16 +1,11 @@
 import { createPrivateApi } from "../../api/adapters";
 import { fetchTradeHistory, getActiveOrders, initMarket } from "../../core/market";
 import { submitOrderWithRetry, initExecution } from "../../core/execution";
-import { appendSummary, loadDaily } from "../../utils/daily-stats";
-import { strategyOnce } from "../../index";
-import { logInfo, logWarn, logAssert } from "../../utils/logger";
-import { getOrderBook } from "../../api/public";
+import { appendSummary } from "../../utils/daily-stats";
+import { logInfo, logWarn } from "../../utils/logger";
 import { loadPairs } from "../../utils/config";
 import { todayStr } from "../../utils/toolkit";
-import { fetchBalances, clampAmountForSafety } from "../../utils/toolkit";
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { clampAmountForSafety } from "../../utils/toolkit";
 
 // initialize market/execution modules with the selected private API
 
@@ -25,8 +20,6 @@ async function run(){
   logInfo('[SCENARIO] Starting MOCK scenario');
   const pairs = loadPairs();
   const pair = pairs[0] || 'btc_jpy';
-  const forceRsi = process.env.SCENARIO_FORCE_RSI === '1';
-  const forceTrail = process.env.SCENARIO_FORCE_TRAIL === '1';
   const bal = { funds: {} as any };
   logInfo('[SCENARIO] Balance', bal.funds);
   let entryAmt = 0.001;
@@ -37,7 +30,11 @@ async function run(){
       entryAmt = clampAmountForSafety('bid', entryAmt, 1000000, f, pair);
     } catch {}
   }
-  const entry = await submitOrderWithRetry({ currency_pair: pair, side:'bid', limitPrice: 1000000, amount: entryAmt });
+  const entry = await submitOrderWithRetry({ 
+    currency_pair: pair, 
+    side:'bid', 
+    limitPrice: 1000000, 
+    amount: entryAmt });
   logInfo('[SCENARIO] Entry summary', entry);
   appendSummary(todayStr(), entry as any);
   const sleepMs = Number(process.env.SCENARIO_SLEEP_MS || 300);
@@ -50,7 +47,12 @@ async function run(){
       exitAmt = clampAmountForSafety('ask', exitAmt, 1000000, f, pair);
     } catch {}
   }
-  const exit = await submitOrderWithRetry({ currency_pair: pair, side:'ask', limitPrice: 1000000, amount: exitAmt });
+  const exit = await submitOrderWithRetry({ 
+    currency_pair: pair, 
+    side:'ask', 
+    limitPrice: 1000000, 
+    amount: exitAmt 
+  });
   logInfo('[SCENARIO] Exit summary', exit);
   appendSummary(todayStr(), exit as any);
   const hist = await fetchTradeHistory(pair, { count: 50 });
