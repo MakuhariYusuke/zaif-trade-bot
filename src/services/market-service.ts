@@ -2,7 +2,9 @@ import { getTicker, getOrderBook, getTrades } from "../api/public";
 import { PrivateApi, CancelOrderParams, TradeResult } from "../types/private";
 import type { Side } from "../types/domain";
 import { logWarn } from "../utils/logger";
-async function withRetry<T>(fn: ()=>Promise<T>, label: string, attempts = 2, backoffMs = 150): Promise<T> {
+const RETRY_ATTEMPTS = Number(process.env.RETRY_ATTEMPTS || 2);
+const RETRY_BACKOFF_MS = Number(process.env.RETRY_BACKOFF_MS || 150);
+async function withRetry<T>(fn: ()=>Promise<T>, label: string, attempts = RETRY_ATTEMPTS, backoffMs = RETRY_BACKOFF_MS): Promise<T> {
   let err: any;
   for (let i=0;i<attempts;i++){
     try { return await fn(); } catch (e:any) { err = e; if (i<attempts-1) await new Promise(r=>setTimeout(r, backoffMs)); }
