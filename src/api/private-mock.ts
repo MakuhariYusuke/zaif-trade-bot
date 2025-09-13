@@ -213,11 +213,11 @@ function settleBalance(o: MockOrder, price: number) {
  * @returns {PrivateApi} A mocked implementation of PrivateApi exposing the methods described above.
  */
 export function createPrivateMock(): PrivateApi {
-  console.log("[MOCK] state path:", ORDERS_PATH);
+  logMock("[MOCK] state path:", ORDERS_PATH);
   return {
     async get_info2(): Promise<GetInfo2Response> {
       const st = loadState();
-      console.log("[MOCK] get_info2");
+      logMock("[MOCK] get_info2");
       return {
         success: 1,
         return: {
@@ -255,7 +255,12 @@ export function createPrivateMock(): PrivateApi {
           order.fills.push({ tid, price, amount: fillQty, ts: Math.floor(Date.now() / 1000) });
           order.firstFillDone = true;
           if (order.filled >= order.amount - EPS) { order.status = 'filled'; settleBalance(order, price); }
-          console.log('[MOCK] immediate_fill', { id: order.id, fillQty, filled: order.filled, remaining: order.amount - order.filled });
+          logMock('[MOCK] immediate_fill', { 
+            id: order.id, 
+            fillQty, 
+            filled: order.filled, 
+            remaining: order.amount - order.filled 
+          });
         }
       }
       st.orders.push(order);
@@ -321,7 +326,14 @@ export function createPrivateMock(): PrivateApi {
         trade_type: o.side,
         order_id: o.id
       })));
-      return fills.map(f => ({ tid: f.tid, order_id: String(f.order_id), side: f.trade_type as 'bid' | 'ask', price: f.price, amount: f.amount, timestamp: f.date }));
+      return fills.map(f => ({ 
+        tid: f.tid, 
+        order_id: String(f.order_id), 
+        side: f.trade_type as 'bid' | 'ask', 
+        price: f.price, 
+        amount: f.amount, 
+        timestamp: f.date 
+      }));
     },
     async healthCheck() { return { ok: true }; },
     async testGetInfo2() { return { ok: true, httpStatus: 200, successFlag: 1 }; }

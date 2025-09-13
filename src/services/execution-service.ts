@@ -170,6 +170,12 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
     return snap;
 }
 
+/**
+ * Compute the slippage between the intended and average fill prices.
+ * @param intendedPrice The price at which the order was intended to be filled.
+ * @param avgFillPrice The average price at which the order was actually filled.
+ * @returns The slippage as a percentage.
+ */
 export function computeSlippage(intendedPrice: number, avgFillPrice?: number) {
     if (!avgFillPrice) return 0;
     return (avgFillPrice - intendedPrice) / intendedPrice;
@@ -181,6 +187,11 @@ export interface SubmitRetryParams extends Omit<SubmitParams, 'timeoutMs'> {
     improvePricePct?: number; // override
 }
 
+/**
+ * Submit a limit order with retry logic, adjusting the price if not filled within specified timeouts.
+ * @param {SubmitRetryParams} p The parameters for submitting the order with retry logic.
+ * @returns {Promise<OrderLifecycleSummary>} A summary of the order lifecycle.
+ */
 export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecycleSummary> {
     const actionSide = p.side === 'bid' ? 'BUY' : 'SELL';
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -354,6 +365,10 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
 // Cache today's date for performance; update if date changes
 let cachedToday = new Date().toISOString().slice(0, 10);
 let lastDateCheck = Date.now();
+/** 
+ * Get today's date in 'YYYY-MM-DD' format, updating the cache if more than an hour has passed or the date has changed.
+ * @returns {string} Today's date in 'YYYY-MM-DD' format.
+ */
 function getToday() {
     const now = Date.now();
     // Check if more than 1 hour has passed or date changed
@@ -367,7 +382,12 @@ function getToday() {
     return cachedToday;
 }
 
-// Incremental realized PnL for exit fills (long-only assumption for now)
+/** 
+ * Incremental realized PnL for exit fills (long-only assumption for now) 
+ * @param {string} pair Currency pair
+ * @param {number} fillPrice Fill price
+ * @param {number} fillQty Fill quantity
+ */
 export function onExitFill(pair: string, fillPrice: number, fillQty: number) {
     const today = getToday();
     const pos = loadPosition(pair);

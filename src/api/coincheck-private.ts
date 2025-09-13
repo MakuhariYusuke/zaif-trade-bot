@@ -124,7 +124,18 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             }
         }
         // 返却値の構造: funds（資産情報）, rights（権限情報）, open_orders（未約定注文数）, server_time（サーバー時刻）
-        return { success: 1, return: { funds, rights: { info: true, trade: true }, open_orders: 0, server_time: Math.floor(Date.now() / 1000) } };
+        return {
+            success: 1,
+            return: {
+                funds,
+                rights: {
+                    info: true,
+                    trade: true
+                },
+                open_orders: 0,
+                server_time: Math.floor(Date.now() / 1000)
+            }
+        };
     }
 
     return {
@@ -136,11 +147,25 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             const nonce = Date.now().toString();
             const message = nonce + url + body;
             const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-            const headers: Record<string, string> = { 'ACCESS-KEY': apiKey, 'ACCESS-NONCE': nonce, 'ACCESS-SIGNATURE': signature, 'Content-Type': 'application/x-www-form-urlencoded' };
-            const res = await axios.get<CoincheckOpenOrdersResponse>(url, { headers, timeout: Number(process.env.CC_TIMEOUT_MS || 10000) });
+            const headers: Record<string, string> = {
+                'ACCESS-KEY': apiKey,
+                'ACCESS-NONCE': nonce,
+                'ACCESS-SIGNATURE': signature,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            };
+            const res = await axios.get<CoincheckOpenOrdersResponse>(url, {
+                headers, timeout: Number(process.env.CC_TIMEOUT_MS || 10000)
+            });
             const data = res.data;
             if (!data?.success) return [];
-            return (data.orders || []).map(o => ({ order_id: String(o.id), pair: 'btc_jpy', side: o.order_type === 'buy' ? 'bid' : 'ask', price: Number(o.rate), amount: Number(o.pending_amount), timestamp: Math.floor(new Date(o.created_at).getTime() / 1000) }));
+            return (data.orders || []).map(o => ({
+                order_id: String(o.id),
+                pair: 'btc_jpy',
+                side: o.order_type === 'buy' ? 'bid' : 'ask',
+                price: Number(o.rate),
+                amount: Number(o.pending_amount),
+                timestamp: Math.floor(new Date(o.created_at).getTime() / 1000)
+            }));
         },
         async trade_history(): Promise<TradeHistoryRecord[]> {
             const path = '/api/exchange/orders/transactions';
@@ -149,11 +174,25 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             const nonce = Date.now().toString();
             const message = nonce + url + body;
             const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-            const headers: Record<string, string> = { 'ACCESS-KEY': apiKey, 'ACCESS-NONCE': nonce, 'ACCESS-SIGNATURE': signature, 'Content-Type': 'application/x-www-form-urlencoded' };
-            const res = await axios.get<CoincheckTradeHistoryResponse>(url, { headers, timeout: Number(process.env.CC_TIMEOUT_MS || 10000) });
+            const headers: Record<string, string> = {
+                'ACCESS-KEY': apiKey,
+                'ACCESS-NONCE': nonce,
+                'ACCESS-SIGNATURE': signature,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            };
+            const res = await axios.get<CoincheckTradeHistoryResponse>(url, {
+                headers, timeout: Number(process.env.CC_TIMEOUT_MS || 10000)
+            });
             const data = res.data;
             if (!data?.success) return [];
-            return (data.trades || []).map(t => ({ tid: t.id, order_id: String(t.order_id), side: t.order_type === 'buy' ? 'bid' : 'ask', price: Number(t.rate), amount: Number(t.amount), timestamp: Math.floor(new Date(t.created_at).getTime() / 1000) }));
+            return (data.trades || []).map(t => ({
+                tid: t.id,
+                order_id: String(t.order_id),
+                side: t.order_type === 'buy' ? 'bid' : 'ask',
+                price: Number(t.rate),
+                amount: Number(t.amount),
+                timestamp: Math.floor(new Date(t.created_at).getTime() / 1000)
+            }));
         },
         async trade(p: any): Promise<TradeResult> {
             // Map from Zaif-style to Coincheck
@@ -175,26 +214,46 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
                     rate: Number(rateVal),
                     amount: Number(p.amount)
                 };
-                body = new URLSearchParams({ pair: req.pair, order_type: req.order_type, rate: String(req.rate), amount: String(req.amount) }).toString();
+                body = new URLSearchParams({
+                    pair: req.pair,
+                    order_type: req.order_type,
+                    rate: String(req.rate),
+                    amount: String(req.amount)
+                }).toString();
             } else {
                 // Market order
                 if (side === 'buy') {
                     // market_buy uses JPY notional as market_buy_amount
                     const notional = Number(p.notional || p.market_notional || 0);
                     if (!(notional > 0)) throw new Error('market_buy requires positive notional (JPY)');
-                    body = new URLSearchParams({ pair, order_type: 'market_buy', market_buy_amount: String(notional) }).toString();
+                    body = new URLSearchParams({
+                        pair,
+                        order_type: 'market_buy',
+                        market_buy_amount: String(notional)
+                    }).toString();
                 } else {
                     // market_sell uses base amount
                     const amt = Number(p.amount);
                     if (!(amt > 0)) throw new Error('market_sell requires positive amount');
-                    body = new URLSearchParams({ pair, order_type: 'market_sell', amount: String(amt) }).toString();
+                    body = new URLSearchParams({
+                        pair,
+                        order_type: 'market_sell',
+                        amount: String(amt)
+                    }).toString();
                 }
             }
             const nonce = Date.now().toString();
             const message = nonce + url + body;
             const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-            const headers: Record<string, string> = { 'ACCESS-KEY': apiKey, 'ACCESS-NONCE': nonce, 'ACCESS-SIGNATURE': signature, 'Content-Type': 'application/x-www-form-urlencoded' };
-            const res = await axios.post<CoincheckOrderResponse>(url, body, { headers, timeout: Number(process.env.CC_TIMEOUT_MS || 10000) });
+            const headers: Record<string, string> = {
+                'ACCESS-KEY': apiKey,
+                'ACCESS-NONCE': nonce,
+                'ACCESS-SIGNATURE': signature,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            };
+            const res = await axios.post<CoincheckOrderResponse>(url, body, {
+                headers, timeout: Number(process.env.CC_TIMEOUT_MS || 10000)
+            });
             const data = res.data;
             if (!data?.success) throw new Error('Coincheck order failed');
             return { success: 1, return: { order_id: String(data.id) } };
@@ -207,7 +266,12 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             const nonce = Date.now().toString();
             const message = nonce + url + body;
             const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-            const headers: Record<string, string> = { 'ACCESS-KEY': apiKey, 'ACCESS-NONCE': nonce, 'ACCESS-SIGNATURE': signature, 'Content-Type': 'application/x-www-form-urlencoded' };
+            const headers: Record<string, string> = {
+                'ACCESS-KEY': apiKey,
+                'ACCESS-NONCE': nonce,
+                'ACCESS-SIGNATURE': signature,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            };
             const res = await axios.post<CoincheckCancelResponse>(url, body, { headers, timeout: Number(process.env.CC_TIMEOUT_MS || 10000) });
             const data = res.data;
             if (!data?.success) throw new Error('Coincheck cancel failed');

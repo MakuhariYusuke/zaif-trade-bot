@@ -2,14 +2,16 @@
   "date": "2025-09-13",
   "trades": 0,
   "wins": 0,
-  "realizedPnl": 493.8,
+  "realizedPnl": 1668.3000000000004,
   "sumSlippage": 0,
   "maxSlippage": 0,
   "sumRetries": 0,
   "maxRetries": 0,
-  "buyEntries": 4,
-  "filledCount": 4,
-  "winTrades": 4,
-  "streakWin": 4,
-  "streakLoss": 0
+  "buyEntries": 14,
+  "filledCount": 20,
+  "winTrades": 14,
+  "streakWin": 0,
+  "streakLoss": 1,
+  "sellEntries": 12,
+  "lossTrades": 6
 }

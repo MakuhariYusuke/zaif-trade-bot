@@ -1,10 +1,12 @@
-import fs from 'fs';
 import path from 'path';
 import { readFeatureCsvRows } from '../../utils/toolkit';
 
 function parseArgs(){
   const args = process.argv.slice(2);
-  const get = (k: string, def?: string) => { const i = args.indexOf(`--${k}`); return i>=0 ? args[i+1] : def; };
+  const get = (k: string, def?: string) => { 
+    const i = args.indexOf(`--${k}`); 
+    return i>=0 ? args[i+1] : def; 
+  };
   const pair = get('pair', 'btc_jpy')!;
   const paramsStr = get('params', '{}')!;
   let params: Record<string, any> = {};

@@ -113,5 +113,5 @@ export function logWarn(message: string, ...args: any[]) { emit("WARN", message,
 export function logError(message: string, ...args: any[]) { emit("ERROR", message, args); }
 /** Log a fatal error message. @param {string} message - The message to log. @param {...any} args - Additional arguments to log. */
 export function logFatal(message: string, ...args: any[]) { emit("FATAL", message, args); }
-/** Log an assertion message (treated as ERROR level). */
+/** Log an assertion message (treated as ERROR level). @param {string} message - The message to log. @param {...any} args - Additional arguments to log. */
 export function logAssert(message: string, ...args: any[]) { emit("ERROR", `[ASSERT] ${message}`, args); }

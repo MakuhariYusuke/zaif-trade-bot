@@ -26,10 +26,23 @@ export interface CoincheckCancelResponse { success: boolean; id: number; }
 
 export interface CoincheckOpenOrdersResponse {
   success: boolean;
-  orders: Array<{ id: number; order_type: string; rate: string; pending_amount: string; created_at: string }>;
+  orders: Array<{
+    id: number; 
+    order_type: string; 
+    rate: string; 
+    pending_amount: string; 
+    created_at: string 
+  }>;
 }
 
 export interface CoincheckTradeHistoryResponse {
   success: boolean;
-  trades: Array<{ id: number; order_id: number; rate: string; amount: string; order_type: string; created_at: string }>;
+  trades: Array<{ 
+    id: number; 
+    order_id: number; 
+    rate: string; 
+    amount: string; 
+    order_type: string; 
+    created_at: string 
+  }>;
 }

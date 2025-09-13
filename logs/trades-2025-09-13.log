@@ -1,0 +1,70 @@
+{"ts":"2025-09-13T17:14:14.572Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:16:07.485Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:19:16.878Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:20:23.200Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:29:06.611Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784546609-jbincl","orderId":"ORDER1","side":"SELL","price":100,"amount":0.1}}
+{"ts":"2025-09-13T17:29:06.625Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER1","openCount":1,"openAmtById":0.1,"histQtyById":0.02}}
+{"ts":"2025-09-13T17:29:06.698Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784546609-jbincl","orderId":"ORDER2","improved":true,"price":99.9,"amount":0.1}}
+{"ts":"2025-09-13T17:29:06.708Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER2","openCount":0,"openAmtById":null,"histQtyById":0.1}}
+{"ts":"2025-09-13T17:29:07.167Z","type":"SIGNAL","message":"[SIGNAL][mode=SELL] SELL entry condition met"}
+{"ts":"2025-09-13T17:29:07.380Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:29:07.411Z","type":"SIGNAL","message":"fill_match_method=order_id requestId=r"}
+{"ts":"2025-09-13T17:29:07.412Z","type":"EXECUTION","message":"Order filled","data":{"requestId":"r","orderId":123,"filledAmt":0.1,"avg":100}}
+{"ts":"2025-09-13T17:29:07.414Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:29:09.788Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:29:59.089Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784599088-nsxj7j","orderId":"ORDER1","side":"SELL","price":100,"amount":0.1}}
+{"ts":"2025-09-13T17:29:59.091Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER1","openCount":1,"openAmtById":0.1,"histQtyById":0.02}}
+{"ts":"2025-09-13T17:29:59.167Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784599088-nsxj7j","orderId":"ORDER2","improved":true,"price":99.9,"amount":0.1}}
+{"ts":"2025-09-13T17:29:59.169Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER2","openCount":0,"openAmtById":null,"histQtyById":0.1}}
+{"ts":"2025-09-13T17:29:59.746Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:29:59.776Z","type":"SIGNAL","message":"fill_match_method=order_id requestId=r"}
+{"ts":"2025-09-13T17:29:59.777Z","type":"EXECUTION","message":"Order filled","data":{"requestId":"r","orderId":123,"filledAmt":0.1,"avg":100}}
+{"ts":"2025-09-13T17:29:59.779Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:30:01.833Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:30:02.263Z","type":"ERROR","message":"Failed to read position store","data":{"error":"Unexpected end of JSON input"}}
+{"ts":"2025-09-13T17:31:34.914Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784694913-n73l5z","orderId":"ORDER1","side":"SELL","price":100,"amount":0.1}}
+{"ts":"2025-09-13T17:31:34.917Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER1","openCount":1,"openAmtById":0.1,"histQtyById":0.02}}
+{"ts":"2025-09-13T17:31:34.986Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784694913-n73l5z","orderId":"ORDER2","improved":true,"price":99.9,"amount":0.1}}
+{"ts":"2025-09-13T17:31:34.988Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER2","openCount":0,"openAmtById":null,"histQtyById":0.1}}
+{"ts":"2025-09-13T17:31:35.496Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:31:35.525Z","type":"SIGNAL","message":"fill_match_method=order_id requestId=r"}
+{"ts":"2025-09-13T17:31:35.526Z","type":"EXECUTION","message":"Order filled","data":{"requestId":"r","orderId":123,"filledAmt":0.1,"avg":100}}
+{"ts":"2025-09-13T17:31:35.529Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:31:35.543Z","type":"SIGNAL","message":"fill_match_method=heuristic requestId=r2"}
+{"ts":"2025-09-13T17:31:35.544Z","type":"ERROR","message":"Order missing from active list; marking CANCELLED","data":{"requestId":"r2","orderId":999,"filledAmt":0}}
+{"ts":"2025-09-13T17:31:37.548Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:32:39.217Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784759214-cn9qd5","orderId":"ORDER1","side":"SELL","price":100,"amount":0.1}}
+{"ts":"2025-09-13T17:32:39.220Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER1","openCount":1,"openAmtById":0.1,"histQtyById":0.02}}
+{"ts":"2025-09-13T17:32:39.287Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757784759214-cn9qd5","orderId":"ORDER2","improved":true,"price":99.9,"amount":0.1}}
+{"ts":"2025-09-13T17:32:39.293Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER2","openCount":0,"openAmtById":null,"histQtyById":0.1}}
+{"ts":"2025-09-13T17:32:39.929Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:32:39.958Z","type":"SIGNAL","message":"fill_match_method=order_id requestId=r"}
+{"ts":"2025-09-13T17:32:39.960Z","type":"EXECUTION","message":"Order filled","data":{"requestId":"r","orderId":123,"filledAmt":0.1,"avg":100}}
+{"ts":"2025-09-13T17:32:39.961Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:32:39.971Z","type":"SIGNAL","message":"fill_match_method=heuristic requestId=r2"}
+{"ts":"2025-09-13T17:32:39.977Z","type":"ERROR","message":"Order missing from active list; marking CANCELLED","data":{"requestId":"r2","orderId":999,"filledAmt":0}}
+{"ts":"2025-09-13T17:32:41.866Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:36:55.987Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757785015986-26ziak","orderId":"ORDER1","side":"SELL","price":100,"amount":0.1}}
+{"ts":"2025-09-13T17:36:55.992Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER1","openCount":1,"openAmtById":0.1,"histQtyById":0.02}}
+{"ts":"2025-09-13T17:36:56.059Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757785015986-26ziak","orderId":"ORDER2","improved":true,"price":99.9,"amount":0.1}}
+{"ts":"2025-09-13T17:36:56.060Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER2","openCount":0,"openAmtById":null,"histQtyById":0.1}}
+{"ts":"2025-09-13T17:36:56.480Z","type":"SIGNAL","message":"[SIGNAL][mode=BUY] BUY entry condition met"}
+{"ts":"2025-09-13T17:36:57.267Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:36:57.294Z","type":"SIGNAL","message":"fill_match_method=order_id requestId=r"}
+{"ts":"2025-09-13T17:36:57.295Z","type":"EXECUTION","message":"Order filled","data":{"requestId":"r","orderId":123,"filledAmt":0.1,"avg":100}}
+{"ts":"2025-09-13T17:36:57.297Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:36:57.309Z","type":"SIGNAL","message":"fill_match_method=heuristic requestId=r2"}
+{"ts":"2025-09-13T17:36:57.310Z","type":"ERROR","message":"Order missing from active list; marking CANCELLED","data":{"requestId":"r2","orderId":999,"filledAmt":0}}
+{"ts":"2025-09-13T17:36:58.791Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:37:47.751Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757785067750-j7ebms","orderId":"ORDER1","side":"SELL","price":100,"amount":0.1}}
+{"ts":"2025-09-13T17:37:47.753Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER1","openCount":1,"openAmtById":0.1,"histQtyById":0.02}}
+{"ts":"2025-09-13T17:37:47.825Z","type":"SIGNAL","message":"[SUBMIT]","data":{"requestId":"1757785067750-j7ebms","orderId":"ORDER2","improved":true,"price":99.9,"amount":0.1}}
+{"ts":"2025-09-13T17:37:47.827Z","type":"SIGNAL","message":"[POLL0]","data":{"orderId":"ORDER2","openCount":0,"openAmtById":null,"histQtyById":0.1}}
+{"ts":"2025-09-13T17:37:48.112Z","type":"SIGNAL","message":"[SIGNAL][mode=BUY] BUY entry condition met"}
+{"ts":"2025-09-13T17:37:49.196Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:37:49.242Z","type":"SIGNAL","message":"fill_match_method=order_id requestId=r"}
+{"ts":"2025-09-13T17:37:49.243Z","type":"EXECUTION","message":"Order filled","data":{"requestId":"r","orderId":123,"filledAmt":0.1,"avg":100}}
+{"ts":"2025-09-13T17:37:49.245Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}
+{"ts":"2025-09-13T17:37:49.254Z","type":"SIGNAL","message":"fill_match_method=heuristic requestId=r2"}
+{"ts":"2025-09-13T17:37:49.255Z","type":"ERROR","message":"Order missing from active list; marking CANCELLED","data":{"requestId":"r2","orderId":999,"filledAmt":0}}
+{"ts":"2025-09-13T17:37:50.334Z","type":"INFO","message":"Position fully closed","data":{"pair":"btc_jpy"}}

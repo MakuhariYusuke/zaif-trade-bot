@@ -145,7 +145,14 @@ export function savePositions(file: string, positions: Position[]) {
  */
 export function openPosition(file: string, p: Omit<Position, "id" | "timestamp"> & { entryPrice: number; amount: number; }): Position {
     const positions = loadPositions(file);
-    const pos: Position = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, timestamp: Date.now(), ...p, highestPrice: p.entryPrice, dcaCount: 0, openOrderIds: [] };
+    const pos: Position = { 
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, 
+        timestamp: Date.now(), 
+        ...p, 
+        highestPrice: p.entryPrice, 
+        dcaCount: 0, 
+        openOrderIds: [] 
+    };
     positions.push(pos);
     savePositions(file, positions);
     logInfo(`ポジション追加 id=${pos.id} pair=${pos.pair} entry=${pos.entryPrice}`);
