@@ -2,8 +2,9 @@ import { getTicker, getOrderBook, getTrades } from "../api/public";
 import { PrivateApi, CancelOrderParams, TradeResult } from "../types/private";
 import type { Side } from "../types/domain";
 import { logWarn } from "../utils/logger";
-const RETRY_ATTEMPTS = Number(process.env.RETRY_ATTEMPTS || 2);
-const RETRY_BACKOFF_MS = Number(process.env.RETRY_BACKOFF_MS || 150);
+function toPosInt(val: any, def: number){ const n = Number(val); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : def; }
+const RETRY_ATTEMPTS = (()=>{ const n = toPosInt(process.env.RETRY_ATTEMPTS, 2); return n > 0 ? n : 2; })();
+const RETRY_BACKOFF_MS = (()=>{ const n = toPosInt(process.env.RETRY_BACKOFF_MS, 150); return n >= 0 ? n : 150; })();
 async function withRetry<T>(fn: ()=>Promise<T>, label: string, attempts = RETRY_ATTEMPTS, backoffMs = RETRY_BACKOFF_MS): Promise<T> {
   let err: any;
   for (let i=0;i<attempts;i++){
