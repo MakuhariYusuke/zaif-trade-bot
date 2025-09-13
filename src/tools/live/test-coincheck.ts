@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { createPrivateApi } from '../../api/adapters';
 import { logInfo, logWarn } from '../../utils/logger';
-import { sleep } from '../../utils/toolkit';
+import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';
 
 (async ()=>{
   process.env.EXCHANGE = 'coincheck';
@@ -11,9 +11,12 @@ import { sleep } from '../../utils/toolkit';
   const bal = await api.get_info2();
   logInfo('[TEST] Balance', bal.return?.funds);
   if (process.env.DRY_RUN==='1') { logInfo('[TEST] DRY_RUN: skip order'); return; }
-  const pair = 'btc_jpy';
+  const pair = process.env.PAIR || 'btc_jpy';
   const rate = Number(process.env.CC_TEST_RATE||'1000000');
-  const amount = Number(process.env.CC_TEST_AMOUNT||'0.005');
+  let amount = Number(process.env.CC_TEST_AMOUNT||'0.005');
+  if (process.env.SAFETY_MODE==='1'){
+    try{ const funds = await fetchBalances(api); amount = clampAmountForSafety('bid', amount, rate, funds, pair); }catch{}
+  }
   logInfo('[TEST] Place BUY', { pair, rate, amount });
   const tr = await api.trade({ currency_pair: pair, action: 'bid', price: rate, amount });
   logInfo('[TEST] Placed', tr);
