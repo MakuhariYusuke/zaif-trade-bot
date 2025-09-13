@@ -28,16 +28,17 @@ export function clampAmountForSafety(
   side: 'bid' | 'ask', amount: number, price: number, funds: Record<string, number>, pair: string
 ): number {
   if (process.env.SAFETY_MODE !== '1') return amount;
+  const pct = Math.max(0, Math.min(1, Number(process.env.SAFETY_CLAMP_PCT ?? '0.10')));
   const base = baseFromPair(pair);
   if (side === 'bid') {
     const jpy = Number((funds as any).jpy || 0);
-    const maxSpend = jpy * 0.10;
+    const maxSpend = jpy * pct;
     if (maxSpend <= 0 || price <= 0) return amount;
     const maxQty = maxSpend / price;
     return amount > maxQty ? maxQty : amount;
   } else {
     const bal = Number((funds as any)[base] || 0);
-    const maxQty = bal * 0.10;
+    const maxQty = bal * pct;
     return amount > maxQty ? maxQty : amount;
   }
 }
