@@ -1,10 +1,9 @@
 {
-  "ts": 1757716599880,
+  "ts": 1757785068125,
   "pair": "btc_jpy",
   "side": "ask",
-  "rsi": 99.00990099009901,
-  "sma_short": 985,
-  "sma_long": 959.5,
-  "price": 17139995,
+  "sma_short": 105,
+  "sma_long": 104,
+  "price": 95,
   "qty": 0
 }
