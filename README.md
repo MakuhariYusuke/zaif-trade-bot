@@ -254,6 +254,17 @@ npm run tool -- ml:export
 npm run tool -- stats:today -- --diff
 ```
 
+### Coverage レポート（GitHub Pages）
+
+main ブランチへの push または手動実行で `coverage-pages` ワークフローが走り、`coverage/` を GitHub Pages に公開します。しきい値 (statements >= 70%) を満たさない場合は CI が失敗します。
+
+- Pages 公開先: リポジトリの Pages 設定で確認（`/coverage/` 以下に HTML レポート）
+- ワークフロー: `.github/workflows/coverage-pages.yml`
+ - 公開 URL（既定）: https://MakuhariYusuke.github.io/zaif-trade-bot/
+	 - 本ワークフローは `coverage/` 配下を Pages ルートに配置するため、トップで coverage レポート（index.html）が表示されます。
+	 - 404 の場合は GitHub Pages 有効化を確認し、`/index.html` で直接参照してください。
+
+
 ### テスト実行時の環境変数の注意
 
 テストはファイル出力（統計やポジションストア）を行うため、実データと混ざらないよう一時ディレクトリを使うことを推奨します。テストコード側でも設定していますが、手動実行時は以下を任意のパスに設定してください。
