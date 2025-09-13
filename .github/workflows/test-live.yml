@@ -19,6 +19,10 @@ on:
         description: "TEST_FLOW_RATE (optional)"
         required: false
         default: ""
+      safety:
+        description: "Enable SAFETY_MODE=1"
+        required: false
+        default: "true"
 
 jobs:
   run:
@@ -37,7 +41,7 @@ jobs:
           TEST_FLOW_QTY: ${{ github.event.inputs.qty }}
           TEST_FLOW_RATE: ${{ github.event.inputs.rate }}
           DRY_RUN: '0'
-          SAFETY_MODE: '1'
+          SAFETY_MODE: ${{ github.event.inputs.safety == 'true' && '1' || '0' }}
         run: npm run test:min-live
       - name: Upload live stats
         uses: actions/upload-artifact@v4
