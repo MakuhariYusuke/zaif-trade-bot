@@ -43,6 +43,30 @@ export function clampAmountForSafety(
   }
 }
 
+/** Exposure warn threshold (ratio), default 0.05 (5%). */
+export function getExposureWarnPct(): number {
+  const raw = Number(process.env.EXPOSURE_WARN_PCT ?? '0.05');
+  if (!isFinite(raw) || raw < 0) return 0.05;
+  if (raw > 1) return 1;
+  return raw;
+}
+
+/** Compute exposure ratio: bid -> notional/JPY, ask -> qty/baseBalance. Returns 0 if denominator is not positive. */
+export function computeExposureRatio(side: 'bid'|'ask', qty: number, price: number, funds: Record<string, number>, pair: string): number {
+  try {
+    if (side === 'bid') {
+      const jpy = Number((funds as any).jpy || 0);
+      if (jpy <= 0 || price <= 0) return 0;
+      return (qty * price) / jpy;
+    } else {
+      const base = baseFromPair(pair).toLowerCase();
+      const bal = Number((funds as any)[base] || 0);
+      if (bal <= 0) return 0;
+      return qty / bal;
+    }
+  } catch { return 0; }
+}
+
 // --- ML/Features helpers ---
 export interface FeatureCsvRow {
   ts: number; pair: string; side: string;
@@ -70,14 +94,21 @@ export function readFeatureCsvRows(dir: string): FeatureCsvRow[] {
         const parts = line.split(',');
         const rec: any = {};
         cols.forEach((c, i) => rec[c] = parts[i]);
+        const toNum = (v: any): number|undefined => {
+          if (v == null) return undefined;
+          const s = String(v).trim();
+          if (s === '') return undefined;
+          const n = Number(s);
+          return Number.isFinite(n) ? n : undefined;
+        };
         rows.push({
           ts: Number(rec.ts), pair: rec.pair, side: rec.side,
-          rsi: rec.rsi ? Number(rec.rsi) : undefined,
-          sma_short: rec.sma_short ? Number(rec.sma_short) : undefined,
-          sma_long: rec.sma_long ? Number(rec.sma_long) : undefined,
+          rsi: toNum(rec.rsi),
+          sma_short: toNum(rec.sma_short),
+          sma_long: toNum(rec.sma_long),
           price: Number(rec.price), qty: Number(rec.qty),
-          pnl: rec.pnl ? Number(rec.pnl) : undefined,
-          win: rec.win ? Number(rec.win) : undefined,
+          pnl: toNum(rec.pnl),
+          win: toNum(rec.win),
         });
       }
     } catch { /* ignore file errors */ }

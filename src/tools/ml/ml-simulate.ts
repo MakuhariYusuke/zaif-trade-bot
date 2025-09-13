@@ -25,10 +25,15 @@ function simulate(rows: Row[], params: Record<string, any>){
     const rsi = r.rsi ?? 50;
     const sShort = r.sma_short ?? 0;
     const sLong = r.sma_long ?? 0;
-    if (typeof r.pnl === 'number'){
+    if (typeof r.pnl === 'number' && Number.isFinite(r.pnl)){
       trades++;
       pnl += r.pnl;
       if (r.win === 1) wins++;
+      if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
+    } else if ((r as any).win !== undefined && (r as any).win !== null){ // fallback: win-only rows
+      trades++;
+      const w = (r as any).win;
+      if (w === 1 || w === true || w === '1') wins++;
       if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
     } else {
       if (!holdStart && sShort && sLong && ((r.side==='ask' && sShort < sLong && rsi >= SELL_RSI_OVERBOUGHT) || (r.side==='bid' && sShort > sLong && rsi <= BUY_RSI_OVERSOLD))) {

@@ -10,7 +10,7 @@ import type { PrivateApi } from '../../types/private';
 import { logFeatureSample } from '../../utils/features-logger';
 import { appendPriceSamples, getPriceSeries } from '../../utils/price-cache';
 import { calculateSma, calculateRsi } from '../../core/risk';
-import { todayStr, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';
+import { todayStr, fetchBalances, clampAmountForSafety, baseFromPair, getExposureWarnPct, computeExposureRatio } from '../../utils/toolkit';
 
 type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
 // moved to utils/toolkit
@@ -110,16 +110,16 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
 
     const executed: Array<{ side:'bid'|'ask'; qty:number; price:number; status:string }> = [];
 
-    function warnIfOver5Pct(side:'bid'|'ask', qty:number, price:number){
+    function warnIfOverPct(side:'bid'|'ask', qty:number, price:number){
         try{
-            if (side==='bid'){
-                const notional = qty * price;
-                const jpy = balancesBefore.jpy || 0;
-                if (jpy>0 && notional > jpy * 0.05){ logWarn(`[WARN][BALANCE] bid notional ${notional} exceeds 5% of JPY ${jpy}`); }
-            } else {
-                const base = baseFromPair(pair).toLowerCase();
-                const bal = (balancesBefore as any)[base] || 0;
-                if (bal>0 && qty > bal * 0.05){ logWarn(`[WARN][BALANCE] ask qty ${qty} exceeds 5% of ${base.toUpperCase()} ${bal}`); }
+            const pct = getExposureWarnPct();
+            const ratio = computeExposureRatio(side, qty, price, balancesBefore as any, pair);
+            if (ratio > pct) {
+                if (side==='bid') logWarn(`[WARN][BALANCE] bid notional exceeds ${(pct*100).toFixed(1)}% of JPY (ratio ${(ratio*100).toFixed(1)}%)`);
+                else {
+                    const base = baseFromPair(pair).toUpperCase();
+                    logWarn(`[WARN][BALANCE] ask qty exceeds ${(pct*100).toFixed(1)}% of ${base} (ratio ${(ratio*100).toFixed(1)}%)`);
+                }
             }
         } catch {}
     }
@@ -127,7 +127,7 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
     async function runBid() {
         let qty = clampAmountForSafety('bid', qtyRaw, pxBid, funds, pair);
         if (!(qty > 0)) throw new Error('clamped qty <= 0');
-        warnIfOver5Pct('bid', qty, pxBid);
+    warnIfOverPct('bid', qty, pxBid);
         const r = await placeAndCancel(api, pair, 'bid', pxBid, qty, { market: isMarket, refPx: pxAsk });
         incBuyEntry(todayStr(), pair);
         executed.push({ side:'bid', qty, price:pxBid, status: (r as any).status || 'cancelled' });
@@ -137,7 +137,7 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
     async function runAsk() {
         let qty = clampAmountForSafety('ask', qtyRaw, pxAsk, funds, pair);
         if (!(qty > 0)) throw new Error('clamped qty <= 0');
-        warnIfOver5Pct('ask', qty, pxAsk);
+    warnIfOverPct('ask', qty, pxAsk);
         const r = await placeAndCancel(api, pair, 'ask', pxAsk, qty, { market: isMarket, refPx: pxBid });
         incSellEntry(todayStr(), pair);
         executed.push({ side:'ask', qty, price:pxAsk, status: (r as any).status || 'cancelled' });
@@ -174,12 +174,10 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
             xrp: (balancesAfter.xrp - balancesBefore.xrp)
         };
         const warnings: string[] = [];
+        const pct = getExposureWarnPct();
         for (const exed of executed){
-            if (exed.side==='bid'){
-                const notional = exed.qty * exed.price; if (balancesBefore.jpy>0 && notional > balancesBefore.jpy*0.05) warnings.push('over5pct_jpy');
-            } else {
-                const base = baseFromPair(pair).toLowerCase(); const bal = (balancesBefore as any)[base] || 0; if (bal>0 && exed.qty > bal*0.05) warnings.push('over5pct_base');
-            }
+            const r = computeExposureRatio(exed.side, exed.qty, exed.price, balancesBefore as any, pair);
+            if (r > pct) warnings.push(exed.side==='bid' ? 'over5pct_jpy' : 'over5pct_base');
         }
         let summary: any = { env: { EXCHANGE: process.env.EXCHANGE, TRADE_FLOW: process.env.TRADE_FLOW, TEST_FLOW_QTY: process.env.TEST_FLOW_QTY, TEST_FLOW_RATE: process.env.TEST_FLOW_RATE, DRY_RUN: process.env.DRY_RUN }, balancesBefore, balancesAfter, deltas, executed, warnings };
         if (fs.existsSync(diffPath)){

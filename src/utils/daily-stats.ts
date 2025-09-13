@@ -33,9 +33,10 @@ export interface DailyAggregate {
     maxNonceRetryCount?: number;
 }
 
-const DIR = process.env.STATS_DIR || path.resolve(process.cwd(), "logs");
+function getStatsDir(){ return process.env.STATS_DIR || path.resolve(process.cwd(), "logs"); }
 
 function fileFor(date: string, pair?: string) {
+    const DIR = getStatsDir();
     if (pair) return path.join(DIR, 'pairs', pair, `stats-${date}.json`);
     const envPair = process.env.STATS_PAIR;
     if (envPair) return path.join(DIR, 'pairs', envPair, `stats-${date}.json`);
@@ -51,9 +52,27 @@ function fileFor(date: string, pair?: string) {
 export function loadDaily(date: string, pair?: string): DailyAggregate {
     try {
     const f = fileFor(date, pair);
-        if (!fs.existsSync(f)) return { date, trades: 0, wins: 0, realizedPnl: 0, sumSlippage: 0, maxSlippage: 0, sumRetries: 0, maxRetries: 0 };
+        if (!fs.existsSync(f)) return { 
+            date, 
+            trades: 0, 
+            wins: 0, 
+            realizedPnl: 0, 
+            sumSlippage: 0, 
+            maxSlippage: 0, 
+            sumRetries: 0, 
+            maxRetries: 0 
+        };
         return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch { return { date, trades: 0, wins: 0, realizedPnl: 0, sumSlippage: 0, maxSlippage: 0, sumRetries: 0, maxRetries: 0 }; }
+    } catch { return { 
+        date, 
+        trades: 0, 
+        wins: 0, 
+        realizedPnl: 0, 
+        sumSlippage: 0, 
+        maxSlippage: 0, 
+        sumRetries: 0, 
+        maxRetries: 0 
+    }; }
 }
 
 /**
@@ -225,6 +244,37 @@ export function summarizeDaily(date: string, pair?: string) {
     const avgRetries = agg.trades ? agg.sumRetries / agg.trades : 0;
     const avgTotalRetries = avgRetries;
     const maxTotalRetries = agg.maxRetries || 0;
-    console.log(`[DAILY] pair=${pair||process.env.STATS_PAIR||'-'} trades=${agg.trades} fills=${agg.filledCount||0} pnl=${agg.realizedPnl} winStreak=${agg.streakWin||0} lossStreak=${agg.streakLoss||0} avgRetries=${avgTotalRetries.toFixed(2)} maxRetries=${maxTotalRetries} trailArmed=${agg.trailArmedTotal||0} trailExit=${agg.trailExitTotal||0} sellEntries=${agg.sellEntries||0} buyExits=${agg.buyExits||0} rsiExits=${agg.rsiExits||0} trailStops=${agg.trailStops||0}`);
-    return { ...agg, avgSlippage: avgSlip, avgRetries: avgTotalRetries, winRate: agg.trades ? agg.wins / agg.trades : 0 };
+    try {
+        const loggerModule = (() => {
+            try { return require('../logger'); } catch {}
+            try { return require('./logger'); } catch {}
+            return console;
+        })();
+        const logFn = (typeof loggerModule?.info === 'function'
+            ? loggerModule.info.bind(loggerModule)
+            : (typeof loggerModule?.log === 'function' ? loggerModule.log.bind(loggerModule) : console.log)
+        );
+        logFn([
+            `[DAILY] pair=${pair || process.env.STATS_PAIR || '-'}`,
+            `trades: ${agg.trades}`,
+            `fills: ${agg.filledCount || 0}`,
+            `pnl: ${agg.realizedPnl}`,
+            `winStreak: ${agg.streakWin || 0}`,
+            `lossStreak: ${agg.streakLoss || 0}`,
+            `avgRetries: ${avgTotalRetries.toFixed(2)}`,
+            `maxRetries: ${maxTotalRetries}`,
+            `trailArmed: ${agg.trailArmedTotal || 0}`,
+            `trailExit: ${agg.trailExitTotal || 0}`,
+            `sellEntries: ${agg.sellEntries || 0}`,
+            `buyExits: ${agg.buyExits || 0}`,
+            `rsiExits: ${agg.rsiExits || 0}`,
+            `trailStops: ${agg.trailStops || 0}`
+        ].join('\n'));
+    } catch {}
+    return { 
+        ...agg, 
+        avgSlippage: avgSlip, 
+        avgRetries: avgTotalRetries, 
+        winRate: agg.trades ? agg.wins / agg.trades : 0 
+    };
 }

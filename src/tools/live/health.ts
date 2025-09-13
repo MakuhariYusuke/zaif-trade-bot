@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { createPrivateApi } from "../../api/adapters";
 import { getTicker, getOrderBook } from "../../api/public";
+import { getExposureWarnPct } from "../../utils/toolkit";
 
 export async function printPrivateHealth(api: PrivateApi) {
     try {
@@ -22,7 +23,7 @@ async function printPublicHealth(pair: string){
         const ob: any = await getOrderBook(pair);
         const bestBid = Number((ob?.bids?.[0]?.[0]) || 0);
         const bestAsk = Number((ob?.asks?.[0]?.[0]) || 0);
-        logInfo("Public API OK", { pair, last: (t as any)?.last || (t as any)?.last_price || null, bestBid, bestAsk });
+    logInfo("Public API OK", { pair, last: (t as any)?.last || (t as any)?.last_price || null, bestBid, bestAsk, warnPct: getExposureWarnPct() });
     } catch (e:any){
         logWarn('Public API error', e?.message||e);
     }

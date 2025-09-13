@@ -151,6 +151,7 @@ src/
 | `NONCE_RESTORE_ON_ERROR` | Nonce エラー時に復元（`0`で無効、既定: 有効） | `1` |
 | `SAFETY_MODE` | 安全クランプ有効化（10%デフォルト） | `1` |
 | `SAFETY_CLAMP_PCT` | クランプ割合（0-1）。例: 0.1=10% | `0.1` |
+| `EXPOSURE_WARN_PCT` | 露出警告閾値（0-1）。既定 0.05=5% | `0.05` |
 
 追加: `RETRY_TIMEOUT_MS`, `RETRY_PRICE_OFFSET_PCT`, `CLOCK_SKEW_TOLERANCE_MS` などはコード参照。
 
@@ -253,6 +254,20 @@ npm run tool -- ml:export
 npm run tool -- stats:today -- --diff
 ```
 
+### テスト実行時の環境変数の注意
+
+テストはファイル出力（統計やポジションストア）を行うため、実データと混ざらないよう一時ディレクトリを使うことを推奨します。テストコード側でも設定していますが、手動実行時は以下を任意のパスに設定してください。
+
+- `STATS_DIR`: 日次統計の出力先ディレクトリ（例: `./.tmp-stats/logs`）
+- `POSITION_STORE_DIR`: ペア別のポジションファイルを保存するディレクトリ（例: `./.positions-test`）
+- `POSITION_STORE_FILE`: 旧式の単一ストアファイルのパス（互換目的のみ）
+
+PowerShell 例:
+
+```powershell
+$env:STATS_DIR=".tmp-stats\\logs"; $env:POSITION_STORE_DIR=".positions-test"; npm run test
+```
+
 ---
 
 ## 📊 ログ & 日次統計
@@ -338,6 +353,8 @@ Trailing Stop:
 - TEST_FLOW_RATE: 価格（未指定なら板の最優先を利用）
 - DRY_RUN: 0 固定（1 の場合は実行エラー）
 - SAFETY_MODE: 1 で残高の10%以内に数量をクランプ
+ - SAFETY_CLAMP_PCT: クランプ割合（例: 0.1=10%）
+ - EXPOSURE_WARN_PCT: 露出警告閾値（例: 0.05=5%）
 
 PowerShell 実行例:
 
@@ -362,6 +379,12 @@ npm run test:min-live
 ```
 
 注: Live最小トレード検証は features ログ（CSV/JSON）も保存します。収集したデータは `npm run ml:export`（src/tools/ml/ml-export.ts）でデータセット化し、`npm run ml:search`（src/tools/ml/ml-search.ts）で簡易探索が可能です。
+
+### ヘルスチェック
+
+`npm run health` で以下を確認します。
+- Private API: `healthCheck()`（未実装の場合は get_info2）
+- Public API: `ticker` と `orderbook` のベスト気配、および `EXPOSURE_WARN_PCT` の現在値（warnPct）
 
 ## Live Minimal Trade (GitHub Actions)
 

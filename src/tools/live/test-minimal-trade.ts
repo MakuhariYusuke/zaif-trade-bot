@@ -3,7 +3,7 @@ dotenv.config();
 import { createPrivateApi } from '../../api/adapters';
 import { getOrderBook } from '../../api/public';
 import { logInfo, logWarn, logError } from '../../utils/logger';
-import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';
+import { sleep, fetchBalances, clampAmountForSafety, baseFromPair, getExposureWarnPct, computeExposureRatio } from '../../utils/toolkit';
 
 type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
 
@@ -79,12 +79,14 @@ type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
 
     function warnIfOver5Pct(side:'bid'|'ask', qty:number, price:number, balancesBefore: Record<string, number>){
         try{
-            if (side==='bid'){
-                const notional = qty * price; const jpy = Number((balancesBefore as any).jpy||0);
-                if (jpy>0 && notional > jpy * 0.05) logWarn(`[WARN][BALANCE] bid notional ${notional} exceeds 5% of JPY ${jpy}`);
-            } else {
-                const base = baseFromPair(pair).toLowerCase(); const bal = Number((balancesBefore as any)[base]||0);
-                if (bal>0 && qty > bal * 0.05) logWarn(`[WARN][BALANCE] ask qty ${qty} exceeds 5% of ${base.toUpperCase()} ${bal}`);
+            const pct = getExposureWarnPct();
+            const ratio = computeExposureRatio(side, qty, price, balancesBefore as any, pair);
+            if (ratio > pct) {
+                if (side==='bid') logWarn(`[WARN][BALANCE] bid notional exceeds ${(pct*100).toFixed(1)}% of JPY (ratio ${(ratio*100).toFixed(1)}%)`);
+                else {
+                    const base = baseFromPair(pair).toUpperCase();
+                    logWarn(`[WARN][BALANCE] ask qty exceeds ${(pct*100).toFixed(1)}% of ${base} (ratio ${(ratio*100).toFixed(1)}%)`);
+                }
             }
         } catch {}
     }
