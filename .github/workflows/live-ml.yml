@@ -1,0 +1,67 @@
+name: Live ML Batch
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 2 * * 1' # every Monday 11:00JST
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install deps
+        run: npm ci
+      - name: Live minimal once (cancel immediately)
+        env:
+          EXCHANGE: coincheck
+          TRADE_FLOW: BUY_ONLY
+          TEST_FLOW_QTY: '0.001'
+          DRY_RUN: '0'
+          SAFETY_MODE: '1'
+          FEATURES_SOURCE: live
+        run: npm run test:min-live
+      - name: Stats diff
+        run: npm run stats:today -- --diff > stats-diff.json
+      - name: ML export + search + timeline
+        env:
+          ML_MAX_WORKERS: '1'
+          PAIRS: btc_jpy
+        run: |
+          npm run ml:export
+          npm run ml:search
+          node -e "require('ts-node').register(); require('./src/tools/stats-graph.ts');" -- --timeline stats-timeline.svg
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-ml-artifacts
+          path: |
+            logs/live/summary-*.json
+            ml-dataset.csv
+            ml-search-results.csv
+            ml-search-top.json
+            stats-timeline.svg
+      - name: Slack notify with summary
+        if: always()
+        run: |
+          WEBHOOK='${{ secrets.SLACK_WEBHOOK_URL }}'
+          if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
+          SUM=$(ls -1 logs/live/summary-*.json 2>/dev/null | tail -n1)
+          DIFF=$(cat logs/live/stats-diff-live.json 2>/dev/null || echo '{}')
+          if [ -n "$SUM" ]; then S=$(cat "$SUM"); else S='{}'; fi
+          ICON="✅"; STATUS="passed"
+          if [ "${{ job.status }}" != "success" ]; then ICON="❌"; STATUS="failed"; fi
+          WARN=""
+          over=$(echo "$S" | jq -r '.warnings | any')
+          inc=$(echo "$DIFF" | jq -r '((.diff.buyEntries // 0) + (.diff.sellEntries // 0))')
+          if [ "$inc" = "0" ] || [ "$over" = "true" ]; then WARN="⚠"; fi
+          PAIR=$(echo "$S" | jq -r '.latestFeature.pair // "-"')
+          incBuy=$(echo "$DIFF" | jq -r '.diff.buyEntries // 0')
+          incSell=$(echo "$DIFF" | jq -r '.diff.sellEntries // 0')
+          pnl=$(echo "$DIFF" | jq -r '.diff.realizedPnl // 0')
+          win=$(echo "$S" | jq -r '.stats.winRate // 0')
+          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100))\n<$SUM|summary>"
+          curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
