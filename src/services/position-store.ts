@@ -149,7 +149,13 @@ export function updateOnFill(fill: FillEvent) {
                 const oldCount = pos.dcaCount;
                 pos.dcaCount += increments;
                 pos.dcaRemainder = totalForDca - increments * DCA_MIN_INCREMENT;
-                logTradeInfo("DCA increment", { pair: fill.pair, oldCount, newCount: pos.dcaCount, increments, fillAmount: fill.amount });
+                logTradeInfo("DCA increment", {
+                    pair: fill.pair,
+                    oldCount,
+                    newCount: pos.dcaCount,
+                    increments,
+                    fillAmount: fill.amount
+                });
             } else {
                 pos.dcaRemainder = totalForDca;
             }
