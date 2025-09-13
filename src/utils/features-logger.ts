@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { todayStr } from './toolkit';
 
 export interface FeatureSample {
   ts: number;
@@ -23,8 +24,6 @@ export interface FeatureSample {
   depthAsk?: number;  // best ask size
   volumeRecent?: number; // recent traded volume (e.g., last 60s)
 }
-
-function todayStr(){ return new Date().toISOString().slice(0,10); }
 
 export function logFeatureSample(s: FeatureSample){
   const date = todayStr();
