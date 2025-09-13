@@ -58,3 +58,46 @@ jobs:
             stats-timeline.svg
             stats-diff.json
             report-summary-paper.json
+      - name: Slack notify with summary
+        if: always()
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
+          DIFF=$(cat stats-diff.json 2>/dev/null || echo '{}')
+          RPT=$(cat report-summary-paper.json 2>/dev/null || echo '{}')
+          ICON="✅"; STATUS="passed"
+          if [ "${{ job.status }}" != "success" ]; then ICON="❌"; STATUS="failed"; fi
+          incBuy=$(echo "$DIFF" | jq -r '.diff.buyEntries // 0')
+          incSell=$(echo "$DIFF" | jq -r '.diff.sellEntries // 0')
+          pnl=$(echo "$DIFF" | jq -r '.diff.realizedPnl // 0')
+          win=$(echo "$RPT" | jq -r '.totals.winRate // 0')
+          maxdd=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
+          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd"
+          curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
+      - name: GitHub comment with perPair
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            function mdTable(rows){
+              if (!rows || !rows.length) return '';
+              const header = ['pair','PnL','Win%','MaxDD','AvgHoldSec'];
+              const body = rows.map(r=>`| ${r.pair} | ${r.PnL||0} | ${Math.round((r.winRate||0)*100)} | ${r.maxDrawdown||0} | ${r.avgHoldSec||0} |`).join('\n');
+              return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- |\n${body}`;
+            }
+            let rpt = {};
+            try { rpt = JSON.parse(fs.readFileSync('report-summary-paper.json','utf8')); } catch {}
+            const totals = rpt.totals || {};
+            const perPair = rpt.perPair || [];
+            const body = `### Paper ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0}\n\n${mdTable(perPair)}`;
+            async function safe(fn, args){ try { return await fn(args); } catch(e){ core.warning(`comment failed: ${e.message}`); } }
+            if (context.payload.pull_request) {
+              await safe(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
+            } else if (context.eventName === 'push') {
+              await safe(github.rest.repos.createCommitComment, { owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
+            } else {
+              core.info('No PR or push context; skip commenting.');
+            }
