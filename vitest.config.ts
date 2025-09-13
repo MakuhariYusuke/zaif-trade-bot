@@ -6,6 +6,9 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'json', 'html'],
       reportsDirectory: 'coverage',
+      thresholds: {
+        statements: 70,
+      },
       exclude: [
         'src/index.ts',
         'src/app/**',

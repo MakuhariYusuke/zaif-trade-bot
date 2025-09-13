@@ -35,6 +35,8 @@ export interface DailyAggregate {
     maxDrawdown?: number;        // maximum drawdown of the day
     maxConsecLosses?: number;    // maximum consecutive losses
     avgHoldSec?: number;         // average holding time (seconds)
+    // internal accumulators (not guaranteed to exist on disk)
+    __sumHoldSec__?: number;
 }
 
 function getStatsDir(){ return process.env.STATS_DIR || path.resolve(process.cwd(), "logs"); }
@@ -139,6 +141,14 @@ export function appendSummary(date: string, s: OrderLifecycleSummary & { pnl?: n
     if ((s.pollRetryCount || 0) > (agg.maxPollRetryCount || 0)) agg.maxPollRetryCount = s.pollRetryCount || 0;
     if ((s.cancelRetryCount || 0) > (agg.maxCancelRetryCount || 0)) agg.maxCancelRetryCount = s.cancelRetryCount || 0;
     if ((s.nonceRetryCount || 0) > (agg.maxNonceRetryCount || 0)) agg.maxNonceRetryCount = s.nonceRetryCount || 0;
+    // accumulate hold duration if provided (seconds)
+    if (typeof (s as any).durationMs === 'number') {
+        const sec = Math.max(0, Math.floor(((s as any).durationMs || 0) / 1000));
+        (agg as any).__sumHoldSec__ = ((agg as any).__sumHoldSec__ || 0) + sec;
+        // keep avgHoldSec in file for convenience
+        const denom = Math.max(1, agg.trades);
+        agg.avgHoldSec = ((agg as any).__sumHoldSec__ || 0) / denom;
+    }
     try {
         const f = fileFor(date, s.pair);
         const d = path.dirname(f);
@@ -258,8 +268,10 @@ export function summarizeDaily(date: string, pair?: string) {
     const avgRetries = agg.trades ? agg.sumRetries / agg.trades : 0;
     const avgTotalRetries = avgRetries;
     const maxTotalRetries = agg.maxRetries || 0;
-    // compute avgHoldSec from wins/losses if durations collected externally; keep as-is if present
-    const avgHoldSec = agg.avgHoldSec || 0;
+    // compute avgHoldSec from internal accumulator if present; otherwise keep existing or zero
+    const avgHoldSec = (agg as any).__sumHoldSec__ != null && agg.trades
+        ? ((agg as any).__sumHoldSec__ as number) / agg.trades
+        : (agg.avgHoldSec || 0);
     try {
         const loggerModule = (() => {
             try { return require('../logger'); } catch {}

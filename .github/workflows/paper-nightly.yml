@@ -31,6 +31,8 @@ jobs:
           npm run ml:export
           npm run ml:search
           npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
+      - name: Build summary report (paper)
+        run: npm run report:summary -- --source paper
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -41,6 +43,7 @@ jobs:
             ml-search-top.json
             stats-timeline.svg
             stats-diff.json
+            report-summary-paper.json
             logs/features/**
       - name: Slack notify (nightly)
         if: always()
@@ -51,6 +54,7 @@ jobs:
           if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           DIFF_JSON=$(cat stats-diff.json 2>/dev/null || echo '{}')
+          RPT=$(cat report-summary-paper.json 2>/dev/null || echo '{}')
           ZERO=$(echo "$DIFF_JSON" | jq '.diff | to_entries | map(.value) | all(.==0)')
           ICON="✅"; STATUS="passed"
           if [ "$JOB_STATUS" != "success" ]; then ICON="❌"; STATUS="failed"; fi
@@ -62,12 +66,16 @@ jobs:
           TSTOP=$(echo "$DIFF_JSON" | jq -r '.diff.trailStops // 0')
           PNL=$(echo "$DIFF_JSON" | jq -r '.diff.realizedPnl // 0')
           WIN=$(jq -r '.values | if (.trades//0)>0 then ((.wins//0)/(.trades//1)*100) else 0 end' stats-diff.json 2>/dev/null || echo 0)
+          # Totals from report-summary (more robust across data sources)
+          TP=$(echo "$RPT" | jq -r '.totals.PnL // 0')
+          TW=$(echo "$RPT" | jq -r '.totals.winRate // 0')
+          TM=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
           # Per-pair summary (from stats.json if present)
           PAIRS_SUMMARY=""
           if [ -f stats.json ]; then
             PAIRS_SUMMARY=$(jq -r '.pairs[] | "• \(.pair): PnL=\(.realizedPnl) Win=\(((.winRate)*100|floor))% StreakW=\(.streakWin // 0) StreakL=\(.streakLoss // 0)"' stats.json | sed ':a;N;$!ba;s/\n/\\n/g')
           fi
-          TEXT="$ICON Paper Nightly $STATUS\nDiff: buy+$BUY / sell+$SELL / rsi+$RSI / trailExit+$TRLEX / trailStops+$TSTOP / PnL+$PNL / Win%~${WIN}%\n$PAIRS_SUMMARY\n<$RUN_URL|Open Run / Artifacts>"
+          TEXT="$ICON Paper Nightly $STATUS\nDiff: buy+$BUY / sell+$SELL / rsi+$RSI / trailExit+$TRLEX / trailStops+$TSTOP / PnL+$PNL / Win%~${WIN}%\nTotals: PnL=$TP Win%=$((TW*100)) MaxDD=$TM\n$PAIRS_SUMMARY\n<$RUN_URL|Open Run / Artifacts>"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
       - name: Comment results on PR/Commit (nightly)
         if: always()
@@ -76,16 +84,24 @@ jobs:
           script: |
             const fs = require('fs');
             let stats = {}, diff = {};
+            let rpt = {};
             try { stats = JSON.parse(fs.readFileSync('stats.json','utf8')); } catch {}
             try { diff = JSON.parse(fs.readFileSync('stats-diff.json','utf8')); } catch {}
+            try { rpt = JSON.parse(fs.readFileSync('report-summary-paper.json','utf8')); } catch {}
             const pairs = stats.pairs || [];
             const pairsDiff = (diff.pairsDiff || []).reduce((m, d)=>{ m[d.pair]=d.diff; return m; }, {});
             const vals = diff.values || {};
             const d = diff.diff || {};
             const winPct = vals.trades ? Math.round((vals.wins||0)/(vals.trades||1)*100) : 0;
+            const totals = rpt.totals || {};
             let body = `## Paper Nightly\n\n`;
             body += `Diff: buy +${d.buyEntries||0}, sell +${d.sellEntries||0}, rsi +${d.rsiExits||0}, trailExit +${d.trailExitTotal||0}, trailStops +${d.trailStops||0}, PnL +${(d.realizedPnl||0)}\n`;
-            body += `Win% (agg): ${winPct}%\n\n`;
+            body += `Win% (agg): ${winPct}%\n`;
+            if (totals && (totals.PnL!=null || totals.winRate!=null || totals.maxDrawdown!=null)) {
+              body += `Totals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0}\n\n`;
+            } else {
+              body += `\n`;
+            }
             if (pairs.length) {
               body += `| Pair | PnL | Win% | StreakW | StreakL |\n|---|---:|---:|---:|---:|\n`;
               for (const p of pairs){

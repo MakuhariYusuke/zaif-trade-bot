@@ -41,6 +41,8 @@ jobs:
         run: npm run ml:search > ml-search.json
       - name: Run stats graph timeline
         run: npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
+      - name: Build summary report (paper)
+        run: npm run report:summary -- --source paper
       - name: Top3 summary
         run: |
           cat ml-search-top.json | jq -r '.top[:3] | ("pair,RSI_OVER,RSI_UNDER,SMA_S,SMA_L,Win(%) ,PnL,Trades"), (.[] | [ .pair, .SELL_RSI_OVERBOUGHT, .BUY_RSI_OVERSOLD, .SMA_SHORT, .SMA_LONG, (.winRate*100|floor), .pnl, .trades ] | @csv )' > top3.csv
@@ -55,3 +57,4 @@ jobs:
             top3.csv
             stats-timeline.svg
             stats-diff.json
+            report-summary-paper.json

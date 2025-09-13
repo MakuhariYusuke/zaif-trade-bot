@@ -1,6 +1,14 @@
 import { getTicker, getOrderBook, getTrades } from "../api/public";
 import { PrivateApi, CancelOrderParams, TradeResult } from "../types/private";
 import type { Side } from "../types/domain";
+import { logWarn } from "../utils/logger";
+async function withRetry<T>(fn: ()=>Promise<T>, label: string, attempts = 2, backoffMs = 150): Promise<T> {
+  let err: any;
+  for (let i=0;i<attempts;i++){
+    try { return await fn(); } catch (e:any) { err = e; if (i<attempts-1) await new Promise(r=>setTimeout(r, backoffMs)); }
+  }
+  throw Object.assign(new Error(`${label} failed: ${err?.message||String(err)}`), { cause: err });
+}
 let priv: PrivateApi;
 export function init(privateApi: PrivateApi) { priv = privateApi; }
 
@@ -10,17 +18,18 @@ export function init(privateApi: PrivateApi) { priv = privateApi; }
  * @returns {Promise<Object>} The market overview data.
  */
 export async function fetchMarketOverview(pair: string) {
-  const [ticker, orderBook, trades] = await Promise.all([
-    getTicker(pair),
-    getOrderBook(pair),
-    getTrades(pair),
+  const [tRes, obRes, trRes] = await Promise.allSettled([
+    withRetry(()=>getTicker(pair), 'getTicker'),
+    withRetry(()=>getOrderBook(pair), 'getOrderBook'),
+    withRetry(()=>getTrades(pair), 'getTrades'),
   ]);
-
-  return {
-    ticker,
-    orderBook,
-    trades,
-  };
+  const ticker = tRes.status === 'fulfilled' ? tRes.value : undefined;
+  const orderBook = obRes.status === 'fulfilled' ? obRes.value : { bids: [], asks: [] };
+  const trades = trRes.status === 'fulfilled' ? trRes.value : [];
+  if (tRes.status === 'rejected') logWarn(`[MARKET] getTicker failed for ${pair}: ${tRes.reason?.message || String(tRes.reason)}`);
+  if (obRes.status === 'rejected') logWarn(`[MARKET] getOrderBook failed for ${pair}: ${obRes.reason?.message || String(obRes.reason)}`);
+  if (trRes.status === 'rejected') logWarn(`[MARKET] getTrades failed for ${pair}: ${trRes.reason?.message || String(trRes.reason)}`);
+  return { ticker, orderBook, trades } as any;
 }
 
 export async function fetchBalance() {
@@ -31,8 +40,21 @@ export async function fetchBalance() {
 
 export async function placeLimitOrder(pair: string, side: Side, price: number, amount: number) {
   const action = side === 'BUY' ? 'bid' : 'ask';
-  const res: TradeResult = await priv.trade({ currency_pair: pair, action, price, amount });
-  return res.return; // { order_id }
+  let lastErr: any;
+  for (let i=0;i<3;i++){
+    try {
+      const res: TradeResult = await priv.trade({ currency_pair: pair, action, price, amount });
+      return res.return; // { order_id }
+    } catch (e: any) {
+      lastErr = e;
+      const msg = String(e?.message || e?.error || '').toLowerCase();
+      const isNonce = msg.includes('nonce') || msg.includes('invalid nonce');
+      if (!isNonce || i === 2) throw e;
+      await new Promise(r=>setTimeout(r, 100 * (i+1)));
+      continue;
+    }
+  }
+  throw lastErr;
 }
 
 export async function listActiveOrders(currency_pair?: string) {
