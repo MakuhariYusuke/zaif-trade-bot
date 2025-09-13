@@ -38,7 +38,13 @@ export async function placeLimitOrder(pair: string, side: Side, price: number, a
 export async function listActiveOrders(currency_pair?: string) {
   const arr = await priv.active_orders({ currency_pair });
   const map: Record<string, any> = {};
-  for (const o of arr) map[o.order_id] = { currency_pair: o.pair, action: o.side, amount: o.amount, price: o.price, timestamp: o.timestamp };
+  for (const o of arr) map[o.order_id] = { 
+    currency_pair: o.pair, 
+    action: o.side, 
+    amount: o.amount, 
+    price: o.price, 
+    timestamp: o.timestamp 
+  };
   return map;
 }
 

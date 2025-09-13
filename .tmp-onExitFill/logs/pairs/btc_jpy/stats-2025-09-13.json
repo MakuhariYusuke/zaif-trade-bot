@@ -1,0 +1,15 @@
+{
+  "date": "2025-09-13",
+  "trades": 0,
+  "wins": 0,
+  "realizedPnl": -2,
+  "sumSlippage": 0,
+  "maxSlippage": 0,
+  "sumRetries": 0,
+  "maxRetries": 0,
+  "filledCount": 2,
+  "winTrades": 1,
+  "streakWin": 0,
+  "streakLoss": 1,
+  "lossTrades": 1
+}
