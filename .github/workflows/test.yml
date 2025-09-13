@@ -1,0 +1,136 @@
+name: Tests
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Run unit tests
+        run: npm run test
+      - name: Run integration tests
+        env:
+          EXCHANGE: paper
+          DRY_RUN: '1'
+          USE_PRIVATE_MOCK: '1'
+          TEST_MODE: '1'
+          TEST_FLOW_QTY: '0.001'
+          ML_MAX_WORKERS: '1'
+          PAIRS: btc_jpy
+        run: npm run test:integration
+      - name: Assert integration outputs
+        run: |
+          echo "Asserting stats diff and ML search outputs..."
+          test -f stats-diff.json
+          TOTAL_INC=$(cat stats-diff.json | jq -r '((.diff.buyEntries // 0) + (.diff.sellEntries // 0))')
+          echo "total entries inc=$TOTAL_INC"
+          test "$TOTAL_INC" -gt 0
+          test -f ml-search-top.json
+          TOP_WIN=$(cat ml-search-top.json | jq -r '.top[0].winRate // 0')
+          echo "top winRate=$TOP_WIN"
+          awk -v v="$TOP_WIN" 'BEGIN{ exit !(v>=0) }'
+          # live summary (if exists) - optional
+          if [ -f logs/live/summary-$(date +%F).json ]; then
+            echo "live summary present"
+          else
+            echo "no live summary (ok)"
+          fi
+          echo "INTEGRATION_OK=1" >> $GITHUB_ENV
+      - name: Collect metrics and summary
+        if: always()
+        run: |
+          PASS=$(jq -r '.numPassedTests // .stats.passed // 0' vitest-report.json 2>/dev/null || echo 0)
+          FAIL=$(jq -r '.numFailedTests // .stats.failed // 0' vitest-report.json 2>/dev/null || echo 0)
+          # Try to collect failed test names (Vitest JSON structure tolerant)
+          FAIL_LIST=$(jq -r '
+            if has("suites") then
+              [ .. | objects | select(has("result") and .result=="fail") | .name ] | unique | .[]
+            elif has("testResults") then
+              (.testResults[] | select(.status=="fail") | .name)
+            else empty end' vitest-report.json 2>/dev/null || true)
+          STMT="N/A"; LINES="N/A"
+          if [ -f coverage/coverage-summary.json ]; then
+            STMT=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
+            LINES=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          fi
+          echo "PASS=$PASS" >> $GITHUB_ENV
+          echo "FAIL=$FAIL" >> $GITHUB_ENV
+          printf "FAIL_LIST<<EOF\n%s\nEOF\n" "$FAIL_LIST" >> $GITHUB_ENV
+          echo "STMT=$STMT" >> $GITHUB_ENV
+          echo "LINES=$LINES" >> $GITHUB_ENV
+          {
+            echo "## Test Summary";
+            echo "- ✅ Passed: $PASS";
+            echo "- ❌ Failed: $FAIL";
+            if [ -n "$FAIL_LIST" ]; then echo "\n<details><summary>Failed Tests</summary>\n\n"; echo "$FAIL_LIST" | sed 's/^/- /'; echo "\n</details>"; fi;
+            echo "\nCoverage: statements $STMT% / lines $LINES%";
+          } >> $GITHUB_STEP_SUMMARY
+      - name: Slack notify
+        if: always()
+        run: |
+          SLACK_WEBHOOK_URL='${{ secrets.SLACK_WEBHOOK_URL }}'
+          [ -z "$SLACK_WEBHOOK_URL" ] && echo "No Slack webhook configured" && exit 0
+          STATUS="passed"; ICON="✅"; [ "${FAIL}" != "0" ] && STATUS="failed" && ICON="❌"
+          INTEG=${INTEGRATION_OK:-0}
+          TEXT="$ICON Tests $STATUS (Unit: $PASS / Integration: $INTEG)\nCoverage: statements $STMT% / lines $LINES%"
+          if [ "$STATUS" = "failed" ] && [ -n "$FAIL_LIST" ]; then
+            FAIL_TXT=$(echo "$FAIL_LIST" | sed 's/\"/\\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+            TEXT="$TEXT\nFailed:\n$FAIL_TXT"
+          fi
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$SLACK_WEBHOOK_URL"
+      - name: Comment on PR/Commit
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          PASS: ${{ env.PASS }}
+          FAIL: ${{ env.FAIL }}
+          INTEGRATION_OK: ${{ env.INTEGRATION_OK }}
+          STMT: ${{ env.STMT }}
+          LINES: ${{ env.LINES }}
+          FAIL_LIST: ${{ env.FAIL_LIST }}
+        with:
+          script: |
+            const pass = process.env.PASS || '0';
+            const fail = process.env.FAIL || '0';
+            const integOk = process.env.INTEGRATION_OK === '1';
+            const stmt = process.env.STMT || 'N/A';
+            const lines = process.env.LINES || 'N/A';
+            const fails = (process.env.FAIL_LIST || '').split('\n').filter(Boolean);
+            const body = `## Test Results\n\n| Metric | Value |\n|---|---:|\n| Unit Passed | ${pass} |\n| Unit Failed | ${fail} |\n| Integration | ${integOk ? '✅' : '❌'} |\n| Coverage (Statements) | ${stmt}% |\n| Coverage (Lines) | ${lines}% |\n` + (fails.length ? (`\n<details><summary>Failed Tests</summary>\n\n` + fails.map(n=>`- ${n}`).join('\n') + `\n</details>`) : '');
+            if (context.payload.pull_request) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            } else {
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body
+              });
+            }
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: |
+            coverage/**
+            logs/**
+            stats-diff.json
+            ml-search-top.json
+            ml-dataset.csv

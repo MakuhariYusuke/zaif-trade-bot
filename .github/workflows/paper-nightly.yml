@@ -1,0 +1,97 @@
+name: Paper Nightly
+on:
+  schedule:
+    - cron: "0 15 * * *"   # JST 0:00
+  workflow_dispatch: {}
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - run: npm ci && npm run build
+      - name: Run paper analysis
+        env:
+          EXCHANGE: paper
+          DRY_RUN: '1'
+          PAIRS: btc_jpy,eth_jpy
+          FEATURES_SOURCE: paper
+        run: |
+          npm run mock:scenario
+          npm run stats:today -- --diff > stats-diff.json
+          npm run ml:export
+          npm run ml:search
+          npx ts-node src/tools/stats-graph.ts --timeline stats-timeline.svg
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-results
+          path: |
+            ml-dataset.csv
+            ml-search-results.csv
+            ml-search-top.json
+            stats-timeline.svg
+            stats-diff.json
+            logs/features/**
+      - name: Slack notify (nightly)
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          WEBHOOK='${{ secrets.SLACK_WEBHOOK_URL }}'
+          if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DIFF_JSON=$(cat stats-diff.json 2>/dev/null || echo '{}')
+          ZERO=$(echo "$DIFF_JSON" | jq '.diff | to_entries | map(.value) | all(.==0)')
+          ICON="✅"; STATUS="passed"
+          if [ "$JOB_STATUS" != "success" ]; then ICON="❌"; STATUS="failed"; fi
+          if [ "$ZERO" = "true" ] && [ "$JOB_STATUS" = "success" ]; then ICON="⚠"; STATUS="warn (no diffs)"; fi
+          BUY=$(echo "$DIFF_JSON" | jq -r '.diff.buyEntries // 0')
+          SELL=$(echo "$DIFF_JSON" | jq -r '.diff.sellEntries // 0')
+          RSI=$(echo "$DIFF_JSON" | jq -r '.diff.rsiExits // 0')
+          TRLEX=$(echo "$DIFF_JSON" | jq -r '.diff.trailExitTotal // 0')
+          TSTOP=$(echo "$DIFF_JSON" | jq -r '.diff.trailStops // 0')
+          PNL=$(echo "$DIFF_JSON" | jq -r '.diff.realizedPnl // 0')
+          WIN=$(jq -r '.values | if (.trades//0)>0 then ((.wins//0)/(.trades//1)*100) else 0 end' stats-diff.json 2>/dev/null || echo 0)
+          # Per-pair summary (from stats.json if present)
+          PAIRS_SUMMARY=""
+          if [ -f stats.json ]; then
+            PAIRS_SUMMARY=$(jq -r '.pairs[] | "• \(.pair): PnL=\(.realizedPnl) Win=\(((.winRate)*100|floor))% StreakW=\(.streakWin // 0) StreakL=\(.streakLoss // 0)"' stats.json | sed ':a;N;$!ba;s/\n/\\n/g')
+          fi
+          TEXT="$ICON Paper Nightly $STATUS\nDiff: buy+$BUY / sell+$SELL / rsi+$RSI / trailExit+$TRLEX / trailStops+$TSTOP / PnL+$PNL / Win%~${WIN}%\n$PAIRS_SUMMARY\n<$RUN_URL|Open Run / Artifacts>"
+          curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
+      - name: Comment results on PR/Commit (nightly)
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let stats = {}, diff = {};
+            try { stats = JSON.parse(fs.readFileSync('stats.json','utf8')); } catch {}
+            try { diff = JSON.parse(fs.readFileSync('stats-diff.json','utf8')); } catch {}
+            const pairs = stats.pairs || [];
+            const pairsDiff = (diff.pairsDiff || []).reduce((m, d)=>{ m[d.pair]=d.diff; return m; }, {});
+            const vals = diff.values || {};
+            const d = diff.diff || {};
+            const winPct = vals.trades ? Math.round((vals.wins||0)/(vals.trades||1)*100) : 0;
+            let body = `## Paper Nightly\n\n`;
+            body += `Diff: buy +${d.buyEntries||0}, sell +${d.sellEntries||0}, rsi +${d.rsiExits||0}, trailExit +${d.trailExitTotal||0}, trailStops +${d.trailStops||0}, PnL +${(d.realizedPnl||0)}\n`;
+            body += `Win% (agg): ${winPct}%\n\n`;
+            if (pairs.length) {
+              body += `| Pair | PnL | Win% | StreakW | StreakL |\n|---|---:|---:|---:|---:|\n`;
+              for (const p of pairs){
+                const w = Math.round((p.winRate||0)*100);
+                body += `| ${p.pair} | ${p.realizedPnl?.toFixed(2)||0} | ${w}% | ${p.streakWin||0} | ${p.streakLoss||0} |\n`;
+              }
+            }
+            body += `\n[Open Run / Artifacts](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+            if (context.payload.pull_request) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            } else {
+              await github.rest.repos.createCommitComment({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
+            }

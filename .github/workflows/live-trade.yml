@@ -1,0 +1,101 @@
+name: Live Minimal Trade
+
+on:
+  workflow_dispatch:
+    inputs:
+      pair:
+        description: "Trading pair"
+        default: "xrp_jpy"
+        required: true
+      trade_flow:
+        description: "Trade flow"
+        type: choice
+        options: [BUY_ONLY, SELL_ONLY, BUY_SELL, SELL_BUY]
+        default: BUY_ONLY
+      qty:
+        description: "Quantity (integer, min 500 for XRP)"
+        default: "500"
+        required: true
+      rate:
+        description: "Limit rate; empty for market order"
+        default: ""
+
+jobs:
+  live-trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - run: npm ci && npm run build
+      - name: Validate inputs
+        run: |
+          if [ "${{ github.event.inputs.qty }}" -lt 500 ]; then
+            echo "Error: qty must be >= 500";
+            exit 1;
+          fi
+      - name: Run Live Minimal Trade
+        env:
+          EXCHANGE: coincheck
+          TRADE_FLOW: ${{ github.event.inputs.trade_flow }}
+          PAIR: ${{ github.event.inputs.pair }}
+          TEST_FLOW_QTY: ${{ github.event.inputs.qty }}
+          TEST_FLOW_RATE: ${{ github.event.inputs.rate }}
+          DRY_RUN: '0'
+          FEATURES_SOURCE: live
+          COINCHECK_API_KEY: ${{ secrets.COINCHECK_KEY }}
+          COINCHECK_API_SECRET: ${{ secrets.COINCHECK_SECRET }}
+        run: npm run test:min-live
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-trade-results
+          path: |
+            logs/live/summary-*.json
+            logs/features/live/**
+      - name: Summarize Results
+        id: summarize
+        run: |
+          FILE=$(ls -1 logs/live/summary-*.json 2>/dev/null | tail -n1)
+          if [ -z "$FILE" ]; then echo "summary=No summary file" >> $GITHUB_OUTPUT; exit 0; fi
+          SUMMARY=$(jq -r '
+            . as $s | [
+              "Pair: \($s.latestFeature.pair // "-")",
+              "BuyEntries: \($s.stats.incBuy // 0)",
+              "SellEntries: \($s.stats.incSell // 0)",
+              "PnL: \($s.stats.incPnl // 0)",
+              "WinRate: \(((($s.stats.winRate // 0)*100)|floor))%",
+              "Warnings: \(($s.warnings // [])|tostring)"
+            ] | join("\n")
+          ' "$FILE")
+          echo "$SUMMARY"
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Slack Notify
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then echo "No Slack webhook; skipping"; exit 0; fi
+          STATUS="✅ Live Trade Success"; [ "${{ job.status }}" = "success" ] || STATUS="❌ Live Trade Failed"
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\": \"${STATUS}\\n\\n${{ steps.summarize.outputs.summary }}\\n\\n(Artifacts available in GitHub)\"}" \
+            "$SLACK_WEBHOOK_URL" || true
+      - name: GitHub Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const summary = process.env.SUMMARY || `No summary`;
+            const body = `### Live Minimal Trade Result\n\n\n\`\`\`\n${summary}\n\`\`\``;
+            if (context.payload.pull_request) {
+              await github.rest.issues.createComment({ issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
+            } else {
+              await github.rest.repos.createCommitComment({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
+            }
+        env:
+          SUMMARY: ${{ steps.summarize.outputs.summary }}
