@@ -1,0 +1,17 @@
+{
+  "date": "2025-09-10",
+  "trades": 22,
+  "wins": 0,
+  "realizedPnl": 0,
+  "sumSlippage": -14,
+  "maxSlippage": -1,
+  "sumRetries": 1350,
+  "maxRetries": 101,
+  "fillCount": 2,
+  "sumSubmitRetries": 22,
+  "sumPollRetries": 1328,
+  "sumCancelRetries": 0,
+  "sumNonceRetries": 0,
+  "maxSubmitRetries": 1,
+  "maxPollRetries": 100
+}

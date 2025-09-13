@@ -1,0 +1,12 @@
+{
+  "pair": "btc_jpy",
+  "qty": 0,
+  "avgPrice": 0,
+  "dcaCount": 0,
+  "openOrderIds": [
+    1
+  ],
+  "highestPrice": 17100000,
+  "trailArmed": true,
+  "lastTrailAt": 1757701324792
+}
