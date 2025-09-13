@@ -2,8 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { loadDaily } from '../../utils/daily-stats';
 import { loadPairs } from '../../utils/config';
-
-function today(){ return new Date().toISOString().slice(0,10); }
+import { todayStr } from '../../utils/toolkit';
 
 const args = process.argv.slice(2);
 const flagDiff = args.includes('--diff');
@@ -11,7 +10,7 @@ const pairArgIdx = args.indexOf('--pair');
 const pairArg = pairArgIdx>=0 ? args[pairArgIdx+1] : undefined;
 
 (async ()=>{
-  const d = today();
+  const d = todayStr();
   const pairs = pairArg ? [pairArg] : loadPairs();
   if (!pairs.length){
     const v = loadDaily(d);
