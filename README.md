@@ -149,6 +149,8 @@ src/
 | `RETRY_JITTER_MS` | バックオフに加えるジッター | `100` |
 | `NONCE_PERSIST` | Nonce の永続化（`0`で無効、既定: 有効） | `1` |
 | `NONCE_RESTORE_ON_ERROR` | Nonce エラー時に復元（`0`で無効、既定: 有効） | `1` |
+| `SAFETY_MODE` | 安全クランプ有効化（10%デフォルト） | `1` |
+| `SAFETY_CLAMP_PCT` | クランプ割合（0-1）。例: 0.1=10% | `0.1` |
 
 追加: `RETRY_TIMEOUT_MS`, `RETRY_PRICE_OFFSET_PCT`, `CLOCK_SKEW_TOLERANCE_MS` などはコード参照。
 
