@@ -1,8 +1,6 @@
 // Backward compatibility shim for CI/tests
-// The implementation was moved to src/tools/ml/ml-simulate.ts
-// Importing it will execute the script and write JSON to stdout.
+// Standalone implementation kept here to avoid double execution/logging.
 process.env.QUIET = process.env.QUIET ?? '1';
-import './ml/ml-simulate';
 import fs from 'fs';
 import path from 'path';
 
@@ -31,7 +29,10 @@ function readCsvFiles(dir: string): Row[] {
       const parts = line.split(',');
       const rec: any = {};
       cols.forEach((c, i) => rec[c] = parts[i]);
-      rows.push({ ts: Number(rec.ts), pair: rec.pair, side: rec.side, rsi: rec.rsi? Number(rec.rsi): undefined, sma_short: rec.sma_short? Number(rec.sma_short): undefined, sma_long: rec.sma_long? Number(rec.sma_long): undefined, price: Number(rec.price), qty: Number(rec.qty), pnl: rec.pnl? Number(rec.pnl): undefined, win: rec.win? Number(rec.win): undefined });
+      const toNum = (v: any): number|undefined => {
+        if (v == null) return undefined; const s = String(v).trim(); if (s === '') return undefined; const n = Number(s); return Number.isFinite(n) ? n : undefined;
+      };
+      rows.push({ ts: Number(rec.ts), pair: rec.pair, side: rec.side, rsi: toNum(rec.rsi), sma_short: toNum(rec.sma_short), sma_long: toNum(rec.sma_long), price: Number(rec.price), qty: Number(rec.qty), pnl: toNum(rec.pnl), win: toNum(rec.win) });
     }
   }
   return rows;
@@ -49,10 +50,15 @@ function simulate(rows: Row[], params: Record<string, any>){
     const sShort = r.sma_short ?? 0;
     const sLong = r.sma_long ?? 0;
     // Simple rule: count a trade when RSI or SMA condition holds at an exit event row (pnl defined)
-    if (typeof r.pnl === 'number'){
+    if (typeof r.pnl === 'number' && Number.isFinite(r.pnl)){
       trades++;
       pnl += r.pnl;
       if (r.win === 1) wins++;
+      if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
+    } else if ((r as any).win !== undefined && (r as any).win !== null) {
+      trades++;
+      const w = (r as any).win;
+      if (w === 1 || w === true || w === '1') wins++;
       if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
     } else {
       // mark holding period start when SMA crossover aligns
