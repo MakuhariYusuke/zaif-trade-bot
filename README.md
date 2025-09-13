@@ -24,7 +24,12 @@ src/
  ├─ services/            # 将来拡張向けサービス層 (一部レガシー呼称残り)
  ├─ types/               # 型定義 (PrivateApi, OrderLifecycleSummary 等)
  ├─ utils/               # logger, signer, daily-stats, price-cache
- └─ tools/               # health / mock-scenario / smoke / tests
+ └─ tools/
+	 ├─ live/            # ライブ環境向けツール（health, 最小トレード, coincheck/zaif テスト等）
+	 ├─ paper/           # モック/ペーパー用ツール（シナリオ, スモーク, リセット）
+	 ├─ ml/              # 機械学習データ生成・探索
+	 ├─ stats/           # 日次統計の取得・グラフ化
+	 └─ tests/           # 統合テスト系
 ```
 
 ---
@@ -231,7 +236,7 @@ ZAIF_API_KEY=... ZAIF_API_SECRET=... DRY_RUN=0 npm start
 |----------|------|
 | `npm run mock:scenario` | モックでシナリオ実行 (パラメータ組合せ) |
 | `npm run mock:smoke` | 最小スモーク (起動～一連 cycle) |
-| `npx ts-node src/tools/health.ts` | 署名・nonce / permission ヘルスチェック |
+| `npm run health` | 署名・nonce / permission ヘルスチェック |
 
 ---
 
@@ -341,7 +346,7 @@ $env:SAFETY_MODE="1"
 npm run test:min-live
 ```
 
-注: Live最小トレード検証は features ログ（CSV/JSON）も保存します。収集したデータは `npm run ml:export` でデータセット化し、`npm run ml:search` で簡易探索が可能です。
+注: Live最小トレード検証は features ログ（CSV/JSON）も保存します。収集したデータは `npm run ml:export`（src/tools/ml/ml-export.ts）でデータセット化し、`npm run ml:search`（src/tools/ml/ml-search.ts）で簡易探索が可能です。
 
 ## Live Minimal Trade (GitHub Actions)
 
