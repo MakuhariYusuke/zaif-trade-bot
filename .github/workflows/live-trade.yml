@@ -20,6 +20,11 @@ on:
         description: "Limit rate; empty for market order"
         default: ""
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   live-trade:
     runs-on: ubuntu-latest
@@ -92,10 +97,13 @@ jobs:
           script: |
             const summary = process.env.SUMMARY || `No summary`;
             const body = `### Live Minimal Trade Result\n\n\n\`\`\`\n${summary}\n\`\`\``;
+            async function safeCall(fn, args){ try { return await fn(args); } catch (e){ core.warning(`Comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
-              await github.rest.issues.createComment({ issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
+              await safeCall(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
+            } else if (context.eventName === 'push') {
+              await safeCall(github.rest.repos.createCommitComment, { owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
             } else {
-              await github.rest.repos.createCommitComment({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
+              core.info('No PR or push context; skip commenting.');
             }
         env:
           SUMMARY: ${{ steps.summarize.outputs.summary }}
