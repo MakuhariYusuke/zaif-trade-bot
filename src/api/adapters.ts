@@ -8,12 +8,12 @@ import { PrivateApi } from "../types/private";
 function resolveFactories(exchange: string): { createPrivateReal: () => PrivateApi; createPrivateMock: () => PrivateApi } {
     switch (exchange) {
         case 'coincheck':
-            return require('./exchanges/coincheck');
+            return require('./private/coincheck');
         case 'paper':
-            return require('./exchanges/paper');
+            return require('./private/paper');
         case 'zaif':
         default:
-            return require('./exchanges/zaif');
+            return require('./private/zaif');
     }
 }
 
