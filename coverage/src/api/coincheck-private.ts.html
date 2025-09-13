@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/196</span>
+                <span class='fraction'>0/217</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/196</span>
+                <span class='fraction'>0/217</span>
             </div>
         
             
@@ -259,7 +259,49 @@
 <a name='L194'></a><a href='#L194'>194</a>
 <a name='L195'></a><a href='#L195'>195</a>
 <a name='L196'></a><a href='#L196'>196</a>
-<a name='L197'></a><a href='#L197'>197</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a>
+<a name='L218'></a><a href='#L218'>218</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -617,15 +659,36 @@
 <span class="cstat-no" title="statement not covered" >            if (p.action !== 'bid' &amp;&amp; p.action !== 'ask') {</span>
 <span class="cstat-no" title="statement not covered" >                throw new Error(`Invalid action: ${p.action}. Must be 'bid' or 'ask'.`);</span>
 <span class="cstat-no" title="statement not covered" >            }</span>
-<span class="cstat-no" title="statement not covered" >            const req: CoincheckOrderRequest = {</span>
-<span class="cstat-no" title="statement not covered" >                pair: String(p.currency_pair || 'btc_jpy'),</span>
-<span class="cstat-no" title="statement not covered" >                order_type: (p.action === 'bid' ? 'buy' : 'sell'),</span>
-<span class="cstat-no" title="statement not covered" >                rate: Number(p.price || p.limitPrice),</span>
-<span class="cstat-no" title="statement not covered" >                amount: Number(p.amount)</span>
-<span class="cstat-no" title="statement not covered" >            };</span>
+<span class="cstat-no" title="statement not covered" >            const pair = String(p.currency_pair || 'btc_jpy');</span>
+<span class="cstat-no" title="statement not covered" >            const side = (p.action === 'bid' ? 'buy' : 'sell');</span>
+<span class="cstat-no" title="statement not covered" >            const rateVal = (p.price ?? p.limitPrice);</span>
+<span class="cstat-no" title="statement not covered" >            const hasRate = !(rateVal == null || rateVal === '' || Number.isNaN(Number(rateVal)));</span>
 <span class="cstat-no" title="statement not covered" >            const path = '/api/exchange/orders';</span>
 <span class="cstat-no" title="statement not covered" >            const url = API_BASE + path;</span>
-<span class="cstat-no" title="statement not covered" >            const body = new URLSearchParams({ pair: req.pair, order_type: req.order_type, rate: String(req.rate), amount: String(req.amount) }).toString();</span>
+<span class="cstat-no" title="statement not covered" >            let body: string;</span>
+<span class="cstat-no" title="statement not covered" >            if (hasRate) {</span>
+<span class="cstat-no" title="statement not covered" >                // Limit order</span>
+<span class="cstat-no" title="statement not covered" >                const req: CoincheckOrderRequest = {</span>
+<span class="cstat-no" title="statement not covered" >                    pair,</span>
+<span class="cstat-no" title="statement not covered" >                    order_type: side,</span>
+<span class="cstat-no" title="statement not covered" >                    rate: Number(rateVal),</span>
+<span class="cstat-no" title="statement not covered" >                    amount: Number(p.amount)</span>
+<span class="cstat-no" title="statement not covered" >                };</span>
+<span class="cstat-no" title="statement not covered" >                body = new URLSearchParams({ pair: req.pair, order_type: req.order_type, rate: String(req.rate), amount: String(req.amount) }).toString();</span>
+<span class="cstat-no" title="statement not covered" >            } else {</span>
+<span class="cstat-no" title="statement not covered" >                // Market order</span>
+<span class="cstat-no" title="statement not covered" >                if (side === 'buy') {</span>
+<span class="cstat-no" title="statement not covered" >                    // market_buy uses JPY notional as market_buy_amount</span>
+<span class="cstat-no" title="statement not covered" >                    const notional = Number(p.notional || p.market_notional || 0);</span>
+<span class="cstat-no" title="statement not covered" >                    if (!(notional &gt; 0)) throw new Error('market_buy requires positive notional (JPY)');</span>
+<span class="cstat-no" title="statement not covered" >                    body = new URLSearchParams({ pair, order_type: 'market_buy', market_buy_amount: String(notional) }).toString();</span>
+<span class="cstat-no" title="statement not covered" >                } else {</span>
+<span class="cstat-no" title="statement not covered" >                    // market_sell uses base amount</span>
+<span class="cstat-no" title="statement not covered" >                    const amt = Number(p.amount);</span>
+<span class="cstat-no" title="statement not covered" >                    if (!(amt &gt; 0)) throw new Error('market_sell requires positive amount');</span>
+<span class="cstat-no" title="statement not covered" >                    body = new URLSearchParams({ pair, order_type: 'market_sell', amount: String(amt) }).toString();</span>
+<span class="cstat-no" title="statement not covered" >                }</span>
+<span class="cstat-no" title="statement not covered" >            }</span>
 <span class="cstat-no" title="statement not covered" >            const nonce = Date.now().toString();</span>
 <span class="cstat-no" title="statement not covered" >            const message = nonce + url + body;</span>
 <span class="cstat-no" title="statement not covered" >            const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');</span>
@@ -658,7 +721,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

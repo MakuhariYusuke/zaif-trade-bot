@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/tools/test-zaif.ts</title>
+    <title>Code coverage report for src/api/public/zaif.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,7 +19,7 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/tools</a> test-zaif.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/api/public</a> zaif.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
@@ -99,24 +99,24 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import dotenv from 'dotenv';</span></span></span>
-<span class="cstat-no" title="statement not covered" >dotenv.config();</span>
-<span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../api/adapters';</span>
-<span class="cstat-no" title="statement not covered" >import { logInfo, logWarn } from '../utils/logger';</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import axios from 'axios';</span></span></span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >(async () =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    process.env.EXCHANGE = 'zaif';</span>
-<span class="cstat-no" title="statement not covered" >    const api: any = createPrivateApi();</span>
-<span class="cstat-no" title="statement not covered" >    logInfo('[TEST] Zaif start');</span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >        const h = await (api.healthCheck ? api.healthCheck() : api.get_info2());</span>
-<span class="cstat-no" title="statement not covered" >        logInfo('[TEST] HealthOrInfo', h);</span>
-<span class="cstat-no" title="statement not covered" >    } catch (e: any) { logWarn('[TEST] health/info failed', e?.message || e); }</span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >        const info = await api.get_info2();</span>
-<span class="cstat-no" title="statement not covered" >        logInfo('[TEST] get_info2', info);</span>
-<span class="cstat-no" title="statement not covered" >    } catch (e: any) { logWarn('[TEST] get_info2 failed', e?.message || e); }</span>
-<span class="cstat-no" title="statement not covered" >})();</span>
+<span class="cstat-no" title="statement not covered" >const ZAIF_BASE = 'https://api.zaif.jp/api/1';</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export async function getTicker(pair: string) {</span>
+<span class="cstat-no" title="statement not covered" >  const r = await axios.get(`${ZAIF_BASE}/ticker/${pair}`);</span>
+<span class="cstat-no" title="statement not covered" >  return r.data;</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export async function getOrderBook(pair: string) {</span>
+<span class="cstat-no" title="statement not covered" >  const r = await axios.get(`${ZAIF_BASE}/depth/${pair}`);</span>
+<span class="cstat-no" title="statement not covered" >  return r.data;</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export async function getTrades(pair: string) {</span>
+<span class="cstat-no" title="statement not covered" >  const r = await axios.get(`${ZAIF_BASE}/trades/${pair}`);</span>
+<span class="cstat-no" title="statement not covered" >  return r.data;</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -124,16 +124,16 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     

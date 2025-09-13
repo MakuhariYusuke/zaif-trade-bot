@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { readFeatureCsvRows } from '../../utils/toolkit';
 
 function parseArgs(){
   const args = process.argv.slice(2);
@@ -11,26 +12,7 @@ function parseArgs(){
   return { pair, params };
 }
 
-interface Row { ts: number; pair: string; side: string; rsi?: number; sma_short?: number; sma_long?: number; price: number; qty: number; pnl?: number; win?: number; }
-
-function readCsvFiles(dir: string): Row[] {
-  const rows: Row[] = [];
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.csv')) : [];
-  for (const f of files){
-    const full = path.join(dir, f);
-    const txt = fs.readFileSync(full, 'utf8');
-    const [header, ...lines] = txt.trim().split(/\r?\n/);
-    const cols = header.split(',');
-    for (const line of lines){
-      if (!line.trim()) continue;
-      const parts = line.split(',');
-      const rec: any = {};
-      cols.forEach((c, i) => rec[c] = parts[i]);
-      rows.push({ ts: Number(rec.ts), pair: rec.pair, side: rec.side, rsi: rec.rsi? Number(rec.rsi): undefined, sma_short: rec.sma_short? Number(rec.sma_short): undefined, sma_long: rec.sma_long? Number(rec.sma_long): undefined, price: Number(rec.price), qty: Number(rec.qty), pnl: rec.pnl? Number(rec.pnl): undefined, win: rec.win? Number(rec.win): undefined });
-    }
-  }
-  return rows;
-}
+type Row = ReturnType<typeof readFeatureCsvRows>[number];
 
 function simulate(rows: Row[], params: Record<string, any>){
   const SELL_RSI_OVERBOUGHT = Number(params.SELL_RSI_OVERBOUGHT ?? process.env.SELL_RSI_OVERBOUGHT ?? 70);
@@ -63,7 +45,12 @@ function simulate(rows: Row[], params: Record<string, any>){
   const { pair, params } = parseArgs();
   const base = process.env.FEATURES_LOG_DIR ? path.resolve(process.env.FEATURES_LOG_DIR) : path.resolve(process.cwd(), 'logs');
   const dir = path.join(base, 'features', pair);
-  const rows = readCsvFiles(dir).sort((a,b)=> a.ts - b.ts);
+  const rows = readFeatureCsvRows(dir).sort((a,b)=> a.ts - b.ts);
   const res = simulate(rows, params);
-  console.log(JSON.stringify({ pair, ...res }));
+  const payload = { pair, ...res };
+  if (process.env.QUIET !== '1') {
+    // optional extra logs for local runs
+    console.error('[ML] rows', rows.length);
+  }
+  console.log(JSON.stringify(payload));
 })();
