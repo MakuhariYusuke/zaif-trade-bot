@@ -1,0 +1,51 @@
+{
+  "name": "zaif-trade-bot",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+  "health": "ts-node src/tools/health.ts",
+  "mock:scenario": "ts-node src/tools/mock-scenario.ts",
+  "mock:smoke": "ts-node src/tools/mock-smoke.ts",
+  "smoke:once": "ts-node src/tools/smoke-once.ts",
+  "test:flow": "ts-node src/tools/test-flow.ts",
+  "test:min-trade": "ts-node src/tools/test-minimal-trade.ts",
+  "test:mock:trade": "ts-node src/tools/tests/mock.trade.ts",
+  "test:zaif": "ts-node src/tools/test-zaif.ts",
+  "test:coincheck": "ts-node src/tools/test-coincheck.ts",
+  "test:coincheck:flow": "ts-node src/tools/test-coincheck-flow.ts",
+  "balance": "ts-node src/tools/balance.ts",
+  "stats:today": "ts-node src/tools/stats-today.ts",
+  "stats:graph": "ts-node src/tools/stats-graph.ts --out stats.json --svg stats.svg",
+  "ci:nightly": "npm run paper:reset && SET EXCHANGE=paper&& SET USE_PRIVATE_MOCK=0&& SET DRY_RUN=1&& SET TEST_MODE=1&& SET TEST_FLOW_QTY=0.001&& ts-node src/tools/mock-scenario.ts && ts-node src/tools/test-flow.ts && ts-node src/tools/stats-graph.ts --out stats.json --svg stats.svg && ts-node src/tools/stats-today.ts --diff > stats-diff.json",
+  "paper:reset": "ts-node src/tools/paper-reset.ts",
+  "ci:paper:verify": "npm run stats:today -- --diff && npm run mock:scenario && npm run test:flow && npm run stats:today -- --diff",
+  "nonce:bump": "ts-node src/tools/nonce-bump.ts",
+  "ml:simulate": "ts-node src/tools/ml-simulate.ts",
+  "ml:export": "ts-node src/tools/ml-export.ts",
+  "ml:search": "ts-node src/tools/ml-search.ts",
+  "test:min-live": "ts-node src/tools/test-minimal-live.ts",
+  "test": "vitest run --coverage --reporter=default --reporter=json --outputFile=vitest-report.json",
+  "test:integration": "cross-env EXCHANGE=paper DRY_RUN=1 USE_PRIVATE_MOCK=1 TEST_MODE=1 TEST_FLOW_QTY=0.001 npm run mock:scenario && ts-node src/tools/stats-today.ts --diff > stats-diff.json && ts-node src/tools/test-flow.ts && ts-node src/tools/stats-today.ts --diff > stats-diff-2.json && npm run ml:export && cross-env ML_MAX_WORKERS=1 PAIRS=btc_jpy npm run ml:search && ts-node src/tools/tests/integration-assert.ts",
+  "ci:test": "npm run test && npm run test:integration",
+  "ci:test:full": "npm run test && npm run test:integration && npm run stats:today -- --diff"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.13",
+    "@vitest/coverage-v8": "^1.6.0",
+    "cross-env": "^7.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "vitest": "^1.6.0"
+  },
+  "description": "Zaif 公開/プライベート API を用いた最小限のシステムトレードボット雛形です。",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

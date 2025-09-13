@@ -1,0 +1,10 @@
+[
+  {
+    "id": "rsi-long",
+    "pair": "btc_jpy",
+    "side": "long",
+    "entryPrice": 17103779.1,
+    "amount": 0.001,
+    "timestamp": 1757716592510
+  }
+]

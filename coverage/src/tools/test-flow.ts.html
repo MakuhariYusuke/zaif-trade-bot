@@ -1,0 +1,292 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/tools/test-flow.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/tools</a> test-flow.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/69</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/69</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import dotenv from 'dotenv';</span></span></span>
+<span class="cstat-no" title="statement not covered" >dotenv.config();</span>
+<span class="cstat-no" title="statement not covered" >import { strategyOnce } from '../index';</span>
+<span class="cstat-no" title="statement not covered" >import { logInfo, logWarn, logError } from '../utils/logger';</span>
+<span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../api/adapters';</span>
+<span class="cstat-no" title="statement not covered" >import { getOrderBook } from '../api/public-router';</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >function sleep(ms: number) { return new Promise(r =&gt; setTimeout(r, ms)); }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >(async () =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const pair = process.env.PAIR || 'btc_jpy';</span>
+<span class="cstat-no" title="statement not covered" >    const qtyRequired = process.env.TEST_FLOW_QTY;</span>
+<span class="cstat-no" title="statement not covered" >    const rateRequired = process.env.TEST_FLOW_RATE;</span>
+<span class="cstat-no" title="statement not covered" >    if (!qtyRequired || !rateRequired) {</span>
+<span class="cstat-no" title="statement not covered" >        logError('TEST_FLOW_QTY and TEST_FLOW_RATE are required for test-flow');</span>
+<span class="cstat-no" title="statement not covered" >        process.exit(1);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    const qtyDefault = qtyRequired;</span>
+<span class="cstat-no" title="statement not covered" >    const flows = (process.env.FLOWS || 'BUY_ONLY,SELL_ONLY,BUY_SELL,SELL_BUY').split(',').map(s =&gt; s.trim()).filter(Boolean);</span>
+<span class="cstat-no" title="statement not covered" >    const exchanges = (process.env.EXCHANGE || 'zaif').split(',').map(s =&gt; s.trim().toLowerCase());</span>
+<span class="cstat-no" title="statement not covered" >    const runLive = process.env.ALLOW_LIVE === '1';</span>
+<span class="cstat-no" title="statement not covered" >    const dryModes = runLive ? ['1', '0'] : ['1'];</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    process.env.TEST_FLOW_QTY = qtyDefault;</span>
+<span class="cstat-no" title="statement not covered" >    for (const ex of exchanges) {</span>
+<span class="cstat-no" title="statement not covered" >        process.env.EXCHANGE = ex;</span>
+<span class="cstat-no" title="statement not covered" >        for (const dry of dryModes) {</span>
+<span class="cstat-no" title="statement not covered" >            process.env.DRY_RUN = dry;</span>
+<span class="cstat-no" title="statement not covered" >            for (const flow of flows) {</span>
+<span class="cstat-no" title="statement not covered" >                process.env.TRADE_FLOW = flow;</span>
+<span class="cstat-no" title="statement not covered" >                const liveTag = dry === '0' ? '[LIVE]' : '[DRY]';</span>
+<span class="cstat-no" title="statement not covered" >                logInfo(`[TEST-FLOW] ${liveTag} ex=${ex} flow=${flow} qty=${qtyDefault} rate=${rateRequired}`);</span>
+<span class="cstat-no" title="statement not covered" >                const EXECUTE = process.env.DRY_RUN !== '1';</span>
+<span class="cstat-no" title="statement not covered" >                try {</span>
+<span class="cstat-no" title="statement not covered" >                    // Run the strategy loop once to produce logs/stats</span>
+<span class="cstat-no" title="statement not covered" >                    await strategyOnce(pair, EXECUTE);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >                    // If live, also place cancellable orders explicitly for BUY_SELL/SELL_BUY to ensure both legs cancel</span>
+<span class="cstat-no" title="statement not covered" >                    const api:any = createPrivateApi();</span>
+<span class="cstat-no" title="statement not covered" >                    const dryMode = process.env.DRY_RUN === '1';</span>
+<span class="cstat-no" title="statement not covered" >                    if (flow === 'BUY_SELL' || flow === 'SELL_BUY') {</span>
+<span class="cstat-no" title="statement not covered" >                        const qty = Number(qtyDefault);</span>
+<span class="cstat-no" title="statement not covered" >                        const rate = Number(rateRequired);</span>
+<span class="cstat-no" title="statement not covered" >                        const ob:any = await getOrderBook(pair);</span>
+<span class="cstat-no" title="statement not covered" >                        const bestBid = Number((ob?.bids?.[0]?.[0]) || 0);</span>
+<span class="cstat-no" title="statement not covered" >                        const bestAsk = Number((ob?.asks?.[0]?.[0]) || 0);</span>
+<span class="cstat-no" title="statement not covered" >                        const buyRate = Math.max(1, rate || bestBid || (bestAsk*0.999));</span>
+<span class="cstat-no" title="statement not covered" >                        const sellRate = Math.max(1, rate || bestAsk || (bestBid*1.001));</span>
+<span class="cstat-no" title="statement not covered" >                        const place = async (action:'bid'|'ask', price:number)=&gt;{</span>
+<span class="cstat-no" title="statement not covered" >                            if (dryMode){</span>
+<span class="cstat-no" title="statement not covered" >                                const id = `DRY-${Date.now()}`; logInfo(`[TEST-FLOW] [SIM] place ${action} id=${id} price=${price} qty=${qty}`);</span>
+<span class="cstat-no" title="statement not covered" >                                logInfo(`[TEST-FLOW] [SIM] cancel ${id}`); return id;</span>
+<span class="cstat-no" title="statement not covered" >                            }</span>
+<span class="cstat-no" title="statement not covered" >                            const r:any = await api.trade({ currency_pair: pair, action, price, amount: qty });</span>
+<span class="cstat-no" title="statement not covered" >                            const id = String(r?.return?.order_id || ''); logInfo(`[TEST-FLOW] [LIVE] placed ${action} id=${id} price=${price} qty=${qty}`);</span>
+<span class="cstat-no" title="statement not covered" >                            try { await api.cancel_order({ order_id: id }); logInfo(`[TEST-FLOW] [LIVE] canceled ${id}`); } catch(e:any){ logWarn('[TEST-FLOW] cancel failed', e?.message||e); }</span>
+<span class="cstat-no" title="statement not covered" >                            return id;</span>
+<span class="cstat-no" title="statement not covered" >                        };</span>
+<span class="cstat-no" title="statement not covered" >                        if (flow === 'BUY_SELL') { await place('bid', buyRate); await place('ask', sellRate); }</span>
+<span class="cstat-no" title="statement not covered" >                        else { await place('ask', sellRate); await place('bid', buyRate); }</span>
+<span class="cstat-no" title="statement not covered" >                    }</span>
+<span class="cstat-no" title="statement not covered" >                } catch (e: any) { logWarn('[TEST-FLOW] iteration error', e?.message || e); }</span>
+<span class="cstat-no" title="statement not covered" >                // Wait 500ms between test iterations to avoid rate limits or API bans; adjust as needed for faster tests.</span>
+<span class="cstat-no" title="statement not covered" >                await sleep(500);</span>
+<span class="cstat-no" title="statement not covered" >            }</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    logInfo('[TEST-FLOW] done');</span>
+<span class="cstat-no" title="statement not covered" >})();</span>
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2025-09-12T22:36:27.355Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    
