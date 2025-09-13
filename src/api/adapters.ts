@@ -27,8 +27,16 @@ export function createPrivateApi(): PrivateApi {
     const ex = (process.env.EXCHANGE || 'zaif').toLowerCase();
     const { createPrivateReal, createPrivateMock } = resolveFactories(ex);
     console.log(`[EXCHANGE] ${ex}`);
-    if (process.env.USE_PRIVATE_MOCK === '1') {
-        console.log('[BACKEND] MOCK');
+    const useMockExplicit = process.env.USE_PRIVATE_MOCK === '1';
+    const missingCoincheckSecrets = ex === 'coincheck'
+        && (!process.env.COINCHECK_API_KEY || !process.env.COINCHECK_API_SECRET);
+
+    if (useMockExplicit || missingCoincheckSecrets) {
+        if (missingCoincheckSecrets) {
+            console.log('[BACKEND] MOCK (coincheck secrets missing)');
+        } else {
+            console.log('[BACKEND] MOCK');
+        }
         return createPrivateMock();
     }
     console.log('[BACKEND] REAL');
