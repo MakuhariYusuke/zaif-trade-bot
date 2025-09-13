@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/tools/ml-search.ts</title>
+    <title>Code coverage report for src/tools/ml/ml-search.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/tools</a> ml-search.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/tools/ml</a> ml-search.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/84</span>
+                <span class='fraction'>0/78</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/84</span>
+                <span class='fraction'>0/78</span>
             </div>
         
             
@@ -141,13 +141,7 @@
 <a name='L76'></a><a href='#L76'>76</a>
 <a name='L77'></a><a href='#L77'>77</a>
 <a name='L78'></a><a href='#L78'>78</a>
-<a name='L79'></a><a href='#L79'>79</a>
-<a name='L80'></a><a href='#L80'>80</a>
-<a name='L81'></a><a href='#L81'>81</a>
-<a name='L82'></a><a href='#L82'>82</a>
-<a name='L83'></a><a href='#L83'>83</a>
-<a name='L84'></a><a href='#L84'>84</a>
-<a name='L85'></a><a href='#L85'>85</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L79'></a><a href='#L79'>79</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -225,26 +219,15 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { spawnSync } from 'child_process';</span></span></span>
-<span class="cstat-no" title="statement not covered" >import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';</span></span></span>
+<span class="cstat-no" title="statement not covered" >import { runMlSimulate } from '../../utils/toolkit';</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function* range(start: number, end: number, step: number){ for (let v=start; v&lt;=end; v+=step) yield v; }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >interface Trial { SELL_RSI_OVERBOUGHT: number; BUY_RSI_OVERSOLD: number; SMA_SHORT: number; SMA_LONG: number; }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function runSim(params: Trial){</span>
-<span class="cstat-no" title="statement not covered" >  const path = require('path');</span>
-<span class="cstat-no" title="statement not covered" >  const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts');</span>
-<span class="cstat-no" title="statement not covered" >  const args = ['-e', `require('ts-node').register(); require('${mlPath.replace(/\\/g,'/')}');`, '--', '--pair', process.env.PAIR || 'btc_jpy', '--params', JSON.stringify(params)];</span>
-<span class="cstat-no" title="statement not covered" >  const r = spawnSync('node', args, { encoding: 'utf8' });</span>
-<span class="cstat-no" title="statement not covered" >  if (r.status !== 0) return null;</span>
-<span class="cstat-no" title="statement not covered" >  try { return JSON.parse(r.stdout.trim()); } catch { return null; }</span>
+<span class="cstat-no" title="statement not covered" >  return runMlSimulate(params as any, process.env.PAIR || 'btc_jpy');</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function runGridForPair(pair: string){</span>
@@ -279,14 +262,14 @@
 <span class="cstat-no" title="statement not covered" >    const pairs = (process.env.PAIRS || process.env.PAIR || 'btc_jpy').split(',').map(s=&gt;s.trim()).filter(Boolean);</span>
 <span class="cstat-no" title="statement not covered" >    const results: any[] = [];</span>
 <span class="cstat-no" title="statement not covered" >    const useWorkers = !isTs &amp;&amp; !process.env.ML_NO_WORKERS;</span>
-<span class="cstat-no" title="statement not covered" >    if (useWorkers){</span>
+<span class="cstat-no" title="statement not covered" >  if (useWorkers){</span>
 <span class="cstat-no" title="statement not covered" >      const maxWorkers = Number(process.env.ML_MAX_WORKERS || 2);</span>
 <span class="cstat-no" title="statement not covered" >      const queue = [...pairs];</span>
 <span class="cstat-no" title="statement not covered" >      const workers: Worker[] = [];</span>
 <span class="cstat-no" title="statement not covered" >      async function startNext(){</span>
 <span class="cstat-no" title="statement not covered" >        if (!queue.length) return;</span>
 <span class="cstat-no" title="statement not covered" >        const pair = queue.shift()!;</span>
-<span class="cstat-no" title="statement not covered" >        const w = new Worker(__filename, { workerData: { pair } });</span>
+<span class="cstat-no" title="statement not covered" >    const w = new Worker(__filename, { workerData: { pair } });</span>
 <span class="cstat-no" title="statement not covered" >        workers.push(w);</span>
 <span class="cstat-no" title="statement not covered" >        w.on('message', (res: any[]) =&gt; { results.push(...res); });</span>
 <span class="cstat-no" title="statement not covered" >        w.on('error', ()=&gt;{});</span>
@@ -299,7 +282,6 @@
 <span class="cstat-no" title="statement not covered" >        }, 200);</span>
 <span class="cstat-no" title="statement not covered" >      });</span>
 <span class="cstat-no" title="statement not covered" >    } else {</span>
-<span class="cstat-no" title="statement not covered" >      // serial fallback (ts-node or ML_NO_WORKERS=1)</span>
 <span class="cstat-no" title="statement not covered" >      for (const pair of pairs){</span>
 <span class="cstat-no" title="statement not covered" >        results.push(...runGridForPair(pair));</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
@@ -322,16 +304,16 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     

@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/tools/test-minimal-live.ts</title>
+    <title>Code coverage report for src/tools/live/test-minimal-live.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/tools</a> test-minimal-live.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/tools/live</a> test-minimal-live.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/206</span>
+                <span class='fraction'>0/203</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/206</span>
+                <span class='fraction'>0/203</span>
             </div>
         
             
@@ -266,10 +266,7 @@
 <a name='L201'></a><a href='#L201'>201</a>
 <a name='L202'></a><a href='#L202'>202</a>
 <a name='L203'></a><a href='#L203'>203</a>
-<a name='L204'></a><a href='#L204'>204</a>
-<a name='L205'></a><a href='#L205'>205</a>
-<a name='L206'></a><a href='#L206'>206</a>
-<a name='L207'></a><a href='#L207'>207</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L204'></a><a href='#L204'>204</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -472,93 +469,58 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import dotenv from 'dotenv';<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import dotenv from 'dotenv';</span></span></span>
 <span class="cstat-no" title="statement not covered" >dotenv.config();</span>
 <span class="cstat-no" title="statement not covered" >import fs from 'fs';</span>
 <span class="cstat-no" title="statement not covered" >import path from 'path';</span>
-<span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../api/adapters';</span>
-<span class="cstat-no" title="statement not covered" >import { getOrderBook, getTrades } from '../api/public-router';</span>
-<span class="cstat-no" title="statement not covered" >import { logInfo, logError } from '../utils/logger';</span>
-<span class="cstat-no" title="statement not covered" >import { incBuyEntry, incSellEntry } from '../utils/daily-stats';</span>
-<span class="cstat-no" title="statement not covered" >import type { PrivateApi } from '../types/private';</span>
-<span class="cstat-no" title="statement not covered" >import { logFeatureSample } from '../utils/features-logger';</span>
-<span class="cstat-no" title="statement not covered" >import { appendPriceSamples, getPriceSeries } from '../utils/price-cache';</span>
-<span class="cstat-no" title="statement not covered" >import { calculateSma, calculateRsi } from '../core/risk';</span>
+<span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../../api/adapters';</span>
+<span class="cstat-no" title="statement not covered" >import { getOrderBook, getTrades } from '../../api/public';</span>
+<span class="cstat-no" title="statement not covered" >import { logInfo, logError, logWarn } from '../../utils/logger';</span>
+<span class="cstat-no" title="statement not covered" >import { incBuyEntry, incSellEntry } from '../../utils/daily-stats';</span>
+<span class="cstat-no" title="statement not covered" >import type { PrivateApi } from '../../types/private';</span>
+<span class="cstat-no" title="statement not covered" >import { logFeatureSample } from '../../utils/features-logger';</span>
+<span class="cstat-no" title="statement not covered" >import { appendPriceSamples, getPriceSeries } from '../../utils/price-cache';</span>
+<span class="cstat-no" title="statement not covered" >import { calculateSma, calculateRsi } from '../../core/risk';</span>
+<span class="cstat-no" title="statement not covered" >import { todayStr, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';</span>
-<span class="cstat-no" title="statement not covered" >const todayStr = () =&gt; new Date().toISOString().slice(0, 10);</span>
+<span class="cstat-no" title="statement not covered" >// moved to utils/toolkit</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >function baseFromPair(pair: string) { return (pair || 'btc_jpy').split('_')[0]; }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >async function fetchBalances(api: PrivateApi) {</span>
-<span class="cstat-no" title="statement not covered" >    const r = await api.get_info2();</span>
-<span class="cstat-no" title="statement not covered" >    if (!r.success || !r.return) throw new Error(r.error || 'get_info2 failed');</span>
-<span class="cstat-no" title="statement not covered" >    return r.return.funds || {};</span>
-<span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >/**</span>
-<span class="cstat-no" title="statement not covered" > * Clamp the amount for safety.</span>
-<span class="cstat-no" title="statement not covered" > * @param { 'bid' | 'ask' } side The side of the order (bid or ask).</span>
-<span class="cstat-no" title="statement not covered" > * @param { number } amount The amount to trade.</span>
-<span class="cstat-no" title="statement not covered" > * @param { number } price The price at which to trade.</span>
-<span class="cstat-no" title="statement not covered" > * @param { Record&lt;string, number&gt; } funds The available funds.</span>
-<span class="cstat-no" title="statement not covered" > * @param { string } pair The currency pair.</span>
-<span class="cstat-no" title="statement not covered" > * @returns { number } The clamped amount.</span>
-<span class="cstat-no" title="statement not covered" > */</span>
-<span class="cstat-no" title="statement not covered" >function clampAmountForSafety(side: 'bid' | 'ask', amount: number, price: number, funds: Record&lt;string, number&gt;, pair: string) {</span>
-<span class="cstat-no" title="statement not covered" >    if (process.env.SAFETY_MODE !== '1') return amount;</span>
-<span class="cstat-no" title="statement not covered" >    const base = baseFromPair(pair);</span>
-<span class="cstat-no" title="statement not covered" >    if (side === 'bid') {</span>
-<span class="cstat-no" title="statement not covered" >        const jpy = Number(funds.jpy || 0);</span>
-<span class="cstat-no" title="statement not covered" >        const maxSpend = jpy * 0.10;</span>
-<span class="cstat-no" title="statement not covered" >        if (maxSpend &lt;= 0 || price &lt;= 0) return amount;</span>
-<span class="cstat-no" title="statement not covered" >        const maxQty = maxSpend / price;</span>
-<span class="cstat-no" title="statement not covered" >        if (amount &gt; maxQty) {</span>
-<span class="cstat-no" title="statement not covered" >            logInfo(`[SAFETY] amount clamped BUY from ${amount} to ${maxQty.toFixed(8)} by 10% JPY`);</span>
-<span class="cstat-no" title="statement not covered" >            return maxQty;</span>
+<span class="cstat-no" title="statement not covered" >async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'ask', price: number, qty: number, opts?: { market?: boolean; refPx?: number }) {</span>
+<span class="cstat-no" title="statement not covered" >    const market = !!opts?.market;</span>
+<span class="cstat-no" title="statement not covered" >    const refPx = Number(opts?.refPx || price || 0);</span>
+<span class="cstat-no" title="statement not covered" >    const params: any = { currency_pair: pair, action };</span>
+<span class="cstat-no" title="statement not covered" >    if (market) {</span>
+<span class="cstat-no" title="statement not covered" >        if (action === 'bid') {</span>
+<span class="cstat-no" title="statement not covered" >            const notional = Math.max(1, Math.round(qty * Math.max(1, refPx)));</span>
+<span class="cstat-no" title="statement not covered" >            params.market_notional = notional;</span>
+<span class="cstat-no" title="statement not covered" >        } else {</span>
+<span class="cstat-no" title="statement not covered" >            params.amount = qty;</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >        return amount;</span>
 <span class="cstat-no" title="statement not covered" >    } else {</span>
-<span class="cstat-no" title="statement not covered" >        const bal = Number((funds as any)[base] || 0);</span>
-<span class="cstat-no" title="statement not covered" >        const maxQty = bal * 0.10;</span>
-<span class="cstat-no" title="statement not covered" >        if (amount &gt; maxQty) {</span>
-<span class="cstat-no" title="statement not covered" >            logInfo(`[SAFETY] amount clamped SELL from ${amount} to ${maxQty.toFixed(8)} by 10% ${base.toUpperCase()}`);</span>
-<span class="cstat-no" title="statement not covered" >            return maxQty;</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >        return amount;</span>
+<span class="cstat-no" title="statement not covered" >        params.price = price; params.amount = qty;</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >/**</span>
-<span class="cstat-no" title="statement not covered" > * Place a limit order and immediately cancel it.</span>
-<span class="cstat-no" title="statement not covered" > * @param {PrivateApi} api The private API instance.</span>
-<span class="cstat-no" title="statement not covered" > * @param {string} pair The currency pair to trade.</span>
-<span class="cstat-no" title="statement not covered" > * @param {'bid'|'ask'} action The action to take (bid or ask).</span>
-<span class="cstat-no" title="statement not covered" > * @param {number} price The price at which to place the order.</span>
-<span class="cstat-no" title="statement not covered" > * @param {number} qty The quantity to trade.</span>
-<span class="cstat-no" title="statement not covered" > * @returns {Promise&lt;{ id: string, filledQty: number, avgPrice: number }&gt;} The order ID and fill information.</span>
-<span class="cstat-no" title="statement not covered" > */</span>
-<span class="cstat-no" title="statement not covered" >async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'ask', price: number, qty: number) {</span>
-<span class="cstat-no" title="statement not covered" >    const r: any = await api.trade({ currency_pair: pair, action, price, amount: qty });</span>
+<span class="cstat-no" title="statement not covered" >    const r: any = await api.trade(params);</span>
 <span class="cstat-no" title="statement not covered" >    const id = String(r?.return?.order_id || '');</span>
-<span class="cstat-no" title="statement not covered" >    // immediate cancel</span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >        await api.cancel_order({ order_id: id });</span>
-<span class="cstat-no" title="statement not covered" >    } catch (e: any) {</span>
-<span class="cstat-no" title="statement not covered" >        logError('[LIVE][CANCEL_FAIL]', e?.message || e);</span>
-<span class="cstat-no" title="statement not covered" >        // still return failed status for feature logging</span>
-<span class="cstat-no" title="statement not covered" >        return { id, filledQty: 0, avgPrice: 0, status: 'failed' as const };</span>
+<span class="cstat-no" title="statement not covered" >    if (market) {</span>
+<span class="cstat-no" title="statement not covered" >        let filledQty = 0; let value = 0;</span>
+<span class="cstat-no" title="statement not covered" >        try {</span>
+<span class="cstat-no" title="statement not covered" >            const hist: any[] = await api.trade_history({ currency_pair: pair, count: 100 });</span>
+<span class="cstat-no" title="statement not covered" >            const fills = hist.filter(h =&gt; String(h.order_id) === id);</span>
+<span class="cstat-no" title="statement not covered" >            for (const f of fills) { const a = Number(f.amount || 0); const p = Number(f.price || 0); filledQty += a; value += a * p; }</span>
+<span class="cstat-no" title="statement not covered" >        } catch {}</span>
+<span class="cstat-no" title="statement not covered" >        const avgPrice = filledQty &gt; 0 ? value / filledQty : 0;</span>
+<span class="cstat-no" title="statement not covered" >        logInfo(`[LIVE][MARKET_FILLED] order_id=${id} filledQty=${filledQty} avgPrice=${avgPrice}`);</span>
+<span class="cstat-no" title="statement not covered" >        return { id, filledQty, avgPrice, status: 'filled' as const };</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >    // derive fills</span>
+<span class="cstat-no" title="statement not covered" >    try { await api.cancel_order({ order_id: id }); }</span>
+<span class="cstat-no" title="statement not covered" >    catch (e: any) { logError('[LIVE][CANCEL_FAIL]', e?.message || e); return { id, filledQty: 0, avgPrice: 0, status: 'failed' as const }; }</span>
 <span class="cstat-no" title="statement not covered" >    let filledQty = 0; let value = 0;</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >        const hist: any[] = await api.trade_history({ currency_pair: pair, count: 100 });</span>
 <span class="cstat-no" title="statement not covered" >        const fills = hist.filter(h =&gt; String(h.order_id) === id);</span>
 <span class="cstat-no" title="statement not covered" >        for (const f of fills) { const a = Number(f.amount || 0); const p = Number(f.price || 0); filledQty += a; value += a * p; }</span>
-<span class="cstat-no" title="statement not covered" >    } catch { }</span>
+<span class="cstat-no" title="statement not covered" >    } catch {}</span>
 <span class="cstat-no" title="statement not covered" >    const avgPrice = filledQty &gt; 0 ? value / filledQty : 0;</span>
 <span class="cstat-no" title="statement not covered" >    logInfo(`[LIVE][CANCELLED] order_id=${id} filledQty=${filledQty} avgPrice=${avgPrice}`);</span>
 <span class="cstat-no" title="statement not covered" >    return { id, filledQty, avgPrice, status: 'cancelled' as const };</span>
@@ -570,28 +532,29 @@
 <span class="cstat-no" title="statement not covered" >    const pair = process.env.PAIR || 'btc_jpy';</span>
 <span class="cstat-no" title="statement not covered" >    const flow = (process.env.TRADE_FLOW || 'BUY_ONLY') as Flow;</span>
 <span class="cstat-no" title="statement not covered" >    const qtyRaw = Number(process.env.TEST_FLOW_QTY || '0');</span>
-<span class="cstat-no" title="statement not covered" >    const rateOverride = Number(process.env.TEST_FLOW_RATE || '0');</span>
+<span class="cstat-no" title="statement not covered" >    const rateInput = process.env.TEST_FLOW_RATE;</span>
+<span class="cstat-no" title="statement not covered" >    const isMarket = (rateInput === '' || rateInput == null);</span>
+<span class="cstat-no" title="statement not covered" >    const rateOverride = isMarket ? 0 : Number(rateInput || '0');</span>
 <span class="cstat-no" title="statement not covered" >    if (dry) { console.error('DRY_RUN must be 0 for live test'); process.exit(1); }</span>
 <span class="cstat-no" title="statement not covered" >    if (!(qtyRaw &gt; 0)) { console.error('TEST_FLOW_QTY must be &gt; 0'); process.exit(1); }</span>
 <span class="cstat-no" title="statement not covered" >    const api = createPrivateApi();</span>
+<span class="cstat-no" title="statement not covered" >    if (!process.env.FEATURES_SOURCE) process.env.FEATURES_SOURCE = 'live';</span>
 <span class="cstat-no" title="statement not covered" >    const ob = await getOrderBook(pair);</span>
 <span class="cstat-no" title="statement not covered" >    const bestBid = Number((ob?.bids?.[0]?.[0]) || 0);</span>
 <span class="cstat-no" title="statement not covered" >    const bestBidSize = Number((ob?.bids?.[0]?.[1]) || 0);</span>
 <span class="cstat-no" title="statement not covered" >    const bestAsk = Number((ob?.asks?.[0]?.[0]) || 0);</span>
 <span class="cstat-no" title="statement not covered" >    const bestAskSize = Number((ob?.asks?.[0]?.[1]) || 0);</span>
-<span class="cstat-no" title="statement not covered" >    // pxBid calculation priority: rateOverride &gt; bestBid &gt; fallback to bestAsk * 0.999</span>
-<span class="cstat-no" title="statement not covered" >    // pxAsk: Use rateOverride if specified, otherwise use bestAsk if available, else fallback to bestBid * 1.001 or 1</span>
 <span class="cstat-no" title="statement not covered" >    const pxBid = rateOverride &gt; 0 ? rateOverride : (bestBid &gt; 0 ? bestBid : Math.max(1, bestAsk * 0.999));</span>
 <span class="cstat-no" title="statement not covered" >    const pxAsk = rateOverride &gt; 0 ? rateOverride : (bestAsk &gt; 0 ? bestAsk : Math.max(1, bestBid * 1.001));</span>
 <span class="cstat-no" title="statement not covered" >    const funds = await fetchBalances(api);</span>
 <span class="cstat-no" title="statement not covered" >    let balancesRef: Record&lt;string, number&gt; | null = funds;</span>
+<span class="cstat-no" title="statement not covered" >    const balancesBefore = { jpy: Number((funds as any).jpy||0), btc: Number((funds as any).btc||0), eth: Number((funds as any).eth||0), xrp: Number((funds as any).xrp||0) };</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    const featuresPair = `${ex}_${pair}`;</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        async function recordFeatures(side: 'bid'|'ask', fillPrice: number, qty: number, status: 'cancelled'|'failed'){</span>
+<span class="cstat-no" title="statement not covered" >    async function recordFeatures(side: 'bid'|'ask', fillPrice: number, qty: number, status: 'cancelled'|'failed'){</span>
 <span class="cstat-no" title="statement not covered" >        const ts = Date.now();</span>
 <span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            // append latest price and compute indicators</span>
 <span class="cstat-no" title="statement not covered" >            appendPriceSamples([{ ts, price: fillPrice || (side==='bid'? pxBid: pxAsk) }]);</span>
 <span class="cstat-no" title="statement not covered" >            const rsiPeriod = Number(process.env.RSI_PERIOD || 14);</span>
 <span class="cstat-no" title="statement not covered" >            const smaShortP = Number(process.env.SMA_SHORT || 9);</span>
@@ -616,21 +579,40 @@
 <span class="cstat-no" title="statement not covered" >        }</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // SAFETY_MODE はオプション（既定は無効）</span>
+<span class="cstat-no" title="statement not covered" >    const executed: Array&lt;{ side:'bid'|'ask'; qty:number; price:number; status:string }&gt; = [];</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    function warnIfOver5Pct(side:'bid'|'ask', qty:number, price:number){</span>
+<span class="cstat-no" title="statement not covered" >        try{</span>
+<span class="cstat-no" title="statement not covered" >            if (side==='bid'){</span>
+<span class="cstat-no" title="statement not covered" >                const notional = qty * price;</span>
+<span class="cstat-no" title="statement not covered" >                const jpy = balancesBefore.jpy || 0;</span>
+<span class="cstat-no" title="statement not covered" >                if (jpy&gt;0 &amp;&amp; notional &gt; jpy * 0.05){ logWarn(`[WARN][BALANCE] bid notional ${notional} exceeds 5% of JPY ${jpy}`); }</span>
+<span class="cstat-no" title="statement not covered" >            } else {</span>
+<span class="cstat-no" title="statement not covered" >                const base = baseFromPair(pair).toLowerCase();</span>
+<span class="cstat-no" title="statement not covered" >                const bal = (balancesBefore as any)[base] || 0;</span>
+<span class="cstat-no" title="statement not covered" >                if (bal&gt;0 &amp;&amp; qty &gt; bal * 0.05){ logWarn(`[WARN][BALANCE] ask qty ${qty} exceeds 5% of ${base.toUpperCase()} ${bal}`); }</span>
+<span class="cstat-no" title="statement not covered" >            }</span>
+<span class="cstat-no" title="statement not covered" >        } catch {}</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    async function runBid() {</span>
 <span class="cstat-no" title="statement not covered" >        let qty = clampAmountForSafety('bid', qtyRaw, pxBid, funds, pair);</span>
 <span class="cstat-no" title="statement not covered" >        if (!(qty &gt; 0)) throw new Error('clamped qty &lt;= 0');</span>
-<span class="cstat-no" title="statement not covered" >    const r = await placeAndCancel(api, pair, 'bid', pxBid, qty);</span>
+<span class="cstat-no" title="statement not covered" >        warnIfOver5Pct('bid', qty, pxBid);</span>
+<span class="cstat-no" title="statement not covered" >        const r = await placeAndCancel(api, pair, 'bid', pxBid, qty, { market: isMarket, refPx: pxAsk });</span>
 <span class="cstat-no" title="statement not covered" >        incBuyEntry(todayStr(), pair);</span>
-<span class="cstat-no" title="statement not covered" >    try { await recordFeatures('bid', r.avgPrice || pxBid, qty, (r as any).status || 'cancelled'); } catch {}</span>
+<span class="cstat-no" title="statement not covered" >        executed.push({ side:'bid', qty, price:pxBid, status: (r as any).status || 'cancelled' });</span>
+<span class="cstat-no" title="statement not covered" >        try { await recordFeatures('bid', r.avgPrice || pxBid, qty, (r as any).status || 'cancelled'); } catch {}</span>
 <span class="cstat-no" title="statement not covered" >        return r;</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >    async function runAsk() {</span>
 <span class="cstat-no" title="statement not covered" >        let qty = clampAmountForSafety('ask', qtyRaw, pxAsk, funds, pair);</span>
 <span class="cstat-no" title="statement not covered" >        if (!(qty &gt; 0)) throw new Error('clamped qty &lt;= 0');</span>
-<span class="cstat-no" title="statement not covered" >    const r = await placeAndCancel(api, pair, 'ask', pxAsk, qty);</span>
+<span class="cstat-no" title="statement not covered" >        warnIfOver5Pct('ask', qty, pxAsk);</span>
+<span class="cstat-no" title="statement not covered" >        const r = await placeAndCancel(api, pair, 'ask', pxAsk, qty, { market: isMarket, refPx: pxBid });</span>
 <span class="cstat-no" title="statement not covered" >        incSellEntry(todayStr(), pair);</span>
-<span class="cstat-no" title="statement not covered" >    try { await recordFeatures('ask', r.avgPrice || pxAsk, qty, (r as any).status || 'cancelled'); } catch {}</span>
+<span class="cstat-no" title="statement not covered" >        executed.push({ side:'ask', qty, price:pxAsk, status: (r as any).status || 'cancelled' });</span>
+<span class="cstat-no" title="statement not covered" >        try { await recordFeatures('ask', r.avgPrice || pxAsk, qty, (r as any).status || 'cancelled'); } catch {}</span>
 <span class="cstat-no" title="statement not covered" >        return r;</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -639,47 +621,56 @@
 <span class="cstat-no" title="statement not covered" >    else if (flow === 'BUY_SELL') { await runBid(); await runAsk(); }</span>
 <span class="cstat-no" title="statement not covered" >    else if (flow === 'SELL_BUY') { await runAsk(); await runBid(); }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Archive stats diff to logs/live</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >        const { spawnSync } = await import('child_process');</span>
 <span class="cstat-no" title="statement not covered" >        const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';</span>
-<span class="cstat-no" title="statement not covered" >        const r = spawnSync(npx, ['ts-node', 'src/tools/stats-today.ts', '--diff'], { encoding: 'utf8' });</span>
+<span class="cstat-no" title="statement not covered" >        const r = spawnSync(npx, ['ts-node', 'src/tools/stats/stats-today.ts', '--diff'], { encoding: 'utf8' });</span>
 <span class="cstat-no" title="statement not covered" >        const out = (r.stdout || '').trim();</span>
 <span class="cstat-no" title="statement not covered" >        const outDir = path.resolve(process.cwd(), 'logs', 'live');</span>
 <span class="cstat-no" title="statement not covered" >        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });</span>
 <span class="cstat-no" title="statement not covered" >        fs.writeFileSync(path.join(outDir, 'stats-diff-live.json'), out || '{}');</span>
-<span class="cstat-no" title="statement not covered" >        } catch (e){ logError('[ARCHIVE_STATS_DIFF_ERROR]', e instanceof Error ? e.message : String(e)); }</span>
+<span class="cstat-no" title="statement not covered" >    } catch (e){ logError('[ARCHIVE_STATS_DIFF_ERROR]', e instanceof Error ? e.message : String(e)); }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        // Summary JSON</span>
-<span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            const date = todayStr();</span>
-<span class="cstat-no" title="statement not covered" >            const outDir = path.resolve(process.cwd(), 'logs', 'live');</span>
-<span class="cstat-no" title="statement not covered" >            if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });</span>
-<span class="cstat-no" title="statement not covered" >            const diffPath = path.join(outDir, 'stats-diff-live.json');</span>
-<span class="cstat-no" title="statement not covered" >            let summary: any = { env: { EXCHANGE: process.env.EXCHANGE, TRADE_FLOW: process.env.TRADE_FLOW, TEST_FLOW_QTY: process.env.TEST_FLOW_QTY, TEST_FLOW_RATE: process.env.TEST_FLOW_RATE, DRY_RUN: process.env.DRY_RUN } };</span>
-<span class="cstat-no" title="statement not covered" >            if (fs.existsSync(diffPath)){</span>
-<span class="cstat-no" title="statement not covered" >                try {</span>
-<span class="cstat-no" title="statement not covered" >                    const d = JSON.parse(fs.readFileSync(diffPath,'utf8'));</span>
-<span class="cstat-no" title="statement not covered" >                    const vals = d?.values || {};</span>
-<span class="cstat-no" title="statement not covered" >                    const diff = d?.diff || {};</span>
-<span class="cstat-no" title="statement not covered" >                    summary.stats = {</span>
-<span class="cstat-no" title="statement not covered" >                        incBuy: (diff.buyEntries||0),</span>
-<span class="cstat-no" title="statement not covered" >                        incSell: (diff.sellEntries||0),</span>
-<span class="cstat-no" title="statement not covered" >                        incPnl: (diff.realizedPnl||0),</span>
-<span class="cstat-no" title="statement not covered" >                        winRate: (vals.trades? (vals.wins||0)/(vals.trades||1): 0),</span>
-<span class="cstat-no" title="statement not covered" >                        streakWin: vals.streakWin||0,</span>
-<span class="cstat-no" title="statement not covered" >                        streakLoss: vals.streakLoss||0</span>
-<span class="cstat-no" title="statement not covered" >                    };</span>
-<span class="cstat-no" title="statement not covered" >                } catch {}</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >        const date = todayStr();</span>
+<span class="cstat-no" title="statement not covered" >        const outDir = path.resolve(process.cwd(), 'logs', 'live');</span>
+<span class="cstat-no" title="statement not covered" >        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });</span>
+<span class="cstat-no" title="statement not covered" >        const diffPath = path.join(outDir, 'stats-diff-live.json');</span>
+<span class="cstat-no" title="statement not covered" >        const after = await fetchBalances(api);</span>
+<span class="cstat-no" title="statement not covered" >        const balancesAfter = { jpy: Number((after as any).jpy||0), btc: Number((after as any).btc||0), eth: Number((after as any).eth||0), xrp: Number((after as any).xrp||0) };</span>
+<span class="cstat-no" title="statement not covered" >        const deltas = {</span>
+<span class="cstat-no" title="statement not covered" >            jpy: (balancesAfter.jpy - balancesBefore.jpy),</span>
+<span class="cstat-no" title="statement not covered" >            btc: (balancesAfter.btc - balancesBefore.btc),</span>
+<span class="cstat-no" title="statement not covered" >            eth: (balancesAfter.eth - balancesBefore.eth),</span>
+<span class="cstat-no" title="statement not covered" >            xrp: (balancesAfter.xrp - balancesBefore.xrp)</span>
+<span class="cstat-no" title="statement not covered" >        };</span>
+<span class="cstat-no" title="statement not covered" >        const warnings: string[] = [];</span>
+<span class="cstat-no" title="statement not covered" >        for (const exed of executed){</span>
+<span class="cstat-no" title="statement not covered" >            if (exed.side==='bid'){</span>
+<span class="cstat-no" title="statement not covered" >                const notional = exed.qty * exed.price; if (balancesBefore.jpy&gt;0 &amp;&amp; notional &gt; balancesBefore.jpy*0.05) warnings.push('over5pct_jpy');</span>
+<span class="cstat-no" title="statement not covered" >            } else {</span>
+<span class="cstat-no" title="statement not covered" >                const base = baseFromPair(pair).toLowerCase(); const bal = (balancesBefore as any)[base] || 0; if (bal&gt;0 &amp;&amp; exed.qty &gt; bal*0.05) warnings.push('over5pct_base');</span>
 <span class="cstat-no" title="statement not covered" >            }</span>
-<span class="cstat-no" title="statement not covered" >            // latest feature snapshot</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >        let summary: any = { env: { EXCHANGE: process.env.EXCHANGE, TRADE_FLOW: process.env.TRADE_FLOW, TEST_FLOW_QTY: process.env.TEST_FLOW_QTY, TEST_FLOW_RATE: process.env.TEST_FLOW_RATE, DRY_RUN: process.env.DRY_RUN }, balancesBefore, balancesAfter, deltas, executed, warnings };</span>
+<span class="cstat-no" title="statement not covered" >        if (fs.existsSync(diffPath)){</span>
 <span class="cstat-no" title="statement not covered" >            try {</span>
-<span class="cstat-no" title="statement not covered" >                const latestPath = path.resolve(process.cwd(), 'logs', 'features', `latest-${featuresPair}.json`);</span>
-<span class="cstat-no" title="statement not covered" >                if (fs.existsSync(latestPath)) summary.latestFeature = JSON.parse(fs.readFileSync(latestPath,'utf8'));</span>
+<span class="cstat-no" title="statement not covered" >                const d = JSON.parse(fs.readFileSync(diffPath,'utf8'));</span>
+<span class="cstat-no" title="statement not covered" >                const vals = d?.values || {};</span>
+<span class="cstat-no" title="statement not covered" >                const diff = d?.diff || {};</span>
+<span class="cstat-no" title="statement not covered" >                summary.stats = {</span>
+<span class="cstat-no" title="statement not covered" >                    incBuy: (diff.buyEntries||0),</span>
+<span class="cstat-no" title="statement not covered" >                    incSell: (diff.sellEntries||0),</span>
+<span class="cstat-no" title="statement not covered" >                    incPnl: (diff.realizedPnl||0),</span>
+<span class="cstat-no" title="statement not covered" >                    winRate: (vals.trades? (vals.wins||0)/(vals.trades||1): 0),</span>
+<span class="cstat-no" title="statement not covered" >                    streakWin: vals.streakWin||0,</span>
+<span class="cstat-no" title="statement not covered" >                    streakLoss: vals.streakLoss||0</span>
+<span class="cstat-no" title="statement not covered" >                };</span>
 <span class="cstat-no" title="statement not covered" >            } catch {}</span>
-<span class="cstat-no" title="statement not covered" >            const sumPath = path.join(outDir, `summary-${date}.json`);</span>
-<span class="cstat-no" title="statement not covered" >            fs.writeFileSync(sumPath, JSON.stringify(summary, null, 2));</span>
-<span class="cstat-no" title="statement not covered" >        } catch (e){ logError('[SUMMARY_WRITE_ERROR]', e instanceof Error ? e.message : String(e)); }</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >        const sumPath = path.join(outDir, `summary-${date}.json`);</span>
+<span class="cstat-no" title="statement not covered" >        fs.writeFileSync(sumPath, JSON.stringify(summary, null, 2));</span>
+<span class="cstat-no" title="statement not covered" >    } catch (e){ logError('[SUMMARY_WRITE_ERROR]', e instanceof Error ? e.message : String(e)); }</span>
 <span class="cstat-no" title="statement not covered" >})();</span>
 &nbsp;</pre></td></tr></table></pre>
 
@@ -688,16 +679,16 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     
