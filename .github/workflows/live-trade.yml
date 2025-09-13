@@ -7,18 +7,25 @@ on:
         description: "Trading pair"
         default: "xrp_jpy"
         required: true
+        type: choice
+        options: [xrp_jpy, eth_jpy]
       trade_flow:
         description: "Trade flow"
         type: choice
-        options: [BUY_ONLY, SELL_ONLY, BUY_SELL, SELL_BUY]
+        options: [BUY_ONLY, SELL_ONLY]
         default: BUY_ONLY
+      orderType:
+        description: "Order type"
+        type: choice
+        options: [market, limit]
+        default: market
       qty:
         description: "Quantity (integer, min 500 for XRP)"
         default: "500"
         required: true
       rate:
-        description: "Limit rate; empty for market order"
-        default: ""
+        description: "Limit rate (used only when orderType=limit)"
+        default: "490"
 
 permissions:
   contents: read
@@ -47,8 +54,9 @@ jobs:
           EXCHANGE: coincheck
           TRADE_FLOW: ${{ github.event.inputs.trade_flow }}
           PAIR: ${{ github.event.inputs.pair }}
+          ORDER_TYPE: ${{ github.event.inputs.orderType }}
           TEST_FLOW_QTY: ${{ github.event.inputs.qty }}
-          TEST_FLOW_RATE: ${{ github.event.inputs.rate }}
+          TEST_FLOW_RATE: ${{ github.event.inputs.orderType == 'market' && '' || github.event.inputs.rate }}
           DRY_RUN: '0'
           FEATURES_SOURCE: live
           COINCHECK_API_KEY: ${{ secrets.COINCHECK_KEY }}
