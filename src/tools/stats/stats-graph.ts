@@ -15,8 +15,20 @@ const outSvg = getArg('svg', 'stats.svg')!;
   const data = pairs.length ? pairs.map(p=> ({ pair:p, stats: loadDaily(d,p) })) : [{ pair:'all', stats: loadDaily(d) }];
   const fs = await import('fs');
   fs.writeFileSync(outFile, JSON.stringify({ date: d, data }, null, 2));
-  // simple placeholder svg
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200"><text x="10" y="20">${d} stats</text></svg>`;
+  // simple svg with legend and maxDrawdown line (placeholder visualization)
+  const width=800, height=240;
+  const legend = `<g font-size="12">
+    <rect x="10" y="10" width="120" height="50" fill="white" stroke="#ccc"/>
+    <text x="20" y="25">PnL線</text>
+    <text x="20" y="40">勝率線</text>
+    <text x="20" y="55">最大DD線</text>
+  </g>`;
+  const ddText = data.map((r,i)=>`${r.pair}: DD=${r.stats.maxDrawdown||0}`).join(' | ');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    ${legend}
+    <text x="10" y="90">${d} stats</text>
+    <text x="10" y="110">${ddText}</text>
+  </svg>`;
   fs.writeFileSync(outSvg, svg);
   console.log(JSON.stringify({ out: outFile, svg: outSvg, pairs: data.length }));
 })();

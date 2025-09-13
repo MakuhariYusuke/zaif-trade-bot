@@ -1,0 +1,67 @@
+name: Paper Matrix
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  matrix-run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [normal, error, latency, sweep-rsi, sweep-sma]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Configure scenario env
+        run: |
+          echo "EXCHANGE=paper" >> $GITHUB_ENV
+          echo "DRY_RUN=1" >> $GITHUB_ENV
+          echo "USE_PRIVATE_MOCK=1" >> $GITHUB_ENV
+          echo "TEST_MODE=1" >> $GITHUB_ENV
+          echo "TEST_FLOW_QTY=0.001" >> $GITHUB_ENV
+          case "${{ matrix.scenario }}" in
+            error)
+              echo "SCENARIO_PAPER_ERROR_RATE=0.2" >> $GITHUB_ENV ;;
+            latency)
+              echo "SCENARIO_PAPER_LATENCY_MS=200" >> $GITHUB_ENV ;;
+            sweep-rsi)
+              echo "SCENARIO_SWEEP=1" >> $GITHUB_ENV
+              echo "SCENARIO_SELL_RSI_LIST=55,60,65" >> $GITHUB_ENV ;;
+            sweep-sma)
+              echo "SCENARIO_SWEEP=1" >> $GITHUB_ENV
+              echo "SCENARIO_SMA_SHORT_LIST=5,7,9" >> $GITHUB_ENV
+              echo "SCENARIO_SMA_LONG_LIST=21,25" >> $GITHUB_ENV ;;
+            *) ;; # normal
+          esac
+      - name: Run mock scenario
+        run: npm run mock:scenario
+      - name: Stats diff (per scenario)
+        run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff-${{ matrix.scenario }}.json
+      - name: Stats graph timeline
+        run: npx ts-node src/tools/stats/stats-graph.ts --out stats-${{ matrix.scenario }}.json --svg stats-${{ matrix.scenario }}.svg
+      - name: Build summary report
+        run: npm run report:summary -- --source ${{ matrix.scenario }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-matrix-${{ matrix.scenario }}
+          path: |
+            stats-diff-${{ matrix.scenario }}.json
+            stats-${{ matrix.scenario }}.json
+            stats-${{ matrix.scenario }}.svg
+            report-summary-${{ matrix.scenario }}.json
+            logs/**

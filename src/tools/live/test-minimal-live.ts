@@ -62,7 +62,8 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
     const flow = (process.env.TRADE_FLOW || 'BUY_ONLY') as Flow;
     const qtyRaw = Number(process.env.TEST_FLOW_QTY || '0');
     const rateInput = process.env.TEST_FLOW_RATE;
-    const isMarket = (rateInput === '' || rateInput == null);
+    const orderType = (process.env.ORDER_TYPE || process.env.orderType || '').toLowerCase();
+    const isMarket = orderType ? (orderType === 'market') : (rateInput === '' || rateInput == null);
     const rateOverride = isMarket ? 0 : Number(rateInput || '0');
     if (dry) { console.error('DRY_RUN must be 0 for live test'); process.exit(1); }
     if (!(qtyRaw > 0)) { console.error('TEST_FLOW_QTY must be > 0'); process.exit(1); }
@@ -73,8 +74,9 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
     const bestBidSize = Number((ob?.bids?.[0]?.[1]) || 0);
     const bestAsk = Number((ob?.asks?.[0]?.[0]) || 0);
     const bestAskSize = Number((ob?.asks?.[0]?.[1]) || 0);
-    const pxBid = rateOverride > 0 ? rateOverride : (bestBid > 0 ? bestBid : Math.max(1, bestAsk * 0.999));
-    const pxAsk = rateOverride > 0 ? rateOverride : (bestAsk > 0 ? bestAsk : Math.max(1, bestBid * 1.001));
+    if (!isMarket && !(rateOverride > 0)) { console.error('When ORDER_TYPE=limit, TEST_FLOW_RATE must be > 0'); process.exit(1); }
+    const pxBid = (!isMarket && rateOverride > 0) ? rateOverride : (bestBid > 0 ? bestBid : Math.max(1, bestAsk * 0.999));
+    const pxAsk = (!isMarket && rateOverride > 0) ? rateOverride : (bestAsk > 0 ? bestAsk : Math.max(1, bestBid * 1.001));
     const funds = await fetchBalances(api);
     let balancesRef: Record<string, number> | null = funds;
     const balancesBefore = { jpy: Number((funds as any).jpy||0), btc: Number((funds as any).btc||0), eth: Number((funds as any).eth||0), xrp: Number((funds as any).xrp||0) };

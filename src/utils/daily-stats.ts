@@ -31,6 +31,10 @@ export interface DailyAggregate {
     maxPollRetryCount?: number;
     maxCancelRetryCount?: number;
     maxNonceRetryCount?: number;
+    // extended metrics
+    maxDrawdown?: number;        // maximum drawdown of the day
+    maxConsecLosses?: number;    // maximum consecutive losses
+    avgHoldSec?: number;         // average holding time (seconds)
 }
 
 function getStatsDir(){ return process.env.STATS_DIR || path.resolve(process.cwd(), "logs"); }
@@ -148,6 +152,15 @@ export function appendFillPnl(date: string, pnl: number, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.realizedPnl += pnl;
     agg.filledCount = (agg.filledCount || 0) + 1;
+    // track drawdown and win/loss streaks
+    const prevEquity = (agg as any).__equity__ ?? 0;
+    const equity = prevEquity + pnl;
+    (agg as any).__equity__ = equity;
+    const peak = (agg as any).__peak__ ?? 0;
+    const newPeak = Math.max(peak, equity);
+    (agg as any).__peak__ = newPeak;
+    const dd = newPeak - equity; // positive drawdown value
+    agg.maxDrawdown = Math.max(agg.maxDrawdown || 0, dd);
     if (pnl > 0) {
         agg.winTrades = (agg.winTrades || 0) + 1;
         agg.streakWin = (agg.streakWin || 0) + 1;
@@ -155,6 +168,7 @@ export function appendFillPnl(date: string, pnl: number, pair?: string) {
     } else if (pnl < 0) {
         agg.lossTrades = (agg.lossTrades || 0) + 1;
         agg.streakLoss = (agg.streakLoss || 0) + 1;
+        agg.maxConsecLosses = Math.max(agg.maxConsecLosses || 0, agg.streakLoss || 0);
         agg.streakWin = 0;
     }
     try {
@@ -244,6 +258,8 @@ export function summarizeDaily(date: string, pair?: string) {
     const avgRetries = agg.trades ? agg.sumRetries / agg.trades : 0;
     const avgTotalRetries = avgRetries;
     const maxTotalRetries = agg.maxRetries || 0;
+    // compute avgHoldSec from wins/losses if durations collected externally; keep as-is if present
+    const avgHoldSec = agg.avgHoldSec || 0;
     try {
         const loggerModule = (() => {
             try { return require('../logger'); } catch {}
@@ -263,6 +279,9 @@ export function summarizeDaily(date: string, pair?: string) {
             `lossStreak: ${agg.streakLoss || 0}`,
             `avgRetries: ${avgTotalRetries.toFixed(2)}`,
             `maxRetries: ${maxTotalRetries}`,
+            `maxDD: ${agg.maxDrawdown || 0}`,
+            `maxConsecLosses: ${agg.maxConsecLosses || 0}`,
+            `avgHoldSec: ${avgHoldSec}`,
             `trailArmed: ${agg.trailArmedTotal || 0}`,
             `trailExit: ${agg.trailExitTotal || 0}`,
             `sellEntries: ${agg.sellEntries || 0}`,
@@ -275,6 +294,9 @@ export function summarizeDaily(date: string, pair?: string) {
         ...agg, 
         avgSlippage: avgSlip, 
         avgRetries: avgTotalRetries, 
-        winRate: agg.trades ? agg.wins / agg.trades : 0 
+        winRate: agg.trades ? agg.wins / agg.trades : 0,
+        maxDrawdown: agg.maxDrawdown || 0,
+        maxConsecLosses: agg.maxConsecLosses || 0,
+        avgHoldSec
     };
 }
