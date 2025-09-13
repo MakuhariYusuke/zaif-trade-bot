@@ -20,8 +20,30 @@ const TOL_PRICE_PCT = Number(process.env.TOL_PRICE_PCT || 0.01);
 const ABS_QTY_TOL = Number(process.env.ABS_QTY_TOL || 1e-8);
 
 export interface OrderBookLevel { price: number; amount: number; }
-export interface OrderSnapshot { side: "bid" | "ask"; intendedPrice: number; amount: number; orderId?: number; submittedAt?: number; filledAmount?: number; avgFillPrice?: number; status?: "NEW" | "PARTIAL" | "FILLED" | "CANCELLED" | "EXPIRED"; requestId?: string; snapshotLevels?: { bids: OrderBookLevel[]; asks: OrderBookLevel[] }; fills?: Array<{ price: number; amount: number; ts: number }>; originalAmount?: number; retryCount?: number; }
-export interface SubmitParams { currency_pair: string; side: "bid" | "ask"; limitPrice: number; amount: number; timeoutMs: number; retry?: boolean; orderBook?: { bids: [number, number][]; asks: [number, number][] }; }
+export interface OrderSnapshot { 
+    side: "bid" | "ask"; 
+    intendedPrice: number; 
+    amount: number; 
+    orderId?: number; 
+    submittedAt?: number; 
+    filledAmount?: number; 
+    avgFillPrice?: number; 
+    status?: "NEW" | "PARTIAL" | "FILLED" | "CANCELLED" | "EXPIRED"; 
+    requestId?: string; 
+    snapshotLevels?: { bids: OrderBookLevel[]; asks: OrderBookLevel[] }; 
+    fills?: Array<{ price: number; amount: number; ts: number }>; 
+    originalAmount?: number; 
+    retryCount?: number; 
+}
+export interface SubmitParams { 
+    currency_pair: string; 
+    side: "bid" | "ask"; 
+    limitPrice: number; 
+    amount: number; 
+    timeoutMs: number; 
+    retry?: boolean; 
+    orderBook?: { bids: [number, number][]; asks: [number, number][] }; 
+}
 
 /**
  * Handle actions needed when an exit (sell) fill occurs.
@@ -31,36 +53,85 @@ export interface SubmitParams { currency_pair: string; side: "bid" | "ask"; limi
  * @param {number} pollIntervalMs The polling interval in milliseconds.
  * @returns {Promise<OrderSnapshot>}
  */
-export async function pollFillState(pair: string, orderSnapshot: OrderSnapshot, maxWaitMs: number, pollIntervalMs = 3000): Promise<OrderSnapshot> {
-    if (!orderSnapshot.orderId) return orderSnapshot; const start = Date.now(); let pollAttempts = 0;
+export async function pollFillState(pair: string, orderSnapshot: OrderSnapshot, maxWaitMs: number, pollIntervalMs: number = 3000): Promise<OrderSnapshot> {
+    if (!orderSnapshot.orderId) return orderSnapshot;
+    const start = Date.now();
+    let pollAttempts = 0;
     while (Date.now() - start < maxWaitMs) {
         try {
-            const active = await getActiveOrders(pair); const still = active[String(orderSnapshot.orderId)];
+            const active = await getActiveOrders(pair);
+            const still = active[String(orderSnapshot.orderId)];
             if (!still) {
                 const hist = await fetchTradeHistory(pair, { count: 200 });
-                const windowStart = (orderSnapshot.submittedAt || 0) - SLIPPAGE_TIME_WINDOW_MS; const windowEnd = Date.now() + SLIPPAGE_TIME_WINDOW_MS; const sideChar = orderSnapshot.side === 'bid' ? 'bid' : 'ask';
-                let filledAmt = orderSnapshot.filledAmount || 0; let value = (orderSnapshot.avgFillPrice || 0) * filledAmt; let usedOrderId = false; const matchedTids = new Set<number>(); let matchedQtySoFar = orderSnapshot.filledAmount || 0;
+                const windowStart = (orderSnapshot.submittedAt || 0) - SLIPPAGE_TIME_WINDOW_MS;
+                const windowEnd = Date.now() + SLIPPAGE_TIME_WINDOW_MS;
+                const sideChar = orderSnapshot.side === 'bid' ? 'bid' : 'ask';
+                let filledAmt = orderSnapshot.filledAmount || 0;
+                let value = (orderSnapshot.avgFillPrice || 0) * filledAmt;
+                let usedOrderId = false;
+                const matchedTids = new Set<number>();
+                let matchedQtySoFar = orderSnapshot.filledAmount || 0;
                 for (const f of hist as any[]) {
                     const tsMs = (f.timestamp || 0) * 1000;
                     if (orderSnapshot.orderId && f.order_id && Number(f.order_id) === orderSnapshot.orderId) {
                         usedOrderId = true;
                         if (filledAmt < orderSnapshot.amount) {
-                            const add = Math.min(f.amount, orderSnapshot.amount - filledAmt); filledAmt += add; value += add * f.price; if (!orderSnapshot.fills) orderSnapshot.fills = []; orderSnapshot.fills.push({ price: f.price, amount: add, ts: tsMs }); const estFillPrice = orderSnapshot.intendedPrice; if (orderSnapshot.side === 'ask') onExitFill(pair, estFillPrice, add);
+                            const add = Math.min(f.amount, orderSnapshot.amount - filledAmt);
+                            filledAmt += add; value += add * f.price;
+                            if (!orderSnapshot.fills) orderSnapshot.fills = [];
+                            orderSnapshot.fills.push({ price: f.price, amount: add, ts: tsMs });
+                            const estFillPrice = orderSnapshot.intendedPrice;
+                            if (orderSnapshot.side === 'ask') onExitFill(pair, estFillPrice, add);
                         }
                     } else if (!usedOrderId && tsMs >= windowStart && tsMs <= windowEnd && f.side === sideChar) {
                         if (filledAmt < orderSnapshot.amount && !matchedTids.has(f.tid)) {
-                            const refPrice = orderSnapshot.intendedPrice; const priceOk = Math.abs(f.price - refPrice) / refPrice <= TOL_PRICE_PCT; const targetRemaining = orderSnapshot.amount - matchedQtySoFar; if (targetRemaining <= 0) break; const qtyTol = Math.min(targetRemaining * TOL_QTY_PCT, ABS_QTY_TOL); const qtyOk = f.amount <= targetRemaining + qtyTol; if (priceOk && qtyOk) { const addRaw = Math.min(f.amount, targetRemaining); const add = Math.max(0, addRaw); if (add > 0) { matchedQtySoFar += add; value += add * f.price; if (!orderSnapshot.fills) orderSnapshot.fills = []; orderSnapshot.fills.push({ price: f.price, amount: add, ts: tsMs }); matchedTids.add(f.tid); const estFillPrice = orderSnapshot.intendedPrice; if (orderSnapshot.side === 'ask') onExitFill(pair, estFillPrice, add); } if (matchedQtySoFar >= orderSnapshot.amount) break; }
+                            const refPrice = orderSnapshot.intendedPrice;
+                            const priceOk = Math.abs(f.price - refPrice) / refPrice <= TOL_PRICE_PCT;
+                            const targetRemaining = orderSnapshot.amount - matchedQtySoFar;
+                            if (targetRemaining <= 0) break;
+                            const qtyTol = Math.min(targetRemaining * TOL_QTY_PCT, ABS_QTY_TOL);
+                            const qtyOk = f.amount <= targetRemaining + qtyTol;
+                            if (priceOk && qtyOk) {
+                                const addRaw = Math.min(f.amount, targetRemaining);
+                                const add = Math.max(0, addRaw);
+                                if (add > 0) {
+                                    matchedQtySoFar += add;
+                                    value += add * f.price;
+                                    if (!orderSnapshot.fills) orderSnapshot.fills = [];
+                                    orderSnapshot.fills.push({ price: f.price, amount: add, ts: tsMs });
+                                    matchedTids.add(f.tid);
+                                    const estFillPrice = orderSnapshot.intendedPrice;
+                                    if (orderSnapshot.side === 'ask') onExitFill(pair, estFillPrice, add);
+                                }
+                                if (matchedQtySoFar >= orderSnapshot.amount) break;
+                            }
                         }
                     }
                 }
                 if (usedOrderId) logSignal(`fill_match_method=order_id requestId=${orderSnapshot.requestId}`); else logSignal(`fill_match_method=heuristic requestId=${orderSnapshot.requestId}`);
                 if (filledAmt > 0) { orderSnapshot.avgFillPrice = value / filledAmt; orderSnapshot.filledAmount = filledAmt; }
                 if (filledAmt >= orderSnapshot.amount * 0.999) {
-                    orderSnapshot.status = 'FILLED'; logExecution('Order filled', { requestId: orderSnapshot.requestId, orderId: orderSnapshot.orderId, filledAmt, avg: orderSnapshot.avgFillPrice, pnl: (orderSnapshot.avgFillPrice||0) - (orderSnapshot.intendedPrice||0), win: ((orderSnapshot.avgFillPrice||0) - (orderSnapshot.intendedPrice||0)) >= 0 });
-                    if (orderSnapshot.filledAmount && orderSnapshot.avgFillPrice) updateOnFill({ pair, side: orderSnapshot.side, price: orderSnapshot.avgFillPrice, amount: orderSnapshot.filledAmount, ts: Date.now(), matchMethod: 'history' });
+                    orderSnapshot.status = 'FILLED'; 
+                    logExecution('Order filled', { 
+                        requestId: orderSnapshot.requestId, 
+                        orderId: orderSnapshot.orderId, 
+                        filledAmt, 
+                        avg: orderSnapshot.avgFillPrice, 
+                        pnl: (orderSnapshot.avgFillPrice||0) - (orderSnapshot.intendedPrice||0), 
+                        win: ((orderSnapshot.avgFillPrice||0) - (orderSnapshot.intendedPrice||0)) >= 0 
+                    });
+                    if (orderSnapshot.filledAmount && orderSnapshot.avgFillPrice) updateOnFill({ 
+                        pair, 
+                        side: orderSnapshot.side, 
+                        price: orderSnapshot.avgFillPrice, 
+                        amount: orderSnapshot.filledAmount, 
+                        ts: Date.now(), 
+                        matchMethod: 'history' 
+                    });
                     if (orderSnapshot.orderId) clearOpenOrderId(pair, orderSnapshot.orderId);
                 } else {
-                    orderSnapshot.status = 'CANCELLED'; logTradeError('Order missing from active list; marking CANCELLED', { requestId: orderSnapshot.requestId, orderId: orderSnapshot.orderId, filledAmt });
+                    orderSnapshot.status = 'CANCELLED'; 
+                    logTradeError('Order missing from active list; marking CANCELLED', { requestId: orderSnapshot.requestId, orderId: orderSnapshot.orderId, filledAmt });
                     if (orderSnapshot.orderId) clearOpenOrderId(pair, orderSnapshot.orderId);
                 }
                 return orderSnapshot;
@@ -68,7 +139,17 @@ export async function pollFillState(pair: string, orderSnapshot: OrderSnapshot, 
             if (still) {
                 const remaining = still.amount; if (remaining != null && orderSnapshot.originalAmount) {
                     const filled = orderSnapshot.originalAmount - remaining; if (filled > 0) {
-                        if (!orderSnapshot.filledAmount || filled > orderSnapshot.filledAmount) { if (!orderSnapshot.fills) orderSnapshot.fills = []; const increment = filled - (orderSnapshot.filledAmount || 0); const estFillPrice = orderSnapshot.intendedPrice; orderSnapshot.fills.push({ price: estFillPrice, amount: increment, ts: Date.now() }); const totalValue = (orderSnapshot.avgFillPrice || 0) * (orderSnapshot.filledAmount || 0) + increment * estFillPrice; orderSnapshot.filledAmount = filled; orderSnapshot.avgFillPrice = totalValue / orderSnapshot.filledAmount; updateOnFill({ pair, side: orderSnapshot.side, price: estFillPrice, amount: increment, ts: Date.now(), matchMethod: 'active_partial' }); if (orderSnapshot.side === 'ask') onExitFill(pair, estFillPrice, increment); }
+                        if (!orderSnapshot.filledAmount || filled > orderSnapshot.filledAmount) {
+                            if (!orderSnapshot.fills) orderSnapshot.fills = [];
+                            const increment = filled - (orderSnapshot.filledAmount || 0);
+                            const estFillPrice = orderSnapshot.intendedPrice;
+                            orderSnapshot.fills.push({ price: estFillPrice, amount: increment, ts: Date.now() });
+                            const totalValue = (orderSnapshot.avgFillPrice || 0) * (orderSnapshot.filledAmount || 0) + increment * estFillPrice;
+                            orderSnapshot.filledAmount = filled;
+                            orderSnapshot.avgFillPrice = totalValue / orderSnapshot.filledAmount;
+                            updateOnFill({ pair, side: orderSnapshot.side, price: estFillPrice, amount: increment, ts: Date.now(), matchMethod: 'active_partial' });
+                            if (orderSnapshot.side === 'ask') onExitFill(pair, estFillPrice, increment);
+                        }
                         if (orderSnapshot.filledAmount && orderSnapshot.filledAmount < orderSnapshot.originalAmount) orderSnapshot.status = 'PARTIAL'; pollAttempts++;
                     }
                 }
@@ -76,7 +157,9 @@ export async function pollFillState(pair: string, orderSnapshot: OrderSnapshot, 
         } catch (e: any) { logTradeError('pollFillState error', { error: e.message }); }
         await new Promise(r => setTimeout(r, pollIntervalMs));
     }
-    orderSnapshot.retryCount = (orderSnapshot.retryCount || 0) + pollAttempts; orderSnapshot.status = 'EXPIRED'; try { if (orderSnapshot.orderId) await cancelOrder({ order_id: orderSnapshot.orderId }); } catch { } logTradeError('Order expired', orderSnapshot); return orderSnapshot;
+    orderSnapshot.retryCount = (orderSnapshot.retryCount || 0) + pollAttempts; orderSnapshot.status = 'EXPIRED';
+    try { if (orderSnapshot.orderId) await cancelOrder({ order_id: orderSnapshot.orderId }); } catch { } logTradeError('Order expired', orderSnapshot); 
+    return orderSnapshot;
 }
 
 export const computeSlippage = (intendedPrice: number, avgFillPrice?: number): number =>

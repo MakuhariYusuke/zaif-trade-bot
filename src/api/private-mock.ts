@@ -23,12 +23,14 @@ interface MockState {
 
 const ORDERS_PATH = process.env.MOCK_ORDERS_PATH || path.join(os.tmpdir(), "zaif-orders.json");
 const VERBOSE = process.env.DEBUG_MOCK_VERBOSE === '1';
+/** Logs mock API calls */
 function logMock(...args: any[]) { if (VERBOSE) console.log(...args); }
 const balancesEnv = (() => { try { return JSON.parse(process.env.MOCK_BALANCES_JSON || '{}'); } catch { return {}; } })();
 const balances: Record<string, number> = Object.keys(balancesEnv).length ? balancesEnv : { jpy: 100000, btc: 0.01 } ;
 
 /** Ensures that the directory for the orders file exists. */
 function ensureDir() { try { fs.mkdirSync(path.dirname(ORDERS_PATH), { recursive: true }); } catch { } }
+
 /**
  * Loads the mock state from the designated file.
  * If the file does not exist or is invalid, returns an empty state.

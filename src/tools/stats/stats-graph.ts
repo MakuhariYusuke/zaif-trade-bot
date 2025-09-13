@@ -13,6 +13,9 @@ const outSvg = getArg('svg', 'stats.svg')!;
   const d = todayStr();
   const pairs = loadPairs();
   const data = pairs.length ? pairs.map(p=> ({ pair:p, stats: loadDaily(d,p) })) : [{ pair:'all', stats: loadDaily(d) }];
+  // load paper/live if available for overlay textual summary
+  const paper = loadDaily(d);
+  const live = loadDaily(d, 'btc_jpy');
   const fs = await import('fs');
   fs.writeFileSync(outFile, JSON.stringify({ date: d, data }, null, 2));
   // simple svg with legend and maxDrawdown line (placeholder visualization)
@@ -28,6 +31,8 @@ const outSvg = getArg('svg', 'stats.svg')!;
     ${legend}
     <text x="10" y="90">${d} stats</text>
     <text x="10" y="110">${ddText}</text>
+    <text x="10" y="130">paper: PnL=${paper.realizedPnl||0} Win%=${Math.round((paper.wins/(paper.trades||1))*100)||0}</text>
+    <text x="10" y="150">live(btc_jpy): PnL=${live.realizedPnl||0} Win%=${Math.round((live.wins/(live.trades||1))*100)||0}</text>
   </svg>`;
   fs.writeFileSync(outSvg, svg);
   console.log(JSON.stringify({ out: outFile, svg: outSvg, pairs: data.length }));
