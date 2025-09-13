@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
+  "tool": "ts-node src/tools/run.ts",
     "start": "ts-node src/index.ts",
     "build": "tsc",
   "health": "ts-node src/tools/live/health.ts",

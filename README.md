@@ -238,6 +238,19 @@ ZAIF_API_KEY=... ZAIF_API_SECRET=... DRY_RUN=0 npm start
 | `npm run mock:smoke` | 最小スモーク (起動～一連 cycle) |
 | `npm run health` | 署名・nonce / permission ヘルスチェック |
 
+補助: ツール実行の統合エントリ
+
+`npm run tool -- <name>` でツールを統一的に呼び出せます（内部的に `src/tools/run.ts` が委譲）。
+
+例:
+
+```powershell
+npm run tool -- live:health
+npm run tool -- paper:mock-scenario
+npm run tool -- ml:export
+npm run tool -- stats:today -- --diff
+```
+
 ---
 
 ## 📊 ログ & 日次統計
