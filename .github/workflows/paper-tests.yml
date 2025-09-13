@@ -1,0 +1,229 @@
+name: Paper Tests
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Snapshot before
+        run: npm run stats:today -- --diff > stats-before.json
+      - name: Run mock-scenario (force RSI)
+        env:
+          EXCHANGE: paper
+          DRY_RUN: '1'
+          USE_PRIVATE_MOCK: '1'
+          SCENARIO_FORCE_RSI: '1'
+          SCENARIO_PAPER_ERROR_RATE: '0'
+          RSI_PERIOD: '5'
+          RISK_INDICATOR_INTERVAL_SEC: '0'
+          MIN_HOLD_SEC: '0'
+        run: npm run mock:scenario
+      - name: Diff after RSI
+        run: npm run stats:today -- --diff > stats-after-rsi.json
+      - name: Assert RSI diff > 0
+        run: |
+          DIFF=$(cat stats-after-rsi.json)
+          VAL=$(echo "$DIFF" | jq -r '.diff.rsiExits // 0')
+          echo "rsiExits diff=$VAL"
+          test "$VAL" -gt 0
+      - name: Run mock-scenario (force TRAIL)
+        env:
+          EXCHANGE: paper
+          DRY_RUN: '1'
+          USE_PRIVATE_MOCK: '1'
+          SCENARIO_FORCE_TRAIL: '1'
+          SCENARIO_PAPER_ERROR_RATE: '0'
+        run: npm run mock:scenario
+      - name: Diff after TRAIL
+        run: npm run stats:today -- --diff > stats-after-trail.json
+      - name: Assert TRAIL diff > 0
+        run: |
+          DIFF=$(cat stats-after-trail.json)
+          VAL=$(echo "$DIFF" | jq -r '.diff.trailExitTotal // 0')
+          echo "trailExitTotal diff=$VAL"
+          test "$VAL" -gt 0
+
+      # Additional smoke for PRs (partial fill and counters)
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Reset paper store
+        env:
+          PAPER_STORE: paper-trader.json
+        run: npm run paper:reset
+
+      - name: Run mock-scenario (paper)
+        env:
+          EXCHANGE: paper
+          USE_PRIVATE_MOCK: '0'
+          DRY_RUN: '1'
+          TEST_MODE: '1'
+          TEST_FLOW_QTY: '0.001'
+          PAPER_STORE: paper-trader.json
+          LOOP_INTERVAL_MS: '10'
+          SCENARIO_SLEEP_MS: '10'
+        run: |
+          node -v
+          npm run mock:scenario 2>&1 | tee mock-scenario.log
+
+      - name: Run test:flow (paper)
+        env:
+          EXCHANGE: paper
+          USE_PRIVATE_MOCK: '0'
+          DRY_RUN: '1'
+          TEST_MODE: '1'
+          TEST_FLOW_QTY: '0.001'
+          TEST_FLOW_RATE: '1000000'
+          PAPER_STORE: paper-trader.json
+          LOOP_INTERVAL_MS: '10'
+        run: |
+          npm run test:flow 2>&1 | tee test-flow.log
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Reset paper store
+        env:
+          PAPER_STORE: paper-trader.json
+        run: npm run paper:reset
+
+      - name: Run mock-scenario (paper)
+        env:
+          EXCHANGE: paper
+          USE_PRIVATE_MOCK: '0'
+          DRY_RUN: '1'
+          TEST_MODE: '1'
+          TEST_FLOW_QTY: '0.001'
+          PAPER_STORE: paper-trader.json
+          LOOP_INTERVAL_MS: '10'
+          SCENARIO_SLEEP_MS: '10'
+        run: |
+          node -v
+          npm run mock:scenario 2>&1 | tee mock-scenario.log
+
+      - name: Run test:flow (paper)
+        env:
+          EXCHANGE: paper
+          USE_PRIVATE_MOCK: '0'
+          DRY_RUN: '1'
+          TEST_MODE: '1'
+          TEST_FLOW_QTY: '0.001'
+          TEST_FLOW_RATE: '1000000'
+          PAPER_STORE: paper-trader.json
+          LOOP_INTERVAL_MS: '10'
+        run: |
+          npm run test:flow 2>&1 | tee test-flow.log
+
+      - name: Partial-fill stats before
+        run: npm run stats:today -- --diff 2>&1 | tee stats-before.log
+
+      - name: Run partial-fill mock-scenario (paper)
+        env:
+          EXCHANGE: paper
+          USE_PRIVATE_MOCK: '0'
+          DRY_RUN: '1'
+          TEST_MODE: '1'
+          TEST_FLOW_QTY: '0.001'
+          PAPER_STORE: paper-trader.json
+          PAPER_FILL_RATIO: '0.5'
+          LOOP_INTERVAL_MS: '10'
+          SCENARIO_SLEEP_MS: '10'
+        run: npm run mock:scenario 2>&1 | tee mock-scenario-partial.log
+
+      - name: Run partial-fill test:flow (paper)
+        env:
+          EXCHANGE: paper
+          USE_PRIVATE_MOCK: '0'
+          DRY_RUN: '1'
+          TEST_MODE: '1'
+          TEST_FLOW_QTY: '0.001'
+          TEST_FLOW_RATE: '1000000'
+          PAPER_STORE: paper-trader.json
+          PAPER_FILL_RATIO: '0.5'
+          LOOP_INTERVAL_MS: '10'
+        run: npm run test:flow 2>&1 | tee test-flow-partial.log
+
+      - name: Partial-fill stats after
+        run: npm run stats:today -- --diff 2>&1 | tee stats-after.log
+
+      - name: Verify stats diff increased (JSON)
+        run: |
+          echo "Checking counters increased via JSON parse..."
+          cat stats-before.log || true
+          cat stats-after.log || true
+          BEFORE_JSON=$(tail -n 1 stats-before.log)
+          AFTER_JSON=$(tail -n 1 stats-after.log)
+          echo "$BEFORE_JSON" | jq . >/dev/null
+          echo "$AFTER_JSON" | jq . >/dev/null
+          getv() { echo "$1" | jq -r ".values.$2"; }
+          BEFORE_BUY=$(getv "$BEFORE_JSON" buyEntries)
+          AFTER_BUY=$(getv "$AFTER_JSON" buyEntries)
+          BEFORE_SELL=$(getv "$BEFORE_JSON" sellEntries)
+          AFTER_SELL=$(getv "$AFTER_JSON" sellEntries)
+          BEFORE_RSI=$(getv "$BEFORE_JSON" rsiExits)
+          AFTER_RSI=$(getv "$AFTER_JSON" rsiExits)
+          BEFORE_TRAIL=$(getv "$BEFORE_JSON" trailExitTotal)
+          AFTER_TRAIL=$(getv "$AFTER_JSON" trailExitTotal)
+          BEFORE_TSTOP=$(getv "$BEFORE_JSON" trailStops)
+          AFTER_TSTOP=$(getv "$AFTER_JSON" trailStops)
+          echo "before: buy=$BEFORE_BUY sell=$BEFORE_SELL rsi=$BEFORE_RSI trail=$BEFORE_TRAIL tstop=$BEFORE_TSTOP"
+          echo "after:  buy=$AFTER_BUY sell=$AFTER_SELL rsi=$AFTER_RSI trail=$AFTER_TRAIL tstop=$AFTER_TSTOP"
+          inc() { [ "$2" -gt "$1" ]; }
+          if inc "$BEFORE_BUY" "$AFTER_BUY" || inc "$BEFORE_SELL" "$AFTER_SELL" || inc "$BEFORE_RSI" "$AFTER_RSI" || inc "$BEFORE_TRAIL" "$AFTER_TRAIL" || inc "$BEFORE_TSTOP" "$AFTER_TSTOP"; then
+            echo "OK: counters increased"
+          else
+            echo "FAIL: no counters increased" && exit 1
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-results
+          path: |
+            mock-scenario.log
+            test-flow.log
+            mock-scenario-partial.log
+            test-flow-partial.log
+            stats-before.log
+            stats-after.log
+            logs/**
+            paper-trader.json

@@ -3,7 +3,7 @@ dotenv.config();
 import fs from 'fs';
 import path from 'path';
 import { createPrivateApi } from '../api/adapters';
-import { getOrderBook, getTrades } from '../api/public-router';
+import { getOrderBook, getTrades } from '../api/public';
 import { logInfo, logError, logWarn } from '../utils/logger';
 import { incBuyEntry, incSellEntry } from '../utils/daily-stats';
 import type { PrivateApi } from '../types/private';
