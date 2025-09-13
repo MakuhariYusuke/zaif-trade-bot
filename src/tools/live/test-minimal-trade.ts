@@ -3,7 +3,7 @@ dotenv.config();
 import { createPrivateApi } from '../../api/adapters';
 import { getOrderBook } from '../../api/public';
 import { logInfo, logWarn, logError } from '../../utils/logger';
-import { sleep } from '../../utils/toolkit';
+import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';
 
 type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
 
@@ -12,11 +12,11 @@ type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
     const dry = process.env.DRY_RUN === '1';
     const pair = process.env.PAIR || 'btc_jpy';
     const flow = (process.env.TRADE_FLOW || 'BUY_ONLY') as Flow;
-    const qty = Number(process.env.TEST_FLOW_QTY || '0.002');
+    const qtyRaw = Number(process.env.TEST_FLOW_QTY || '0.002');
     const rateOverride = Number(process.env.TEST_FLOW_RATE || '0');
-    if (!qty || qty <= 0) { console.error('TEST_FLOW_QTY must be > 0'); process.exit(1); }
+    if (!qtyRaw || qtyRaw <= 0) { console.error('TEST_FLOW_QTY must be > 0'); process.exit(1); }
     const api = createPrivateApi();
-    logInfo(`[MIN-TRADE] ex=${ex} dry=${dry} flow=${flow} qty=${qty} rate=${rateOverride || '(from OB)'}`);
+    logInfo(`[MIN-TRADE] ex=${ex} dry=${dry} flow=${flow} qty=${qtyRaw} rate=${rateOverride || '(from OB)'}`);
     let ob: any;
     try {
         ob = await getOrderBook(pair);
@@ -40,14 +40,14 @@ type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
             ? bestAsk
             : Math.max(1, bestBid * 1.001));
 
-    async function place(action: 'bid' | 'ask', price: number) {
+    async function place(action: 'bid' | 'ask', price: number, qty: number) {
         if (dry) {
             const id = `DRY-${Date.now()}`;
             logInfo(`[MIN-TRADE][DRY] place ${action} id=${id} price=${price} qty=${qty}`);
             logInfo(`[MIN-TRADE][SIMULATED CANCEL] ${id}`);
             return id;
         }
-        const r: any = await api.trade({ currency_pair: pair, action, price, amount: qty });
+    const r: any = await api.trade({ currency_pair: pair, action, price, amount: qty });
         const id = String(r?.return?.order_id || '');
         logInfo(`[MIN-TRADE] placed ${action} id=${id} price=${price} qty=${qty}`);
         try {
@@ -66,16 +66,47 @@ type Flow = 'BUY_ONLY' | 'SELL_ONLY' | 'BUY_SELL' | 'SELL_BUY';
         return id;
     }
 
+    // SAFETY clamp if enabled
+    let qtyBid = qtyRaw;
+    let qtyAsk = qtyRaw;
+    if (process.env.SAFETY_MODE === '1') {
+        try {
+            const funds = await fetchBalances(api);
+            qtyBid = clampAmountForSafety('bid', qtyRaw, pxBid, funds, pair);
+            qtyAsk = clampAmountForSafety('ask', qtyRaw, pxAsk, funds, pair);
+        } catch (e:any) { logWarn('[MIN-TRADE] fetchBalances failed for clamp', e?.message||e); }
+    }
+
+    function warnIfOver5Pct(side:'bid'|'ask', qty:number, price:number, balancesBefore: Record<string, number>){
+        try{
+            if (side==='bid'){
+                const notional = qty * price; const jpy = Number((balancesBefore as any).jpy||0);
+                if (jpy>0 && notional > jpy * 0.05) logWarn(`[WARN][BALANCE] bid notional ${notional} exceeds 5% of JPY ${jpy}`);
+            } else {
+                const base = baseFromPair(pair).toLowerCase(); const bal = Number((balancesBefore as any)[base]||0);
+                if (bal>0 && qty > bal * 0.05) logWarn(`[WARN][BALANCE] ask qty ${qty} exceeds 5% of ${base.toUpperCase()} ${bal}`);
+            }
+        } catch {}
+    }
+
+    const balancesRef = (process.env.SAFETY_MODE==='1') ? await (async()=>{ try { return await fetchBalances(api); } catch { return null; } })() : null;
+
     if (flow === 'BUY_ONLY') {
-        await place('bid', pxBid);
+        if (balancesRef) warnIfOver5Pct('bid', qtyBid, pxBid, balancesRef);
+        await place('bid', pxBid, qtyBid);
     } else if (flow === 'SELL_ONLY') {
-        await place('ask', pxAsk);
+        if (balancesRef) warnIfOver5Pct('ask', qtyAsk, pxAsk, balancesRef);
+        await place('ask', pxAsk, qtyAsk);
     } else if (flow === 'BUY_SELL') {
-        const b = await place('bid', pxBid);
-        await place('ask', Math.max(pxAsk, (rateOverride > 0 ? rateOverride : (pxBid * 1.001))));
+        if (balancesRef) warnIfOver5Pct('bid', qtyBid, pxBid, balancesRef);
+        await place('bid', pxBid, qtyBid);
+        if (balancesRef) warnIfOver5Pct('ask', qtyAsk, pxAsk, balancesRef);
+        await place('ask', Math.max(pxAsk, (rateOverride > 0 ? rateOverride : (pxBid * 1.001))), qtyAsk);
     } else if (flow === 'SELL_BUY') {
-        const s = await place('ask', pxAsk);
-        await place('bid', Math.min(pxBid, (rateOverride > 0 ? rateOverride : (pxAsk * 0.999))));
+        if (balancesRef) warnIfOver5Pct('ask', qtyAsk, pxAsk, balancesRef);
+        await place('ask', pxAsk, qtyAsk);
+        if (balancesRef) warnIfOver5Pct('bid', qtyBid, pxBid, balancesRef);
+        await place('bid', Math.min(pxBid, (rateOverride > 0 ? rateOverride : (pxAsk * 0.999))), qtyBid);
     }
     logInfo('[MIN-TRADE] done');
 })();
