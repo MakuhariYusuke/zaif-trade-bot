@@ -3,20 +3,28 @@ dotenv.config();
 import { createPrivateApi } from '../../api/adapters';
 import { getOrderBook } from '../../api/public';
 import { logInfo, logWarn } from '../../utils/logger';
-import { sleep } from '../../utils/toolkit';
+import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';
 
 (async () => {
     process.env.EXCHANGE = 'coincheck';
     const api: any = createPrivateApi();
-    const pair = 'btc_jpy';
+    const pair = process.env.PAIR || 'btc_jpy';
     logInfo('[FLOW] Coincheck SELL -> opens -> cancel -> history -> BUY');
     const ob = await getOrderBook(pair);
     const bestBid = Number((ob.bids?.[0]?.[0]) || 0);
     const bestAsk = Number((ob.asks?.[0]?.[0]) || 0);
-    const qty = Number(process.env.CC_TEST_AMOUNT || '0.005');
+    let qty = Number(process.env.CC_TEST_AMOUNT || '0.005');
 
     // SELL
-    const sellRate = Math.max(1, bestBid || Number(process.env.CC_TEST_RATE || '1000000'));
+        const sellRate = Math.max(1, bestBid || Number(process.env.CC_TEST_RATE || '1000000'));
+        if (process.env.SAFETY_MODE==='1'){
+            try {
+                const funds = await fetchBalances(api);
+                const sellQty = clampAmountForSafety('ask', qty, sellRate, funds, pair);
+                const buyQty  = clampAmountForSafety('bid', qty, Math.max(1, bestAsk || (sellRate * 1.01)), funds, pair);
+                qty = Math.min(sellQty, buyQty);
+            } catch {}
+        }
     logInfo('[FLOW] SELL place', { rate: sellRate, qty });
     const s = await api.trade({ currency_pair: pair, action: 'ask', price: sellRate, amount: qty });
     logInfo('[FLOW] SELL order id', s.return.order_id);
