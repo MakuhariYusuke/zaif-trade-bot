@@ -58,11 +58,24 @@ jobs:
             stats-timeline.svg
             stats-diff.json
             report-summary-paper.json
+      - name: Archive summary bundle (tar.gz)
+        if: always()
+        run: |
+          tar -czf paper-ml-bundle.tar.gz \
+            ml-dataset.csv ml-search-results.csv ml-search-top.json top3.csv \
+            stats-timeline.svg stats-diff.json report-summary-paper.json || true
+      - name: Upload summary bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-ml-bundle
+          path: paper-ml-bundle.tar.gz
       - name: Slack notify with summary
         if: always()
         env:
-          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          WEBHOOK="$SLACK_WEBHOOK_URL"
           if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
           DIFF=$(cat stats-diff.json 2>/dev/null || echo '{}')
           RPT=$(cat report-summary-paper.json 2>/dev/null || echo '{}')
