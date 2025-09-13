@@ -80,5 +80,6 @@ jobs:
           pnl=$(echo "$DIFF" | jq -r '.diff.realizedPnl // 0')
           win=$(echo "$S" | jq -r '.stats.winRate // 0')
           maxdd=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
-          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100)) / MaxDD=$maxdd\n<$SUM|summary>"
+          t7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
+          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100)) / MaxDD=$maxdd / Trend7dWin%=$((t7*100))\n<$SUM|summary>"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
