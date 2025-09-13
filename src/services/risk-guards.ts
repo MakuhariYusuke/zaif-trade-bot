@@ -1,6 +1,7 @@
+import type { Side } from "../types/domain";
 export interface GuardContext {
   now: number;
-  side: "BUY"|"SELL";
+  side: Side;
   price: number;
   qty: number;
   baseSymbol: string;
@@ -8,7 +9,7 @@ export interface GuardContext {
   positionQty: number;
   lastExitAt?: number;
 }
-export interface GuardResult { ok: boolean; reason?: string; }
+export interface GuardResult { isAllowed: boolean; reason?: string; }
 
 /**
  * Check if an order can be placed based on risk parameters.
@@ -23,10 +24,10 @@ export function canPlaceOrder(ctx: GuardContext): GuardResult {
   const cooldownSec = Number(process.env.COOLDOWN_SEC || "10");
   const maxOpen = Number(process.env.MAX_OPEN_ORDERS || "3");
 
-  if (ctx.qty < minQty) return { ok:false, reason:`min trade size ${minQty}` };
-  if (ctx.positionQty + (ctx.side==="BUY"?ctx.qty:0) > maxPos) return { ok:false, reason:`max position ${maxPos}` };
-  if (ctx.price * ctx.qty > maxNotional) return { ok:false, reason:`max notional ${maxNotional}` };
-  if (ctx.openOrdersCount >= maxOpen) return { ok:false, reason:`max open orders ${maxOpen}` };
-  if (ctx.lastExitAt && (ctx.now - ctx.lastExitAt) < cooldownSec*1000) return { ok:false, reason:`cooldown ${cooldownSec}s` };
-  return { ok:true };
+  if (ctx.qty < minQty) return { isAllowed:false, reason:`min trade size ${minQty}` };
+  if (ctx.positionQty + (ctx.side==="BUY"?ctx.qty:0) > maxPos) return { isAllowed:false, reason:`max position ${maxPos}` };
+  if (ctx.price * ctx.qty > maxNotional) return { isAllowed:false, reason:`max notional ${maxNotional}` };
+  if (ctx.openOrdersCount >= maxOpen) return { isAllowed:false, reason:`max open orders ${maxOpen}` };
+  if (ctx.lastExitAt && (ctx.now - ctx.lastExitAt) < cooldownSec*1000) return { isAllowed:false, reason:`cooldown ${cooldownSec}s` };
+  return { isAllowed:true };
 }
