@@ -31,8 +31,8 @@ jobs:
           KEY='${{ secrets.COINCHECK_KEY }}'
           SEC='${{ secrets.COINCHECK_SECRET }}'
           if [ -z "$KEY" ] || [ -z "$SEC" ]; then
-            echo "No Coincheck secrets; fallback to DRY_RUN=1 with mock private API"
-            DRY_RUN=1 USE_PRIVATE_MOCK=1 npm run test:min-live
+            echo "No Coincheck secrets; fallback to DRY_RUN=1 with mock private API (using test:min-trade)"
+            DRY_RUN=1 USE_PRIVATE_MOCK=1 npm run test:min-trade
           else
             COINCHECK_API_KEY="$KEY" COINCHECK_API_SECRET="$SEC" DRY_RUN=0 npm run test:min-live
           fi
