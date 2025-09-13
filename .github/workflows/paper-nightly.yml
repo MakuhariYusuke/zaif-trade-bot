@@ -27,7 +27,7 @@ jobs:
           FEATURES_SOURCE: paper
         run: |
           npm run mock:scenario
-          npm run stats:today -- --diff > stats-diff.json
+          npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json
           npm run ml:export
           npm run ml:search
           npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
