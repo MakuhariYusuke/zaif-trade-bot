@@ -31,7 +31,7 @@ jobs:
           PAIRS: eth_jpy,xrp_jpy
         run: npm run mock:scenario
       - name: Stats diff
-        run: npm run stats:today -- --diff > stats-diff.json
+        run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json
       - name: Export ML dataset
         run: npm run ml:export
       - name: Grid search

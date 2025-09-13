@@ -18,7 +18,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Snapshot before
-        run: npm run stats:today -- --diff > stats-before.json
+  run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-before.json
       - name: Run mock-scenario (force RSI)
         env:
           EXCHANGE: paper
@@ -31,11 +31,11 @@ jobs:
           MIN_HOLD_SEC: '0'
         run: npm run mock:scenario
       - name: Diff after RSI
-        run: npm run stats:today -- --diff > stats-after-rsi.json
+  run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-after-rsi.json
       - name: Assert RSI diff > 0
         run: |
           DIFF=$(cat stats-after-rsi.json)
-          VAL=$(echo "$DIFF" | jq -r '.diff.rsiExits // 0')
+          VAL=$(echo "$DIFF" | jq -r 'if has("diff") then (.diff.rsiExits // 0) else ((.pairsDiff | map(.diff.rsiExits // 0) | add) // 0) end')
           echo "rsiExits diff=$VAL"
           test "$VAL" -gt 0
       - name: Run mock-scenario (force TRAIL)
@@ -47,11 +47,11 @@ jobs:
           SCENARIO_PAPER_ERROR_RATE: '0'
         run: npm run mock:scenario
       - name: Diff after TRAIL
-        run: npm run stats:today -- --diff > stats-after-trail.json
+  run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-after-trail.json
       - name: Assert TRAIL diff > 0
         run: |
           DIFF=$(cat stats-after-trail.json)
-          VAL=$(echo "$DIFF" | jq -r '.diff.trailExitTotal // 0')
+          VAL=$(echo "$DIFF" | jq -r 'if has("diff") then (.diff.trailExitTotal // 0) else ((.pairsDiff | map(.diff.trailExitTotal // 0) | add) // 0) end')
           echo "trailExitTotal diff=$VAL"
           test "$VAL" -gt 0
 
@@ -154,7 +154,7 @@ jobs:
           npm run test:flow 2>&1 | tee test-flow.log
 
       - name: Partial-fill stats before
-        run: npm run stats:today -- --diff 2>&1 | tee stats-before.log
+        run: npx ts-node src/tools/stats/stats-today.ts --diff | tee stats-before.log
 
       - name: Run partial-fill mock-scenario (paper)
         env:
@@ -183,7 +183,7 @@ jobs:
         run: npm run test:flow 2>&1 | tee test-flow-partial.log
 
       - name: Partial-fill stats after
-        run: npm run stats:today -- --diff 2>&1 | tee stats-after.log
+        run: npx ts-node src/tools/stats/stats-today.ts --diff | tee stats-after.log
 
       - name: Verify stats diff increased (JSON)
         run: |

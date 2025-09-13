@@ -30,7 +30,7 @@ jobs:
           FEATURES_SOURCE: live
         run: npm run test:min-live
       - name: Stats diff
-        run: npm run stats:today -- --diff > stats-diff.json
+        run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json
       - name: ML export + search + timeline
         env:
           ML_MAX_WORKERS: '1'
