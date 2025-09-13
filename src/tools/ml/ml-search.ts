@@ -1,17 +1,12 @@
-import { spawnSync } from 'child_process';
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+import { runMlSimulate } from '../../utils/toolkit';
 
 function* range(start: number, end: number, step: number){ for (let v=start; v<=end; v+=step) yield v; }
 
 interface Trial { SELL_RSI_OVERBOUGHT: number; BUY_RSI_OVERSOLD: number; SMA_SHORT: number; SMA_LONG: number; }
 
 function runSim(params: Trial){
-  const path = require('path');
-  const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml', 'ml-simulate.ts');
-  const args = ['-e', `require('ts-node').register(); require('${mlPath.replace(/\\/g,'/')}');`, '--', '--pair', process.env.PAIR || 'btc_jpy', '--params', JSON.stringify(params)];
-  const r = spawnSync('node', args, { encoding: 'utf8' });
-  if (r.status !== 0) return null;
-  try { return JSON.parse(r.stdout.trim()); } catch { return null; }
+  return runMlSimulate(params as any, process.env.PAIR || 'btc_jpy');
 }
 
 function runGridForPair(pair: string){
@@ -46,14 +41,14 @@ if (!isMainThread){
     const pairs = (process.env.PAIRS || process.env.PAIR || 'btc_jpy').split(',').map(s=>s.trim()).filter(Boolean);
     const results: any[] = [];
     const useWorkers = !isTs && !process.env.ML_NO_WORKERS;
-    if (useWorkers){
+  if (useWorkers){
       const maxWorkers = Number(process.env.ML_MAX_WORKERS || 2);
       const queue = [...pairs];
       const workers: Worker[] = [];
       async function startNext(){
         if (!queue.length) return;
         const pair = queue.shift()!;
-        const w = new Worker(__filename, { workerData: { pair } });
+    const w = new Worker(__filename, { workerData: { pair } });
         workers.push(w);
         w.on('message', (res: any[]) => { results.push(...res); });
         w.on('error', ()=>{});

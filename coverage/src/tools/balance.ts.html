@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/50</span>
+                <span class='fraction'>0/65</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/50</span>
+                <span class='fraction'>0/65</span>
             </div>
         
             
@@ -113,7 +113,37 @@
 <a name='L48'></a><a href='#L48'>48</a>
 <a name='L49'></a><a href='#L49'>49</a>
 <a name='L50'></a><a href='#L50'>50</a>
-<a name='L51'></a><a href='#L51'>51</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -166,7 +196,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import dotenv from 'dotenv';</span></span></span>
 <span class="cstat-no" title="statement not covered" >dotenv.config();</span>
 <span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../api/adapters';</span>
-<span class="cstat-no" title="statement not covered" >import { logInfo, logError } from '../utils/logger';</span>
+<span class="cstat-no" title="statement not covered" >import { logInfo, logError, logWarn } from '../utils/logger';</span>
+<span class="cstat-no" title="statement not covered" >import { baseFromPair, fetchBalances } from '../utils/toolkit';</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >(async ()=&gt;{</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
@@ -185,7 +216,7 @@
 <span class="cstat-no" title="statement not covered" >      process.exitCode = 1;</span>
 <span class="cstat-no" title="statement not covered" >      return;</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >    const fundsBefore = before.return?.funds || {};</span>
+<span class="cstat-no" title="statement not covered" >  const fundsBefore = before.return?.funds || {};</span>
 <span class="cstat-no" title="statement not covered" >    logInfo('Funds (before)', fundsBefore);</span>
 <span class="cstat-no" title="statement not covered" >    logInfo('Open Orders (before)', before.return?.open_orders);</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -195,8 +226,8 @@
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    // Fetch after</span>
-<span class="cstat-no" title="statement not covered" >    const after:any = await (api as any).get_info2();</span>
-<span class="cstat-no" title="statement not covered" >    const fundsAfter = after.return?.funds || {};</span>
+<span class="cstat-no" title="statement not covered" >  const after:any = await (api as any).get_info2();</span>
+<span class="cstat-no" title="statement not covered" >  const fundsAfter = after.return?.funds || {};</span>
 <span class="cstat-no" title="statement not covered" >    logInfo('Funds (after)', fundsAfter);</span>
 <span class="cstat-no" title="statement not covered" >    const dry = process.env.DRY_RUN === '1';</span>
 <span class="cstat-no" title="statement not covered" >    if (dry) {</span>
@@ -208,6 +239,20 @@
 <span class="cstat-no" title="statement not covered" >      logInfo('Diff', diff);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  logInfo('Rights', after.return?.rights);</span>
+<span class="cstat-no" title="statement not covered" >    // exposure quick check for selected PAIR if provided</span>
+<span class="cstat-no" title="statement not covered" >    const pair = process.env.PAIR || 'btc_jpy';</span>
+<span class="cstat-no" title="statement not covered" >    const base = baseFromPair(pair).toLowerCase();</span>
+<span class="cstat-no" title="statement not covered" >    const jpy = Number((fundsAfter as any).jpy || 0);</span>
+<span class="cstat-no" title="statement not covered" >    const balBase = Number((fundsAfter as any)[base] || 0);</span>
+<span class="cstat-no" title="statement not covered" >    if (jpy &gt;= 0 &amp;&amp; balBase &gt;= 0) {</span>
+<span class="cstat-no" title="statement not covered" >      const pxHint = Number(process.env.PRICE_HINT || 0);</span>
+<span class="cstat-no" title="statement not covered" >      const notional = pxHint &gt; 0 ? balBase * pxHint : undefined;</span>
+<span class="cstat-no" title="statement not covered" >      logInfo('[EXPOSURE]', { base: base.toUpperCase(), balBase, jpy, notional: notional ?? '(set PRICE_HINT to compute)' });</span>
+<span class="cstat-no" title="statement not covered" >      if (pxHint &gt; 0 &amp;&amp; jpy &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >        const ratio = (balBase * pxHint) / jpy;</span>
+<span class="cstat-no" title="statement not covered" >        if (ratio &gt; 0.1) logWarn(`[EXPOSURE] base notional ~${(ratio*100).toFixed(1)}% of JPY (threshold 10%)`);</span>
+<span class="cstat-no" title="statement not covered" >      }</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  } catch(e:any){</span>
 <span class="cstat-no" title="statement not covered" >    logError('Balance tool error', e?.message || e);</span>
 <span class="cstat-no" title="statement not covered" >    process.exitCode = 1;</span>
@@ -220,7 +265,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

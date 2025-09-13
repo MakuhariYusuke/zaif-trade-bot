@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/tools/mock-smoke.ts</title>
+    <title>Code coverage report for src/tools/paper/mock-smoke.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/tools</a> mock-smoke.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/tools/paper</a> mock-smoke.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>0/20</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>0/20</span>
             </div>
         
             
@@ -78,7 +78,12 @@
 <a name='L13'></a><a href='#L13'>13</a>
 <a name='L14'></a><a href='#L14'>14</a>
 <a name='L15'></a><a href='#L15'>15</a>
-<a name='L16'></a><a href='#L16'>16</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -93,14 +98,24 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { createPrivateApi } from "../api/adapters";</span></span></span>
-<span class="cstat-no" title="statement not covered" >import { logInfo } from "../utils/logger";</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { createPrivateApi } from "../../api/adapters";</span></span></span>
+<span class="cstat-no" title="statement not covered" >import { logInfo } from "../../utils/logger";</span>
+<span class="cstat-no" title="statement not covered" >import { clampAmountForSafety, fetchBalances } from "../../utils/toolkit";</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >(async () =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  process.env.USE_PRIVATE_MOCK = '1';</span>
 <span class="cstat-no" title="statement not covered" >  process.env.MOCK_FORCE_EXIT = process.env.MOCK_FORCE_EXIT || '1';</span>
 <span class="cstat-no" title="statement not covered" >  const api = createPrivateApi();</span>
-<span class="cstat-no" title="statement not covered" >  const r:any = await api.trade({ currency_pair: 'btc_jpy', action: 'bid', price: 1000000, amount: 0.001 });</span>
+<span class="cstat-no" title="statement not covered" >  let amt = 0.001;</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.SAFETY_MODE==='1'){</span>
+<span class="cstat-no" title="statement not covered" >    try { const funds = await fetchBalances(api as any); amt = clampAmountForSafety('bid', amt, 1000000, funds, 'btc_jpy'); } catch {}</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const r:any = await api.trade({ currency_pair: 'btc_jpy', action: 'bid', price: 1000000, amount: amt });</span>
 <span class="cstat-no" title="statement not covered" >  const id = String(r.return.order_id);</span>
 <span class="cstat-no" title="statement not covered" >  const open1:any = await api.active_orders({ currency_pair: 'btc_jpy' });</span>
 <span class="cstat-no" title="statement not covered" >  logInfo('OPEN_RAW', open1);</span>
@@ -115,16 +130,16 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     

@@ -1,6 +1,7 @@
 // Backward compatibility shim for CI/tests
 // The implementation was moved to src/tools/ml/ml-simulate.ts
 // Importing it will execute the script and write JSON to stdout.
+process.env.QUIET = process.env.QUIET ?? '1';
 import './ml/ml-simulate';
 import fs from 'fs';
 import path from 'path';

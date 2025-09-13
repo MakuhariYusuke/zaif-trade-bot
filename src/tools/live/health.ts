@@ -3,6 +3,7 @@ import { PrivateApi } from "../../types/private";
 import dotenv from "dotenv";
 dotenv.config();
 import { createPrivateApi } from "../../api/adapters";
+import { getTicker, getOrderBook } from "../../api/public";
 
 export async function printPrivateHealth(api: PrivateApi) {
     try {
@@ -12,6 +13,18 @@ export async function printPrivateHealth(api: PrivateApi) {
     else logError("Private API health NOT OK", res.error || res);
     } catch (e: any) {
         logError("healthCheck threw", { message: e?.message });
+    }
+}
+
+async function printPublicHealth(pair: string){
+    try {
+        const t = await getTicker(pair);
+        const ob: any = await getOrderBook(pair);
+        const bestBid = Number((ob?.bids?.[0]?.[0]) || 0);
+        const bestAsk = Number((ob?.asks?.[0]?.[0]) || 0);
+        logInfo("Public API OK", { pair, last: (t as any)?.last || (t as any)?.last_price || null, bestBid, bestAsk });
+    } catch (e:any){
+        logWarn('Public API error', e?.message||e);
     }
 }
 
@@ -36,6 +49,7 @@ if (require.main === module) {
             logWarn('healthCheck 未実装の PrivateApi です');
             process.exit(0);
         }
-        await printPrivateHealth(api);
+    await printPrivateHealth(api);
+    await printPublicHealth(process.env.PAIR || 'btc_jpy');
     })();
 }

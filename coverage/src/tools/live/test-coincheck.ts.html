@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/api/public-router.ts</title>
+    <title>Code coverage report for src/tools/live/test-coincheck.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,7 +19,7 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/api</a> public-router.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/tools/live</a> test-coincheck.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
@@ -129,39 +129,39 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import axios from 'axios';<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import dotenv from 'dotenv';</span></span></span>
+<span class="cstat-no" title="statement not covered" >dotenv.config();</span>
+<span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../../api/adapters';</span>
+<span class="cstat-no" title="statement not covered" >import { logInfo, logWarn } from '../../utils/logger';</span>
+<span class="cstat-no" title="statement not covered" >import { sleep, fetchBalances, clampAmountForSafety, baseFromPair } from '../../utils/toolkit';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Zaif public</span>
-<span class="cstat-no" title="statement not covered" >const ZAIF_BASE = 'https://api.zaif.jp/api/1';</span>
-<span class="cstat-no" title="statement not covered" >async function zaif_getTicker(pair:string){ const r=await axios.get(`${ZAIF_BASE}/ticker/${pair}`); return r.data; }</span>
-<span class="cstat-no" title="statement not covered" >async function zaif_getOrderBook(pair:string){ const r=await axios.get(`${ZAIF_BASE}/depth/${pair}`); return r.data; }</span>
-<span class="cstat-no" title="statement not covered" >async function zaif_getTrades(pair:string){ const r=await axios.get(`${ZAIF_BASE}/trades/${pair}`); return r.data; }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Coincheck public (BTC/JPY 前提)</span>
-<span class="cstat-no" title="statement not covered" >const CC_BASE = 'https://coincheck.com/api';</span>
-<span class="cstat-no" title="statement not covered" >async function cc_getTicker(_pair:string){ const r=await axios.get(`${CC_BASE}/ticker`); return r.data; }</span>
-<span class="cstat-no" title="statement not covered" >async function cc_getOrderBook(_pair:string){ const r=await axios.get(`${CC_BASE}/order_books`); const d=r.data||{}; // ensure numeric</span>
-<span class="cstat-no" title="statement not covered" >  const map2 = (arr:any[]=[])=&gt; (arr||[]).map((x:any)=&gt; [Number(x[0]), Number(x[1])]);</span>
-<span class="cstat-no" title="statement not covered" >  return { asks: map2(d.asks), bids: map2(d.bids) };</span>
-<span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" >async function cc_getTrades(pair:string){ const url = `${CC_BASE}/trades?pair=${encodeURIComponent(pair)}`; const r=await axios.get(url); const arr = r.data || [];</span>
-<span class="cstat-no" title="statement not covered" >  return (Array.isArray(arr)? arr:[]).map((t:any)=&gt; ({</span>
-<span class="cstat-no" title="statement not covered" >    tid: Number(t.id),</span>
-<span class="cstat-no" title="statement not covered" >    price: Number(t.rate),</span>
-<span class="cstat-no" title="statement not covered" >    amount: Number(t.amount),</span>
-<span class="cstat-no" title="statement not covered" >    date: Math.floor(new Date(t.created_at).getTime()/1000),</span>
-<span class="cstat-no" title="statement not covered" >    trade_type: t.order_type==='buy'? 'bid':'ask'</span>
-<span class="cstat-no" title="statement not covered" >  }));</span>
-<span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >function isCC(){ return (process.env.EXCHANGE||'zaif').toLowerCase()==='coincheck'; }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >/** Get ticker information for a trading pair */</span>
-<span class="cstat-no" title="statement not covered" >export async function getTicker(pair:string){ return isCC()? cc_getTicker(pair): zaif_getTicker(pair); }</span>
-<span class="cstat-no" title="statement not covered" >/** Get order book information for a trading pair */</span>
-<span class="cstat-no" title="statement not covered" >export async function getOrderBook(pair:string){ return isCC()? cc_getOrderBook(pair): zaif_getOrderBook(pair); }</span>
-<span class="cstat-no" title="statement not covered" >/** Get trade history for a trading pair */</span>
-<span class="cstat-no" title="statement not covered" >export async function getTrades(pair:string){ return isCC()? cc_getTrades(pair): zaif_getTrades(pair); }</span>
+<span class="cstat-no" title="statement not covered" >(async ()=&gt;{</span>
+<span class="cstat-no" title="statement not covered" >  process.env.EXCHANGE = 'coincheck';</span>
+<span class="cstat-no" title="statement not covered" >  const api: any = createPrivateApi();</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Coincheck start');</span>
+<span class="cstat-no" title="statement not covered" >  const bal = await api.get_info2();</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Balance', bal.return?.funds);</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.DRY_RUN==='1') { logInfo('[TEST] DRY_RUN: skip order'); return; }</span>
+<span class="cstat-no" title="statement not covered" >  const pair = process.env.PAIR || 'btc_jpy';</span>
+<span class="cstat-no" title="statement not covered" >  const rate = Number(process.env.CC_TEST_RATE||'1000000');</span>
+<span class="cstat-no" title="statement not covered" >  let amount = Number(process.env.CC_TEST_AMOUNT||'0.005');</span>
+<span class="cstat-no" title="statement not covered" >  if (process.env.SAFETY_MODE==='1'){</span>
+<span class="cstat-no" title="statement not covered" >    try{ const funds = await fetchBalances(api); amount = clampAmountForSafety('bid', amount, rate, funds, pair); }catch{}</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Place BUY', { pair, rate, amount });</span>
+<span class="cstat-no" title="statement not covered" >  const tr = await api.trade({ currency_pair: pair, action: 'bid', price: rate, amount });</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Placed', tr);</span>
+<span class="cstat-no" title="statement not covered" >  await sleep(2000);</span>
+<span class="cstat-no" title="statement not covered" >  const opens = await api.active_orders({ currency_pair: pair });</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Opens', opens.slice(0,5));</span>
+<span class="cstat-no" title="statement not covered" >  if (opens.length){</span>
+<span class="cstat-no" title="statement not covered" >    logInfo('[TEST] Cancel first', opens[0].order_id);</span>
+<span class="cstat-no" title="statement not covered" >    try { await api.cancel_order({ order_id: String(opens[0].order_id) }); } catch(e:any){ logWarn('[TEST] cancel failed', e?.message||e); }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const hist = await api.trade_history({ currency_pair: pair, count: 10 });</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Trades', hist.slice(0,5));</span>
+<span class="cstat-no" title="statement not covered" >  logInfo('OK');</span>
+<span class="cstat-no" title="statement not covered" >})();</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -169,16 +169,16 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     

@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/tools/test-coincheck.ts</title>
+    <title>Code coverage report for src/tools/tests/test-flow.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,7 +19,7 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/tools</a> test-coincheck.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/tools/tests</a> test-flow.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
@@ -125,37 +125,37 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import dotenv from 'dotenv';</span></span></span>
-<span class="cstat-no" title="statement not covered" >dotenv.config();</span>
-<span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../api/adapters';</span>
-<span class="cstat-no" title="statement not covered" >import { logInfo, logWarn } from '../utils/logger';</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { strategyOnce } from '../../index';</span></span></span>
+<span class="cstat-no" title="statement not covered" >import { logInfo, logWarn, logError } from '../../utils/logger';</span>
+<span class="cstat-no" title="statement not covered" >import { createPrivateApi } from '../../api/adapters';</span>
+<span class="cstat-no" title="statement not covered" >import { getOrderBook } from '../../api/public';</span>
+<span class="cstat-no" title="statement not covered" >import { baseFromPair, fetchBalances } from '../../utils/toolkit';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >function sleep(ms:number){ return new Promise(r=&gt;setTimeout(r,ms)); }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >(async ()=&gt;{</span>
-<span class="cstat-no" title="statement not covered" >  process.env.EXCHANGE = 'coincheck';</span>
-<span class="cstat-no" title="statement not covered" >  const api: any = createPrivateApi();</span>
-<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Coincheck start');</span>
-<span class="cstat-no" title="statement not covered" >  const bal = await api.get_info2();</span>
-<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Balance', bal.return?.funds);</span>
-<span class="cstat-no" title="statement not covered" >  if (process.env.DRY_RUN==='1') { logInfo('[TEST] DRY_RUN: skip order'); return; }</span>
-<span class="cstat-no" title="statement not covered" >  const pair = 'btc_jpy';</span>
-<span class="cstat-no" title="statement not covered" >  const rate = Number(process.env.CC_TEST_RATE||'1000000');</span>
-<span class="cstat-no" title="statement not covered" >  const amount = Number(process.env.CC_TEST_AMOUNT||'0.005');</span>
-<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Place BUY', { pair, rate, amount });</span>
-<span class="cstat-no" title="statement not covered" >  const tr = await api.trade({ currency_pair: pair, action: 'bid', price: rate, amount });</span>
-<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Placed', tr);</span>
-<span class="cstat-no" title="statement not covered" >  await sleep(2000);</span>
-<span class="cstat-no" title="statement not covered" >  const opens = await api.active_orders({ currency_pair: pair });</span>
-<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Opens', opens.slice(0,5));</span>
-<span class="cstat-no" title="statement not covered" >  if (opens.length){</span>
-<span class="cstat-no" title="statement not covered" >    logInfo('[TEST] Cancel first', opens[0].order_id);</span>
-<span class="cstat-no" title="statement not covered" >    try { await api.cancel_order({ order_id: String(opens[0].order_id) }); } catch(e:any){ logWarn('[TEST] cancel failed', e?.message||e); }</span>
+<span class="cstat-no" title="statement not covered" >async function main(){</span>
+<span class="cstat-no" title="statement not covered" >  try {</span>
+<span class="cstat-no" title="statement not covered" >    const pair = process.env.PAIR || 'btc_jpy';</span>
+<span class="cstat-no" title="statement not covered" >    const dry = process.env.DRY_RUN === '1';</span>
+<span class="cstat-no" title="statement not covered" >    const api = createPrivateApi();</span>
+<span class="cstat-no" title="statement not covered" >    const ob = await getOrderBook(pair);</span>
+<span class="cstat-no" title="statement not covered" >    logInfo('[FLOW] best bid/ask', { bid: ob?.bids?.[0]?.[0], ask: ob?.asks?.[0]?.[0] });</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      const funds = await fetchBalances(api as any);</span>
+<span class="cstat-no" title="statement not covered" >      const base = baseFromPair(pair).toLowerCase();</span>
+<span class="cstat-no" title="statement not covered" >      const jpy = Number((funds as any).jpy || 0);</span>
+<span class="cstat-no" title="statement not covered" >      const balBase = Number((funds as any)[base] || 0);</span>
+<span class="cstat-no" title="statement not covered" >      logInfo('[FLOW][BALANCE]', { jpy, [base]: balBase });</span>
+<span class="cstat-no" title="statement not covered" >    } catch {}</span>
+<span class="cstat-no" title="statement not covered" >    await strategyOnce(pair, !dry);</span>
+<span class="cstat-no" title="statement not covered" >    logInfo('[FLOW] done');</span>
+<span class="cstat-no" title="statement not covered" >  } catch (e: any) {</span>
+<span class="cstat-no" title="statement not covered" >    logError('[FLOW] error', e?.message || e);</span>
+<span class="cstat-no" title="statement not covered" >    process.exit(1);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" >  const hist = await api.trade_history({ currency_pair: pair, count: 10 });</span>
-<span class="cstat-no" title="statement not covered" >  logInfo('[TEST] Trades', hist.slice(0,5));</span>
-<span class="cstat-no" title="statement not covered" >  logInfo('OK');</span>
-<span class="cstat-no" title="statement not covered" >})();</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >if (require.main === module) {</span>
+<span class="cstat-no" title="statement not covered" >  main();</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -163,16 +163,16 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     

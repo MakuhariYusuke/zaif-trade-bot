@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/333</span>
+                <span class='fraction'>0/339</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/333</span>
+                <span class='fraction'>0/339</span>
             </div>
         
             
@@ -396,7 +396,19 @@
 <a name='L331'></a><a href='#L331'>331</a>
 <a name='L332'></a><a href='#L332'>332</a>
 <a name='L333'></a><a href='#L333'>333</a>
-<a name='L334'></a><a href='#L334'>334</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L334'></a><a href='#L334'>334</a>
+<a name='L335'></a><a href='#L335'>335</a>
+<a name='L336'></a><a href='#L336'>336</a>
+<a name='L337'></a><a href='#L337'>337</a>
+<a name='L338'></a><a href='#L338'>338</a>
+<a name='L339'></a><a href='#L339'>339</a>
+<a name='L340'></a><a href='#L340'>340</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -735,7 +747,7 @@
 <span class="cstat-no" title="statement not covered" >import { appendSummary, loadDaily } from "../utils/daily-stats";</span>
 <span class="cstat-no" title="statement not covered" >import { strategyOnce } from "../index";</span>
 <span class="cstat-no" title="statement not covered" >import { logInfo, logWarn, logAssert } from "../utils/logger";</span>
-<span class="cstat-no" title="statement not covered" >import { getOrderBook } from "../api/public-router";</span>
+<span class="cstat-no" title="statement not covered" >import { getOrderBook } from "../api/public";</span>
 <span class="cstat-no" title="statement not covered" >import { loadPairs } from "../utils/config";</span>
 <span class="cstat-no" title="statement not covered" >import fs from 'fs';</span>
 <span class="cstat-no" title="statement not covered" >import path from 'path';</span>
@@ -963,10 +975,12 @@
 <span class="cstat-no" title="statement not covered" >          const after = loadDaily(d, p);</span>
 <span class="cstat-no" title="statement not covered" >          results.push({ pair: p, metric: 'RSI_OVERBOUGHT', value: th, rsiExits: after.rsiExits||0, realizedPnl: after.realizedPnl||0 });</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >        const outCsv = path.resolve(process.cwd(), `sweep-${p}-rsi.csv`);</span>
-<span class="cstat-no" title="statement not covered" >        const outJson = path.resolve(process.cwd(), `sweep-${p}-rsi.json`);</span>
-<span class="cstat-no" title="statement not covered" >        try{ fs.writeFileSync(outJson, JSON.stringify(results, null, 2)); }catch{}</span>
-<span class="cstat-no" title="statement not covered" >        try{ fs.writeFileSync(outCsv, ['pair,metric,value,rsiExits,realizedPnl', ...results.map(r=&gt;`${r.pair},RSI_OVERBOUGHT,${r.value},${r.rsiExits},${r.realizedPnl}`)].join('\n')); }catch{}</span>
+<span class="cstat-no" title="statement not covered" >  const outDir = path.resolve(process.cwd(), 'logs', 'features', 'paper', p);</span>
+<span class="cstat-no" title="statement not covered" >  try { if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true }); } catch {}</span>
+<span class="cstat-no" title="statement not covered" >  const outCsv = path.join(outDir, `sweep-${p}-rsi.csv`);</span>
+<span class="cstat-no" title="statement not covered" >  const outJson = path.join(outDir, `sweep-${p}-rsi.json`);</span>
+<span class="cstat-no" title="statement not covered" >  try{ fs.writeFileSync(outJson, JSON.stringify(results, null, 2)); }catch{}</span>
+<span class="cstat-no" title="statement not covered" >  try{ fs.writeFileSync(outCsv, ['pair,metric,value,rsiExits,realizedPnl', ...results.map(r=&gt;`${r.pair},RSI_OVERBOUGHT,${r.value},${r.rsiExits},${r.realizedPnl}`)].join('\n')); }catch{}</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
 <span class="cstat-no" title="statement not covered" >    } else {</span>
 <span class="cstat-no" title="statement not covered" >      await strategyOnce('btc_jpy', false);</span>
@@ -1007,10 +1021,12 @@
 <span class="cstat-no" title="statement not covered" >          const after = loadDaily(d, p);</span>
 <span class="cstat-no" title="statement not covered" >          results.push({ pair: p, metric: 'TRAIL_TRIGGER', value: th, trailExitTotal: after.trailExitTotal||0, realizedPnl: after.realizedPnl||0 });</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >        const outCsv = path.resolve(process.cwd(), `sweep-${p}-trail.csv`);</span>
-<span class="cstat-no" title="statement not covered" >        const outJson = path.resolve(process.cwd(), `sweep-${p}-trail.json`);</span>
-<span class="cstat-no" title="statement not covered" >        try{ fs.writeFileSync(outJson, JSON.stringify(results, null, 2)); }catch{}</span>
-<span class="cstat-no" title="statement not covered" >        try{ fs.writeFileSync(outCsv, ['pair,metric,value,trailExitTotal,realizedPnl', ...results.map(r=&gt;`${r.pair},TRAIL_TRIGGER,${r.value},${r.trailExitTotal},${r.realizedPnl}`)].join('\n')); }catch{}</span>
+<span class="cstat-no" title="statement not covered" >  const outDir = path.resolve(process.cwd(), 'logs', 'features', 'paper', p);</span>
+<span class="cstat-no" title="statement not covered" >  try { if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true }); } catch {}</span>
+<span class="cstat-no" title="statement not covered" >  const outCsv = path.join(outDir, `sweep-${p}-trail.csv`);</span>
+<span class="cstat-no" title="statement not covered" >  const outJson = path.join(outDir, `sweep-${p}-trail.json`);</span>
+<span class="cstat-no" title="statement not covered" >  try{ fs.writeFileSync(outJson, JSON.stringify(results, null, 2)); }catch{}</span>
+<span class="cstat-no" title="statement not covered" >  try{ fs.writeFileSync(outCsv, ['pair,metric,value,trailExitTotal,realizedPnl', ...results.map(r=&gt;`${r.pair},TRAIL_TRIGGER,${r.value},${r.trailExitTotal},${r.realizedPnl}`)].join('\n')); }catch{}</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
 <span class="cstat-no" title="statement not covered" >    } else {</span>
 <span class="cstat-no" title="statement not covered" >      await strategyOnce('btc_jpy', false);</span>
@@ -1052,10 +1068,12 @@
 <span class="cstat-no" title="statement not covered" >          const afterB = loadDaily(d, p);</span>
 <span class="cstat-no" title="statement not covered" >          results.push({ pair: p, metric: 'SMA_LONG', value: sLong, buyEntries: afterB.buyEntries||0, sellEntries: afterB.sellEntries||0, realizedPnl: afterB.realizedPnl||0 });</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >        const outCsv = path.resolve(process.cwd(), `sweep-${p}-sma.csv`);</span>
-<span class="cstat-no" title="statement not covered" >        const outJson = path.resolve(process.cwd(), `sweep-${p}-sma.json`);</span>
-<span class="cstat-no" title="statement not covered" >        try{ fs.writeFileSync(outJson, JSON.stringify(results, null, 2)); }catch{}</span>
-<span class="cstat-no" title="statement not covered" >        try{ fs.writeFileSync(outCsv, ['pair,metric,value,buyEntries,sellEntries,realizedPnl', ...results.map(r=&gt;`${r.pair},${r.metric},${r.value},${r.buyEntries},${r.sellEntries},${r.realizedPnl}`)].join('\n')); }catch{}</span>
+<span class="cstat-no" title="statement not covered" >  const outDir = path.resolve(process.cwd(), 'logs', 'features', 'paper', p);</span>
+<span class="cstat-no" title="statement not covered" >  try { if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true }); } catch {}</span>
+<span class="cstat-no" title="statement not covered" >  const outCsv = path.join(outDir, `sweep-${p}-sma.csv`);</span>
+<span class="cstat-no" title="statement not covered" >  const outJson = path.join(outDir, `sweep-${p}-sma.json`);</span>
+<span class="cstat-no" title="statement not covered" >  try{ fs.writeFileSync(outJson, JSON.stringify(results, null, 2)); }catch{}</span>
+<span class="cstat-no" title="statement not covered" >  try{ fs.writeFileSync(outCsv, ['pair,metric,value,buyEntries,sellEntries,realizedPnl', ...results.map(r=&gt;`${r.pair},${r.metric},${r.value},${r.buyEntries},${r.sellEntries},${r.realizedPnl}`)].join('\n')); }catch{}</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
@@ -1069,7 +1087,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-12T22:36:27.355Z
+                at 2025-09-13T15:47:59.977Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
