@@ -1,4 +1,5 @@
 import type { PrivateApi } from "../types/private";
+import { logWarn } from './logger';
 
 /** Return YYYY-MM-DD for given date (defaults to now). */
 export function todayStr(d: Date = new Date()): string { return d.toISOString().slice(0, 10); }
@@ -35,11 +36,21 @@ export function clampAmountForSafety(
     const maxSpend = jpy * pct;
     if (maxSpend <= 0 || price <= 0) return amount;
     const maxQty = maxSpend / price;
-    return amount > maxQty ? maxQty : amount;
+    if (amount > maxQty) {
+      const clamped = maxQty;
+      try { logWarn(`[SAFETY] amount clamped side=bid requested=${amount} clamped=${clamped} pct=${(pct*100).toFixed(1)}%`); } catch {}
+      return clamped;
+    }
+    return amount;
   } else {
     const bal = Number((funds as any)[base] || 0);
     const maxQty = bal * pct;
-    return amount > maxQty ? maxQty : amount;
+    if (amount > maxQty) {
+      const clamped = maxQty;
+      try { logWarn(`[SAFETY] amount clamped side=ask requested=${amount} clamped=${clamped} pct=${(pct*100).toFixed(1)}%`); } catch {}
+      return clamped;
+    }
+    return amount;
   }
 }
 

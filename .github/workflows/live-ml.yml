@@ -25,10 +25,17 @@ jobs:
           EXCHANGE: coincheck
           TRADE_FLOW: BUY_ONLY
           TEST_FLOW_QTY: '0.001'
-          DRY_RUN: '0'
           SAFETY_MODE: '1'
           FEATURES_SOURCE: live
-        run: npm run test:min-live
+        run: |
+          KEY='${{ secrets.COINCHECK_KEY }}'
+          SEC='${{ secrets.COINCHECK_SECRET }}'
+          if [ -z "$KEY" ] || [ -z "$SEC" ]; then
+            echo "No Coincheck secrets; fallback to DRY_RUN=1 with mock private API"
+            DRY_RUN=1 USE_PRIVATE_MOCK=1 npm run test:min-live
+          else
+            COINCHECK_API_KEY="$KEY" COINCHECK_API_SECRET="$SEC" DRY_RUN=0 npm run test:min-live
+          fi
       - name: Stats diff
         run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json
       - name: ML export + search + timeline
@@ -39,6 +46,8 @@ jobs:
           npm run ml:export
           npm run ml:search
           npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
+      - name: Build summary report (live)
+        run: npm run report:summary -- --source live
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -49,6 +58,7 @@ jobs:
             ml-search-results.csv
             ml-search-top.json
             stats-timeline.svg
+            report-summary-live.json
       - name: Slack notify with summary
         if: always()
         run: |
@@ -56,6 +66,7 @@ jobs:
           if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
           SUM=$(ls -1 logs/live/summary-*.json 2>/dev/null | tail -n1)
           DIFF=$(cat logs/live/stats-diff-live.json 2>/dev/null || echo '{}')
+          RPT=$(cat report-summary-live.json 2>/dev/null || echo '{}')
           if [ -n "$SUM" ]; then S=$(cat "$SUM"); else S='{}'; fi
           ICON="✅"; STATUS="passed"
           if [ "${{ job.status }}" != "success" ]; then ICON="❌"; STATUS="failed"; fi
@@ -68,5 +79,6 @@ jobs:
           incSell=$(echo "$DIFF" | jq -r '.diff.sellEntries // 0')
           pnl=$(echo "$DIFF" | jq -r '.diff.realizedPnl // 0')
           win=$(echo "$S" | jq -r '.stats.winRate // 0')
-          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100))\n<$SUM|summary>"
+          maxdd=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
+          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100)) / MaxDD=$maxdd\n<$SUM|summary>"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
