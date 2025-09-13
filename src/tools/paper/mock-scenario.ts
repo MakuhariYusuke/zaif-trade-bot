@@ -16,7 +16,7 @@ async function run(){
   // Scenario variable mapping
   // - Latency/timeout -> mock exit delay to slow fills
   if (process.env.SCENARIO_PAPER_LATENCY_MS) process.env.MOCK_EXIT_DELAY_MS = process.env.SCENARIO_PAPER_LATENCY_MS;
-  if (process.env.SCENARIO_PAPER_TIMEOUT_MS) process.env.MOCK_EXIT_DELAY_MS = process.env.SCENARIO_PAPER_TIMEOUT_MS;
+  process.env.MOCK_EXIT_DELAY_MS = String(Number(process.env.SCENARIO_PAPER_TIMEOUT_MS || 0) || Number(process.env.MOCK_EXIT_DELAY_MS || 0) || 0);
   // - Error rate: probabilistic failure injection wrapper in this script
   const ERROR_RATE = Number(process.env.SCENARIO_PAPER_ERROR_RATE || '0');
   // - Loop count for high-frequency/stress

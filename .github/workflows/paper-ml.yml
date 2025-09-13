@@ -86,7 +86,8 @@ jobs:
           pnl=$(echo "$DIFF" | jq -r '.diff.realizedPnl // 0')
           win=$(echo "$RPT" | jq -r '.totals.winRate // 0')
           maxdd=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
-          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd"
+          t7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
+          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd Trend7dWin%=$((t7*100))"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
       - name: GitHub comment with perPair
         if: always()
@@ -105,7 +106,7 @@ jobs:
             try { rpt = JSON.parse(fs.readFileSync('report-summary-paper.json','utf8')); } catch {}
             const totals = rpt.totals || {};
             const perPair = rpt.perPair || [];
-            const body = `### Paper ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0}\n\n${mdTable(perPair)}`;
+            const body = `### Paper ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\n${mdTable(perPair)}`;
             async function safe(fn, args){ try { return await fn(args); } catch(e){ core.warning(`comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safe(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });

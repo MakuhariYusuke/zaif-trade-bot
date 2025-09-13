@@ -103,7 +103,8 @@ jobs:
           PNL=$(echo "$RPT" | jq -r '.totals.PnL // 0')
           WIN=$(echo "$RPT" | jq -r '.totals.winRate // 0')
           MAXDD=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
-          EXTRA="PnL=$PNL Win%=$((WIN*100)) MaxDD=$MAXDD"
+          T7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
+          EXTRA="PnL=$PNL Win%=$((WIN*100)) MaxDD=$MAXDD Trend7dWin%=$((T7*100))"
           TEXT="${STATUS}\n${EXTRA}\n\n${{ steps.summarize.outputs.summary }}\n\n(Artifacts available in GitHub)"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\": \"$TEXT\"}" "$SLACK_WEBHOOK_URL" || true
       - name: GitHub Comment
@@ -118,7 +119,7 @@ jobs:
             try { rpt = JSON.parse(fs.readFileSync('report-summary-live.json','utf8')); } catch {}
             const totals = rpt.totals || {};
             const extra = (totals && (totals.PnL!=null || totals.winRate!=null || totals.maxDrawdown!=null))
-              ? `\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0}`
+              ? `\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}`
               : '';
             const body = `### Live Minimal Trade Result\n\n\n\`\`\`\n${summary}\n\`\`\`${extra}`;
             async function safeCall(fn, args){ try { return await fn(args); } catch (e){ core.warning(`Comment failed: ${e.message}`); } }
