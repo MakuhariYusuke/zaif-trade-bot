@@ -1,18 +1,7 @@
 {
-  "ts": 1757785069517,
+  "ts": 1757855695952,
   "pair": "btc_jpy",
-  "side": "ask",
-  "rsi": 60,
-  "sma_short": 10,
-  "sma_long": 20,
-  "price": 100,
-  "qty": 0.001,
-  "pnl": 1.23,
-  "win": true,
-  "balance": {
-    "jpy": 100000,
-    "btc": 0.1
-  },
-  "bestBid": 99,
-  "bestAsk": 101
+  "side": "bid",
+  "price": 1,
+  "qty": 1
 }

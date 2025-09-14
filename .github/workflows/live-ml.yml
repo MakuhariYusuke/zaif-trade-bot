@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: Install deps
@@ -57,17 +58,14 @@ jobs:
         run: npm run ml:search > ml-search-random.json
       - name: Build summary report (live)
         run: npm run report:summary -- --source live
-      - name: Upload artifacts
+      - name: Upload artifacts (slim)
         uses: actions/upload-artifact@v4
         with:
           name: live-ml-artifacts
           path: |
             logs/live/summary-*.json
-            ml-dataset.csv
-            ml-search-results.csv
             ml-search-top.json
             report-ml-random.json
-            report-ml-random.csv
             stats-timeline.svg
             report-summary-live.json
       - name: Slack notify with summary

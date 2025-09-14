@@ -3,15 +3,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Simulate abnormal public API responses: timeout/429/Unauthorized
 
 describe('services/market-service abnormal responses', () => {
-  beforeEach(()=>{ vi.resetModules(); });
+  beforeEach(() => { vi.resetModules(); });
 
   it('fetchMarketOverview tolerates partial failures (e.g., getTrades 429)', async () => {
     vi.mock('../../../src/api/public', () => ({
       getTicker: vi.fn(async () => ({ last: 101 })),
       getOrderBook: vi.fn(async () => ({ bids: [[100,1]], asks: [[102,1]] })),
-      getTrades: vi.fn(async () => { const e:any = new Error('429 Too Many Requests'); e.code = 429; throw e; }),
+      getTrades: vi.fn(async () => { const e = new Error('429 Too Many Requests') as Error & { code?: number }; e.code = 429; throw e; }),
     }));
     const mod = await import('../../../src/services/market-service');
+    const priv: any = { get_info2: async () => ({ success: 1, return: { funds: { jpy: 100000, btc: 1 } } }) };
+    mod.init(priv);
     const res = await mod.fetchMarketOverview('btc_jpy');
     expect(res.ticker?.last).toBe(101);
     expect(res.orderBook.asks[0][0]).toBe(102);

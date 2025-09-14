@@ -8,6 +8,7 @@ import { updateOnFill, clearOpenOrderId, loadPosition, savePosition } from "./po
 import { appendFillPnl } from "../utils/daily-stats";
 import { logFeatureSample } from "../utils/features-logger";
 import { calculateRsi, calculateSma } from "./risk";
+import { sleep } from "../utils/toolkit";
 import { getPriceSeries } from "../utils/price-cache";
 import { getAndResetLastRequestNonceRetries } from "../api/zaif-private";
 import { OrderLifecycleSummary } from "../types/private";
@@ -184,7 +185,7 @@ export async function submitOrderWithRetry(p: SubmitRetryParams): Promise<OrderL
     const improvePct = p.improvePricePct ?? RETRY_PRICE_OFFSET_PCT;
     const CANCEL_MAX = Number(process.env.CANCEL_MAX_RETRIES || 1);
     const BACKOFF = Number(process.env.RETRY_BACKOFF_MS || 300);
-    function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+    // use shared sleep honoring FAST_CI
     const dryRun = process.env.DRY_RUN === '1';
     async function submit(price: number) {
         if (dryRun) return 'DRYRUN';

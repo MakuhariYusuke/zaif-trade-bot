@@ -1,5 +1,6 @@
 import { listActiveOrders, fetchTradeHistory, placeLimitOrder, cancelOrder } from "./market-service";
 import { PrivateApi } from "../types/private";
+import { sleep } from "../utils/toolkit";
 let privExec: PrivateApi | undefined;
 export function init(privateApi: PrivateApi) { privExec = privateApi; }
 import { logExecution, logTradeError, logSignal } from "../utils/trade-logger";
@@ -44,7 +45,7 @@ export interface SubmitParams {
     orderBook?: { bids: [number, number][]; asks: [number, number][] }; // pre snapshot
 }
 
-function rid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+function generateRequestId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 
 // submitTrackedLimit removed in favor of inline logic using placeLimitOrderRaw
 /// to allow better retry handling from caller
@@ -62,8 +63,14 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
     let pollAttempts = 0;
     while (Date.now() - start < maxWaitMs) {
         try {
-            const active = await listActiveOrders(pair);
-            const still = active[String(snap.orderId)];
+            const active: any = await listActiveOrders(pair) as any;
+            // tests may mock as object map or array of orders; support both
+            let still: any = null;
+            if (Array.isArray(active)) {
+                still = active.find((o: any) => o.order_id === snap.orderId);
+            } else if (active && typeof active === 'object') {
+                still = active[String(snap.orderId)] || null;
+            }
             if (!still) {
                 const hist = await fetchTradeHistory(pair, { count: 200 });
                 const windowStart = (snap.submittedAt || 0) - SLIPPAGE_TIME_WINDOW_MS;
@@ -86,7 +93,6 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
                             snap.fills.push({ price: f.price, amount: add, ts: tsMs });
                             const estFillPrice = snap.intendedPrice; // 改善余地: 板 or trade history
                             if (snap.side === 'ask') onExitFill(pair, estFillPrice, add);
-                            if (snap.side === 'ask') onExitFill(pair, estFillPrice, add);
                         }
                     } else if (!usedOrderId && tsMs >= windowStart && tsMs <= windowEnd && f.side === sideChar) {
                         if (filledAmt < snap.amount && !matchedTids.has(f.tid)) {
@@ -96,17 +102,17 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
                             if (targetRemaining <= 0) break;
                             const qtyTol = Math.min(targetRemaining * TOL_QTY_PCT, ABS_QTY_TOL);
                             const qtyOk = f.amount <= targetRemaining + qtyTol; // accept plausible partial up to remaining + tol
-                            if (priceOk && qtyOk) {
+                if (priceOk && qtyOk) {
                                 const addRaw = Math.min(f.amount, targetRemaining);
                                 const add = Math.max(0, addRaw);
                                 if (add > 0) {
                                     matchedQtySoFar += add;
+                    filledAmt += add;
                                     value += add * f.price;
                                     if (!snap.fills) snap.fills = [];
                                     snap.fills.push({ price: f.price, amount: add, ts: tsMs });
                                     matchedTids.add(f.tid);
                                     const estFillPrice = snap.intendedPrice; // 改善余地: 板 or trade history
-                                    if (snap.side === 'ask') onExitFill(pair, estFillPrice, add);
                                     if (snap.side === 'ask') onExitFill(pair, estFillPrice, add);
                                 }
                                 if (matchedQtySoFar >= snap.amount) break;
@@ -203,7 +209,6 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
     const CANCEL_MAX = Number(process.env.CANCEL_MAX_RETRIES || 1);
     const BACKOFF = Number(process.env.RETRY_BACKOFF_MS || 300);
 
-    function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
     const dryRun = process.env.DRY_RUN === '1';
     async function submit(price: number) {
@@ -212,15 +217,16 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
         return String(r.order_id || '');
     }
 
-    async function pollLoop(snapshot: { orderId: string; originalAmount: number; assumedFilled: number; createdAt: number, expectedPx: number }, timeoutMs: number) {
-        let filledQty = 0; 
-        let pollAttempts = 0;
+    async function pollLoop(snapshot: { orderId: string; originalAmount: number; assumedFilled: number; createdAt: number; expectedPx: number }, timeoutMs: number) {
+        let filledQty: number = 0; 
+        let pollAttempts: number = 0;
         let status: 'PENDING' | 'FILLED' = 'PENDING';
         const startTs = Date.now();
-        let avgFillPrice = 0;
-        let repriceAttempts = 0;
+        let avgFillPrice: number = 0;
+        let repriceAttempts: number = 0;
+        let filledCount: number = 0;
         for (let i = 1; ; i++) {
-            const open = (privExec as any).active_orders ? await (privExec as any).active_orders({ currency_pair: p.currency_pair }) : [];
+            const open: any[] = (privExec as any).active_orders ? await (privExec as any).active_orders({ currency_pair: p.currency_pair }) : [];
             const found = open.find((o: any) => o.order_id === snapshot.orderId);
             if (found) {
                 const remaining = Math.max(0, Number(found.amount));
@@ -229,23 +235,26 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
                     const delta = newAssumed - snapshot.assumedFilled;
                     snapshot.assumedFilled = newAssumed; filledQty += delta;
                     avgFillPrice = snapshot.expectedPx; // crude
+                    filledCount++;
                 }
                 if (remaining === 0) { status = 'FILLED'; }
             } else {
-                const hist = (privExec as any).trade_history ? await (privExec as any).trade_history({ currency_pair: p.currency_pair, count: 200 }) : [];
+                const hist: any[] = (privExec as any).trade_history ? await (privExec as any).trade_history({ currency_pair: p.currency_pair, count: 200 }) : [];
                 const qtyById = hist.filter((h: any) => h.order_id === snapshot.orderId).reduce((s: number, h: any) => s + Number(h.amount), 0);
                 if (qtyById >= snapshot.originalAmount) {
                     filledQty = snapshot.originalAmount;
                     status = 'FILLED';
+                    filledCount++;
                 } else if (qtyById > snapshot.assumedFilled) {
                     const delta = qtyById - snapshot.assumedFilled; snapshot.assumedFilled = qtyById; filledQty += delta;
                     const priceAvg = hist.filter((h: any) => h.order_id === snapshot.orderId).reduce((s: number, h: any) => s + Number(h.amount) * Number(h.price), 0) / qtyById || snapshot.expectedPx;
                     avgFillPrice = priceAvg;
+                    filledCount++;
                 }
             }
             // first poll always cross-check trade history (already done for missing case; do for found too)
             if (i === 1) {
-                const hist0 = (privExec as any).trade_history ? await (privExec as any).trade_history({ currency_pair: p.currency_pair, count: 100 }) : [];
+                const hist0: any[] = (privExec as any).trade_history ? await (privExec as any).trade_history({ currency_pair: p.currency_pair, count: 100 }) : [];
                 const qty0 = hist0.filter((h: any) => h.order_id === snapshot.orderId).reduce((s: number, h: any) => s + Number(h.amount), 0);
                 if (qty0 > snapshot.assumedFilled) {
                     const delta0 = qty0 - snapshot.assumedFilled; snapshot.assumedFilled = qty0; filledQty += delta0;
@@ -258,7 +267,7 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
             }
             // Extra trade_history every 2 polls (and always first already done above)
             if (i > 1 && i % 2 === 0 && status !== 'FILLED') {
-                const hist2 = (privExec as any).trade_history ? await (privExec as any).trade_history({ currency_pair: p.currency_pair, count: 100 }) : [];
+                const hist2: any[] = (privExec as any).trade_history ? await (privExec as any).trade_history({ currency_pair: p.currency_pair, count: 100 }) : [];
                 const qty2 = hist2.filter((h: any) => h.order_id === snapshot.orderId).reduce((s: number, h: any) => s + Number(h.amount), 0);
                 if (qty2 >= snapshot.originalAmount) {
                     filledQty = snapshot.originalAmount;
@@ -304,10 +313,10 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
             if (filledQty >= snapshot.originalAmount) status = 'FILLED';
             if (filledQty > 0 && (Date.now() - startTs) >= 500) { 
                 status = 'FILLED'; 
-                return { filledQty, pollAttempts, status, repriceAttempts }; 
+                return { filledQty, pollAttempts, status, repriceAttempts, filledCount }; 
             }
-            if (status === 'FILLED') return { filledQty, pollAttempts, status, repriceAttempts };
-            if (i >= POLL_MIN_CYCLES && Date.now() - startTs >= timeoutMs) return { filledQty, pollAttempts, status, repriceAttempts };
+            if (status === 'FILLED') return { filledQty, pollAttempts, status, repriceAttempts, filledCount };
+            if (i >= POLL_MIN_CYCLES && Date.now() - startTs >= timeoutMs) return { filledQty, pollAttempts, status, repriceAttempts, filledCount };
             await sleep(POLL_INTERVAL_MS);
         }
     }
@@ -331,11 +340,12 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
     let cancelRetryCount = 0; 
     let pollRetryCount = poll1.pollAttempts; 
     let filledQty = poll1.filledQty; 
-    let avgFillPrice = filledQty > 0 ? p.limitPrice : 0; 
+    let avgFillPrice = poll1.avgFillPrice ?? (filledQty > 0 ? p.limitPrice : 0); 
     let nonceRetryCount = nonce1; 
     let improvedPrice = p.limitPrice; 
     let secondStats: any = null; 
     let repriceAttemptsTotal = poll1.repriceAttempts || 0;
+    let filledCount = poll1.filledCount || (filledQty > 0 ? 1 : 0);
     if (poll1.status !== 'FILLED') {
         // cancel & resubmit improved
         submitRetryCount = 1;
@@ -352,13 +362,18 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
         secondStats = await pollLoop(snapshot2, retryTimeout);
         pollRetryCount += secondStats.pollAttempts;
         repriceAttemptsTotal += secondStats.repriceAttempts || 0;
-        if (secondStats.filledQty > 0) { filledQty = secondStats.filledQty; avgFillPrice = improvedPrice; }
+        if (secondStats.filledQty > 0) { filledQty = secondStats.filledQty; avgFillPrice = secondStats.avgFillPrice; }
+        if (secondStats.filledCount) { filledCount += secondStats.filledCount; }
     }
     const durationMs = Date.now() - snapshot1.createdAt;
     const slippagePct = filledQty > 0 ? (avgFillPrice - p.limitPrice) / p.limitPrice : 0;
     const totalRetryCount = submitRetryCount + pollRetryCount + cancelRetryCount + nonceRetryCount;
-    const summary = { requestId, side: actionSide as any, intendedQty: p.amount, filledQty, avgExpectedPrice: p.limitPrice, avgFillPrice, slippagePct, durationMs, submitRetryCount, pollRetryCount, cancelRetryCount, nonceRetryCount, totalRetryCount, filledCount: filledQty > 0 ? 1 : 0, repriceAttempts: repriceAttemptsTotal } as unknown as OrderLifecycleSummary;
-    logInfo('[ORDER]', { requestId, orderId: submitOrderId, side: actionSide, filledQty, totalRetryCount, pollRetryCount, submitRetryCount, cancelRetryCount, nonceRetryCount, repriceAttempts: repriceAttemptsTotal, durationMs });
+    // Note: avgFillPrice may not always reflect the actual fill price from the exchange; in dry-run or fallback cases, it may be set to the intended price or an estimated value.
+    // Please refer to the implementation for details on how avgFillPrice is determined.
+    // Normalize filledCount to 0/1 for lifecycle-level count
+    const filledCountNorm = filledQty > 0 ? 1 : 0;
+    const summary = { requestId, side: actionSide as any, intendedQty: p.amount, filledQty, avgExpectedPrice: p.limitPrice, avgFillPrice, slippagePct, durationMs, submitRetryCount, pollRetryCount, cancelRetryCount, nonceRetryCount, totalRetryCount, filledCount: filledCountNorm, repriceAttempts: repriceAttemptsTotal } as unknown as OrderLifecycleSummary;
+    logInfo('[ORDER]', { requestId, orderId: submitOrderId, side: actionSide, filledQty, totalRetryCount, pollRetryCount, submitRetryCount, cancelRetryCount, nonceRetryCount, repriceAttempts: repriceAttemptsTotal, durationMs, filledCount });
     return summary;
 }
 
@@ -383,7 +398,7 @@ function getToday() {
 }
 
 /** 
- * Incremental realized PnL for exit fills (long-only assumption for now) 
+ * Incremental realized PnL for exit fills ((currently assumes long-only; extend for short/other strategies as needed)) 
  * @param {string} pair Currency pair
  * @param {number} fillPrice Fill price
  * @param {number} fillQty Fill quantity

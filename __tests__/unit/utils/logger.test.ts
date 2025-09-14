@@ -34,4 +34,15 @@ describe('utils/logger', () => {
     expect(obj.message).toBe('hello');
     expect(obj.reqId).toBe('abc');
   });
+
+  it('suppresses non-error logs in TEST_MODE', ()=>{
+    process.env.LOG_LEVEL = 'DEBUG';
+    process.env.TEST_MODE = '1';
+    logInfo('info');
+    logWarn('warn');
+    logError('err');
+    expect(logs.length).toBe(0);
+    expect(warns.length).toBe(0);
+    expect(errs.length).toBeGreaterThan(0);
+  });
 });

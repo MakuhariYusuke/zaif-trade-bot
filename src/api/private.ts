@@ -133,7 +133,11 @@ class ZaifRealPrivateApi implements PrivateApi {
     throw lastError || new Error("Private API call failed");
   }
 
-  /** Simple health check using get_info2 (Result) */
+  /**
+   * Performs a health check using the get_info2 API.
+   * @returns {Promise<Result<GetInfo2Response>>} Result object containing API response or error.
+   * @throws Does not throw; returns Result with error info on failure.
+   */
   async healthCheck(): Promise<Result<GetInfo2Response>> {
     const method = "get_info2";
     const nonce = createFlexibleNonce();
@@ -154,6 +158,11 @@ class ZaifRealPrivateApi implements PrivateApi {
     } catch (e: any) { return err('NETWORK', e?.message || 'error', e); }
   }
 
+  /**
+   * Tests get_info2 API and returns a Result.
+   * @returns {Promise<Result<GetInfo2Response>>} Result object containing API response or error.
+   * @throws Does not throw; returns Result with error info on failure.
+   */
   async testGetInfo2(): Promise<Result<GetInfo2Response>> {
     try {
       const r = await this.call<GetInfo2Response>("get_info2");
@@ -163,8 +172,19 @@ class ZaifRealPrivateApi implements PrivateApi {
     }
   }
 
-  // Interface compatibility wrappers
+  /**
+   * Gets account info (funds, rights, open orders, server time).
+   * @returns {Promise<GetInfo2Response>} API response object.
+   * @throws Throws error if API call fails.
+   */
   async get_info2(): Promise<GetInfo2Response> { return this.call<GetInfo2Response>("get_info2"); }
+
+  /**
+   * Gets active orders for the account.
+   * @param {any} [params] Optional parameters (e.g., currency_pair).
+   * @returns {Promise<ActiveOrder[]>} Array of active orders.
+   * @throws Throws error if API call fails.
+   */
   async active_orders(params?: any): Promise<ActiveOrder[]> {
     const raw: any = await this.call("active_orders", params || {});
     const arr: ActiveOrder[] = [];
@@ -175,15 +195,36 @@ class ZaifRealPrivateApi implements PrivateApi {
     }
     return arr;
   }
+
+  /**
+   * Gets trade history records for the account.
+   * @param {any} [params] Optional parameters.
+   * @returns {Promise<TradeHistoryRecord[]>} Array of trade history records.
+   * @throws Throws error if API call fails.
+   */
   async trade_history(params?: any): Promise<TradeHistoryRecord[]> {
     const raw: any = await this.call("trade_history", params || {});
     return (raw?.return || []).map((t: any) => ({ tid: t.tid, order_id: t.order_id?.toString(), side: t.trade_type, price: t.price, amount: t.amount, timestamp: t.date }));
   }
+
+  /**
+   * Places a trade order.
+   * @param {any} params Trade parameters (currency_pair, action, price, amount, etc.).
+   * @returns {Promise<TradeResult>} Trade result object.
+   * @throws Throws error if API call fails.
+   */
   async trade(params: any): Promise<TradeResult> {
     const r: any = await this.call("trade", params);
-    const id = r?.return?.order_id ?? r?.order_id ?? 0;
-    return { success: 1, return: { order_id: String(id) } };
+    const id = r?.return?.order_id ?? r?.order_id;
+    return { success: 1, return: { order_id: id != null ? String(id) : "" } };
   }
+
+  /**
+   * Cancels an order.
+   * @param {any} params Cancel parameters ({ order_id }).
+   * @returns {Promise<CancelResult>} Cancel result object.
+   * @throws Throws error if API call fails.
+   */
   async cancel_order(params: any): Promise<CancelResult> {
     const r: any = await this.call("cancel_order", params);
     const id = r?.return?.order_id ?? params.order_id;
@@ -191,17 +232,50 @@ class ZaifRealPrivateApi implements PrivateApi {
   }
 
   // Compatibility wrappers (camelCase legacy)
+  /**
+   * Gets account balance (alias for get_info2).
+   * @returns {Promise<GetInfo2Response>}
+   */
   async getBalance() { return this.get_info2(); }
+
+  /**
+   * Gets active orders (camelCase alias).
+   * @param {string} [currency_pair]
+   * @returns {Promise<ActiveOrder[]>}
+   */
   async activeOrders(currency_pair?: string) { return this.active_orders(currency_pair ? { currency_pair } : {}); }
+
+  /**
+   * Cancels an order (camelCase alias).
+   * @param {any} params
+   * @returns {Promise<CancelResult>}
+   */
   async cancelOrder(params: any) { return this.cancel_order(params); }
+
+  /**
+   * Gets trade history (camelCase alias).
+   * @param {any} params
+   * @returns {Promise<TradeHistoryRecord[]>}
+   */
   async tradeHistory(params: any) { return this.trade_history(params); }
 }
 // Remove legacy-specific wrappers (legacy methods deleted)
 
-// Simple functional wrappers (optional)
+/**
+ * Creates a PrivateApi instance.
+ * Returns a real API client by default, or a mock client if USE_PRIVATE_MOCK=1 is set in environment variables.
+ * Relevant environment variables:
+ *   - USE_PRIVATE_MOCK: If '1', returns a mock implementation.
+ *   - ZAIF_API_KEY, ZAIF_API_SECRET: Credentials for real API.
+ *   - ZAIF_NONCE_STORE_PATH: Optional path for nonce persistence.
+ *   - ZAIF_API_TIMEOUT_MS: Optional request timeout in milliseconds.
+ * @returns {PrivateApi} Real or mock PrivateApi instance.
+ */
 export function createPrivateApi(): PrivateApi {
   if (process.env.USE_PRIVATE_MOCK === '1') { console.log('[MOCK] Private API adapter enabled'); return createPrivateMock(); }
   const key = process.env.ZAIF_API_KEY || '';
   const secret = process.env.ZAIF_API_SECRET || '';
-  return new ZaifRealPrivateApi({ key, secret });
+  const nonceStorePath = process.env.ZAIF_NONCE_STORE_PATH;
+  const timeoutMs = process.env.ZAIF_API_TIMEOUT_MS ? Number(process.env.ZAIF_API_TIMEOUT_MS) : undefined;
+  return new ZaifRealPrivateApi({ key, secret, nonceStorePath, timeoutMs });
 }
