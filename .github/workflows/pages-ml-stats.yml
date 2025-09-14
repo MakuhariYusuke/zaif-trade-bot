@@ -82,7 +82,7 @@ jobs:
             for f in $(ls public/stats-*.svg 2>/dev/null); do b=$(basename "$f"); echo "<li><a href=\"$b\">$b</a></li>"; done
             echo '</ul>'
             echo '<h3>ML</h3><ul>'
-            for f in $(ls public/ml-* 2>/dev/null) public/report-ml-*.json 2>/dev/null; do b=$(basename "$f"); [ -e "$f" ] && echo "<li><a href=\"$b\">$b</a></li>"; done
+            for f in public/ml-* public/report-ml-*.json; do b=$(basename "$f"); [ -e "$f" ] && echo "<li><a href=\"$b\">$b</a></li>"; done
             echo '</ul>'
             echo '<h2>History</h2><ul>'
             for d in $(ls -1 public/history 2>/dev/null); do echo "<li><a href=\"history/$d/\">$d</a></li>"; done
