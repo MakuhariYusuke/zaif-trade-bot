@@ -47,9 +47,11 @@ function ts(): string { return new Date().toISOString(); }
  * @param {string} message - The main log message.
  * @param {any[]} args - Additional arguments to include in the log.
  */
-function emit(level: Level, message: string, args: any[]) {
-  // Suppress lower levels when in TEST_MODE
-  if (process.env.TEST_MODE === '1' && levelValue(level) < 40) return;
+function emit(level: Level, message: string, ...args: any[]) {
+  // Suppress lower levels only when in TEST_MODE with verbose logging (DEBUG/TRACE or unset)
+  const lvlEnv = (process.env.LOG_LEVEL || '').toUpperCase();
+  const verbose = lvlEnv === 'DEBUG' || lvlEnv === 'TRACE' || !lvlEnv;
+  if (process.env.TEST_MODE === '1' && verbose && levelValue(level) < 40) return;
   if (levelValue(level) < currentThreshold()) return;
   const json = process.env.LOG_JSON === "1";
   if (json) {
@@ -57,7 +59,7 @@ function emit(level: Level, message: string, args: any[]) {
       ts: ts(),
       level,
       message,
-      data: args && args.length ? args : [],
+      data: args.length ? args : [],
       ...context
     };
     const line = JSON.stringify(entry);

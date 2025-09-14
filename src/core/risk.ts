@@ -1,12 +1,13 @@
 import fs from "fs";
 import path from "path";
-import { logInfo, logError } from "../utils/logger";
+import { logInfo, logError, logWarn } from "../utils/logger";
+import { getMaxHoldSec } from "../utils/toolkit";
 import { updatePositionFields } from "./position-store";
 
 export interface RiskConfig { stopLossPct: number; takeProfitPct: number; positionPct: number; smaPeriod: number; positionsFile: string; trailTriggerPct: number; trailStopPct: number; dcaStepPct: number; maxPositions: number; maxDcaPerPair: number; minTradeSize: number; maxSlippagePct: number; indicatorIntervalSec: number; }
 export type PositionSide = "long" | "short";
 export interface Position { id: string; pair: string; side: PositionSide; entryPrice: number; amount: number; timestamp: number; highestPrice?: number; dcaCount?: number; openOrderIds?: number[]; }
-export interface ExitSignal { position: Position; reason: "STOP_LOSS" | "TAKE_PROFIT" | "MA_BREAK" | "TRAIL_STOP" | "RSI_EXIT"; targetPrice: number; }
+export interface ExitSignal { position: Position; reason: "STOP_LOSS" | "TAKE_PROFIT" | "MA_BREAK" | "TRAIL_STOP" | "RSI_EXIT" | "TIME_LIMIT"; targetPrice: number; }
 export interface TrailResult { signal?: "EXIT_TRAIL"; reason?: any }
 
 /**
@@ -123,6 +124,7 @@ export function positionSizeFromBalance(jpyBalance: number, price: number, cfg: 
 }
 export function evaluateExitConditions(positions: Position[], currentPrice: number, sma: number | null, cfg: RiskConfig, rsi?: number | null): ExitSignal[] {
     const signals: ExitSignal[] = [];
+    const maxHold = getMaxHoldSec();
     function resolveRsiOver(pair: string): number {
         const base = pair.split('_')[0]?.toUpperCase();
         const key = `${base}_SELL_RSI_OVERBOUGHT`;
@@ -138,6 +140,11 @@ export function evaluateExitConditions(positions: Position[], currentPrice: numb
         return 30;
     }
     for (const pos of positions) {
+        if (maxHold != null && (Date.now() - pos.timestamp) >= maxHold * 1000) {
+            logWarn(`[TIME_LIMIT] force exit id=${pos.id} pair=${pos.pair} holdSec=${Math.floor((Date.now()-pos.timestamp)/1000)}>=${maxHold}`);
+            signals.push({ position: pos, reason: 'TIME_LIMIT', targetPrice: currentPrice });
+            continue;
+        }
         if (pos.side === 'long') {
             if (pos.highestPrice == null || currentPrice > pos.highestPrice) pos.highestPrice = currentPrice;
             if (typeof pos.highestPrice === 'number' && pos.highestPrice >= pos.entryPrice * (1 + cfg.trailTriggerPct)) {

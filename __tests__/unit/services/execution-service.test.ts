@@ -26,7 +26,7 @@ describe('services/execution-service.onExitFill', () => {
     await new Promise(r => setTimeout(r, 300));
 
   // exit half at 110
-  onExitFill(pair, 110, 0.4);
+  await onExitFill(pair, 110, 0.4);
   await new Promise(r => setTimeout(r, 500));
 
     // stats check
@@ -36,12 +36,13 @@ describe('services/execution-service.onExitFill', () => {
     expect((agg.filledCount||0)).toBeGreaterThan(0);
 
     // position reduced but avgPrice preserved until zero
-  const pos = loadPosition(pair)!;
+  const pos = loadPosition(pair);
+    if (!pos) throw new Error(`Position for pair "${pair}" not found after exit fill`);
     expect(pos.qty).toBeCloseTo(1 - 0.4, 10);
     expect(pos.avgPrice).toBe(100);
 
-    // exit rest -> position cleared
-  onExitFill(pair, 90, 0.6);
+  // exit rest -> position cleared
+  await onExitFill(pair, 90, 0.6);
   await new Promise(r => setTimeout(r, 500));
     const pos2 = loadPosition(pair)!;
     expect(pos2.qty).toBe(0);
