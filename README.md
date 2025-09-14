@@ -463,43 +463,42 @@ Trailing Stop:
 
 ***
 
-## 最小ライブ検証（自己責任）
+## 最小ライブ検証（自己責任）/ Live Minimal（DRY_RUN統合）
 
-実際の発注→直ちに取消の最小ライブ検証スクリプトを用意しています（DRY_RUN=0 必須）。少額で慎重に実施してください。
+発注→即キャンセルの最小検証を、単一スクリプト `live:minimal` に統合しました。DRY_RUN=1 ならモック/ドライラン、DRY_RUN=0 なら実発注（要API鍵）で動きます。少額で慎重に実施してください。
 
-実行コマンド: `npm run test:min-live`
+実行コマンド: `npm run live:minimal`
 
 使用する環境変数:
 - EXCHANGE: 取引所（例: coincheck, zaif）
 - TRADE_FLOW: BUY_ONLY | SELL_ONLY | BUY_SELL | SELL_BUY
-- TEST_FLOW_QTY: 発注数量
-- TEST_FLOW_RATE: 価格（未指定なら板の最優先を利用）
-- DRY_RUN: 0 固定（1 の場合は実行エラー）
+- TEST_FLOW_QTY: 発注数量（DRY_RUN=1 の場合は未設定時 0.002 を既定値として使用）
+- TEST_FLOW_RATE: 価格（未指定なら板の最優先を利用）。`ORDER_TYPE=market` の場合は未指定でOK
+- ORDER_TYPE: `market` または `limit`（省略可）
+- DRY_RUN: `0`（実発注）/ `1`（ドライラン）
 - SAFETY_MODE: 1 で残高の10%以内に数量をクランプ
  - SAFETY_CLAMP_PCT: クランプ割合（例: 0.1=10%）
  - EXPOSURE_WARN_PCT: 露出警告閾値（例: 0.05=5%）
 
-PowerShell 実行例:
+PowerShell 実行例（DRY_RUN=0 実発注・即キャンセル）:
 
 ```powershell
-$env:EXCHANGE="coincheck"
-$env:TRADE_FLOW="BUY_ONLY"
-$env:TEST_FLOW_QTY="1"        # 1 XRP
-$env:TEST_FLOW_RATE="490"     # 価格近辺
-$env:DRY_RUN="0"
-$env:SAFETY_MODE="1"
-npm run test:min-live
+$env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="1"; $env:TEST_FLOW_RATE="490"; $env:DRY_RUN="0"; $env:SAFETY_MODE="1"; npm run live:minimal
 ```
 
+DRY_RUN=1（ドライラン/モック）:
+
 ```powershell
-$env:EXCHANGE="coincheck"
-$env:TRADE_FLOW="SELL_ONLY"
-$env:TEST_FLOW_QTY="0.01"     # 0.01 ETH
-$env:TEST_FLOW_RATE="680000"
-$env:DRY_RUN="0"
-$env:SAFETY_MODE="1"
-npm run test:min-live
+$env:USE_PRIVATE_MOCK="1"; $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="0.002"; $env:DRY_RUN="1"; npm run live:minimal
 ```
+
+通知に Top 3（ML random）の表を追加しました（Slack/GitHub コメント）。例:
+
+| # | pair | Win% | PnL | Params |
+| --- | --- | --- | --- | --- |
+| 1 | btc_jpy | 62 | 12.3 | S=9,L=26,RSI=70,30 |
+| 2 | eth_jpy | 59 | 10.8 | S=11,L=29,RSI=65,28 |
+| 3 | xrp_jpy | 57 | 9.4 | S=7,L=21,RSI=60,25 |
 
 注: Live最小トレード検証は features ログ（CSV/JSON）も保存します。収集したデータは `npm run ml:export`（src/tools/ml/ml-export.ts）でデータセット化し、`npm run ml:search`（src/tools/ml/ml-search.ts）で簡易探索が可能です。
 

@@ -27,4 +27,15 @@ describe('utils/price-cache', () => {
     const series = mod.getPriceSeries(2);
     expect(series).toEqual([110, 100]);
   });
+
+  it('enforces MAX_ENTRIES by trimming oldest', async ()=>{
+    const mod = await import('../../../src/utils/price-cache');
+    const base = Date.now();
+    const samples = Array.from({ length: 20 }, (_,i)=> ({ ts: base - (20-i)*1000, price: 100 + i }));
+    mod.appendPriceSamples(samples);
+    const cache = JSON.parse(fs.readFileSync(file,'utf8'));
+    expect(cache.length).toBe(10);
+    const series = mod.getPriceSeries(3);
+    expect(series[0]).toBe(100 + 19);
+  });
 });

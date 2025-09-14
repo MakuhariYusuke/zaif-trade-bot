@@ -1,6 +1,5 @@
 import { describe, it, beforeEach, vi, expect, afterEach } from 'vitest';
 import path from 'path';
-import fs from 'fs';
 
 // Spy logger
 const spies = { warn: vi.fn() };
@@ -11,8 +10,14 @@ vi.mock('../../../src/utils/logger', () => ({
 }));
 
 // Mocks
-const calls: any = { trade: [], cancel: [], hist: [], get_info2: [] };
-const mockApi: any = {
+interface MockApi {
+  trade: (p: any) => Promise<{ return: { order_id: string } }>;
+  cancel_order: (p: any) => Promise<{ return: { order_id: string } }>;
+  trade_history: () => Promise<any[]>;
+  get_info2: () => Promise<{ success: number; return: { funds: { jpy: number; eth: number } } }>;
+}
+const calls: { trade: any[]; cancel: any[]; hist: any[]; get_info2: any[] } = { trade: [], cancel: [], hist: [], get_info2: [] };
+const mockApi: MockApi = {
   trade: vi.fn(async (p: any) => { calls.trade.push(p); return { return: { order_id: 'OID2' } }; }),
   cancel_order: vi.fn(async (p: any) => { calls.cancel.push(p); return { return: { order_id: p.order_id } }; }),
   trade_history: vi.fn(async () => { calls.hist.push(1); return []; }),
@@ -26,14 +31,12 @@ vi.mock('../../../src/api/public', () => ({
 
 describe('live minimal safety warn', () => {
   const envBk = { ...process.env };
-  const TMP = path.resolve(process.cwd(), 'tmp-live-min');
+  const TMP = path.resolve(process.cwd(), 'tmp-live-min-warn');
   beforeEach(()=>{
     vi.resetModules();
     Object.keys(calls).forEach(k=> (calls as any)[k] = []);
     spies.warn.mockClear();
     process.env = { ...envBk };
-    if (fs.existsSync(TMP)) fs.rmSync(TMP, { recursive: true, force: true });
-    fs.mkdirSync(TMP, { recursive: true });
     process.env.POSITION_STORE_DIR = path.join(TMP, 'positions');
     process.env.STATS_DIR = path.join(TMP, 'logs');
     process.env.FEATURES_LOG_DIR = path.join(TMP, 'features');
@@ -41,24 +44,30 @@ describe('live minimal safety warn', () => {
     process.env.DRY_RUN = '0';
     process.env.PAIR = 'eth_jpy';
     process.env.TRADE_FLOW = 'SELL_ONLY';
-    // qty above 10% of base (eth=10) -> 2.0 will be clamped to 1.0
-    process.env.TEST_FLOW_QTY = '2.0';
+    process.env.TEST_FLOW_QTY = '2';
     process.env.ORDER_TYPE = 'limit';
     process.env.TEST_FLOW_RATE = '1000';
-    // Enable safety clamp and keep warn threshold at default 5%
     process.env.SAFETY_MODE = '1';
+    process.env.EXPOSURE_WARN_PCT = '0.05';
   });
   afterEach(()=>{ process.env = { ...envBk }; });
 
   it('emits WARN when exposure exceeds threshold (after clamp still >5%)', async () => {
     await import('../../../src/tools/live/test-minimal-live');
-    // small wait for async
-    await new Promise(r=>setTimeout(r, 10));
+    // Wait until trade and cancel have been called, or timeout after 1s
+    await new Promise((resolve, reject) => {
+      const start = Date.now();
+      (function waitForCalls() {
+        if (calls.trade.length > 0 && calls.cancel.length > 0) return resolve(undefined);
+        if (Date.now() - start > 1000) return reject(new Error('Timeout waiting for trade/cancel calls'));
+        setTimeout(waitForCalls, 10);
+      })();
+    });
     expect(calls.trade.length).toBeGreaterThan(0);
     expect(calls.cancel.length).toBeGreaterThan(0);
-  // warn should be emitted for ask exposure (10% > 5%) and safety clamp message should appear
-  expect(spies.warn).toHaveBeenCalled();
-  const msgs = spies.warn.mock.calls.map((c:any[])=> c.join(' '));
-  expect(msgs.some((m:string)=> m.includes('[SAFETY] amount clamped'))).toBe(true);
+    // warn should be emitted for ask exposure (10% > 5%) and safety clamp message should appear
+    expect(spies.warn).toHaveBeenCalled();
+    const msgs = spies.warn.mock.calls.map((c:any[])=> c.join(' '));
+    expect(msgs.some((m:string)=> m.includes('[SAFETY] amount clamped'))).toBe(true);
   });
 });

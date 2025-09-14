@@ -1,4 +1,8 @@
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+// lazy requires to avoid worker context issues
+const _fs = require('fs') as typeof import('fs');
+const _path = require('path') as typeof import('path');
+import { spawnSync } from 'child_process';
 import { runMlSimulate } from '../../utils/toolkit';
 
 function* range(start: number, end: number, step: number){ for (let v=start; v<=end; v+=step) yield v; }
@@ -75,50 +79,101 @@ function runEarlyStopForPair(pair: string, patience: number, maxSteps: number){
 }
 
 const isTs = __filename.endsWith('.ts');
+// Only treat as our own worker when workerData.pair is provided (avoid interfering with Vitest/Tinypool workers)
+const isOurWorker = !isMainThread && !!(workerData && (workerData as any).pair);
 
-if (!isMainThread){
-  const pair: string = workerData.pair;
+if (isOurWorker){
+  const pair: string = (workerData as any).pair;
   const mode = (process.env.ML_SEARCH_MODE || 'grid').toLowerCase();
   let results: any[] = [];
   if (mode === 'random') results = runRandomForPair(pair, Number(process.env.ML_RANDOM_STEPS || 100));
   else if (mode === 'earlystop') results = runEarlyStopForPair(pair, Number(process.env.ML_EARLY_PATIENCE || 10), Number(process.env.ML_EARLY_MAX_STEPS || 200));
   else results = runGridForPair(pair);
-  parentPort!.postMessage(results);
+  if (parentPort) parentPort.postMessage(results);
 } else {
-  (async ()=>{
-    const pairs = (process.env.PAIRS || process.env.PAIR || 'btc_jpy').split(',').map(s=>s.trim()).filter(Boolean);
-    const results: any[] = [];
-    const useWorkers = !isTs && !process.env.ML_NO_WORKERS;
+  // --- dataset caching control ---
+  const args = process.argv.slice(2);
+  const hasFlag = (f: string) => args.includes(f);
+  const useCache = hasFlag('--use-cache') && !hasFlag('--no-cache');
+  const datasetPath = _path.resolve(process.cwd(), 'ml-dataset.csv');
+  const outDir = _path.dirname(datasetPath);
+  if (useCache && _fs.existsSync(datasetPath)) {
+    console.log('[CACHE] using existing dataset');
+  } else if (!useCache) {
+    // force regenerate
+    const mlExp = _path.resolve(process.cwd(), 'src', 'tools', 'ml', 'ml-export.ts');
+    const r = spawnSync('node', ['-e', `require('ts-node').register(); require('${mlExp.replace(/\\/g,'/')}');`], { encoding: 'utf8', env: { ...process.env, QUIET: process.env.QUIET ?? '1' } });
+    if (r.status !== 0) process.stderr.write(r.stderr || '');
+  } else {
+    // use-cache requested but file missing -> generate once
+    const mlExp = _path.resolve(process.cwd(), 'src', 'tools', 'ml', 'ml-export.ts');
+    const r = spawnSync('node', ['-e', `require('ts-node').register(); require('${mlExp.replace(/\\/g,'/')}');`], { encoding: 'utf8', env: { ...process.env, QUIET: process.env.QUIET ?? '1' } });
+    if (r.status !== 0) process.stderr.write(r.stderr || '');
+  }
+  const pairs = (process.env.PAIRS || process.env.PAIR || 'btc_jpy').split(',').map(s=>s.trim()).filter(Boolean);
+  const results: any[] = [];
+  const useWorkers = !isTs && !process.env.ML_NO_WORKERS;
   if (useWorkers){
+    (async ()=>{
       const maxWorkers = Number(process.env.ML_MAX_WORKERS || 2);
       const queue = [...pairs];
       const workers: Worker[] = [];
       async function startNext(){
         if (!queue.length) return;
         const pair = queue.shift()!;
-    const w = new Worker(__filename, { workerData: { pair } });
+        const w = new Worker(__filename, { workerData: { pair } });
         workers.push(w);
         w.on('message', (res: any[]) => { results.push(...res); });
         w.on('error', ()=>{});
         w.on('exit', async ()=>{ await startNext(); });
       }
       for (let i=0;i<Math.min(maxWorkers, queue.length);i++) await startNext();
-      await new Promise<void>(resolve => {
-        const check = setInterval(()=>{
-          if (workers.every(w=> w.threadId === -1)) { clearInterval(check); resolve(); }
-        }, 200);
-      });
-    } else {
+      await Promise.allSettled(workers.map(w => new Promise<void>(res => w.once('exit', ()=>res()))));
+      // After async worker completion, write outputs
+      const outCsvPath = _path.resolve(outDir, 'ml-search-results.csv');
+      try { const d = _path.dirname(outCsvPath); if (!_fs.existsSync(d)) _fs.mkdirSync(d, { recursive: true }); } catch {}
+      const csv = [
+        'pair,SELL_RSI_OVERBOUGHT,BUY_RSI_OVERSOLD,SMA_SHORT,SMA_LONG,winRate,pnl,trades,avgHoldSec,sharpe,sortino,calmar',
+        ...results.map(r=> [
+          r.pair,
+          r.SELL_RSI_OVERBOUGHT,
+          r.BUY_RSI_OVERSOLD,
+          r.SMA_SHORT,
+          r.SMA_LONG,
+          r.winRate,
+          r.pnl,
+          r.trades,
+          r.avgHoldSec,
+          r.sharpe ?? '',
+          r.sortino ?? '',
+          r.calmar ?? ''
+        ].join(','))
+      ].join('\n');
+      _fs.writeFileSync(outCsvPath, csv);
+      const top = results.sort((a,b)=> (b.winRate - a.winRate) || (b.pnl - a.pnl) || ((b.calmar||0) - (a.calmar||0)) || ((b.sharpe||0) - (a.sharpe||0))).slice(0,5);
+  const topJsonPath = _path.resolve(outDir, 'ml-search-top.json');
+  try { const d = _path.dirname(topJsonPath); if (!_fs.existsSync(d)) _fs.mkdirSync(d, { recursive: true }); } catch {}
+      _fs.writeFileSync(topJsonPath, JSON.stringify({ top }, null, 2));
       const mode = (process.env.ML_SEARCH_MODE || 'grid').toLowerCase();
-      for (const pair of pairs){
-        if (mode === 'random') results.push(...runRandomForPair(pair, Number(process.env.ML_RANDOM_STEPS || 100)));
-        else if (mode === 'earlystop') results.push(...runEarlyStopForPair(pair, Number(process.env.ML_EARLY_PATIENCE || 10), Number(process.env.ML_EARLY_MAX_STEPS || 200)));
-        else results.push(...runGridForPair(pair));
-      }
+      const report = { mode, top };
+      _fs.writeFileSync(_path.resolve(outDir, `report-ml-${mode}.json`), JSON.stringify(report, null, 2));
+      _fs.writeFileSync(_path.resolve(outDir, `report-ml-${mode}.csv`), [
+        'pair,SELL_RSI_OVERBOUGHT,BUY_RSI_OVERSOLD,SMA_SHORT,SMA_LONG,winRate,pnl,trades,avgHoldSec,sharpe,sortino,calmar',
+        ...top.map(r=> [r.pair,r.SELL_RSI_OVERBOUGHT,r.BUY_RSI_OVERSOLD,r.SMA_SHORT,r.SMA_LONG,r.winRate,r.pnl,r.trades,r.avgHoldSec,r.sharpe??'',r.sortino??'',r.calmar??''].join(','))
+      ].join('\n'));
+      console.log(JSON.stringify(report));
+    })();
+  } else {
+    const mode = (process.env.ML_SEARCH_MODE || 'grid').toLowerCase();
+    for (const pair of pairs){
+      if (mode === 'random') results.push(...runRandomForPair(pair, Number(process.env.ML_RANDOM_STEPS || 100)));
+      else if (mode === 'earlystop') results.push(...runEarlyStopForPair(pair, Number(process.env.ML_EARLY_PATIENCE || 10), Number(process.env.ML_EARLY_MAX_STEPS || 200)));
+      else results.push(...runGridForPair(pair));
     }
-    const fs = await import('fs');
+  const outCsvPath = _path.resolve(outDir, 'ml-search-results.csv');
+  try { const d = _path.dirname(outCsvPath); if (!_fs.existsSync(d)) _fs.mkdirSync(d, { recursive: true }); } catch {}
     const csv = [
-      'pair,SELL_RSI_OVERBOUGHT,BUY_RSI_OVERSOLD,SMA_SHORT,SMA_LONG,winRate,pnl,trades,avgHoldSec',
+      'pair,SELL_RSI_OVERBOUGHT,BUY_RSI_OVERSOLD,SMA_SHORT,SMA_LONG,winRate,pnl,trades,avgHoldSec,sharpe,sortino,calmar',
       ...results.map(r=> [
         r.pair,
         r.SELL_RSI_OVERBOUGHT,
@@ -128,20 +183,30 @@ if (!isMainThread){
         r.winRate,
         r.pnl,
         r.trades,
-        r.avgHoldSec
+        r.avgHoldSec,
+        r.sharpe ?? '',
+        r.sortino ?? '',
+        r.calmar ?? ''
       ].join(','))
     ].join('\n');
-    fs.writeFileSync('ml-search-results.csv', csv);
-    const top = results.sort((a,b)=> b.winRate - a.winRate || b.pnl - a.pnl).slice(0,5);
-    fs.writeFileSync('ml-search-top.json', JSON.stringify({ top }, null, 2));
+    _fs.writeFileSync(outCsvPath, csv);
+    if (process.env.VITEST_WORKER_ID) {
+      console.log(JSON.stringify({ out: outCsvPath }));
+    }
+    const top = results.sort((a,b)=> (b.winRate - a.winRate) || (b.pnl - a.pnl) || ((b.calmar||0) - (a.calmar||0)) || ((b.sharpe||0) - (a.sharpe||0))).slice(0,5);
+  const topJsonPath = _path.resolve(outDir, 'ml-search-top.json');
+  try { const d = _path.dirname(topJsonPath); if (!_fs.existsSync(d)) _fs.mkdirSync(d, { recursive: true }); } catch {}
+    _fs.writeFileSync(topJsonPath, JSON.stringify({ top }, null, 2));
+    if (process.env.VITEST_WORKER_ID) {
+      console.log(JSON.stringify({ topPath: topJsonPath }));
+    }
     // additional report artifact per mode
-    const mode = (process.env.ML_SEARCH_MODE || 'grid').toLowerCase();
     const report = { mode, top };
-    fs.writeFileSync(`report-ml-${mode}.json`, JSON.stringify(report, null, 2));
-    fs.writeFileSync(`report-ml-${mode}.csv`, [
-      'pair,SELL_RSI_OVERBOUGHT,BUY_RSI_OVERSOLD,SMA_SHORT,SMA_LONG,winRate,pnl',
-      ...top.map(r=> [r.pair,r.SELL_RSI_OVERBOUGHT,r.BUY_RSI_OVERSOLD,r.SMA_SHORT,r.SMA_LONG,r.winRate,r.pnl].join(','))
+    _fs.writeFileSync(_path.resolve(outDir, `report-ml-${mode}.json`), JSON.stringify(report, null, 2));
+    _fs.writeFileSync(_path.resolve(outDir, `report-ml-${mode}.csv`), [
+      'pair,SELL_RSI_OVERBOUGHT,BUY_RSI_OVERSOLD,SMA_SHORT,SMA_LONG,winRate,pnl,trades,avgHoldSec,sharpe,sortino,calmar',
+      ...top.map(r=> [r.pair,r.SELL_RSI_OVERBOUGHT,r.BUY_RSI_OVERSOLD,r.SMA_SHORT,r.SMA_LONG,r.winRate,r.pnl,r.trades,r.avgHoldSec,r.sharpe??'',r.sortino??'',r.calmar??''].join(','))
     ].join('\n'));
     console.log(JSON.stringify(report));
-  })();
+  }
 }

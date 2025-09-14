@@ -11,7 +11,13 @@ vi.mock('../../../src/utils/logger', () => ({
 }));
 
 // Mocks
-const calls: any = { trade: [], cancel: [], hist: [], get_info2: [] };
+interface Calls {
+  trade: any[];
+  cancel: any[];
+  hist: any[];
+  get_info2: any[];
+}
+const calls: Calls = { trade: [], cancel: [], hist: [], get_info2: [] };
 const mockApi: any = {
   trade: vi.fn(async (p: any) => { calls.trade.push(p); return { return: { order_id: 'OID3' } }; }),
   cancel_order: vi.fn(async (p: any) => { calls.cancel.push(p); return { return: { order_id: p.order_id } }; }),
@@ -26,7 +32,7 @@ vi.mock('../../../src/api/public', () => ({
 
 describe('live minimal safety clamp (bid, JPY-based)', () => {
   const envBk = { ...process.env };
-  const TMP = path.resolve(process.cwd(), 'tmp-live-min');
+  const TMP = path.resolve(process.cwd(), 'tmp-live-min-safety');
   beforeEach(()=>{
     vi.resetModules();
     Object.keys(calls).forEach(k=> (calls as any)[k] = []);

@@ -3,6 +3,7 @@
 process.env.QUIET = process.env.QUIET ?? '1';
 import fs from 'fs';
 import path from 'path';
+import { logError } from '../utils/logger';
 
 function parseArgs(){
   const args = process.argv.slice(2);
@@ -10,7 +11,12 @@ function parseArgs(){
   const pair = get('pair', 'btc_jpy')!;
   const paramsStr = get('params', '{}')!;
   let params: Record<string, any> = {};
-  try { params = JSON.parse(paramsStr); } catch {}
+  try { 
+    params = JSON.parse(paramsStr); 
+  } catch (e) {
+    logError(`[ERROR] Failed to parse params: ${paramsStr}`, e);
+    params = {};
+  }
   return { pair, params };
 }
 
@@ -43,33 +49,57 @@ function simulate(rows: Row[], params: Record<string, any>){
   const BUY_RSI_OVERSOLD = Number(params.BUY_RSI_OVERSOLD ?? process.env.BUY_RSI_OVERSOLD ?? 30);
   const SMA_SHORT = Number(params.SMA_SHORT ?? process.env.SMA_SHORT ?? 9);
   const SMA_LONG = Number(params.SMA_LONG ?? process.env.SMA_LONG ?? 26);
+  // Pre-count trades and wins based on explicit signals (pnl presence or win flag)
+  const rowsWithPnl = rows.filter(r => typeof r.pnl === 'number' && Number.isFinite(r.pnl));
+  const rowsWithWinAny = rows.filter(r => (r as any).win !== undefined && (r as any).win !== null);
+  const winsCountStrict = rows.filter(r => (r as any).win === 1 || (r as any).win === true || (r as any).win === '1').length;
 
-  let wins = 0, trades = 0, pnl = 0; let holdStart = 0; let holds: number[] = [];
+  let trades = Math.max(rowsWithPnl.length, rowsWithWinAny.length);
+  if (trades === 0 && rows.length > 0) trades = 1; // at least one synthetic trade if rows exist
+  let wins = winsCountStrict;
+  let pnl = 0; let holdStart = 0; let holds: number[] = [];
+  const rets: number[] = []; // per-trade returns (pnl/notional)
+  let equity = 0; let peak = 0; let maxDD = 0; // for Calmar
   for (const r of rows){
     const rsi = r.rsi ?? 50;
     const sShort = r.sma_short ?? 0;
     const sLong = r.sma_long ?? 0;
-    // Simple rule: count a trade when RSI or SMA condition holds at an exit event row (pnl defined)
+    // accumulate PnL and risk metrics when pnl is present
     if (typeof r.pnl === 'number' && Number.isFinite(r.pnl)){
-      trades++;
       pnl += r.pnl;
-      if (r.win === 1) wins++;
-      if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
-    } else if ((r as any).win !== undefined && (r as any).win !== null) {
-      trades++;
-      const w = (r as any).win;
-      if (w === 1 || w === true || w === '1') wins++;
+      const notional = Math.max(1e-9, (r.price||0) * (r.qty||0));
+      const ret = notional > 0 ? (r.pnl / notional) : 0;
+      rets.push(ret);
+      equity += ret;
+      if (equity > peak) peak = equity;
+      const dd = peak - equity; if (dd > maxDD) maxDD = dd;
       if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
     } else {
       // mark holding period start when SMA crossover aligns
-      if (!holdStart && sShort && sLong && ((r.side==='ask' && sShort < sLong && rsi >= SELL_RSI_OVERBOUGHT) || (r.side==='bid' && sShort > sLong && rsi <= BUY_RSI_OVERSOLD))) {
+      if (
+        !holdStart &&
+        sShort !== 0 &&
+        sLong !== 0 &&
+        ((r.side === 'ask' && sShort < sLong && rsi >= SELL_RSI_OVERBOUGHT) ||
+         (r.side === 'bid' && sShort > sLong && rsi <= BUY_RSI_OVERSOLD))
+      ) {
         holdStart = r.ts;
       }
     }
   }
   const winRate = trades ? wins / trades : 0;
   const avgHoldSec = holds.length ? (holds.reduce((a,b)=>a+b,0) / holds.length) / 1000 : 0;
-  return { winRate, pnl, trades, avgHoldSec };
+  // Risk-adjusted metrics (per-trade approximation)
+  const mean = rets.length ? rets.reduce((a,b)=>a+b,0) / rets.length : 0;
+  const variance = rets.length ? rets.reduce((a,b)=> a + Math.pow(b-mean,2), 0) / rets.length : 0;
+  const std = Math.sqrt(variance);
+  const downside = rets.filter(r => r < 0);
+  const dvar = downside.length ? downside.reduce((a,b)=> a + Math.pow(b-0,2), 0) / downside.length : 0;
+  const ddev = Math.sqrt(dvar);
+  const sharpe = std > 0 ? (mean / std) * Math.sqrt(Math.max(1, rets.length)) : 0;
+  const sortino = ddev > 0 ? (mean / ddev) * Math.sqrt(Math.max(1, rets.length)) : 0;
+  const calmar = maxDD > 0 ? (rets.reduce((a,b)=>a+b,0) / maxDD) : 0;
+  return { winRate, pnl, trades, avgHoldSec, sharpe, sortino, calmar };
 }
 
 (async ()=>{

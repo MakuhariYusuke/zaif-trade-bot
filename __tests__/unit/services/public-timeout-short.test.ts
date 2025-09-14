@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, beforeAll } from 'vitest';
 
 vi.mock('../../../src/api/public', () => {
   return {
@@ -12,9 +12,13 @@ describe('public API timeout short (RETRY_ATTEMPTS=1)', () => {
   beforeEach(() => {
     process.env.RETRY_ATTEMPTS = '1';
   });
+  let mod: typeof import('../../../src/services/market-service');
+
+  beforeAll(async () => {
+    mod = await import('../../../src/services/market-service');
+  });
 
   it('getTicker ETIMEDOUT causes warn path and returns partial overview', async () => {
-    const mod = await import('../../../src/services/market-service');
     const res = await mod.fetchMarketOverview('btc_jpy');
     expect(res.orderBook).toBeDefined();
     expect(Array.isArray(res.trades)).toBe(true);

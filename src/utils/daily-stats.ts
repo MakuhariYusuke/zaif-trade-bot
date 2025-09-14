@@ -1,6 +1,8 @@
 import fs from "fs";
+import fsp from "fs/promises";
 import path from "path";
 import { OrderLifecycleSummary } from "../types/private";
+import { logWarn } from "./logger";
 
 export interface DailyAggregate {
     date: string;
@@ -56,6 +58,18 @@ function fileFor(date: string, pair?: string) {
  * @return {DailyAggregate} The daily aggregate statistics.
  */
 export function loadDaily(date: string, pair?: string): DailyAggregate {
+    // prefer in-memory pending aggregate if present
+    try {
+        const f = fileFor(date, pair);
+        const mem = __getPendingAggregate(f);
+        if (mem) return { ...mem };
+    } catch {}
+    // cached aggregate (recent days)
+    try {
+        const f = fileFor(date, pair);
+        const cached = __getCachedAggregate(f);
+        if (cached) return { ...cached };
+    } catch {}
     try {
     const f = fileFor(date, pair);
         if (!fs.existsSync(f)) return { 
@@ -79,6 +93,86 @@ export function loadDaily(date: string, pair?: string): DailyAggregate {
         sumRetries: 0, 
         maxRetries: 0 
     }; }
+}
+
+// --- Buffered write support ---
+type Pending = { agg: DailyAggregate; file: string };
+const pending = new Map<string, Pending>();
+let flushTimer: NodeJS.Timeout | null = null;
+const __IS_TEST__ = (process.env.TEST_MODE === '1') || !!process.env.VITEST_WORKER_ID;
+
+// --- Recent-days cache (LRU by insertion order) ---
+type CacheVal = { at: number; agg: DailyAggregate };
+const recentCache = new Map<string, CacheVal>();
+const TTL_DAYS = Math.max(0, Number(process.env.DAILY_STATS_TTL_DAYS || '14'));
+const TTL_MS = TTL_DAYS * 86400_000;
+function __getCachedAggregate(file: string): DailyAggregate | null {
+    const v = recentCache.get(file);
+    if (!v) return null;
+    if (TTL_MS > 0 && (Date.now() - v.at) > TTL_MS) {
+        recentCache.delete(file);
+        try { logWarn?.('[CACHE] evict old daily stats'); } catch {}
+        return null;
+    }
+    return v.agg;
+}
+function __putCachedAggregate(file: string, agg: DailyAggregate){
+    recentCache.delete(file); // refresh order
+    recentCache.set(file, { at: Date.now(), agg });
+    const max = Math.max(1, Number(process.env.STATS_CACHE_DAYS || '7'));
+    while (recentCache.size > max){
+        const k = recentCache.keys().next().value as string | undefined;
+        if (k === undefined) break; recentCache.delete(k);
+    }
+}
+
+function __getPendingAggregate(file: string): DailyAggregate | null {
+    const p = pending.get(file);
+    return p ? p.agg : null;
+}
+
+function scheduleFlush(delayMs = 250){
+    if (flushTimer) return;
+    flushTimer = setTimeout(async ()=>{
+        flushTimer = null;
+        await flushDailyStats();
+    }, delayMs).unref?.();
+}
+
+async function writeOne(p: Pending){
+    try {
+        const d = path.dirname(p.file);
+        await fsp.mkdir(d, { recursive: true }).catch(()=>{});
+        await fsp.writeFile(p.file, JSON.stringify(p.agg, null, 2), 'utf8');
+        __putCachedAggregate(p.file, p.agg);
+    } catch {}
+}
+
+function writeOneSync(p: Pending){
+    try {
+        const d = path.dirname(p.file);
+        try { fs.mkdirSync(d, { recursive: true }); } catch {}
+        try { fs.writeFileSync(p.file, JSON.stringify(p.agg, null, 2), { encoding: 'utf8' }); } catch {}
+        __putCachedAggregate(p.file, p.agg);
+    } catch {}
+}
+
+function queueWrite(file: string, agg: DailyAggregate){
+    if (__IS_TEST__) {
+        // テストでは直書きして確実に即時可視化
+        writeOneSync({ file, agg });
+        return;
+    }
+    pending.set(file, { agg, file });
+    __putCachedAggregate(file, agg);
+    const batch = Number(process.env.STATS_BUFFER_BATCH || '8');
+    if (pending.size >= batch) scheduleFlush(50); else scheduleFlush(300);
+}
+
+export async function flushDailyStats(){
+    const list = Array.from(pending.values());
+    pending.clear();
+    await Promise.allSettled(list.map(p => writeOne(p)));
 }
 
 /**
@@ -151,9 +245,7 @@ export function appendSummary(date: string, s: OrderLifecycleSummary & { pnl?: n
     }
     try {
         const f = fileFor(date, s.pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
+        queueWrite(f, agg);
     } catch { }
 }
 
@@ -183,83 +275,46 @@ export function appendFillPnl(date: string, pnl: number, pair?: string) {
     }
     try {
         const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
+        queueWrite(f, agg);
     } catch { }
 }
 
 export function incTrailArmed(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.trailArmedTotal = (agg.trailArmedTotal || 0) + 1;
-    try {
-        const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
-    } catch {}
+    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 
 export function incTrailExit(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.trailExitTotal = (agg.trailExitTotal || 0) + 1;
-    try {
-        const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
-    } catch {}
+    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 
 export function incSellEntry(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.sellEntries = (agg.sellEntries||0)+1;
-    try { 
-        const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
-    } catch {}
+    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 export function incBuyEntry(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.buyEntries = (agg.buyEntries||0)+1;
-    try {
-        const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
-    } catch {}
+    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 export function incBuyExit(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.buyExits = (agg.buyExits||0)+1;
-    try {
-        const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
-    } catch {}
+    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 export function incRsiExit(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.rsiExits = (agg.rsiExits||0)+1;
-    try {
-        const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
-    } catch {}
+    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 export function incTrailStop(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.trailStops = (agg.trailStops||0)+1;
-    try {
-        const f = fileFor(date, pair);
-        const d = path.dirname(f);
-        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(agg, null, 2));
-    } catch {}
+    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 
 export function summarizeDaily(date: string, pair?: string) {
@@ -311,4 +366,21 @@ export function summarizeDaily(date: string, pair?: string) {
         maxConsecLosses: agg.maxConsecLosses || 0,
         avgHoldSec
     };
+}
+
+// flush on exit
+try {
+    process.on('beforeExit', async ()=>{ await flushDailyStats(); });
+    process.on('exit', ()=>{});
+} catch {}
+
+/**
+ * Test helper: reset in-memory caches, pending buffers, and timers.
+ * Ensures clean state between tests.
+ */
+export function resetDailyStatsCache(){
+    try { pending.clear(); } catch {}
+    try { recentCache.clear(); } catch {}
+    try { if (flushTimer) { clearTimeout(flushTimer); } } catch {}
+    flushTimer = null;
 }
