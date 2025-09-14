@@ -28,6 +28,7 @@
   "ml:search": "ts-node src/tools/ml/ml-search.ts",
   "report:summary": "ts-node src/tools/report-summary.ts",
   "test:min-live": "ts-node src/tools/live/test-minimal-live.ts",
+  "live:minimal": "ts-node src/tools/live-minimal.ts",
   "test": "vitest run --coverage --reporter=default --reporter=json --outputFile=vitest-report.json",
   "test:integration": "cross-env EXCHANGE=paper DRY_RUN=1 USE_PRIVATE_MOCK=1 TEST_MODE=1 TEST_FLOW_QTY=0.001 npm run mock:scenario && ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json && ts-node src/tools/tests/test-flow.ts && ts-node src/tools/stats/stats-today.ts --diff > stats-diff-2.json && npm run ml:export && cross-env ML_MAX_WORKERS=1 PAIRS=btc_jpy npm run ml:search && ts-node src/tools/tests/integration-assert.ts",
   "ci:test": "npm run test && npm run test:integration",

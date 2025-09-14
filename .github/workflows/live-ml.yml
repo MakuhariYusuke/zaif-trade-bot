@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
       - name: Install deps
         run: npm ci
       - name: Live minimal once (cancel immediately)
@@ -31,10 +33,10 @@ jobs:
           KEY='${{ secrets.COINCHECK_KEY }}'
           SEC='${{ secrets.COINCHECK_SECRET }}'
           if [ -z "$KEY" ] || [ -z "$SEC" ]; then
-            echo "No Coincheck secrets; fallback to DRY_RUN=1 with mock private API (using test:min-trade)"
-            DRY_RUN=1 USE_PRIVATE_MOCK=1 npm run test:min-trade
+            echo "No Coincheck secrets; fallback to DRY_RUN=1 with mock private API"
+            DRY_RUN=1 USE_PRIVATE_MOCK=1 npm run live:minimal
           else
-            COINCHECK_API_KEY="$KEY" COINCHECK_API_SECRET="$SEC" DRY_RUN=0 npm run test:min-live
+            COINCHECK_API_KEY="$KEY" COINCHECK_API_SECRET="$SEC" DRY_RUN=0 npm run live:minimal
           fi
       - name: Stats diff
         run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json
@@ -92,5 +94,33 @@ jobs:
           maxdd=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
           t7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
           TOP=$(echo "$ML" | jq -r '.top[0] | select(.) | "Win%="+((.winRate//0)*100|tostring)+" PnL="+((.pnl//0)|tostring)+" params={S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)+"}"' || true)
-          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100)) / MaxDD=$maxdd / Trend7dWin%=$((t7*100))\nML(random) Top: ${TOP:-N/A}\n<$SUM|summary>"
+          TOP3=$(cat ml-search-top.json 2>/dev/null | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","Params"] | @tsv ), (.[] | [ (input_line_number-1|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' || true)
+          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100)) / MaxDD=$maxdd / Trend7dWin%=$((t7*100))\nML(random) Top: ${TOP:-N/A}\nTop 3:\n$TOP3\n<$SUM|summary>"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
+      - name: GitHub comment with Top 3
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            function mdTop3(rows){
+              if (!rows || !rows.length) return '';
+              const header = ['#','pair','Win%','PnL','MaxDD','Params'];
+              const body = rows.map((r,i)=>`| ${i+1} | ${r.pair} | ${Math.round((r.winRate||0)*100)} | ${r.pnl||0} | ${r.maxDrawdown||0} | S=${r.SMA_SHORT},L=${r.SMA_LONG},RSI=${r.SELL_RSI_OVERBOUGHT},${r.BUY_RSI_OVERSOLD} |`).join('\n');
+              return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- | --- |\n${body}`;
+            }
+            let rpt = {};
+            try { rpt = JSON.parse(fs.readFileSync('report-summary-live.json','utf8')); } catch {}
+            const totals = rpt.totals || {};
+            let top3 = [];
+            try { const t = JSON.parse(fs.readFileSync('ml-search-top.json','utf8')); top3 = (t.top||[]).slice(0,3); } catch {}
+            const body = `### Live ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
+            async function safe(fn, args){ try { return await fn(args); } catch(e){ core.warning(`comment failed: ${e.message}`); } }
+            if (context.payload.pull_request) {
+              await safe(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
+            } else if (context.eventName === 'push') {
+              await safe(github.rest.repos.createCommitComment, { owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
+            } else {
+              core.info('No PR or push context; skip commenting.');
+            }

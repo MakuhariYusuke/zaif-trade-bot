@@ -61,7 +61,7 @@ jobs:
           FEATURES_SOURCE: live
           COINCHECK_API_KEY: ${{ secrets.COINCHECK_KEY }}
           COINCHECK_API_SECRET: ${{ secrets.COINCHECK_SECRET }}
-        run: npm run test:min-live
+        run: "npm run live:minimal"
       - name: Build summary report (live)
         if: always()
         run: npm run report:summary -- --source live
@@ -105,7 +105,8 @@ jobs:
           MAXDD=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
           T7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
           EXTRA="PnL=$PNL Win%=$((WIN*100)) MaxDD=$MAXDD Trend7dWin%=$((T7*100))"
-          TEXT="${STATUS}\n${EXTRA}\n\n${{ steps.summarize.outputs.summary }}\n\n(Artifacts available in GitHub)"
+          TOP3=$(cat ml-search-top.json 2>/dev/null | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","Params"] | @tsv ), (.[] | [ (input_line_number-1|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' || true)
+          TEXT="${STATUS}\n${EXTRA}\n\n${{ steps.summarize.outputs.summary }}\n\nTop 3 Results (random):\n$TOP3\n\n(Artifacts available in GitHub)"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\": \"$TEXT\"}" "$SLACK_WEBHOOK_URL" || true
       - name: GitHub Comment
         uses: actions/github-script@v7
@@ -121,7 +122,15 @@ jobs:
             const extra = (totals && (totals.PnL!=null || totals.winRate!=null || totals.maxDrawdown!=null))
               ? `\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}`
               : '';
-            const body = `### Live Minimal Trade Result\n\n\n\`\`\`\n${summary}\n\`\`\`${extra}`;
+            let top3 = [];
+            try { const t = JSON.parse(fs.readFileSync('ml-search-top.json','utf8')); top3 = (t.top||[]).slice(0,3); } catch {}
+            function mdTop3(rows){
+              if (!rows || !rows.length) return '';
+              const header = ['#','pair','Win%','PnL','Params'];
+              const body = rows.map((r,i)=>`| ${i+1} | ${r.pair} | ${Math.round((r.winRate||0)*100)} | ${r.pnl||0} | S=${r.SMA_SHORT},L=${r.SMA_LONG},RSI=${r.SELL_RSI_OVERBOUGHT},${r.BUY_RSI_OVERSOLD} |`).join('\n');
+              return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- |\n${body}`;
+            }
+            const body = `### Live Minimal Trade Result\n\n\n\`\`\`\n${summary}\n\`\`\`${extra}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
             async function safeCall(fn, args){ try { return await fn(args); } catch (e){ core.warning(`Comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safeCall(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
