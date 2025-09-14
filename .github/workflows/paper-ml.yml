@@ -99,7 +99,8 @@ jobs:
           maxdd=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
           t7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
           TOP=$(echo "$ML" | jq -r '.top[0] | select(.) | "Win%="+((.winRate//0)*100|tostring)+" PnL="+((.pnl//0)|tostring)+" params={S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)+"}"' || true)
-          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd Trend7dWin%=$((t7*100))\nML(random) Top: ${TOP:-N/A}"
+          TOP3=$(cat ml-search-top.json 2>/dev/null | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","MaxDD","Params"] | @tsv ), (.[] | [ (input_line_number-1|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ((.maxDrawdown//0)//0|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' || true)
+          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd Trend7dWin%=$((t7*100))\nML(random) Top: ${TOP:-N/A}\nTop 3:\n$TOP3"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
       - name: GitHub comment with perPair
         if: always()
@@ -118,7 +119,15 @@ jobs:
             try { rpt = JSON.parse(fs.readFileSync('report-summary-paper.json','utf8')); } catch {}
             const totals = rpt.totals || {};
             const perPair = rpt.perPair || [];
-            const body = `### Paper ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\n${mdTable(perPair)}`;
+            let top3 = [];
+            try { const t = JSON.parse(fs.readFileSync('ml-search-top.json','utf8')); top3 = (t.top||[]).slice(0,3); } catch {}
+            function mdTop3(rows){
+              if (!rows || !rows.length) return '';
+              const header = ['#','pair','Win%','PnL','Params'];
+              const body = rows.map((r,i)=>`| ${i+1} | ${r.pair} | ${Math.round((r.winRate||0)*100)} | ${r.pnl||0} | S=${r.SMA_SHORT},L=${r.SMA_LONG},RSI=${r.SELL_RSI_OVERBOUGHT},${r.BUY_RSI_OVERSOLD} |`).join('\n');
+              return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- |\n${body}`;
+            }
+            const body = `### Paper ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}\n\n${mdTable(perPair)}`;
             async function safe(fn, args){ try { return await fn(args); } catch(e){ core.warning(`comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safe(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });

@@ -42,7 +42,7 @@ jobs:
           TEST_FLOW_RATE: ${{ github.event.inputs.rate }}
           DRY_RUN: '0'
           SAFETY_MODE: ${{ github.event.inputs.safety == 'true' && '1' || '0' }}
-        run: npm run test:min-live
+        run: "npm run live:minimal"
       - name: Upload live stats
         uses: actions/upload-artifact@v4
         with:
