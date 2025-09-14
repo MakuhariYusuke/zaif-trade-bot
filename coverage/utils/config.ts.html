@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">40.67% </span>
+                <span class="strong">55.07% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>24/59</span>
+                <span class='fraction'>38/69</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">66.66% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>4/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">25% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>2/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">40.67% </span>
+                <span class="strong">55.07% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>24/59</span>
+                <span class='fraction'>38/69</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -122,7 +122,17 @@
 <a name='L57'></a><a href='#L57'>57</a>
 <a name='L58'></a><a href='#L58'>58</a>
 <a name='L59'></a><a href='#L59'>59</a>
-<a name='L60'></a><a href='#L60'>60</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -140,11 +150,21 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">83x</span>
+<span class="cline-any cline-yes">83x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -159,12 +179,12 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -198,12 +218,22 @@ const DEFAULT_NONCE_FILE = path.resolve(process.cwd(), ".nonce_store");
 <span class="cstat-no" title="statement not covered" >    return truthyValues.includes(value.toLowerCase());</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
+let __cachedAppConfig: AppConfig | null = null;
 export <span class="fstat-no" title="function not covered" >function loadAppConfig(): AppConfig {</span>
-<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >    if (__cachedAppConfig) return __cachedAppConfig;</span>
+<span class="cstat-no" title="statement not covered" >    __cachedAppConfig = {</span>
 <span class="cstat-no" title="statement not covered" >        dryRun: isTruthyEnv(process.env.DRY_RUN),</span>
 <span class="cstat-no" title="statement not covered" >        nonceStorePath: process.env.NONCE_FILE || DEFAULT_NONCE_FILE,</span>
 <span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >    return __cachedAppConfig;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+/**
+ * Test helper: reset cached app config so subsequent calls re-read env.
+ */
+export function resetConfigCache(){
+    __cachedAppConfig = null;
+}
 &nbsp;
 export <span class="fstat-no" title="function not covered" >function loadTradeMode(): "SELL" | "BUY" {</span>
 <span class="cstat-no" title="statement not covered" >    const v = (process.env.TRADE_MODE || 'SELL').toUpperCase();</span>
@@ -217,13 +247,13 @@ export <span class="fstat-no" title="function not covered" >function loadTradeFl
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /** Load pairs from env: PAIRS=btc_jpy,eth_jpy; default ['btc_jpy'] */
-export <span class="fstat-no" title="function not covered" >function loadPairs(): string[] {</span>
-<span class="cstat-no" title="statement not covered" >    const v = process.env.PAIRS || process.env.PAIR || 'btc_jpy,eth_jpy,xrp_jpy';</span>
-<span class="cstat-no" title="statement not covered" >    return v.split(',')</span>
-<span class="cstat-no" title="statement not covered" >        .map(s =&gt; s.trim())</span>
-<span class="cstat-no" title="statement not covered" >        .filter(Boolean)</span>
-<span class="cstat-no" title="statement not covered" >        .map(s =&gt; s.replace('/', '_').toLowerCase());</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function loadPairs(): string[] {
+    const v = process.env.<span class="branch-0 cbranch-no" title="branch not covered" >PAIRS || process.env.<span class="branch-0 cbranch-no" title="branch not covered" >PAIR || '</span>btc_jpy,eth_jpy,xrp_jpy';</span>
+    return v.split(',')
+        .map(s =&gt; s.trim())
+        .filter(Boolean)
+        .map(s =&gt; s.replace('/', '_').toLowerCase());
+}
 &nbsp;
 export <span class="fstat-no" title="function not covered" >function restoreNonce(file: string) {</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
@@ -247,7 +277,7 @@ export <span class="fstat-no" title="function not covered" >function persistNonc
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-13T17:37:55.538Z
+                at 2025-09-14T13:15:01.839Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "CommonJS",
+  "module": "Node16",
     "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
   "esModuleInterop": true,
-  "types": ["node"]
+  "types": ["node"],
+  // Align with Vitest/Vite type definitions that use bundler-style resolution
+  "moduleResolution": "node16",
+  // Prevent type checking inside node_modules d.ts (avoids Vite/Rollup typedef issues)
+  "skipLibCheck": true
   }
   ,
   "include": [

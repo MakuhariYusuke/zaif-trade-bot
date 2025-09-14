@@ -11,6 +11,18 @@ function getArg(name: string, def?: string){
 
 (async ()=>{
   const source = getArg('source', 'live')!;
+  const cacheOut = `report-summary-${source}.json`;
+  try {
+    if (process.env.REPORT_SUMMARY_USE_CACHE !== '0' && fs.existsSync(cacheOut)){
+      const today = new Date().toISOString().slice(0,10);
+      const cached = JSON.parse(fs.readFileSync(cacheOut,'utf8'));
+      if (cached && cached.summaryText && (cached.date === undefined || String(cached.date||'').startsWith(today))){
+        console.log('[CACHE] report-summary using existing output');
+        console.log(JSON.stringify({ out: cacheOut, pairs: (cached.perPair||[]).length }));
+        return;
+      }
+    }
+  } catch {}
   // try scenario-specific files first
   const statsDiff = (()=>{
     const fname = `stats-diff-${source}.json`;
@@ -88,7 +100,25 @@ function getArg(name: string, def?: string){
     avgHoldSec: p.stats.avgHoldSec || 0
   }));
   const body = { source, totals, perPair };
+  // formatted helpers
+  function fmtPct(x:number){ return `${(x*100).toFixed(1)}%`; }
+  function fmtJPY(x:number){ const s = (x>=0?'+':'') + x.toFixed(0); return `${s} JPY`; }
+  const sorted = [...perPair].sort((a,b)=> (b.PnL - a.PnL) || (b.winRate - a.winRate));
+  const top3 = sorted.slice(0,3);
+  const top3Table = [
+    'Pair | PnL | WinRate',
+    '---- | ---:| ------:',
+    ...top3.map((p:any)=> `${p.pair} | ${p.PnL.toFixed(0)} | ${fmtPct(p.winRate)}`)
+  ].join('\n');
+  const summaryText = [
+    `Source: ${source}`,
+    `Total PnL: ${fmtJPY(totals.PnL)} / WinRate: ${fmtPct(totals.winRate)} / 7d: ${fmtPct(totals.trend7dWinRate)}`,
+    `Top pairs:`,
+    top3Table
+  ].join('\n');
+  const bodyOut = { date: (statsJson.date || new Date().toISOString().slice(0,10)), ...body, summaryText, top3Table };
   const out = `report-summary-${source}.json`;
-  fs.writeFileSync(out, JSON.stringify(body, null, 2));
+  try { const dir = path.dirname(out); if (dir && dir !== '.' && !fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch {}
+  fs.writeFileSync(out, JSON.stringify(bodyOut, null, 2));
   console.log(JSON.stringify({ out, pairs: perPair.length }));
 })();

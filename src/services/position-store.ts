@@ -29,34 +29,51 @@ const STORE_FILE = path.resolve(process.cwd(), process.env.POSITION_STORE_FILE |
 const DCA_MIN_INCREMENT = Number(process.env.DCA_MIN_INCREMENT || 0.00005);
 
 /**
- * Read the position store from file.
+ * In-memory cache for the position store.
+ */
+let positionCache: Record<string, StoredPosition> | null = null;
+
+/**
+ * Read the position store from file or cache.
  * @returns {Record<string, StoredPosition>} The position store.
  */
 function readStore(): Record<string, StoredPosition> {
+    if (positionCache) return positionCache;
     try {
-        if (!fs.existsSync(STORE_FILE)) return {};
-        return JSON.parse(fs.readFileSync(STORE_FILE, "utf8"));
-    } catch (err) {
-        logTradeError("Failed to read position store", { error: (err as Error).message });
-        return {};
+        const data = fs.readFileSync(STORE_FILE, "utf8");
+        positionCache = JSON.parse(data);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            logTradeError("Failed to read position store", { error: (error as Error).message });
+        }
+        positionCache = {};
     }
+    return positionCache!;
 }
 
 let pendingWrite: NodeJS.Timeout | null = null;
 let lastData: Record<string, StoredPosition> | null = null;
 
-/** Write the position store to file with debounce.
+/** Write the position store to file with debounce and update cache.
  * @param {Record<string, StoredPosition>} data The position store data to write.
  */
-function writeStore(data: Record<string, StoredPosition>) {
+function writeStore(data: Record<string, StoredPosition>): Promise<void> {
     lastData = data;
+    positionCache = data; // update cache
     if (pendingWrite) clearTimeout(pendingWrite);
-    pendingWrite = setTimeout(() => {
-        fs.writeFile(STORE_FILE, JSON.stringify(lastData, null, 2), (err) => {
-            if (err) logTradeError("Position store write failed", { error: err.message });
-        });
-        pendingWrite = null;
-    }, 200); // 200ms debounce
+    return new Promise((resolve, reject) => {
+        pendingWrite = setTimeout(() => {
+            fs.writeFile(STORE_FILE, JSON.stringify(lastData, null, 2), (err) => {
+                pendingWrite = null;
+                if (err) {
+                    logTradeError("Position store write failed", { error: err.message });
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        }, 200); // 200ms debounce
+    });
 }
 
 export function loadPosition(pair: string): StoredPosition | undefined {
@@ -78,9 +95,9 @@ export function removePosition(pair: string) {
 
 export function updateFields(pair: string, patch: Partial<StoredPosition>) {
     const db = readStore();
-    const cur = db[pair];
-    if (!cur) return;
-    db[pair] = { ...cur, ...patch };
+    const p = loadPosition(pair) || { pair, qty: 0, avgPrice: 0, dcaCount: 0, openOrderIds: [] };
+    if (!p) return;
+    db[pair] = { ...p, ...patch };
     writeStore(db);
 }
 

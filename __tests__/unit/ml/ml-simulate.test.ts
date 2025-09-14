@@ -3,7 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 
-const TMP = path.resolve(process.cwd(), 'tmp-test-ml');
+// Use a unique temp dir to avoid cross-file race with ml-search.cache.test
+const TMP = path.resolve(process.cwd(), 'tmp-test-ml-simulate');
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 

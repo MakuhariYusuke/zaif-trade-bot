@@ -118,7 +118,9 @@ class PaperPrivate implements PrivateApi {
     async trade(p: any): Promise<TradeResult> {
         await this.maybeDelayAndError();
         const st = load(); ensurePairFunds(st.funds, p.currency_pair);
-        const id = String(Date.now());
+        const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : String(Date.now()) + "-" + Math.random().toString(36).slice(2, 10);
         let amt = Number(p.amount);
         const price = Number(p.price);
         if (process.env.SAFETY_MODE === '1') {
@@ -173,7 +175,12 @@ class PaperPrivate implements PrivateApi {
             });
             if (order.filled >= order.amount) order.status = 'filled';
         }
-        st.orders.push(order); save(st);
+        st.orders.push(order);
+        try {
+            save(st);
+        } catch (err) {
+            console.error("Failed to save paper trading state:", err);
+        }
         return { success: 1, return: { order_id: id } };
     }
     async cancel_order(p: { order_id: string }): Promise<CancelResult> {

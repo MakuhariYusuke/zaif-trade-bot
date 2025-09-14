@@ -3,10 +3,11 @@
     "pair": "btc_jpy",
     "qty": 0,
     "avgPrice": 0,
-    "dcaCount": 0,
+    "dcaCount": 1000,
     "openOrderIds": [
       1
     ],
-    "highestPrice": 16870000
+    "highestPrice": 16870000,
+    "dcaRemainder": 0
   }
 }

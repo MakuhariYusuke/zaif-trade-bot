@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { clampAmountForSafety, computeExposureRatio, getExposureWarnPct, readFeatureCsvRows, getFeaturesRoot } from '../../../src/utils/toolkit';
+import { clampAmountForSafety, computeExposureRatio, getExposureWarnPct, readFeatureCsvRows, getFeaturesRoot, clampByExposureCap, getExposureHardCap, getMaxHoldSec } from '../../../src/utils/toolkit';
 
 describe('utils/toolkit', () => {
   const envBk = { ...process.env };
@@ -24,6 +24,25 @@ describe('utils/toolkit', () => {
     const funds:any = { jpy: 100000, btc: 2 };
     expect(computeExposureRatio('bid', 1, 10000, funds, 'btc_jpy')).toBeCloseTo(0.1, 10);
     expect(computeExposureRatio('ask', 0.5, 10000, funds, 'btc_jpy')).toBeCloseTo(0.25, 10);
+  });
+
+  it('clampByExposureCap clamps when ratio exceeded', ()=>{
+    process.env.EXPOSURE_HARD_CAP = '0.1';
+    const funds:any = { jpy: 100000, btc: 2 };
+    const q = clampByExposureCap('bid', 2, 10000, funds, 'btc_jpy');
+    // cap=10% of JPY => max notional 10000, at price 10000 => 1 qty
+    expect(q).toBeCloseTo(1, 6);
+  });
+
+  it('getExposureHardCap and getMaxHoldSec parse env', ()=>{
+    delete process.env.EXPOSURE_HARD_CAP;
+    expect(getExposureHardCap()).toBeNull();
+    process.env.EXPOSURE_HARD_CAP = '0.2';
+    expect(getExposureHardCap()).toBeCloseTo(0.2, 6);
+    delete process.env.MAX_HOLD_SEC;
+    expect(getMaxHoldSec()).toBeNull();
+    process.env.MAX_HOLD_SEC = '3600';
+    expect(getMaxHoldSec()).toBe(3600);
   });
 
   it('readFeatureCsvRows parses CSV files', ()=>{

@@ -1,5 +1,6 @@
 import { getTicker, getOrderBook, getTrades } from "../api/public";
 import { PrivateApi, CancelOrderParams, TradeResult } from "../types/private";
+import { logError } from "../utils/logger";
 let priv: PrivateApi;
 export function initMarket(privateApi: PrivateApi) { priv = privateApi; }
 
@@ -28,7 +29,7 @@ export async function placeLimitOrder(pair: string, side: "BUY"|"SELL", price: n
 export async function getActiveOrders(currency_pair?: string) {
 	const arr = await priv.active_orders({ currency_pair });
 	const map: Record<string, any> = {};
-	for (const o of arr) map[o.order_id] = { currency_pair: o.pair, action: o.side, amount: o.amount, price: o.price, timestamp: o.timestamp };
+	for (const o of arr) map[o.order_id] = { currency_pair: o.pair, side: o.side, amount: o.amount, price: o.price, timestamp: o.timestamp };
 	return map;
 }
 
@@ -39,11 +40,14 @@ export async function cancelOrder(params: CancelOrderParams) {
 
 export async function cancelOpenOrders(orderIds: number[]) {
 	for (const id of orderIds) {
-		try { await cancelOrder({ order_id: id }); } catch {}
+		try { await cancelOrder({ order_id: id }); } catch (err) { logError(`Failed to cancel order ${id}:`, err); }
 	}
 }
 
-export async function fetchTradeHistory(pair: string, params: { since?: number; from_id?: number; count?: number } = {}) {
+export async function fetchTradeHistory(
+	pair: string,
+	params: { since?: number; from_id?: number; count?: number } = {}
+): Promise<ReturnType<PrivateApi["trade_history"]>> {
 	return await priv.trade_history({ currency_pair: pair, ...params });
 }
 
@@ -88,7 +92,10 @@ export interface RealizedPnLResult { realized: number; trades: number; }
  * - Given buys: buy 10 @ 100, then sell 5 @ 110 -> realized = 5 * (110 - 100) = 50.
  */
 export function calcRealizedPnL(history: Array<{ trade_type: string; price: number; amount: number }>): RealizedPnLResult {
-	const buys: Array<{ amount: number; price: number }> = []; let head = 0; let realized = 0; const EPS = 1e-12;
+	const buys: Array<{ amount: number; price: number }> = [];
+	let head = 0;
+	let realized = 0;
+	const EPS = 1e-12;
 	for (const h of history) {
 		if (h.trade_type === 'bid') { buys.push({ amount: h.amount, price: h.price }); continue; }
 		let remain = h.amount;

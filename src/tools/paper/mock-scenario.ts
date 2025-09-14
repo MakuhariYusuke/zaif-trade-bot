@@ -44,7 +44,8 @@ async function run(){
     }
     return await fn();
   }
-  const sleepMs = Number(process.env.SCENARIO_SLEEP_MS || 50);
+  // optional pacing only between entry and exit, no other sleeps
+  const sleepMs = Math.max(0, Number(process.env.SCENARIO_SLEEP_MS || 0));
   for (let i=0; i<LOOP; i++){
     try {
       const entry = await maybeFail(()=>submitOrderWithRetry({ 
@@ -53,8 +54,8 @@ async function run(){
         limitPrice: 1000000, 
         amount: entryAmt }));
       logInfo('[SCENARIO] Entry summary', entry);
-      appendSummary(todayStr(), entry as any);
-      await new Promise(r=>setTimeout(r,sleepMs));
+  appendSummary(todayStr(), entry as any);
+  if (sleepMs > 0) { await new Promise(r=>setTimeout(r, sleepMs)); }
       let exitAmt = (entry as any).filledQty || 0.001;
       if (process.env.SAFETY_MODE === '1') {
         try {

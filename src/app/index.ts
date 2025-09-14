@@ -114,10 +114,16 @@ async function strategyOnce(pair: string, EXECUTE: boolean) {
         const priceSeries = getPriceSeries(Math.max(riskCfg.smaPeriod, 200));
         const stampFile = '.indicator_stamp';
         if (!(global as any)._indicatorLastRun) {
-            fsMod.readFile(stampFile, 'utf8', (err, data) => {
-                if (!err && data) (global as any)._indicatorLastRun = Number(data);
-            });
-            (global as any)._indicatorLastRun = 0;
+            try {
+                const data = fsMod.readFileSync(stampFile, 'utf8');
+                if (data) {
+                    (global as any)._indicatorLastRun = Number(data);
+                } else {
+                    (global as any)._indicatorLastRun = 0;
+                }
+            } catch {
+                (global as any)._indicatorLastRun = 0;
+            }
         }
         const lastRun = (global as any)._indicatorLastRun || 0;
         const nowSec = Math.floor(Date.now() / 1000);
@@ -132,7 +138,7 @@ async function strategyOnce(pair: string, EXECUTE: boolean) {
         }
         // Strategy dispatch (signals and exits)
     const ctx = { positions, positionsFile, currentPrice, trades: overview.trades, nowMs: now, riskCfg, pair } as any;
-        const { allExits } = tradeMode === 'SELL' ? runSellStrategy(ctx) : runBuyStrategy(ctx);
+        const { allExits } = tradeMode === 'SELL' ? await runSellStrategy(ctx) : await runBuyStrategy(ctx);
         const dryRun = process.env.DRY_RUN === '1';
         if (allExits.length) {
             for (const sig of allExits) { logInfo(`[SIGNAL][mode=${tradeMode}] ${describeExit(sig)}`); }
@@ -192,7 +198,11 @@ async function strategyOnce(pair: string, EXECUTE: boolean) {
                     incBuyEntry(today, pair);
                 }
             };
-            await (flows[flow] || (async () => { /* no-op for unknown flow */ }))();
+            if (flows[flow]) {
+                await flows[flow]();
+            } else {
+                logError(`[FLOW] Unknown tradeFlow: ${flow}. No action taken.`);
+            }
         }
     } catch (err: unknown) {
         if (err instanceof Error) {

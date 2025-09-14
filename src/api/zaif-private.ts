@@ -238,9 +238,16 @@ class ZaifRealPrivateApi implements PrivateApi {
 			return err(/nonce/i.test(msg) ? 'NONCE' : /signature/i.test(msg) ? 'SIGNATURE' : 'API_ERROR', normalizePermMsg(msg));
 		} catch (e: any) { return err('NETWORK', e?.message || 'error', e); }
 	}
-	async testGetInfo2() { try { const r = await this.call<GetInfo2Response>('get_info2'); return ok(r); } catch (e: any) { return err('TEST_GET_INFO2_FAIL', e?.message || 'error', e); } }
+	async testGetInfo2(): Promise<Result<GetInfo2Response>> {
+		 try {
+			 const r = await this.call<GetInfo2Response>('get_info2');
+			 return ok(r);
+		 } catch (e: any) {
+			 return err('TEST_GET_INFO2_FAIL', e?.message || 'error', e);
+		 }
+	}
 	async get_info2() { return this.call<GetInfo2Response>('get_info2'); }
-	async active_orders(params?: any) {
+	async active_orders(params?: any): Promise<ActiveOrder[]> {
 		const raw: any = await this.call('active_orders', params || {});
 		const arr: ActiveOrder[] = [];
 		if (raw?.return) {
@@ -249,7 +256,7 @@ class ZaifRealPrivateApi implements PrivateApi {
 		}
 		return arr;
 	}
-	async trade_history(params?: any) {
+	async trade_history(params?: any): Promise<{ tid: any; order_id: string; side: any; price: any; amount: any; timestamp: any; }[]> {
 		const raw: any = await this.call('trade_history', params || {});
 		return (raw?.return || []).map((t: any) => ({ tid: t.tid, order_id: t.order_id?.toString(), side: t.trade_type, price: t.price, amount: t.amount, timestamp: t.date }));
 	}

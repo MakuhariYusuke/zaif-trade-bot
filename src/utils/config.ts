@@ -15,11 +15,21 @@ function isTruthyEnv(value?: string): boolean {
     return truthyValues.includes(value.toLowerCase());
 }
 
+let __cachedAppConfig: AppConfig | null = null;
 export function loadAppConfig(): AppConfig {
-    return {
+    if (__cachedAppConfig) return __cachedAppConfig;
+    __cachedAppConfig = {
         dryRun: isTruthyEnv(process.env.DRY_RUN),
         nonceStorePath: process.env.NONCE_FILE || DEFAULT_NONCE_FILE,
     };
+    return __cachedAppConfig;
+}
+
+/**
+ * Test helper: reset cached app config so subsequent calls re-read env.
+ */
+export function resetConfigCache(){
+    __cachedAppConfig = null;
 }
 
 export function loadTradeMode(): "SELL" | "BUY" {
