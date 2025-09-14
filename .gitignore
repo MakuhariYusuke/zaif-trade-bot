@@ -1,4 +1,26 @@
-logs/features/node_modules/
+logs/
 dist/
 .env
 .nonce_store
+
+# Coverage reports
+coverage/
+coverage-*.json
+vitest-report.json
+
+# Temp and cache directories
+tmp*/
+tmp-*/
+.tmp-*/
+*.tmp
+*.cache
+
+# Local runtime artifacts
+*.log
+price_cache*.json
+stats*.json
+stats.svg
+report-ml-*.csv
+report-ml-*.json
+ml-*.csv
+ml-*.json

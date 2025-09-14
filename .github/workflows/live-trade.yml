@@ -126,11 +126,11 @@ jobs:
             try { const t = JSON.parse(fs.readFileSync('ml-search-top.json','utf8')); top3 = (t.top||[]).slice(0,3); } catch {}
             function mdTop3(rows){
               if (!rows || !rows.length) return '';
-              const header = ['#','pair','Win%','PnL','Params'];
-              const body = rows.map((r,i)=>`| ${i+1} | ${r.pair} | ${Math.round((r.winRate||0)*100)} | ${r.pnl||0} | S=${r.SMA_SHORT},L=${r.SMA_LONG},RSI=${r.SELL_RSI_OVERBOUGHT},${r.BUY_RSI_OVERSOLD} |`).join('\n');
-              return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- |\n${body}`;
+              const header = ['#','pair','Win%','PnL','MaxDD','Params'];
+              const body = rows.map((r,i)=>`| ${i+1} | ${r.pair} | ${Math.round((r.winRate||0)*100)} | ${r.pnl||0} | ${r.maxDrawdown||0} | S=${r.SMA_SHORT},L=${r.SMA_LONG},RSI=${r.SELL_RSI_OVERBOUGHT},${r.BUY_RSI_OVERSOLD} |`).join('\n');
+              return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- | --- |\n${body}`;
             }
-            const body = `### Live Minimal Trade Result\n\n\n\`\`\`\n${summary}\n\`\`\`${extra}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
+            const body = `### Live Summary\n\n\n\`\`\`\n${summary}\n\`\`\`${extra}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
             async function safeCall(fn, args){ try { return await fn(args); } catch (e){ core.warning(`Comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safeCall(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });

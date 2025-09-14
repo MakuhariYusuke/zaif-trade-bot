@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { logInfo, logError } from "../utils/logger";
+import { logInfo, logError, logWarn } from "../utils/logger";
+import { getMaxHoldSec } from "../utils/toolkit";
 import { updateFields } from "./position-store";
 
 export interface RiskConfig {
@@ -33,11 +34,7 @@ export interface Position {
     openOrderIds?: number[];     // 関連する未約定注文ID
 }
 
-export interface ExitSignal {
-    position: Position;
-    reason: "STOP_LOSS" | "TAKE_PROFIT" | "MA_BREAK" | "TRAIL_STOP";
-    targetPrice: number;  // suggested limit price
-}
+export interface ExitSignal { position: Position; reason: "STOP_LOSS" | "TAKE_PROFIT" | "MA_BREAK" | "TRAIL_STOP" | "TIME_LIMIT"; targetPrice: number; }
 
 export interface TrailResult { signal?: "EXIT_TRAIL"; reason?: any }
 
@@ -233,7 +230,13 @@ export function positionSizeFromBalance(jpyBalance: number, price: number, cfg: 
  */
 export function evaluateExitSignals(positions: Position[], currentPrice: number, sma: number | null, cfg: RiskConfig): ExitSignal[] {
     const signals: ExitSignal[] = [];
+    const maxHold = getMaxHoldSec();
     for (const pos of positions) {
+        if (maxHold != null && (Date.now() - pos.timestamp) >= maxHold * 1000) {
+            logWarn(`[TIME_LIMIT] force exit id=${pos.id} pair=${pos.pair} holdSec=${Math.floor((Date.now()-pos.timestamp)/1000)}>=${maxHold}`);
+            signals.push({ position: pos, reason: "TIME_LIMIT", targetPrice: currentPrice });
+            continue;
+        }
         if (pos.side === "long") {
             // Trailing highest update (long)
             if (pos.highestPrice == null || currentPrice > pos.highestPrice) {

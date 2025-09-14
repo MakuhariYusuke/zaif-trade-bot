@@ -12,7 +12,7 @@ describe('private API rate-limit handling', () => {
     };
     vi.spyOn(adapters, 'createPrivateApi').mockReturnValue(mockApi);
     initSvc(mockApi);
-    await expect(placeLimitOrder('btc_jpy', 'BUY' as any, 100, 0.1)).rejects.toThrow(/429/i);
+    await expect(placeLimitOrder('btc_jpy', 'BUY' as any, 100, 0.1)).rejects.toThrow('Too Many Requests');
     expect(mockApi.trade).toHaveBeenCalledTimes(3);
   });
 });
