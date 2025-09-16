@@ -205,12 +205,15 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
         }
     } catch {/* ignore */ }
     // Threshold-based EXEC warnings
-    const elapsed = Date.now() - start;
-    if (elapsed > 30000) {
-        execSvc.clog('EXEC','WARN','polling slow',{ requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice, elapsedMs: elapsed });
-    }
+    const check = shouldWarnPollingSlow(start, Date.now(), 30000);
+    if (check.warn) execSvc.clog('EXEC','WARN','polling slow',{ requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice, elapsedMs: check.elapsed });
     logTradeError("Order expired", { requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice, retries: snap.retries || 0 });
     return snap;
+}
+
+export function shouldWarnPollingSlow(startMs: number, nowMs: number, thresholdMs = 30000): { warn: boolean; elapsed: number } {
+    const elapsed = nowMs - startMs;
+    return { warn: elapsed > thresholdMs, elapsed };
 }
 
 /**
