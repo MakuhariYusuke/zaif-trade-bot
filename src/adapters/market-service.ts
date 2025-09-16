@@ -21,7 +21,9 @@ class MarketService extends BaseService {
   async fetchTicker(pair: string){
     const hit = this.cacheTicker.get(pair);
   if (hit && this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit ticker',{ pair }); } catch {} return hit.val; }
-    const v = await this.withRetry(()=>getTicker(pair), 'getTicker', undefined, undefined, { requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
+    const t0 = Date.now();
+    const v = await this.withRetry(()=>getTicker(pair), 'getTicker', undefined, undefined, { category: 'API-PUBLIC', requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
+    const dt = Date.now() - t0; if (dt > 800) { this.clog('API-PUBLIC','WARN','slow public API',{ pair, op: 'getTicker', elapsedMs: dt }); }
     this.cacheTicker.set(pair, { at: Date.now(), val: v });
     return v;
   }
@@ -29,7 +31,9 @@ class MarketService extends BaseService {
   async fetchBoard(pair: string){
     const hit = this.cacheOrderBook.get(pair);
   if (hit && this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit orderbook',{ pair }); } catch {} return hit.val; }
-    const v = await this.withRetry(()=>getOrderBook(pair), 'getOrderBook', undefined, undefined, { requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
+    const t0 = Date.now();
+    const v = await this.withRetry(()=>getOrderBook(pair), 'getOrderBook', undefined, undefined, { category: 'API-PUBLIC', requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
+    const dt = Date.now() - t0; if (dt > 800) { this.clog('API-PUBLIC','WARN','slow public API',{ pair, op: 'getOrderBook', elapsedMs: dt }); }
     this.cacheOrderBook.set(pair, { at: Date.now(), val: v });
     return v;
   }
@@ -37,7 +41,9 @@ class MarketService extends BaseService {
   async fetchRecentTrades(pair: string){
     const hit = this.cacheTrades.get(pair);
   if (hit && this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit trades',{ pair }); } catch {} return hit.val; }
-    const v = await this.withRetry(()=>getTrades(pair), 'getTrades', undefined, undefined, { requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
+    const t0 = Date.now();
+    const v = await this.withRetry(()=>getTrades(pair), 'getTrades', undefined, undefined, { category: 'API-PUBLIC', requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
+    const dt = Date.now() - t0; if (dt > 800) { this.clog('API-PUBLIC','WARN','slow public API',{ pair, op: 'getTrades', elapsedMs: dt }); }
     this.cacheTrades.set(pair, { at: Date.now(), val: v });
     return v;
   }
@@ -63,14 +69,15 @@ class MarketService extends BaseService {
         const isNonce = msg.includes('nonce') || msg.includes('invalid nonce');
         const isRateLimit = msg.includes('429') || msg.includes('too many requests') || msg.includes('rate limit');
     // API retry WARN log with required meta
-    this.clog('API', 'WARN', 'retry', { requestId: undefined, pair, side: action, amount, price, retries: i+1, cause: { code: e?.code ?? e?.cause?.code ?? null, message: e?.message || e?.error } });
-        if (!(isNonce || isRateLimit) || i === 2) throw e;
+  this.clog('API-PRIVATE', 'WARN', 'retry', { requestId: undefined, pair, side: action, amount, price, retries: i+1, cause: { code: e?.code ?? e?.cause?.code ?? null, message: e?.message || e?.error } });
+        // Non-retryable error or last attempt: break to emit final ERROR once below
+        if (!(isNonce || isRateLimit) || i === 2) break;
         await sleep(100 * (i+1));
         continue;
       }
     }
   // final ERROR log with required meta
-  this.clog('API', 'ERROR', 'failed', { requestId: undefined, pair, side: action, amount, price, retries: 3, cause: { code: lastErr?.code ?? lastErr?.cause?.code ?? null, message: lastErr?.message || lastErr?.error } });
+  this.clog('API-PRIVATE', 'ERROR', 'failed', { requestId: undefined, pair, side: action, amount, price, retries: 3, cause: { code: lastErr?.code ?? lastErr?.cause?.code ?? null, message: lastErr?.message || lastErr?.error } });
     throw lastErr;
   }
 
@@ -89,7 +96,7 @@ class MarketService extends BaseService {
 
   async cancelOrder(params: CancelOrderParams) {
     if (!this.privateApi) throw new Error('Private API not initialized');
-    const meta = { requestId: undefined, pair: undefined, side: undefined, amount: undefined, price: undefined };
+  const meta = { category: 'API-PRIVATE', requestId: undefined, pair: undefined, side: undefined, amount: undefined, price: undefined };
     const fn = async () => this.privateApi!.cancel_order({ order_id: String(params.order_id) });
     const r = await this.withRetry(fn, 'cancelOrder', undefined, undefined, meta);
     return r.return;

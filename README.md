@@ -445,12 +445,13 @@ CI ではシナリオごとに `stats-<scenario>.json/.svg` と `report-summary-
 
 ---
 
-## 📦 Path alias: @contracts とサービスの注意
+## 📦 Path alias と移行ガイド
 
-- 型は `src/types/contracts` から `src/contracts` に切り出しました。以後は `@contracts` エイリアスでの import を推奨します。
+- 型は `src/contracts` に集約しました。以後は `@contracts` で import してください。
 	- 例: `import { PositionStore, RiskManager } from '@contracts'`
-- 互換のため `src/types/contracts.ts` は re-export しつつ、初回のみ `CONFIG/WARN` を出します（warnOnce）。
-- services 層は後方互換のため残していますが、コア（src/core）を正本として委譲する方針です。
+- 実装は `@adapters/*` と `@application/*` を利用してください（旧 `src/services/*` と `src/strategies/*` は削除済み）。
+	- 例: `import { createServicePositionStore } from '@adapters/position-store'`
+	- 例: `import { runBuyStrategy } from '@application/strategies/buy-strategy-app'`
 
 生成物（ルート直下）
 - `ml-dataset.jsonl`（特徴量データ・JSON Lines）

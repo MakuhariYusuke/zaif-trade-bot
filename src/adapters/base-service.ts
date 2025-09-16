@@ -19,6 +19,14 @@ export class BaseService {
     const max = toPosInt(attempts ?? ATT, ATT);
     const backoff = toPosInt(backoffMs ?? BO, BO);
     let lastErr: any;
+    const baseMeta = {
+      requestId: contextMeta?.requestId ?? null,
+      pair: contextMeta?.pair ?? null,
+      side: contextMeta?.side ?? null,
+      amount: contextMeta?.amount ?? null,
+      price: contextMeta?.price ?? null,
+    };
+    const category = contextMeta?.category || 'API';
     for (let i = 0; i < max; i++) {
       try { return await fn(); } catch (e: any) {
         lastErr = e;
@@ -30,12 +38,24 @@ export class BaseService {
           const sign = Math.random() < 0.5 ? -1 : 1;
           const factor = 1 + sign * amp; // 0.8-0.9 or 1.1-1.2
           const delay = Math.floor(backoff * Math.pow(2, i) * factor);
+          // category WARN with required meta and retry count
+          this.clog(category, 'WARN', 'retry', {
+            ...baseMeta,
+            retries: i + 1,
+            cause: { code: code ?? null, message: e?.message }
+          });
           await sleep(delay);
         }
       }
     }
     const wrapped = new Error(`${label} failed: ${lastErr?.message || String(lastErr)}`);
     (wrapped as any).cause = lastErr;
+    // category ERROR on final failure with required meta
+    this.clog(category, 'ERROR', 'failed', {
+      ...baseMeta,
+      retries: max,
+      cause: { code: (lastErr?.code || lastErr?.cause?.code) ?? null, message: lastErr?.message }
+    });
     throw wrapped;
   }
 

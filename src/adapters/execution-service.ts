@@ -139,12 +139,12 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
                 }
                 if (filledAmt >= snap.amount * 0.999) {
                     snap.status = "FILLED";
-                    logExecution("Order filled", { requestId: snap.requestId, orderId: snap.orderId, filledAmt, avg: snap.avgFillPrice });
+                    logExecution("Order filled", { requestId: snap.requestId, orderId: snap.orderId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.filledAmount, price: snap.avgFillPrice, retries: snap.retries || 0 });
                     try { if (snap.filledAmount && snap.avgFillPrice) { updateOnFill({ pair: pair, side: snap.side, price: snap.avgFillPrice, amount: snap.filledAmount, ts: Date.now(), matchMethod: "history" }); } } catch {}
                     try { if (snap.orderId) clearOpenOrderId(pair, snap.orderId); } catch (err) { logTradeError("clearOpenOrderId failed", { error: err instanceof Error ? err.message : String(err), pair, orderId: snap.orderId }); }
                 } else {
                     snap.status = "CANCELLED";
-                    logTradeError("Order missing from active list; marking CANCELLED", { requestId: snap.requestId, orderId: snap.orderId, filledAmt });
+                    logTradeError("Order missing from active list; marking CANCELLED", { requestId: snap.requestId, orderId: snap.orderId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: filledAmt, cause: { code: 'ORDER_NOT_FOUND' } });
                     try { if (snap.orderId) clearOpenOrderId(pair, snap.orderId); } catch {}
                 }
                 return snap;
@@ -172,7 +172,7 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
                 }
             }
         } catch (e: any) {
-            logTradeError("pollFillState error", { error: e.message });
+            logTradeError("pollFillState error", { requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', cause: { code: e?.code || 'POLL_ERROR', message: e?.message } });
         }
         await sleep(pollIntervalMs);
     }
@@ -200,10 +200,15 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
     snap.status = "EXPIRED";
     try {
         if (snap.orderId) {
-            try { await execSvc.withRetry(() => cancelOrder({ order_id: snap.orderId as any }), 'cancelOrder', 3, 100); } catch {/* ignore */ }
+            try { await execSvc.withRetry(() => cancelOrder({ order_id: snap.orderId as any }), 'cancelOrder', 3, 100, { category: 'EXEC', requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice }); } catch {/* ignore */ }
         }
     } catch {/* ignore */ }
-    logTradeError("Order expired", snap);
+    // Threshold-based EXEC warnings
+    const elapsed = Date.now() - start;
+    if (elapsed > 30000) {
+        execSvc.clog('EXEC','WARN','polling slow',{ requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice, elapsedMs: elapsed });
+    }
+    logTradeError("Order expired", { requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice, retries: snap.retries || 0 });
     return snap;
 }
 
@@ -244,8 +249,19 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
     const dryRun = process.env.DRY_RUN === '1';
     async function submit(price: number) {
         if (dryRun) return 'DRYRUN';
-        const r = await placeLimitOrder(p.currency_pair, actionSide, price, p.amount);
-        return String(r.order_id || '');
+        const t0 = Date.now();
+        try {
+            const r = await placeLimitOrder(p.currency_pair, actionSide, price, p.amount);
+            const dt = Date.now() - t0;
+            const acceptedQty = Number((r as any)?.submitted_amount ?? (r as any)?.amount ?? p.amount);
+            const qtyRounded = Math.abs(acceptedQty - p.amount) > 1e-12;
+            if (dt > 800) execSvc.clog('ORDER','WARN','slow accept',{ requestId, pair: p.currency_pair, side: p.side === 'bid' ? 'buy' : 'sell', amount: p.amount, price, retries: 0, elapsedMs: dt });
+            if (qtyRounded) execSvc.clog('ORDER','WARN','quantity rounded',{ requestId, pair: p.currency_pair, side: p.side === 'bid' ? 'buy' : 'sell', amount: p.amount, price, retries: 0, acceptedAmount: acceptedQty });
+            return String(r.order_id || '');
+        } catch (e: any) {
+            execSvc.clog('ORDER','ERROR','submit failed',{ requestId, pair: p.currency_pair, side: p.side === 'bid' ? 'buy' : 'sell', amount: p.amount, price, retries: 0, cause: { code: e?.code ?? e?.cause?.code ?? 'SUBMIT_ERROR', message: e?.message } });
+            throw e;
+        }
     }
 
     async function pollLoop(snapshot: { orderId: string; originalAmount: number; assumedFilled: number; createdAt: number; expectedPx: number; actionSide: 'BUY' | 'SELL' }, timeoutMs: number) {
@@ -369,7 +385,8 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
     }
     const submitOrderId = await submit(p.limitPrice);
     if (!submitOrderId) {
-        logTradeError('Missing orderId', { requestId });
+        execSvc.clog('ORDER','ERROR','missing orderId',{ requestId, pair: p.currency_pair, side: p.side === 'bid' ? 'buy' : 'sell', amount: p.amount, price: p.limitPrice, retries: 0, cause: { code: 'ORDER_ID_MISSING' } });
+        logTradeError('Missing orderId', { requestId, pair: p.currency_pair });
         return { requestId, side: actionSide, intendedQty: p.amount, filledQty: 0, avgExpectedPrice: p.limitPrice, avgFillPrice: 0, slippagePct: 0, durationMs: 0, submitRetryCount: 0, pollRetryCount: 0, cancelRetryCount: 0, nonceRetryCount: 0, totalRetryCount: 0, filledCount: 0 } as unknown as OrderLifecycleSummary;
     }
     logSignal('[SUBMIT]', { requestId, orderId: submitOrderId, side: actionSide, price: p.limitPrice, amount: p.amount });
