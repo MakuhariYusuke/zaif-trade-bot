@@ -12,10 +12,10 @@ describe('public API timeout short (RETRY_ATTEMPTS=1)', () => {
   beforeEach(() => {
     process.env.RETRY_ATTEMPTS = '1';
   });
-  let mod: typeof import('../../../src/services/market-service');
+  let mod: typeof import('../../../src/adapters/market-service');
 
   beforeAll(async () => {
-    mod = await import('../../../src/services/market-service');
+  mod = await import('../../../src/adapters/market-service');
   });
 
   it('getTicker ETIMEDOUT causes warn path and returns partial overview', async () => {

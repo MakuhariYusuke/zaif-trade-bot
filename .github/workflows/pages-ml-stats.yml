@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ vars.ENABLE_PAGES == '1' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +48,10 @@ jobs:
           cp -f ml-*.csv ./public/ 2>/dev/null || true
           cp -f report-ml-*.json ./public/ 2>/dev/null || true
           cp -f ml-search-top.json ./public/ 2>/dev/null || true
+          # Also keep per-day Top3 history folder for overview
+          DAY=$(date -u +%Y-%m-%d)
+          mkdir -p ./public/history/day-$DAY
+          if [ -f ml-search-top.json ]; then cp -f ml-search-top.json ./public/history/day-$DAY/top.json || true; fi
           RUN_TS=$(date -u +%Y%m%d-%H%M%S)
           mkdir -p ./public/history/run-$RUN_TS
           cp -f ./public/* ./public/history/run-$RUN_TS/ 2>/dev/null || true
@@ -85,7 +90,20 @@ jobs:
             for f in public/ml-* public/report-ml-*.json; do b=$(basename "$f"); [ -e "$f" ] && echo "<li><a href=\"$b\">$b</a></li>"; done
             echo '</ul>'
             echo '<h2>History</h2><ul>'
-            for d in $(ls -1 public/history 2>/dev/null); do echo "<li><a href=\"history/$d/\">$d</a></li>"; done
+            for d in $(ls -1 public/history 2>/dev/null); do 
+              echo "<li><a href=\"history/$d/\">$d</a>";
+              if [ -f "public/history/$d/top.json" ]; then 
+                echo ' — Top3:'; 
+                cat "public/history/$d/top.json" | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","Params"] | @tsv ), (.[] | [ (input_line_number|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' | awk 'BEGIN{ORS=""} NR==1{print " <table><thead><tr>"; for(i=1;i<=NF;i++) printf("<th>%s</th>",$i); print "</tr></thead><tbody>"; next} {print "<tr>"; for(i=1;i<=NF;i++) printf("<td>%s</td>",$i); print "</tr>"} END{print "</tbody></table>"}'; 
+                # Scenario report-summary links
+                if ls public/history/$d/report-summary-*.json >/dev/null 2>&1; then 
+                  echo ' <div><small>Scenarios: ';
+                  for f in public/history/$d/report-summary-*.json; do b=$(basename "$f"); echo "<a href=\"history/$d/$b\">${b}</a> "; done
+                  echo '</small></div>';
+                fi;
+              fi; 
+              echo '</li>';
+            done
             echo '</ul>'
             echo '</body></html>'
           } > ./public/index.html
@@ -94,6 +112,7 @@ jobs:
         with:
           path: './public'
   deploy:
+    if: ${{ vars.ENABLE_PAGES == '1' }}
     runs-on: ubuntu-latest
     needs: build
     environment:

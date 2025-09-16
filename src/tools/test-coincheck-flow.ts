@@ -3,8 +3,9 @@ dotenv.config();
 import { createPrivateApi } from '../api/adapters';
 import { getOrderBook } from '../api/public';
 import { logInfo, logWarn } from '../utils/logger';
+import { sleep } from '../utils/toolkit';
 
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+// Use shared sleep with FAST_CI capping
 
 (async () => {
     process.env.EXCHANGE = 'coincheck';

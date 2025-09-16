@@ -146,52 +146,24 @@ export function readFeatureCsvRows(dir: string, date?: string): FeatureCsvRow[] 
   const path = require('path') as typeof import('path');
   const rows: FeatureCsvRow[] = [];
   if (!fs.existsSync(dir)) return rows;
-  const filter = (f: string) => f.startsWith('features-') && (f.endsWith('.csv') || f.endsWith('.jsonl')) && (!date || f.includes(date));
+  const filter = (f: string) => f.startsWith('features-') && f.endsWith('.jsonl') && (!date || f.includes(date));
   const files = fs.readdirSync(dir).filter(filter);
   for (const f of files) {
     const full = path.join(dir, f);
     try {
-      if (f.endsWith('.jsonl')){
-        const txt = fs.readFileSync(full, 'utf8');
-        const lines = txt.split(/\r?\n/);
-        for (const line of lines){
-          const t = line.trim(); if (!t) continue;
-          try {
-            const o = JSON.parse(t);
-            const toNum = (v: any): number|undefined => { const n = Number(v); return Number.isFinite(n) ? n : undefined; };
-            rows.push({
-              ts: Number(o.ts), pair: String(o.pair), side: String(o.side),
-              rsi: toNum(o.rsi), sma_short: toNum(o.sma_short), sma_long: toNum(o.sma_long),
-              price: Number(o.price), qty: Number(o.qty), pnl: toNum(o.pnl), win: toNum(o.win)
-            });
-          } catch { }
-        }
-      } else {
-        const txt = fs.readFileSync(full, 'utf8');
-        const [header, ...lines] = txt.trim().split(/\r?\n/);
-        const cols = header.split(',');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const parts = line.split(',');
-          const rec: any = {};
-          cols.forEach((c, i) => rec[c] = parts[i]);
-          const toNum = (v: any): number|undefined => {
-            if (v == null) return undefined;
-            const s = String(v).trim();
-            if (s === '') return undefined;
-            const n = Number(s);
-            return Number.isFinite(n) ? n : undefined;
-          };
+      const txt = fs.readFileSync(full, 'utf8');
+      const lines = txt.split(/\r?\n/);
+      for (const line of lines){
+        const t = line.trim(); if (!t) continue;
+        try {
+          const o = JSON.parse(t);
+          const toNum = (v: any): number|undefined => { const n = Number(v); return Number.isFinite(n) ? n : undefined; };
           rows.push({
-            ts: Number(rec.ts), pair: rec.pair, side: rec.side,
-            rsi: toNum(rec.rsi),
-            sma_short: toNum(rec.sma_short),
-            sma_long: toNum(rec.sma_long),
-            price: Number(rec.price), qty: Number(rec.qty),
-            pnl: toNum(rec.pnl),
-            win: toNum(rec.win),
+            ts: Number(o.ts), pair: String(o.pair), side: String(o.side),
+            rsi: toNum(o.rsi), sma_short: toNum(o.sma_short), sma_long: toNum(o.sma_long),
+            price: Number(o.price), qty: Number(o.qty), pnl: toNum(o.pnl), win: toNum(o.win)
           });
-        }
+        } catch { }
       }
     } catch { /* ignore file errors */ }
   }
@@ -205,41 +177,9 @@ export function getFeaturesRoot(): string {
   return path.join(base, 'features');
 }
 
-export interface FeatureCsvFile { file: string; source: 'paper'|'live'|'root'; pair: string }
-export interface FeatureFile extends FeatureCsvFile { format: 'csv'|'jsonl' }
+export interface FeatureFile { file: string; source: 'paper'|'live'|'root'; pair: string; format: 'jsonl' }
 
-/** Enumerate feature CSV files under features root, scanning paper/, live/, and root-level pair dirs. */
-export function enumerateFeatureCsvFiles(rootDir?: string): FeatureCsvFile[] {
-  const fs = require('fs') as typeof import('fs');
-  const path = require('path') as typeof import('path');
-  const root = rootDir ? path.resolve(rootDir) : getFeaturesRoot();
-  const out: FeatureCsvFile[] = [];
-  if (!fs.existsSync(root)) return out;
-  const sources: Array<'paper'|'live'> = ['paper','live'];
-  for (const src of sources) {
-    const srcDir = path.join(root, src);
-    if (!fs.existsSync(srcDir) || !fs.statSync(srcDir).isDirectory()) continue;
-    const pairs = fs.readdirSync(srcDir).filter((n: string) => fs.statSync(path.join(srcDir, n)).isDirectory());
-    for (const pair of pairs) {
-      const dir = path.join(srcDir, pair);
-  const files = fs.readdirSync(dir).filter((f: string) => f.startsWith('features-') && f.endsWith('.csv'));
-      for (const f of files) out.push({ file: path.join(dir, f), source: src, pair });
-    }
-  }
-  // root-level pairs (legacy)
-  const rootPairs = fs.readdirSync(root).filter((n: string) => {
-    const p = path.join(root, n);
-    return fs.statSync(p).isDirectory() && !sources.includes(n as any);
-  });
-  for (const pair of rootPairs) {
-    const dir = path.join(root, pair);
-    const files = fs.readdirSync(dir).filter((f: string) => f.startsWith('features-') && f.endsWith('.csv'));
-    for (const f of files) out.push({ file: path.join(dir, f), source: 'root', pair });
-  }
-  return out;
-}
-
-/** Enumerate both CSV and JSONL feature files. */
+/** Enumerate JSONL feature files only. */
 export function enumerateFeatureFiles(rootDir?: string): FeatureFile[] {
   const fs = require('fs') as typeof import('fs');
   const path = require('path') as typeof import('path');
@@ -253,8 +193,8 @@ export function enumerateFeatureFiles(rootDir?: string): FeatureFile[] {
     const pairs = fs.readdirSync(srcDir).filter((n: string) => fs.statSync(path.join(srcDir, n)).isDirectory());
     for (const pair of pairs) {
       const dir = path.join(srcDir, pair);
-      const files = fs.readdirSync(dir).filter((f: string) => f.startsWith('features-') && (f.endsWith('.csv') || f.endsWith('.jsonl')));
-      for (const f of files) out.push({ file: path.join(dir, f), source: src, pair, format: f.endsWith('.jsonl') ? 'jsonl':'csv' });
+      const files = fs.readdirSync(dir).filter((f: string) => f.startsWith('features-') && f.endsWith('.jsonl'));
+      for (const f of files) out.push({ file: path.join(dir, f), source: src, pair, format: 'jsonl' });
     }
   }
   // root-level pairs (legacy)
@@ -264,8 +204,8 @@ export function enumerateFeatureFiles(rootDir?: string): FeatureFile[] {
   });
   for (const pair of rootPairs) {
     const dir = path.join(root, pair);
-    const files = fs.readdirSync(dir).filter((f: string) => f.startsWith('features-') && (f.endsWith('.csv') || f.endsWith('.jsonl')));
-    for (const f of files) out.push({ file: path.join(dir, f), source: 'root', pair, format: f.endsWith('.jsonl') ? 'jsonl':'csv' });
+    const files = fs.readdirSync(dir).filter((f: string) => f.startsWith('features-') && f.endsWith('.jsonl'));
+    for (const f of files) out.push({ file: path.join(dir, f), source: 'root', pair, format: 'jsonl' });
   }
   return out;
 }

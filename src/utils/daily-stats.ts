@@ -3,6 +3,7 @@ import fsp from "fs/promises";
 import path from "path";
 import { OrderLifecycleSummary } from "../types/private";
 import { logWarn } from "./logger";
+import { readLines } from './toolkit';
 
 export interface DailyAggregate {
     date: string;
@@ -72,6 +73,34 @@ export function loadDaily(date: string, pair?: string): DailyAggregate {
     } catch {}
     try {
     const f = fileFor(date, pair);
+        const fJsonl = f.replace(/\.json$/, '.jsonl');
+        if (fs.existsSync(fJsonl)){
+            // [STREAM] JSONL safe read: parse last non-empty line as aggregate
+            try {
+                // eslint-disable-next-line no-console
+                console.log(`[STREAM] reading JSONL ${fJsonl}`);
+                let last = '';
+                (async ()=>{ for await (const line of readLines(fJsonl)) { const t = String(line).trim(); if (t) last = t; } })();
+            } catch {}
+            try {
+                let last = '';
+                // re-iterate in blocking style for sync API compatibility
+                // note: readLines is async; we simulate a tiny buffered approach by reading file content when small
+                const stat = fs.statSync(fJsonl);
+                if (stat.size <= 5_000_000) { // 5MB safe bound
+                    const data = fs.readFileSync(fJsonl, 'utf8');
+                    const lines = data.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+                    last = lines[lines.length-1] || '';
+                } else {
+                    // fallback: just skip JSONL if too big in sync context
+                    // eslint-disable-next-line no-console
+                    console.warn(`[STREAM] fallback JSON (file too large for sync JSONL): ${f}`);
+                    if (!fs.existsSync(f)) throw new Error('json fallback missing');
+                    return JSON.parse(fs.readFileSync(f, "utf8"));
+                }
+                if (last) return JSON.parse(last);
+            } catch {}
+        }
         if (!fs.existsSync(f)) return { 
             date, 
             trades: 0, 
@@ -143,7 +172,9 @@ async function writeOne(p: Pending){
     try {
         const d = path.dirname(p.file);
         await fsp.mkdir(d, { recursive: true }).catch(()=>{});
-        await fsp.writeFile(p.file, JSON.stringify(p.agg, null, 2), 'utf8');
+        // JSONL に追記（スナップショットを1行）
+        const jsonl = p.file.replace(/\.json$/, '.jsonl');
+        await fsp.appendFile(jsonl, JSON.stringify(p.agg) + '\n', 'utf8');
         __putCachedAggregate(p.file, p.agg);
     } catch {}
 }
@@ -152,7 +183,11 @@ function writeOneSync(p: Pending){
     try {
         const d = path.dirname(p.file);
         try { fs.mkdirSync(d, { recursive: true }); } catch {}
-        try { fs.writeFileSync(p.file, JSON.stringify(p.agg, null, 2), { encoding: 'utf8' }); } catch {}
+        // JSONL に追記
+        try {
+            const jsonl = p.file.replace(/\.json$/, '.jsonl');
+            fs.appendFileSync(jsonl, JSON.stringify(p.agg) + '\n', { encoding: 'utf8' });
+        } catch {}
         __putCachedAggregate(p.file, p.agg);
     } catch {}
 }

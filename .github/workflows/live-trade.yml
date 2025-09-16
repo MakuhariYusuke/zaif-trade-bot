@@ -28,7 +28,7 @@ on:
         default: "490"
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
 
@@ -65,6 +65,9 @@ jobs:
       - name: Build summary report (live)
         if: always()
         run: npm run report:summary -- --source live
+      - name: Weekly trend
+        if: always()
+        run: npm run trend:weekly
       - name: Upload logs
         uses: actions/upload-artifact@v4
         with:
@@ -73,6 +76,27 @@ jobs:
             logs/live/summary-*.json
             logs/features/live/**
             report-summary-live.json
+      - name: Publish reports into repo (branch)
+        if: always()
+        run: |
+          set -e
+          DAY=$(date -u +%Y-%m-%d)
+          DIR="reports/day-$DAY"
+          mkdir -p "$DIR"
+          {
+            echo "# Live Trade Reports $DAY";
+            echo "\n## Artifacts";
+            for f in report-summary-live.json logs/live/summary-*.json; do
+              for g in $f; do [ -f "$g" ] && b=$(basename "$g") && echo "- [$b](./$b)"; done
+            done
+            if [ -f reports/latest/trend-weekly.json ]; then echo "- [trend-weekly.json](../latest/trend-weekly.json)"; fi
+          } > "$DIR/index.md"
+          for f in report-summary-live.json logs/live/summary-*.json; do for g in $f; do [ -f "$g" ] && cp -f "$g" "$DIR/" || true; done; done
+          ls -1 reports 2>/dev/null | grep '^day-' | sort | head -n -14 | while read d; do rm -rf "reports/$d" || true; done
+          git config user.name "github-actions"; git config user.email "github-actions@github.com"
+          git add reports || true
+          git commit -m "chore(reports): add $DAY (live-trade)" || true
+          git push || true
       - name: Summarize Results
         id: summarize
         run: |
@@ -106,7 +130,8 @@ jobs:
           T7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
           EXTRA="PnL=$PNL Win%=$((WIN*100)) MaxDD=$MAXDD Trend7dWin%=$((T7*100))"
           TOP3=$(cat ml-search-top.json 2>/dev/null | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","Params"] | @tsv ), (.[] | [ (input_line_number-1|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' || true)
-          TEXT="${STATUS}\n${EXTRA}\n\n${{ steps.summarize.outputs.summary }}\n\nTop 3 Results (random):\n$TOP3\n\n(Artifacts available in GitHub)"
+          RLNK="reports/day-$(date -u +%Y-%m-%d)/index.md"
+          TEXT="${STATUS}\n${EXTRA}\nAdded report: $RLNK\n\n${{ steps.summarize.outputs.summary }}\n\nTop 3 Results (random):\n$TOP3\n\n(Artifacts available in GitHub)"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\": \"$TEXT\"}" "$SLACK_WEBHOOK_URL" || true
       - name: GitHub Comment
         uses: actions/github-script@v7
@@ -130,7 +155,8 @@ jobs:
               const body = rows.map((r,i)=>`| ${i+1} | ${r.pair} | ${Math.round((r.winRate||0)*100)} | ${r.pnl||0} | ${r.maxDrawdown||0} | S=${r.SMA_SHORT},L=${r.SMA_LONG},RSI=${r.SELL_RSI_OVERBOUGHT},${r.BUY_RSI_OVERSOLD} |`).join('\n');
               return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- | --- |\n${body}`;
             }
-            const body = `### Live Summary\n\n\n\`\`\`\n${summary}\n\`\`\`${extra}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
+            const day = new Date().toISOString().slice(0,10);
+            const body = `### Live Summary (report: reports/day-${day}/index.md)\n\n\n\`\`\`\n${summary}\n\`\`\`${extra}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
             async function safeCall(fn, args){ try { return await fn(args); } catch (e){ core.warning(`Comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safeCall(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });

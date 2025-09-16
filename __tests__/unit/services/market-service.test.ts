@@ -10,7 +10,7 @@ describe('services/market-service', () => {
     beforeEach(() => { vi.resetModules(); });
 
     it('fetchMarketOverview returns aggregated data', async () => {
-        const mod = await import('../../../src/services/market-service');
+    const mod = await import('../../../src/adapters/market-service');
         const res = await mod.fetchMarketOverview('btc_jpy');
         expect(res.ticker.last).toBe(100);
         expect(res.orderBook.asks[0][0]).toBe(101);
@@ -18,7 +18,7 @@ describe('services/market-service', () => {
     });
 
     it('fetchBalance throws on error', async () => {
-        const mod = await import('../../../src/services/market-service');
+    const mod = await import('../../../src/adapters/market-service');
         const priv: any = { get_info2: async () => ({ success: 0, error: 'bad' }) };
         mod.init(priv);
         await expect(mod.fetchBalance()).rejects.toThrow();

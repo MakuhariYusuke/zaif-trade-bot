@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { fetchMarketOverview, getAccountBalance, getActiveOrders, cancelOpenOrders } from "../core/market";
 import { initExecution } from "../core/execution";
-import { getRiskConfig, getPositions, calculateSma, describeExit, savePositionsToFile } from "../core/risk";
+import { getRiskConfig, getPositions, calcSMA as calculateSma, describeExit, savePositionsToFile } from "../adapters/risk-service";
 import { logInfo, logError } from "../utils/logger";
 import { getPriceSeries } from "../utils/price-cache";
 import { createPrivateApi } from "../api/adapters";
@@ -15,6 +15,7 @@ import { runSellStrategy } from "../core/strategies/sell-strategy";
 import { runBuyStrategy } from "../core/strategies/buy-strategy";
 import { incBuyEntry, incSellEntry } from "../utils/daily-stats";
 import { initMarket } from "../core/market";
+import { sleep } from '../utils/toolkit'; // Moved to top-level static import
 
 const EX = (process.env.EXCHANGE || 'zaif').toLowerCase();
 const privateApi: PrivateApi = createPrivateApi();
@@ -232,7 +233,7 @@ if (require.main === module) {
         } catch (e: any) { logError('Health check exception', e?.message || e); }
         while (true) {
             await strategyOnce(pair, EXECUTE);
-            await new Promise(r => setTimeout(r, interval));
+            await sleep(interval);
         }
     })();
 }

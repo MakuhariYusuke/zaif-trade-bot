@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { PrivateApi, GetInfo2Response, ActiveOrder, TradeHistoryRecord, TradeResult, CancelResult } from '../types/private';
+import { sleep } from '../utils/toolkit';
 
 interface PaperTrade extends TradeHistoryRecord { currency_pair: string }
 interface PaperOrder { 
@@ -76,7 +77,7 @@ function settle(funds: Record<string, number>, pair: string, action: 'bid' | 'as
 class PaperPrivate implements PrivateApi {
     private async maybeDelayAndError() {
         const lat = Number(process.env.PAPER_LATENCY_MS || 0);
-        if (lat > 0) await new Promise(r => setTimeout(r, lat));
+        if (lat > 0) { await sleep(lat); }
         const errRate = Number(process.env.PAPER_ERROR_RATE || 0);
         if (errRate > 0 && Math.random() < errRate) throw new Error('Paper injected error');
     }

@@ -1,0 +1,31 @@
+{
+  "root": true,
+  "env": { "es2021": true, "node": true },
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "module" },
+  "plugins": ["import"],
+  "extends": ["eslint:recommended"],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "../types/contracts",
+            "message": "Use '@contracts' alias instead of src/types/contracts"
+          },
+          {
+            "name": "src/types/contracts",
+            "message": "Use '@contracts' alias instead of src/types/contracts"
+          },
+          { "name": "src/services/market-service", "message": "Use @adapters/market-service" },
+          { "name": "src/services/execution-service", "message": "Use @adapters/execution-service" },
+          { "name": "src/services/indicator-service", "message": "Use @adapters/indicator-service" },
+          { "name": "src/services/position-store", "message": "Use @adapters/position-store" },
+          { "name": "src/services/risk-service", "message": "Use @adapters/risk-service" },
+          { "name": "src/strategies/buy-strategy", "message": "Use @application/strategies/buy-strategy-app" },
+          { "name": "src/strategies/sell-strategy", "message": "Use @application/strategies/sell-strategy-app" }
+        ]
+      }
+    ]
+  }
+}

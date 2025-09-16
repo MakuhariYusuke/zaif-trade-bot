@@ -53,13 +53,15 @@ describe('core/execution minimal coverage', () => {
     expect(pos.avgPrice).toBeCloseTo(100);
     // stats file updated
   const today = new Date().toISOString().slice(0,10);
-  const statsFile1 = path.join(process.env.STATS_DIR!, `stats-${today}.json`);
-  const statsFile2 = path.join(process.env.STATS_DIR!, 'pairs', pair, `stats-${today}.json`);
+  const statsFile1 = path.join(process.env.STATS_DIR!, `stats-${today}.jsonl`);
+  const statsFile2 = path.join(process.env.STATS_DIR!, 'pairs', pair, `stats-${today}.jsonl`);
   // small delay to allow fs write
   await new Promise(r=>setTimeout(r, 10));
   const fpath = fs.existsSync(statsFile2) ? statsFile2 : statsFile1;
   expect(fs.existsSync(fpath)).toBe(true);
-  const agg = JSON.parse(fs.readFileSync(fpath, 'utf8'));
+  const txt = fs.readFileSync(fpath, 'utf8');
+  const last = txt.trim().split(/\r?\n/).filter(Boolean).pop()!;
+  const agg = JSON.parse(last);
     // realized PnL increased by (110-100)*0.5=5 and filledCount incremented
     expect(agg.realizedPnl).toBeGreaterThanOrEqual(5 - 1e-9);
     expect(agg.filledCount).toBeGreaterThanOrEqual(1);

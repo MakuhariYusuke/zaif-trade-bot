@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.25% </span>
+                <span class="strong">92.39% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>73/80</span>
+                <span class='fraction'>85/92</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">57.14% </span>
+                <span class="strong">58.06% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>16/28</span>
+                <span class='fraction'>18/31</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">66.66% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/3</span>
+                <span class='fraction'>4/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.25% </span>
+                <span class="strong">92.39% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>73/80</span>
+                <span class='fraction'>85/92</span>
             </div>
         
             
@@ -143,7 +143,19 @@
 <a name='L78'></a><a href='#L78'>78</a>
 <a name='L79'></a><a href='#L79'>79</a>
 <a name='L80'></a><a href='#L80'>80</a>
-<a name='L81'></a><a href='#L81'>81</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -160,6 +172,12 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -223,12 +241,19 @@
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, describeExit, savePositionsToFile, calculateSma, calculateRsi } from "../risk";
-import { logInfo } from "../../utils/logger";
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, describeExit, savePositionsToFile, calculateSma, calculateRsi, CoreRiskManager } from "../risk";
+import { logInfo, logger } from "../../utils/logger";
 import { logSignal } from "../../utils/trade-logger";
 import { appendPriceSamples, getPriceSeries } from "../../utils/price-cache";
 import { incSellEntry, incTrailStop, incRsiExit, incTrailExit } from "../../utils/daily-stats";
 import { logFeatureSample } from "../../utils/features-logger";
+import { BaseStrategy } from "./base-strategy";
 &nbsp;
 export interface StrategyContext {
   positions: Position[];
@@ -240,7 +265,12 @@ export interface StrategyContext {
   pair?: string;
 }
 &nbsp;
-export function runSellStrategy(ctx: StrategyContext) {
+export class SellStrategy extends BaseStrategy {
+  protected applyRisk(decision: any, ctx: any){
+    try { const r = this.risk.validateOrder(decision); if ((r as any)?.ok === false) this.logger?.warn?.('risk rejected', (r as any).error); <span class="branch-0 cbranch-no" title="branch not covered" >} catch {}</span>
+    return decision;
+  }
+  protected async decide(ctx: StrategyContext): Promise&lt;any&gt; {
   // price series and indicators
   appendPriceSamples(ctx.trades.map((t:any)=&gt; ({ ts:t.date? t.date*<span class="branch-0 cbranch-no" title="branch not covered" >1000: ctx.nowMs, p</span>rice:t.price })));
   const priceSeries=getPriceSeries(Math.max(ctx.riskCfg.smaPeriod,200));
@@ -302,6 +332,12 @@ export function runSellStrategy(ctx: StrategyContext) {
 <span class="cstat-no" title="statement not covered" >  }</span>
 &nbsp;
   return { allExits };
+  }
+}
+&nbsp;
+export function runSellStrategy(ctx: StrategyContext) {
+  const s = new SellStrategy(logger, new CoreRiskManager());
+  return s.runCycle(ctx);
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -310,7 +346,7 @@ export function runSellStrategy(ctx: StrategyContext) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-14T13:15:01.839Z
+                at 2025-09-16T20:09:45.096Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

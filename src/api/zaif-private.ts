@@ -6,6 +6,7 @@ import { ZaifApiConfig, PrivateApi, GetInfo2Response, ActiveOrder } from "../typ
 import { loadAppConfig, restoreNonce, persistNonce } from "../utils/config";
 import { logWarn, logError, logDebug } from "../utils/logger";
 import { ok, err, Result } from "../utils/result";
+import { BaseExchangePrivate } from "./base-private";
 export function getNonceRetryTotal() { return nonceRetryTotal; }
 let lastRequestNonceRetries = 0;
 export function getAndResetLastRequestNonceRetries() { const v = lastRequestNonceRetries; lastRequestNonceRetries = 0; return v; }
@@ -128,8 +129,8 @@ function normalizePermMsg(msg: string): string {
  *   (e.g. setNonceBase, restoreNonce, getLastNonce, nonceRetryTotal, lastRequestNonceRetries).
  * - Consumers should ensure secure handling of `config.secret` and any persisted nonce store.
  */
-class ZaifRealPrivateApi implements PrivateApi {
-	constructor(private config: ZaifApiConfig) { }
+class ZaifRealPrivateApi extends BaseExchangePrivate implements PrivateApi {
+	constructor(private config: ZaifApiConfig) { super(); }
 	private lastResponseServerTime?: number;
 	private async call<T>(method: string, extra: Record<string, any> = {}): Promise<T> {
 		const maxRetries = Number(process.env.MAX_NONCE_RETRIES || 5);

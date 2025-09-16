@@ -3,9 +3,10 @@ dotenv.config();
 import { strategyOnce } from '../index';
 import { logInfo, logWarn, logError } from '../utils/logger';
 import { createPrivateApi } from '../api/adapters';
+import { sleep } from '../utils/toolkit';
 import { getOrderBook } from '../api/public';
 
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+// Use shared sleep with FAST_CI capping
 
 (async () => {
     const pair = process.env.PAIR || 'btc_jpy';

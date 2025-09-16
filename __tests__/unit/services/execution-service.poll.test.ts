@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import path from 'path';
 import fs from 'fs';
 
-vi.mock('../../../src/services/market-service', () => ({
+vi.mock('../../../src/adapters/market-service', () => ({
   listActiveOrders: vi.fn(async () => ({})),
   fetchTradeHistory: vi.fn(async () => ([])),
   cancelOrder: vi.fn(async () => ({ result: true })),
@@ -27,8 +27,8 @@ describe('services/execution-service pollFillState', () => {
   });
 
   it('handles partial fill increments then marks FILLED when history shows full amount (order_id match)', async () => {
-    const { pollFillState } = await import('../../../src/services/execution-service');
-    const ms = await import('../../../src/services/market-service');
+  const { pollFillState } = await import('../../../src/adapters/execution-service');
+  const ms = await import('../../../src/adapters/market-service');
     const pair = 'btc_jpy';
     const now = Date.now();
 
@@ -50,8 +50,8 @@ describe('services/execution-service pollFillState', () => {
   });
 
   it('heuristic match path when order_id not available', async () => {
-    const { pollFillState } = await import('../../../src/services/execution-service');
-    const ms = await import('../../../src/services/market-service');
+  const { pollFillState } = await import('../../../src/adapters/execution-service');
+  const ms = await import('../../../src/adapters/market-service');
     const pair = 'btc_jpy';
     const now = Date.now();
 
@@ -67,8 +67,8 @@ describe('services/execution-service pollFillState', () => {
   // If the order is not found in active orders and no matching fills are found in trade history,
   // pollFillState should return status "CANCELLED".
   it('marks CANCELLED when active missing and no fills found', async () => {
-    const { pollFillState } = await import('../../../src/services/execution-service');
-    const ms = await import('../../../src/services/market-service');
+  const { pollFillState } = await import('../../../src/adapters/execution-service');
+  const ms = await import('../../../src/adapters/market-service');
     (ms.listActiveOrders as any).mockResolvedValue({});
     (ms.fetchTradeHistory as any).mockResolvedValue([]);
     const now = Date.now();

@@ -156,7 +156,7 @@ export async function pollFillState(pair: string, orderSnapshot: OrderSnapshot, 
                 }
             }
         } catch (e: any) { logTradeError('pollFillState error', { error: e.message }); }
-        await new Promise(r => setTimeout(r, pollIntervalMs));
+    await sleep(pollIntervalMs);
     }
     orderSnapshot.retryCount = (orderSnapshot.retryCount || 0) + pollAttempts; orderSnapshot.status = 'EXPIRED';
     try { if (orderSnapshot.orderId) await cancelOrder({ order_id: orderSnapshot.orderId }); } catch { } logTradeError('Order expired', orderSnapshot); 

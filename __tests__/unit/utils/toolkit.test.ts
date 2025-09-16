@@ -45,23 +45,22 @@ describe('utils/toolkit', () => {
     expect(getMaxHoldSec()).toBe(3600);
   });
 
-  it('readFeatureCsvRows parses CSV files', ()=>{
+  it('readFeatureCsvRows parses JSONL files only', ()=>{
     const tmp = path.resolve(process.cwd(), 'tmp-test-toolkit');
     if (fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
     fs.mkdirSync(tmp, { recursive: true });
-    const hdr = 'ts,pair,side,rsi,sma_short,sma_long,price,qty,pnl,win';
     const ts = Date.now();
-    fs.writeFileSync(path.join(tmp, 'features-2025-01-01.csv'), [hdr, `${ts},btc_jpy,ask,70,9,26,100,0.001,1,1`].join('\n'));
+    fs.writeFileSync(path.join(tmp, 'features-2025-01-02.jsonl'), JSON.stringify({ ts: ts+1, pair:'btc_jpy', side:'bid', price:101, qty:0.001, pnl:0, win:0 })+'\n');
     const rows = readFeatureCsvRows(tmp);
     expect(rows.length).toBe(1);
-    expect(rows[0].win).toBe(1);
+    expect(rows[0].pair).toBe('btc_jpy');
   });
 
   it('readFeatureCsvRows ignores empty/invalid lines and handles missing files', ()=>{
     const tmp = path.resolve(process.cwd(), 'tmp-test-toolkit-empty');
     if (fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
     fs.mkdirSync(tmp, { recursive: true });
-    fs.writeFileSync(path.join(tmp, 'features-2025-01-02.csv'), 'ts,pair,side,price,qty\n\n\n');
+    fs.writeFileSync(path.join(tmp, 'features-2025-01-02.jsonl'), '\n\n');
     const rows = readFeatureCsvRows(tmp);
     expect(rows.length).toBe(0);
     const rows2 = readFeatureCsvRows(path.join(tmp, 'non-exist'));

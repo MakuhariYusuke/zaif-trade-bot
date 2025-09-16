@@ -2,10 +2,15 @@
   "name": "zaif-trade-bot",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "ts-node": {
+    "require": [
+      "tsconfig-paths/register"
+    ]
+  },
   "scripts": {
   "tool": "ts-node src/tools/run.ts",
     "start": "ts-node src/index.ts",
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
   "health": "ts-node src/tools/live/health.ts",
   "mock:scenario": "ts-node src/tools/paper/mock-scenario.ts",
   "mock:smoke": "ts-node src/tools/paper/mock-smoke.ts",
@@ -26,8 +31,10 @@
   "ml:simulate": "ts-node src/tools/ml/ml-simulate.ts",
   "ml:export": "ts-node src/tools/ml/ml-export.ts",
   "ml:search": "ts-node src/tools/ml/ml-search.ts",
+  "feature:importance": "ts-node src/tools/ml/feature-importance.ts",
   "stats:mc": "ts-node src/tools/stats/monte-carlo.ts",
   "report:summary": "ts-node src/tools/report-summary.ts",
+  "trend:weekly": "ts-node src/tools/trend-weekly.ts",
   "test:min-live": "ts-node src/tools/live/test-minimal-live.ts",
   "live:minimal": "ts-node src/tools/live-minimal.ts",
   "test": "vitest run --coverage --reporter=default --reporter=json --outputFile=vitest-report.json",
@@ -43,9 +50,13 @@
     "@types/node": "^20.19.13",
     "@vitest/coverage-v8": "^1.6.0",
     "cross-env": "^7.0.3",
+  "tsc-alias": "^1.8.9",
+  "tsconfig-paths": "^4.2.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
-    "vitest": "^1.6.0"
+  "vite": "^5.4.0",
+  "vite-tsconfig-paths": "^5.1.2",
+  "vitest": "^1.6.0"
   },
   "description": "Zaif 公開/プライベート API を用いた最小限のシステムトレードボット雛形です。",
   "keywords": [],

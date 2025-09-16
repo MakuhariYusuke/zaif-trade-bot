@@ -3,6 +3,9 @@ dist/
 .env
 .nonce_store
 
+# Dependencies
+node_modules/
+
 # Coverage reports
 coverage/
 coverage-*.json

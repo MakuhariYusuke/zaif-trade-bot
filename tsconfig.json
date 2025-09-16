@@ -10,7 +10,18 @@
   // Align with Vitest/Vite type definitions that use bundler-style resolution
   "moduleResolution": "node16",
   // Prevent type checking inside node_modules d.ts (avoids Vite/Rollup typedef issues)
-  "skipLibCheck": true
+  "skipLibCheck": true,
+  "baseUrl": ".",
+  "paths": {
+  "@adapters": ["src/adapters/index.ts"],
+  "@adapters/*": ["src/adapters/*"],
+  "@contracts": ["src/contracts/index.ts"],
+  "@contracts/*": ["src/contracts/*"],
+  "@utils/*": ["src/utils/*"],
+  "@core/*": ["src/core/*"],
+  "@application": ["src/application/index.ts"],
+  "@application/*": ["src/application/*"]
+  }
   }
   ,
   "include": [

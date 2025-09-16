@@ -21,10 +21,37 @@ src/
  ├─ core/                # execution / market / risk / position-store などコアドメイン
  │   └─ strategies/      # モード別戦略: sell-strategy.ts / buy-strategy.ts
  ├─ api/                 # Zaif REST (public/private) + mock 実装
- ├─ services/            # 将来拡張向けサービス層 (一部レガシー呼称残り)
+ ├─ services/            # 互換 shim（次メジャーで削除予定）
+ ├─ application/         # ← 新規: 戦略/ユースケースのエントリポイント集約
+ ├─ adapters/            # ← services を移行中の実体（@adapters/* を利用）
  ├─ types/               # 型定義 (PrivateApi, OrderLifecycleSummary 等)
  ├─ utils/               # logger, signer, daily-stats, price-cache
  └─ tools/
+### Adapters 移行について（重要）
+
+旧 `src/services/*` は削除されました。`@adapters/*` を使用してください。
+
+- CONFIG/WARN: "Import path deprecated: use @adapters/<name> (will be removed in next major)."
+
+新規コードは `@adapters/*` を使用してください。
+
+### Application 層（戦略エントリ）
+
+- 役割: 戦略/ユースケースの入口を `src/application/` に集約します。
+- 互換性: 既存の `core/strategies/{buy,sell}-strategy.ts` の `run*` は継続提供。
+- 旧 `src/strategies/*` は削除しました。`@application/strategies/*` を使用してください。
+- 例: `import { runBuyStrategy } from '@application/strategies/buy-strategy-app'`。
+
+### Core の最小正本化（第一歩）
+
+- 方針: core は純粋ロジックのみ（I/O, fs, env, console などの副作用なし）
+- adapters は I/O や外部委譲の実装置き場。application は orchestration
+- 本コミットでは以下を追加/調整
+	- `@adapters/risk-config`: リスク設定/ポジション永続への薄いアダプタ（現状は core に委譲）
+	- `@adapters/position-store-fs`: PositionStore の FS 向けアダプタ
+	- `@adapters/risk-service` は `risk-config` 経由の re-export に
+	- 今後、core から I/O を段階的に排除していきます
+
 	 ├─ live/            # ライブ環境向けツール（health, 最小トレード, coincheck/zaif テスト等）
 	 ├─ paper/           # モック/ペーパー用ツール（シナリオ, スモーク, リセット）
 	 ├─ ml/              # 機械学習データ生成・探索
@@ -270,6 +297,69 @@ main ブランチへの push または手動実行で `coverage-pages` ワーク
 	 - 本ワークフローは `coverage/` 配下を Pages ルートに配置するため、トップで coverage レポート（index.html）が表示されます。
 	 - 404 の場合は GitHub Pages 有効化を確認し、`/index.html` で直接参照してください。
 
+---
+
+## 📑 日次レポートのリポジトリ内公開（デフォルト）
+
+各ワークフロー（paper-nightly / paper-ml / paper-matrix / live-ml / live-trade）の末尾で、生成物をブランチに直接コミットします。
+
+- パス: `reports/day-YYYY-MM-DD/`
+- 目次: `reports/day-YYYY-MM-DD/index.md`（当日の主要アーティファクトへのリンクを列挙）
+- 保持期間: 14 日分（古い日付は自動で削除）
+- Slack / GitHub コメントにも「Added report: reports/day-YYYY-MM-DD/index.md」を追記します
+
+ローカルや CI の成果を Pages に依存せず参照でき、履歴もブランチに残ります。
+
+### GitHub Pages（任意）
+
+Pages に ML/Stats のダッシュボードを公開するワークフロー（`.github/workflows/pages-ml-stats.yml`）は、既定で無効化されています。
+
+- 有効化するには、リポジトリの Actions Variables に `ENABLE_PAGES=1` を設定してください（Settings → Secrets and variables → Actions → Variables）。
+- その上でリポジトリの Pages を GitHub Actions 発行に設定します（Settings → Pages → Build and deployment → Source: GitHub Actions）。
+
+Pages を無効のままでも、上記の `reports/day-YYYY-MM-DD/` で日次レポートは参照可能です。
+
+### JSONL ベースライン（CSV 廃止）
+
+特徴量・統計の出力は JSONL に統一しました（1 行 1 レコード追記）。移行期間の CSV 読み取り互換は削除済みです。
+
+- 特徴量: `logs/features/<source>/<pair>/features-YYYY-MM-DD.jsonl`
+- 日次統計スナップショット: `logs/pairs/<pair>/stats-YYYY-MM-DD.jsonl` および合算 `logs/stats-YYYY-MM-DD.jsonl`
+- ML データセット: ルート `ml-dataset.jsonl`
+
+ユーティリティ `readFeatureCsvRows(dir)` は JSONL のみを読みます（名称は互換維持）。
+
+### テクニカル指標の自動付与
+
+`features-logger` にインジケータ計算を内蔵し、足取り（近似 OHLC）から以下を出力します。
+
+- トレンド系: SMA/EMA/WMA/HMA/KAMA（短期/長期）
+- オシレーター: RSI、ROC、Momentum、CCI、Williams %R、ストキャスティクス
+- ボラティリティ: 標準偏差（StdDev）、ATR、ボリンジャーバンド幅（BB width）、ドンチャン幅（Donchian width）
+- 複合/その他: MACD（line/signal/hist）、DMI/ADX、パラボリックSAR、一目均衡表（転換/基準/先行/遅行）
+- 価格乖離/帯: 移動平均からの乖離率（deviation%）、エンベロープ、簡易 Fibonacci 位置
+
+エイリアス列（使い勝手向上のため）
+- `rsi14`（既定 14 の RSI）、`atr14`（既定 14 の ATR）、`macd_hist`（MACD ヒストグラム）
+
+観測開始時に 1 度だけ、WARN ログでサンプルを出します。
+- 例: `[WARN] [INDICATOR] sample pair=btc_jpy rsi14=57.3 atr14=123.4 macd_hist=-0.002 ...`
+- `IND_LOG_EVERY_N` > 0 の場合、N レコードごとに `[IND]` ダイジェストを DEBUG 出力します。
+
+制御用の主な環境変数:
+
+- `IND_LOG_EVERY_N` = N 件ごとに `[IND]` ダイジェストを DEBUG ログに出力（0 で無効）
+
+### 週次トレンド（7 日集計）
+
+`npm run trend:weekly` で直近 7 日の集計を生成し、以下へ保存します。
+
+- `reports/day-YYYY-MM-DD/trend-7d.json`（当日ディレクトリ）
+- `reports/week-YYYY-WW/weekly-summary.json`（ISO 週）
+- `reports/latest/trend-weekly.json`（最新へのリンク）
+
+ワークフロー（paper-nightly / paper-ml など）から自動実行・コミットされ、Slack/PR コメントにも `Trend7d` が含まれます。
+
 #### 通知（Slack / GitHub コメント）: Trend7dWin%
 
 `report-summary-*.json` を各ワークフロー（live-ml / live-trade / paper-ml / paper-nightly）で生成し、Totals に PnL/Win%/MaxDD に加えて 7 日移動の勝率 `Trend7dWin%` を含めて通知します。
@@ -286,7 +376,25 @@ Totals: pnl=+12.34, winRate=61.1%, maxDD=3.2, Trend7dWin%=64.3
 {
 	"source": "live",
 	"totals": {
-		"pnl": 12.34,
+## 🧼 Core 純化と I/O の外出し（今回の変更）
+
+- 目標: core は純粋ロジックのみ。I/O（fs/HTTP）、logger、環境変数依存は adapters に集約。
+- 対象: `core/risk.ts` と `core/position-store.ts` の純粋化を実施。
+	- `core/risk.ts`: I/O と logger を撤去し、環境変数のみを読む `getRiskConfig()` と計算系関数に限定。
+	- `core/position-store.ts`: FS/永続化と logger を撤去し、実体は `@adapters/position-store-fs` に委譲（API は不変）。
+- アダプタ:
+	- `@adapters/risk-config`: リスク設定読み込み/ポジション永続化の I/O を担当。
+	- `@adapters/position-store-fs`: ポジションストアの FS 実装（環境変数 `POSITION_STORE_DIR`/`POSITION_STORE_FILE` を解決）。
+	- `@adapters/risk-service`: 旧 API 互換のため、`getRiskConfig`/`getPositions`/`savePositionsToFile` の別名エクスポートを提供。
+
+互換性:
+- 既存の import は shim/再エクスポートで動作を維持しつつ、初回のみ CONFIG/WARN を 1 回出力（次メジャーで削除予定）。
+- テスト/カバレッジは既存基準（Statements >= 70%）を維持。
+
+推奨移行先（新規コード）:
+- PositionStore: `import { loadPosition, savePosition } from '@adapters/position-store-fs'`
+- Risk 設定/永続: `import { getRiskConfig, getPositions, savePositionsToFile } from '@adapters/risk-service'`
+
 		"winRate": 0.611,
 		"maxDrawdown": 3.2,
 		"trend7dWinRate": 0.643
@@ -335,10 +443,20 @@ CI ではシナリオごとに `stats-<scenario>.json/.svg` と `report-summary-
 - `earlystop`: 早期打ち切り探索。`ML_EARLY_PATIENCE` と `ML_EARLY_MAX_STEPS` で制御
 - 並列度は `ML_MAX_WORKERS`（CI では 1 推奨）
 
+---
+
+## 📦 Path alias: @contracts とサービスの注意
+
+- 型は `src/types/contracts` から `src/contracts` に切り出しました。以後は `@contracts` エイリアスでの import を推奨します。
+	- 例: `import { PositionStore, RiskManager } from '@contracts'`
+- 互換のため `src/types/contracts.ts` は re-export しつつ、初回のみ `CONFIG/WARN` を出します（warnOnce）。
+- services 層は後方互換のため残していますが、コア（src/core）を正本として委譲する方針です。
+
 生成物（ルート直下）
-- `ml-dataset.csv`（特徴量データ）
+- `ml-dataset.jsonl`（特徴量データ・JSON Lines）
 - `ml-search-results.csv`（全試行） / `ml-search-top.json`（上位）
 - `report-ml-<mode>.json` / `report-ml-<mode>.csv`（mode は `grid|random|earlystop`）
+- Feature Importance: `report-ml-feature-importance.json`（Top N 特徴量） / `importance.csv`
 
 ローカル実行例（PowerShell）
 
@@ -354,11 +472,20 @@ $env:ML_SEARCH_MODE="random"; $env:ML_RANDOM_STEPS="200"; npm run tool -- ml:sea
 
 # early stopping 探索（猶予 10、最大 300）
 $env:ML_SEARCH_MODE="earlystop"; $env:ML_EARLY_PATIENCE="10"; $env:ML_EARLY_MAX_STEPS="300"; npm run tool -- ml:search
+
+# Feature Importance（相関ベースの簡易重要度・Top20）
+npm run feature:importance
 ```
+
+補足: 簡易シミュレーション（ml-simulate）の勝率算出
+- トレード判定: pnl が数値、または win フラグが存在する行をトレードとしてカウント
+- 勝ち判定: win が 1 | true | '1' の行を勝ちとしてカウント
+- PnL 集計: pnl がある場合のみ合算（win フラグのみの行は PnL=0 とみなす）
 
 CI 連携
 - `paper-ml` / `live-ml` ワークフローで `grid` の後に `random` を実行し、`report-ml-random.json/.csv` をアーティファクト化
-- 通知（Slack/GitHub コメント）に「ML(random) Top: Win%/PnL/params」の 1 行サマリを含めます
+- 併せて Feature Importance を実行し、`report-ml-feature-importance.json` と `importance.csv` を成果物に含め、レポート index にリンクします
+- 通知（Slack/GitHub コメント）に「ML(random) Top: Win%/PnL/params」に加えて「Top Features: name1,name2,name3…」を 1 行で追記します
 
 備考: `stats-graph` は paper / live の PnL・勝率のテキストオーバーレイを含む SVG を出力します。
 
@@ -500,7 +627,7 @@ $env:USE_PRIVATE_MOCK="1"; $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"
 | 2 | eth_jpy | 59 | 10.8 | S=11,L=29,RSI=65,28 |
 | 3 | xrp_jpy | 57 | 9.4 | S=7,L=21,RSI=60,25 |
 
-注: Live最小トレード検証は features ログ（CSV/JSON）も保存します。収集したデータは `npm run ml:export`（src/tools/ml/ml-export.ts）でデータセット化し、`npm run ml:search`（src/tools/ml/ml-search.ts）で簡易探索が可能です。
+注: Live最小トレード検証は features ログ（JSONL のみ）も保存します。収集したデータは `npm run ml:export`（src/tools/ml/ml-export.ts）でデータセット化し（`ml-dataset.jsonl` を出力）、`npm run ml:search`（src/tools/ml/ml-search.ts）で簡易探索が可能です。
 
 ### ヘルスチェック
 
@@ -533,7 +660,7 @@ $env:USE_PRIVATE_MOCK="1"; $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"
 
 ## 機械学習用データの利用例（Python）
 
-`npm run ml:export` で `ml-dataset.csv` を生成できます。以下は最小の分類タスク例です。
+`npm run ml:export` で `ml-dataset.jsonl`（JSON Lines）を生成できます。以下は最小の分類タスク例です。
 
 scikit-learn:
 
@@ -543,7 +670,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-df = pd.read_csv('ml-dataset.csv')
+df = pd.read_json('ml-dataset.jsonl', lines=True)
 X = df[["rsi","sma_short","sma_long","price","qty"]].fillna(0)
 y = df["win"].fillna(0).astype(int)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -559,7 +686,7 @@ TensorFlow (Keras):
 import pandas as pd
 import tensorflow as tf
 
-df = pd.read_csv('ml-dataset.csv')
+df = pd.read_json('ml-dataset.jsonl', lines=True)
 X = df[["rsi","sma_short","sma_long","price","qty"]].fillna(0).values
 y = df["win"].fillna(0).astype(int).values
 
@@ -581,7 +708,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 
-df = pd.read_csv('ml-dataset.csv')
+df = pd.read_json('ml-dataset.jsonl', lines=True)
 X = torch.tensor(df[["rsi","sma_short","sma_long","price","qty"]].fillna(0).values, dtype=torch.float32)
 y = torch.tensor(df["win"].fillna(0).astype(int).values, dtype=torch.float32).unsqueeze(1)
 

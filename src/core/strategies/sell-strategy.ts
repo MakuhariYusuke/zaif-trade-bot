@@ -1,9 +1,10 @@
-import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, describeExit, savePositionsToFile, calculateSma, calculateRsi } from "../risk";
-import { logInfo } from "../../utils/logger";
+import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, describeExit, savePositionsToFile, calculateSma, calculateRsi, CoreRiskManager } from "../risk";
+import { logInfo, logger } from "../../utils/logger";
 import { logSignal } from "../../utils/trade-logger";
 import { appendPriceSamples, getPriceSeries } from "../../utils/price-cache";
 import { incSellEntry, incTrailStop, incRsiExit, incTrailExit } from "../../utils/daily-stats";
 import { logFeatureSample } from "../../utils/features-logger";
+import { BaseStrategy } from "./base-strategy";
 
 export interface StrategyContext {
   positions: Position[];
@@ -15,7 +16,12 @@ export interface StrategyContext {
   pair?: string;
 }
 
-export function runSellStrategy(ctx: StrategyContext) {
+export class SellStrategy extends BaseStrategy {
+  protected applyRisk(decision: any, ctx: any){
+    try { const r = this.risk.validateOrder(decision); if ((r as any)?.ok === false) this.logger?.warn?.('risk rejected', (r as any).error); } catch {}
+    return decision;
+  }
+  protected async decide(ctx: StrategyContext): Promise<any> {
   // price series and indicators
   appendPriceSamples(ctx.trades.map((t:any)=> ({ ts:t.date? t.date*1000: ctx.nowMs, price:t.price })));
   const priceSeries=getPriceSeries(Math.max(ctx.riskCfg.smaPeriod,200));
@@ -77,4 +83,10 @@ export function runSellStrategy(ctx: StrategyContext) {
   }
 
   return { allExits };
+  }
+}
+
+export function runSellStrategy(ctx: StrategyContext) {
+  const s = new SellStrategy(logger, new CoreRiskManager());
+  return s.runCycle(ctx);
 }

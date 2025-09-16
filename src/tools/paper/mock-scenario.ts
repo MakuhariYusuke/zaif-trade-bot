@@ -6,6 +6,7 @@ import { logInfo, logWarn } from "../../utils/logger";
 import { loadPairs } from "../../utils/config";
 import { todayStr } from "../../utils/toolkit";
 import { clampAmountForSafety } from "../../utils/toolkit";
+import { sleep } from "../../utils/toolkit";
 
 // initialize market/execution modules with the selected private API
 
@@ -55,7 +56,7 @@ async function run(){
         amount: entryAmt }));
       logInfo('[SCENARIO] Entry summary', entry);
   appendSummary(todayStr(), entry as any);
-  if (sleepMs > 0) { await new Promise(r=>setTimeout(r, sleepMs)); }
+  if (sleepMs > 0) { await sleep(sleepMs); }
       let exitAmt = (entry as any).filledQty || 0.001;
       if (process.env.SAFETY_MODE === '1') {
         try {

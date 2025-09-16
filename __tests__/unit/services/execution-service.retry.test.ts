@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 // Mock dependencies used inside execution-service
-vi.mock('../../../src/services/market-service', () => {
+vi.mock('../../../src/adapters/market-service', () => {
   return {
     placeLimitOrder: vi.fn(async (_pair: string, _side: any, _price: number, _amount: number) => {
       return { order_id: 'ORDER1' };
@@ -31,7 +31,7 @@ describe('services/execution-service submitWithRetry', () => {
 
   it('returns immediate filled result in DRY_RUN mode', async () => {
     process.env.DRY_RUN = '1';
-    const { submitWithRetry } = await import('../../../src/services/execution-service');
+  const { submitWithRetry } = await import('../../../src/adapters/execution-service');
     const sum = await submitWithRetry({ currency_pair: 'btc_jpy', side: 'bid', limitPrice: 100, amount: 0.1, primaryTimeoutMs: 50, retryTimeoutMs: 50 });
     expect(sum.filledQty).toBeCloseTo(0.1, 10);
     expect(sum.filledCount).toBe(1);
@@ -40,8 +40,8 @@ describe('services/execution-service submitWithRetry', () => {
 
   it('first poll not filled then retry submission fills', async () => {
     delete process.env.DRY_RUN;
-    const { init, submitWithRetry } = await import('../../../src/services/execution-service');
-    const ms = await import('../../../src/services/market-service');
+  const { init, submitWithRetry } = await import('../../../src/adapters/execution-service');
+  const ms = await import('../../../src/adapters/market-service');
 
     // First submission returns ORDER1, second submission will return ORDER2
     (ms.placeLimitOrder as any).mockImplementationOnce(async () => ({ order_id: 'ORDER1' }));

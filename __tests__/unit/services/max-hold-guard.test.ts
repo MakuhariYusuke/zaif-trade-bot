@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateExitSignals, Position } from '../../../src/services/risk-service';
+import { evaluateExitSignals } from '../../../src/adapters/risk-service';
+import type { Position } from '../../../src/core/risk';
 
 describe('max hold guard (service)', () => {
     it('emits TIME_LIMIT when hold exceeds MAX_HOLD_SEC', () => {

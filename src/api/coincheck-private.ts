@@ -1,5 +1,6 @@
 
 import crypto from 'crypto';
+import { BaseExchangePrivate } from './base-private';
 import axios from 'axios';
 import { PrivateApi, GetInfo2Response, ActiveOrder, TradeHistoryRecord, TradeResult, CancelResult } from '../types/private';
 import { CoincheckBalanceResponse, CoincheckOrderRequest, CoincheckOrderResponse, CoincheckCancelResponse, CoincheckOpenOrdersResponse, CoincheckTradeHistoryResponse } from '../types/exchange-coincheck';
@@ -8,11 +9,11 @@ const API_BASE = 'https://coincheck.com';
 
 /**
  * Create a Coincheck private API client implementing the application's PrivateApi interface.
- *
- * This factory returns an object with methods that wrap Coincheck's private REST endpoints,
- * handling authentication headers (ACCESS-KEY, ACCESS-NONCE, ACCESS-SIGNATURE), request/response
- * normalization, and simple error handling.
- *
+import crypto from 'crypto';
+import axios from 'axios';
+import { PrivateApi, GetInfo2Response, ActiveOrder, TradeHistoryRecord, TradeResult, CancelResult } from '../types/private';
+import { CoincheckBalanceResponse, CoincheckOrderRequest, CoincheckOrderResponse, CoincheckCancelResponse, CoincheckOpenOrdersResponse, CoincheckTradeHistoryResponse } from '../types/exchange-coincheck';
+import { BaseExchangePrivate } from './base-private';
  * Authentication and signing
  * - Each request uses a nonce based on Date.now().toString().
  * - The HMAC-SHA256 signature is computed over: nonce + url + body using the provided apiSecret.
@@ -98,16 +99,18 @@ const API_BASE = 'https://coincheck.com';
  * const client = createCoincheckPrivate(process.env.CC_KEY!, process.env.CC_SECRET!);
  * const info = await client.get_info2();
  */
-export function createCoincheckPrivate(apiKey: string, apiSecret: string): PrivateApi {
-    async function fetchBalance(): Promise<GetInfo2Response> {
+class CoincheckPrivate extends BaseExchangePrivate implements PrivateApi {
+    constructor(private apiKey: string, private apiSecret: string) { super(); }
+
+    private async fetchBalance(): Promise<GetInfo2Response> {
         const path = '/api/accounts/balance';
         const url = API_BASE + path;
         const body = '';
         const nonce = Date.now().toString();
         const message = nonce + url + body;
-        const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+        const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('hex');
         const headers: Record<string, string> = {
-            'ACCESS-KEY': apiKey,
+            'ACCESS-KEY': this.apiKey,
             'ACCESS-NONCE': nonce,
             'ACCESS-SIGNATURE': signature,
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -138,17 +141,16 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
         };
     }
 
-    return {
-        async get_info2() { return fetchBalance(); },
+    async get_info2() { return this.fetchBalance(); }
         async active_orders(): Promise<ActiveOrder[]> {
             const path = '/api/exchange/orders/opens';
             const url = API_BASE + path;
             const body = '';
             const nonce = Date.now().toString();
             const message = nonce + url + body;
-            const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+            const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('hex');
             const headers: Record<string, string> = {
-                'ACCESS-KEY': apiKey,
+                'ACCESS-KEY': this.apiKey,
                 'ACCESS-NONCE': nonce,
                 'ACCESS-SIGNATURE': signature,
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -166,16 +168,16 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
                 amount: Number(o.pending_amount),
                 timestamp: Math.floor(new Date(o.created_at).getTime() / 1000)
             }));
-        },
+        }
         async trade_history(): Promise<TradeHistoryRecord[]> {
             const path = '/api/exchange/orders/transactions';
             const url = API_BASE + path;
             const body = '';
             const nonce = Date.now().toString();
             const message = nonce + url + body;
-            const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+            const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('hex');
             const headers: Record<string, string> = {
-                'ACCESS-KEY': apiKey,
+                'ACCESS-KEY': this.apiKey,
                 'ACCESS-NONCE': nonce,
                 'ACCESS-SIGNATURE': signature,
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -193,7 +195,7 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
                 amount: Number(t.amount),
                 timestamp: Math.floor(new Date(t.created_at).getTime() / 1000)
             }));
-        },
+        }
         async trade(p: any): Promise<TradeResult> {
             // Map from Zaif-style to Coincheck
             if (p.action !== 'bid' && p.action !== 'ask') {
@@ -244,9 +246,9 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             }
             const nonce = Date.now().toString();
             const message = nonce + url + body;
-            const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+            const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('hex');
             const headers: Record<string, string> = {
-                'ACCESS-KEY': apiKey,
+                'ACCESS-KEY': this.apiKey,
                 'ACCESS-NONCE': nonce,
                 'ACCESS-SIGNATURE': signature,
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -257,7 +259,7 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             const data = res.data;
             if (!data?.success) throw new Error('Coincheck order failed');
             return { success: 1, return: { order_id: String(data.id) } };
-        },
+        }
         async cancel_order(p: { order_id: string }): Promise<CancelResult> {
             const id = String(p.order_id);
             const path = `/api/exchange/orders/${id}/cancel`;
@@ -265,9 +267,9 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             const body = '';
             const nonce = Date.now().toString();
             const message = nonce + url + body;
-            const signature = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+            const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('hex');
             const headers: Record<string, string> = {
-                'ACCESS-KEY': apiKey,
+                'ACCESS-KEY': this.apiKey,
                 'ACCESS-NONCE': nonce,
                 'ACCESS-SIGNATURE': signature,
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -276,6 +278,10 @@ export function createCoincheckPrivate(apiKey: string, apiSecret: string): Priva
             const data = res.data;
             if (!data?.success) throw new Error('Coincheck cancel failed');
             return { success: 1, return: { order_id: id } };
-        },
-    };
+        }
 }
+
+export function createCoincheckPrivate(apiKey: string, apiSecret: string): PrivateApi {
+    return new CoincheckPrivate(apiKey, apiSecret);
+}
+ 

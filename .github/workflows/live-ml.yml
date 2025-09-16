@@ -6,7 +6,7 @@ on:
     - cron: '0 2 * * 1' # every Monday 11:00JST
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
 
@@ -48,7 +48,9 @@ jobs:
         run: |
           npm run ml:export
           npm run ml:search
+          npm run feature:importance
           npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
+          npm run trend:weekly
       - name: ML random search
         env:
           ML_MAX_WORKERS: '1'
@@ -65,13 +67,38 @@ jobs:
           path: |
             logs/live/summary-*.json
             ml-search-top.json
+            report-ml-feature-importance.json
+            importance.csv
             report-ml-random.json
             stats-timeline.svg
             report-summary-live.json
-      - name: Slack notify with summary
+      - name: Publish reports into repo (branch)
         if: always()
         run: |
-          WEBHOOK='${{ secrets.SLACK_WEBHOOK_URL }}'
+          set -e
+          DAY=$(date -u +%Y-%m-%d)
+          DIR="reports/day-$DAY"
+          mkdir -p "$DIR"
+          {
+            echo "# Live ML Reports $DAY";
+            echo "\n## Artifacts";
+            for f in stats-timeline.svg report-summary-live.json ml-search-top.json report-ml-feature-importance.json importance.csv report-ml-random.json; do
+              [ -f "$f" ] && echo "- [$f](./$f)";
+            done;
+            if [ -f reports/latest/trend-weekly.json ]; then echo "- [trend-weekly.json](../latest/trend-weekly.json)"; fi
+          } > "$DIR/index.md"
+          for f in stats-timeline.svg report-summary-live.json ml-search-top.json report-ml-feature-importance.json importance.csv report-ml-random.json; do [ -f "$f" ] && cp -f "$f" "$DIR/" || true; done
+          ls -1 reports 2>/dev/null | grep '^day-' | sort | head -n -14 | while read d; do rm -rf "reports/$d" || true; done
+          git config user.name "github-actions"; git config user.email "github-actions@github.com"
+          git add reports || true
+          git commit -m "chore(reports): add $DAY (live-ml)" || true
+          git push || true
+      - name: Slack notify with summary
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          WEBHOOK="$SLACK_WEBHOOK_URL"
           if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
           SUM=$(ls -1 logs/live/summary-*.json 2>/dev/null | tail -n1)
           DIFF=$(cat logs/live/stats-diff-live.json 2>/dev/null || echo '{}')
@@ -93,7 +120,10 @@ jobs:
           t7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
           TOP=$(echo "$ML" | jq -r '.top[0] | select(.) | "Win%="+((.winRate//0)*100|tostring)+" PnL="+((.pnl//0)|tostring)+" params={S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)+"}"' || true)
           TOP3=$(cat ml-search-top.json 2>/dev/null | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","Params"] | @tsv ), (.[] | [ (input_line_number-1|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' || true)
-          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100)) / MaxDD=$maxdd / Trend7dWin%=$((t7*100))\nML(random) Top: ${TOP:-N/A}\nTop 3:\n$TOP3\n<$SUM|summary>"
+          FI=$(cat report-ml-feature-importance.json 2>/dev/null || echo '{}')
+          TOPF=$(echo "$FI" | jq -r '.top_features[:5] | map(.name) | join(", ")' 2>/dev/null || echo "")
+          RLNK="reports/day-$(date -u +%Y-%m-%d)/index.md"
+          TEXT="$ICON$WARN Live Weekly ($PAIR) $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl / Win%~$((win*100)) / MaxDD=$maxdd / Trend7dWin%=$((t7*100))\nTop Features: ${TOPF:-N/A}\nAdded report: $RLNK\nML(random) Top: ${TOP:-N/A}\nTop 3:\n$TOP3\n<$SUM|summary>"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
       - name: GitHub comment with Top 3
         if: always()
@@ -113,7 +143,8 @@ jobs:
             const totals = rpt.totals || {};
             let top3 = [];
             try { const t = JSON.parse(fs.readFileSync('ml-search-top.json','utf8')); top3 = (t.top||[]).slice(0,3); } catch {}
-            const body = `### Live ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
+            const day = new Date().toISOString().slice(0,10);
+            const body = `### Live ML Summary (report: reports/day-${day}/index.md)\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}`;
             async function safe(fn, args){ try { return await fn(args); } catch(e){ core.warning(`comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safe(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
