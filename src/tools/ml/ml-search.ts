@@ -95,7 +95,7 @@ if (isOurWorker){
   const args = process.argv.slice(2);
   const hasFlag = (f: string) => args.includes(f);
   const useCache = hasFlag('--use-cache') && !hasFlag('--no-cache');
-  const datasetPath = _path.resolve(process.cwd(), 'ml-dataset.csv');
+  const datasetPath = _path.resolve(process.cwd(), 'ml-dataset.jsonl');
   const outDir = _path.dirname(datasetPath);
   if (useCache && _fs.existsSync(datasetPath)) {
     console.log('[CACHE] using existing dataset');
@@ -115,7 +115,19 @@ if (isOurWorker){
   const useWorkers = !isTs && !process.env.ML_NO_WORKERS;
   if (useWorkers){
     (async ()=>{
-      const maxWorkers = Number(process.env.ML_MAX_WORKERS || 2);
+      // Auto-tune workers: CI -> 1, else min(CPU, 4)
+      let maxWorkers = Number(process.env.ML_MAX_WORKERS || 0);
+      try {
+        if (!maxWorkers) {
+          if (process.env.CI === 'true' || process.env.FAST_CI === '1') {
+            maxWorkers = 1;
+          } else {
+            const os = require('os') as typeof import('os');
+            const cpu = Math.max(1, Math.min(4, (os.cpus?.().length || 1)));
+            maxWorkers = cpu;
+          }
+        }
+      } catch { maxWorkers = 1; }
       const queue = [...pairs];
       const workers: Worker[] = [];
       async function startNext(){
@@ -149,11 +161,13 @@ if (isOurWorker){
           r.calmar ?? ''
         ].join(','))
       ].join('\n');
-      _fs.writeFileSync(outCsvPath, csv);
+  _fs.writeFileSync(outCsvPath, csv);
+  try { console.log(`[ML-SEARCH] wrote results csv rows=${results.length}`); } catch {}
       const top = results.sort((a,b)=> (b.winRate - a.winRate) || (b.pnl - a.pnl) || ((b.calmar||0) - (a.calmar||0)) || ((b.sharpe||0) - (a.sharpe||0))).slice(0,5);
   const topJsonPath = _path.resolve(outDir, 'ml-search-top.json');
   try { const d = _path.dirname(topJsonPath); if (!_fs.existsSync(d)) _fs.mkdirSync(d, { recursive: true }); } catch {}
       _fs.writeFileSync(topJsonPath, JSON.stringify({ top }, null, 2));
+  try { const best = top[0]; if (best) console.log(`[ML-TOP] pair=${best.pair} win=${Math.round((best.winRate||0)*100)} pnl=${best.pnl||0} S=${best.SMA_SHORT},L=${best.SMA_LONG},RSI=${best.SELL_RSI_OVERBOUGHT},${best.BUY_RSI_OVERSOLD}`); } catch {}
       const mode = (process.env.ML_SEARCH_MODE || 'grid').toLowerCase();
       const report = { mode, top };
       _fs.writeFileSync(_path.resolve(outDir, `report-ml-${mode}.json`), JSON.stringify(report, null, 2));
@@ -190,13 +204,15 @@ if (isOurWorker){
       ].join(','))
     ].join('\n');
     _fs.writeFileSync(outCsvPath, csv);
+  try { console.log(`[ML-SEARCH] wrote results csv rows=${results.length}`); } catch {}
     if (process.env.VITEST_WORKER_ID) {
       console.log(JSON.stringify({ out: outCsvPath }));
     }
     const top = results.sort((a,b)=> (b.winRate - a.winRate) || (b.pnl - a.pnl) || ((b.calmar||0) - (a.calmar||0)) || ((b.sharpe||0) - (a.sharpe||0))).slice(0,5);
   const topJsonPath = _path.resolve(outDir, 'ml-search-top.json');
   try { const d = _path.dirname(topJsonPath); if (!_fs.existsSync(d)) _fs.mkdirSync(d, { recursive: true }); } catch {}
-    _fs.writeFileSync(topJsonPath, JSON.stringify({ top }, null, 2));
+  _fs.writeFileSync(topJsonPath, JSON.stringify({ top }, null, 2));
+  try { const best = top[0]; if (best) console.log(`[ML-TOP] pair=${best.pair} win=${Math.round((best.winRate||0)*100)} pnl=${best.pnl||0} S=${best.SMA_SHORT},L=${best.SMA_LONG},RSI=${best.SELL_RSI_OVERBOUGHT},${best.BUY_RSI_OVERSOLD}`); } catch {}
     if (process.env.VITEST_WORKER_ID) {
       console.log(JSON.stringify({ topPath: topJsonPath }));
     }

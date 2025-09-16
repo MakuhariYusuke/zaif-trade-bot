@@ -1,0 +1,105 @@
+import { sleep } from "../utils/toolkit";
+import { logger as defaultLogger, log as logCat } from "../utils/logger";
+import type { Logger } from "../utils/logger";
+import type { PrivateApi } from "../types/private";
+
+function toPosInt(val: any, def: number) { const n = Number(val); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : def; }
+
+/**
+ * Common base for service classes: lifecycle hooks, retry helper, and logging.
+ * Non-invasive: does not enforce any interface on subclasses.
+ */
+export class BaseService {
+  protected privateApi?: PrivateApi;
+  protected logger?: Logger;
+
+  /** Assign a private API instance (if relevant for the service). */
+  init(api: PrivateApi) { this.privateApi = api; }
+
+  /** Clear references/resources. */
+  dispose() { this.privateApi = undefined; this.logger = undefined; }
+
+  /** Inject a logger instance (optional). */
+  setLogger(logger: Logger) { this.logger = logger; }
+
+  /**
+   * Retry an async operation with exponential backoff.
+   * - Attempts default from RETRY_ATTEMPTS (env, default 3)
+   * - Backoff base from RETRY_BACKOFF_MS (env, default 50ms)
+   * - Short-circuits for hard connection resets (ECONNRESET)
+   */
+  async withRetry<T>(fn: () => Promise<T>, label: string, attempts?: number, backoffMs?: number, contextMeta?: any): Promise<T> {
+    const ATT = (() => { const n = toPosInt(process.env.RETRY_ATTEMPTS, 3); return n > 0 ? n : 3; })();
+    const BO = (() => { const n = toPosInt(process.env.RETRY_BACKOFF_MS, 50); return n >= 0 ? n : 50; })();
+    const max = toPosInt(attempts ?? ATT, ATT);
+    const backoff = toPosInt(backoffMs ?? BO, BO);
+    let lastErr: any;
+    for (let i = 0; i < max; i++) {
+      try { return await fn(); } catch (e: any) {
+        lastErr = e;
+        const code = e?.code || e?.cause?.code;
+        const isConnReset = code === 'ECONNRESET' || /ECONNRESET/i.test(String(e?.message || ''));
+        if (isConnReset) break;
+        if (i < max - 1) {
+          // add jitter of +/-10% to 20% to avoid thundering herd
+          const amp = 0.1 + Math.random() * 0.1; // 0.10 - 0.20
+          const sign = Math.random() < 0.5 ? -1 : 1;
+          const factor = 1 + sign * amp; // 0.8-0.9 or 1.1-1.2
+          const delay = Math.floor(backoff * Math.pow(2, i) * factor);
+          // API category WARN log for each retry with required meta fields present
+          this.clog('API', 'WARN', 'retry', {
+            requestId: contextMeta?.requestId ?? null,
+            pair: contextMeta?.pair ?? null,
+            side: contextMeta?.side ?? null,
+            amount: contextMeta?.amount ?? null,
+            price: contextMeta?.price ?? null,
+            retries: i + 1,
+            cause: { code: code ?? null, message: e?.message }
+          });
+          await sleep(delay);
+        }
+      }
+    }
+    const wrapped = new Error(`${label} failed: ${lastErr?.message || String(lastErr)}`);
+    (wrapped as any).cause = lastErr;
+    // API category ERROR log on final failure with required meta fields present
+    this.clog('API', 'ERROR', 'failed', {
+      requestId: contextMeta?.requestId ?? null,
+      pair: contextMeta?.pair ?? null,
+      side: contextMeta?.side ?? null,
+      amount: contextMeta?.amount ?? null,
+      price: contextMeta?.price ?? null,
+      retries: max,
+      cause: { code: (lastErr?.code || lastErr?.cause?.code) ?? null, message: lastErr?.message }
+    });
+    throw wrapped;
+  }
+
+  // Lightweight log helpers (delegates to global logger)
+  log(level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR', message: string, meta?: any) {
+    const lg = this.logger ?? defaultLogger;
+    switch (level) {
+      case 'DEBUG': return lg.debug(message, meta);
+      case 'INFO': return lg.info(message, meta);
+      case 'WARN': return lg.warn(message, meta);
+      case 'ERROR': return lg.error(message, meta);
+    }
+  }
+  clog(category: string, level: 'DEBUG'|'INFO'|'WARN'|'ERROR', message: string, meta?: any) {
+    const lg = this.logger ?? defaultLogger;
+    if (lg.log) return lg.log(level, category, message, meta);
+    return this.log(level, message, meta);
+  }
+  debug(message: string, meta?: any) { this.log('DEBUG', message, meta); }
+  info(message: string, meta?: any) { this.log('INFO', message, meta); }
+  warn(message: string, meta?: any) { this.log('WARN', message, meta); }
+  error(message: string, meta?: any) { this.log('ERROR', message, meta); }
+}
+
+export default BaseService;
+
+// Standalone utility for reuse outside classes
+export async function withRetry<T>(fn: () => Promise<T>, label: string, attempts?: number, backoffMs?: number, contextMeta?: any): Promise<T> {
+  const svc = new BaseService();
+  return svc.withRetry(fn, label, attempts, backoffMs, contextMeta);
+}

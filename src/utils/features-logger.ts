@@ -3,6 +3,8 @@ import fsp from 'fs/promises';
 import path from 'path';
 import { todayStr } from './toolkit';
 import zlib from 'zlib';
+import { IndicatorService } from '../adapters/indicator-service';
+import { logDebug, logWarn } from './logger';
 
 export interface FeatureSample {
   ts: number;
@@ -11,6 +13,43 @@ export interface FeatureSample {
   rsi?: number | null;
   sma_short?: number | null;
   sma_long?: number | null;
+  ema_short?: number | null;
+  ema_long?: number | null;
+  wma_short?: number | null;
+  hma_long?: number | null;
+  kama?: number | null;
+  macd?: number | null;
+  macdSignal?: number | null;
+  macdHist?: number | null;
+  bb_basis?: number | null;
+  bb_upper?: number | null;
+  bb_lower?: number | null;
+  bb_width?: number | null;
+  don_width?: number | null;
+  atr?: number | null;
+  stoch_k?: number | null;
+  stoch_d?: number | null;
+  ichi_tenkan?: number | null;
+  ichi_kijun?: number | null;
+  ichi_spanA?: number | null;
+  ichi_spanB?: number | null;
+  ichi_chikou?: number | null;
+  adx?: number | null;
+  plusDi?: number | null;
+  minusDi?: number | null;
+  env_upper?: number | null;
+  env_lower?: number | null;
+  dev_pct?: number | null;
+  // aliases for conventional names
+  rsi14?: number | null;
+  atr14?: number | null;
+  macd_hist?: number | null;
+  roc?: number | null;
+  mom?: number | null;
+  willr?: number | null;
+  cci?: number | null;
+  psar?: number | null;
+  fib_pos?: number | null;
   price: number;
   qty: number;
   pnl?: number;
@@ -27,7 +66,7 @@ export interface FeatureSample {
   volumeRecent?: number; // recent traded volume (e.g., last 60s)
 }
 
-// --- Buffered async logger with rotation and JSONL option ---
+// --- Buffered async logger with rotation (JSONL only) ---
 
 type BufferEntry = { path: string; lines: string[] };
 const buffers = new Map<string, BufferEntry>();
@@ -36,6 +75,8 @@ let intervalTimer: NodeJS.Timeout | null = null;
 // Treat explicit TEST_MODE=1 as test; otherwise allow interval when TEST_MODE is '0' even under vitest
 const __IS_TEST__ = process.env.TEST_MODE === '1';
 const FLUSH_INTERVAL_MS = Math.max(0, Number(process.env.FEATURES_FLUSH_INTERVAL_MS || '1000'));
+const IND_LOG_EVERY_N = Math.max(0, Number(process.env.IND_LOG_EVERY_N || '0'));
+const indicatorServices = new Map<string, IndicatorService>();
 
 async function ensureDir(dir: string){
   try { await fsp.mkdir(dir, { recursive: true }); } catch {}
@@ -133,7 +174,6 @@ export function logFeatureSample(s: FeatureSample){
   const base = process.env.FEATURES_LOG_DIR ? path.resolve(process.env.FEATURES_LOG_DIR) : path.resolve(process.cwd(), 'logs');
   const src = process.env.FEATURES_SOURCE; // optional: 'paper' | 'live'
   const dir = src ? path.join(base, 'features', src, s.pair) : path.join(base, 'features', s.pair);
-  const format = String(process.env.FEATURES_LOG_FORMAT || 'csv').toLowerCase(); // csv|jsonl|both
   const isTest = process.env.TEST_MODE === '1' || !!process.env.VITEST_WORKER_ID;
   // derive spread/slippage if not provided and bestBid/Ask present
   let spread = s.spread;
@@ -143,54 +183,75 @@ export function logFeatureSample(s: FeatureSample){
     if (spread == null) spread = (s.bestAsk - s.bestBid) / mid;
     if (slippage == null) slippage = (s.price - mid) / mid;
   }
-  const header = 'ts,pair,side,rsi,sma_short,sma_long,price,qty,pnl,win,bal_jpy,bal_btc,bal_eth,bal_xrp,spread,slippage,status,depth_bid,depth_ask,volume_recent';
-  const csvRow = [
-    s.ts,
-    s.pair,
-    s.side,
-    s.rsi ?? '',
-    s.sma_short ?? '',
-    s.sma_long ?? '',
-    s.price,
-    s.qty,
-    s.pnl ?? '',
-    typeof s.win === 'boolean' ? (s.win ? 1 : 0) : '',
-    s.balance?.jpy ?? '',
-    s.balance?.btc ?? '',
-    s.balance?.eth ?? '',
-    s.balance?.xrp ?? '',
-    spread ?? '',
-    slippage ?? '',
-    s.status ?? '',
-    s.depthBid ?? '',
-    s.depthAsk ?? '',
-    s.volumeRecent ?? ''
-  ].join(',');
-  const csvPath = path.join(dir, `features-${date}.csv`);
+  // compute indicators
+  try {
+    const key = `${s.pair}:${src||'root'}`;
+    let svc = indicatorServices.get(key);
+    if (!svc) { svc = new IndicatorService({}); indicatorServices.set(key, svc); }
+    const ind = svc.update(s.ts, s.price, s.bestBid, s.bestAsk);
+    if (IND_LOG_EVERY_N > 0) {
+      const ctrKey = `__ind_ctr_${key}`;
+      const g: any = global as any;
+      g[ctrKey] = (g[ctrKey] || 0) + 1;
+      if (g[ctrKey] % IND_LOG_EVERY_N === 0) {
+        try { logDebug(`[IND] pair=${s.pair} rsi=${ind.rsi?.toFixed?.(2)} smaS=${ind.sma_short?.toFixed?.(2)} emaS=${ind.ema_short?.toFixed?.(2)} macd=${ind.macd?.toFixed?.(4)} dev=${ind.dev_pct?.toFixed?.(2)}%`); } catch {}
+      }
+    }
+    s = {
+      ...s,
+      rsi: s.rsi ?? ind.rsi,
+      roc: (s as any).roc ?? ind.roc,
+      mom: (s as any).mom ?? ind.mom,
+      willr: (s as any).willr ?? ind.willr,
+      cci: (s as any).cci ?? ind.cci,
+      sma_short: s.sma_short ?? ind.sma_short,
+      sma_long: s.sma_long ?? ind.sma_long,
+      ema_short: (s as any).ema_short ?? ind.ema_short,
+      ema_long: (s as any).ema_long ?? ind.ema_long,
+      wma_short: (s as any).wma_short ?? (null as any),
+      hma_long: (s as any).hma_long ?? ind.hma_long,
+      kama: (s as any).kama ?? ind.kama,
+      macd: (s as any).macd ?? ind.macd,
+      macdSignal: (s as any).macdSignal ?? ind.macdSignal,
+      macdHist: (s as any).macdHist ?? ind.macdHist,
+      bb_basis: (s as any).bb_basis ?? ind.bb_basis,
+      bb_upper: (s as any).bb_upper ?? ind.bb_upper,
+      bb_lower: (s as any).bb_lower ?? ind.bb_lower,
+      bb_width: (s as any).bb_width ?? ind.bb_width,
+      don_width: (s as any).don_width ?? ind.don_width,
+      atr: (s as any).atr ?? ind.atr,
+      stoch_k: (s as any).stoch_k ?? ind.stoch_k,
+      stoch_d: (s as any).stoch_d ?? ind.stoch_d,
+      ichi_tenkan: (s as any).ichi_tenkan ?? ind.ichi_tenkan,
+      ichi_kijun: (s as any).ichi_kijun ?? ind.ichi_kijun,
+      ichi_spanA: (s as any).ichi_spanA ?? ind.ichi_spanA,
+      ichi_spanB: (s as any).ichi_spanB ?? ind.ichi_spanB,
+      ichi_chikou: (s as any).ichi_chikou ?? ind.ichi_chikou,
+      adx: (s as any).adx ?? ind.adx,
+      plusDi: (s as any).plusDi ?? ind.plusDi,
+      minusDi: (s as any).minusDi ?? ind.minusDi,
+      env_upper: (s as any).env_upper ?? ind.env_upper,
+      env_lower: (s as any).env_lower ?? ind.env_lower,
+      dev_pct: (s as any).dev_pct ?? ind.dev_pct,
+      psar: (s as any).psar ?? ind.psar,
+      fib_pos: (s as any).fib_pos ?? ind.fib_pos,
+    } as FeatureSample;
+    // Emit one WARN line per process as a sample of indicators
+    const onceKey = `__ind_warn_once_${key}`;
+    const g: any = global as any;
+    if (!g[onceKey]) {
+      g[onceKey] = 1;
+    try { logWarn(`[INDICATOR] sample rsi14=${ind.rsi?.toFixed?.(2)} macd_hist=${ind.macdHist?.toFixed?.(4)} atr14=${ind.atr?.toFixed?.(2)} bb_width=${ind.bb_width?.toFixed?.(2)}% roc=${ind.roc?.toFixed?.(2)}%`); } catch {}
+    }
+  } catch {}
   const jsonlPath = path.join(dir, `features-${date}.jsonl`);
   try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch {}
-  // Ensure CSV header exists when CSV is enabled
-  if (format === 'csv' || format === 'both'){
-    if (isTest) {
-      try {
-        if (!fs.existsSync(csvPath)) {
-          fs.writeFileSync(csvPath, header + '\n' + csvRow + '\n', { encoding: 'utf8' });
-        } else {
-          fs.appendFileSync(csvPath, csvRow + '\n', { encoding: 'utf8' });
-        }
-      } catch {}
-    } else {
-      try { if (!fs.existsSync(csvPath)) fs.writeFileSync(csvPath, header + '\n'); } catch {}
-      pushBuffer(csvPath, csvRow + '\n');
-    }
-  }
-  if (format === 'jsonl' || format === 'both'){
-    const line = JSON.stringify({ ...s, spread, slippage }) + '\n';
-    if (isTest) {
-      try { fs.appendFileSync(jsonlPath, line, { encoding: 'utf8' }); } catch {}
-    } else {
-      pushBuffer(jsonlPath, line);
-    }
+  // JSONL append (1行1レコード)
+  const line = JSON.stringify({ ...s, rsi14: s.rsi ?? null, atr14: s.atr ?? null, macd_hist: s.macdHist ?? null, spread, slippage }) + '\n';
+  if (isTest) {
+    try { fs.appendFileSync(jsonlPath, line, { encoding: 'utf8' }); } catch {}
+  } else {
+    pushBuffer(jsonlPath, line);
   }
   // latest json for convenience (best-effort)
   writeLatestJson(base, s);

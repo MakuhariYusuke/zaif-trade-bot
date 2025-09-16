@@ -1,6 +1,6 @@
 import { describe, it, vi, expect } from 'vitest';
 import * as adapters from '../../../src/api/adapters';
-import { placeLimitOrder, init as initSvc } from '../../../src/services/market-service';
+import { placeLimitOrder, init as initSvc } from '../../../src/adapters/market-service';
 
 describe('private API rate-limit handling', () => {
   it('placeLimitOrder retries on 429 then throws', async () => {

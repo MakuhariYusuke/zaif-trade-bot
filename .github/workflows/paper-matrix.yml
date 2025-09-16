@@ -2,9 +2,11 @@ name: Paper Matrix
 
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: '0 18 * * *' # JST 3:00 nightly
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
 
@@ -14,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [normal, error, latency, timeout, hf-light, hf-mid, hf-stress, composite, sweep-rsi, sweep-sma, high-error, stress]
+        scenario: [normal, error, latency, timeout, hf-light, hf-mid, hf-stress, composite, composite-2, high-error, stress, sweep-rsi, sweep-sma, sweep-wide, trail-heavy]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,6 +51,12 @@ jobs:
             composite)
               echo "SCENARIO_PAPER_ERROR_RATE=0.2" >> $GITHUB_ENV
               echo "SCENARIO_PAPER_LATENCY_MS=200" >> $GITHUB_ENV ;;
+            composite-2)
+              echo "SCENARIO_PAPER_ERROR_RATE=0.1" >> $GITHUB_ENV
+              echo "SCENARIO_PAPER_LATENCY_MS=350" >> $GITHUB_ENV
+              echo "SCENARIO_SWEEP=1" >> $GITHUB_ENV
+              echo "SCENARIO_SELL_RSI_LIST=50,55,60,65,70,75,80" >> $GITHUB_ENV
+              echo "SCENARIO_BUY_RSI_LIST=15,20,25,30,35,40" >> $GITHUB_ENV ;;
             high-error)
               echo "SCENARIO_PAPER_ERROR_RATE=0.5" >> $GITHUB_ENV ;;
             stress)
@@ -61,6 +69,16 @@ jobs:
               echo "SCENARIO_SWEEP=1" >> $GITHUB_ENV
               echo "SCENARIO_SMA_SHORT_LIST=5,7,9" >> $GITHUB_ENV
               echo "SCENARIO_SMA_LONG_LIST=21,25,30" >> $GITHUB_ENV ;;
+            sweep-wide)
+              echo "SCENARIO_SWEEP=1" >> $GITHUB_ENV
+              echo "SCENARIO_SELL_RSI_LIST=50,55,60,65,70,75,80" >> $GITHUB_ENV
+              echo "SCENARIO_BUY_RSI_LIST=15,20,25,30,35,40" >> $GITHUB_ENV
+              echo "SCENARIO_SMA_SHORT_LIST=5,7,9,11,13,15,17,19" >> $GITHUB_ENV
+              echo "SCENARIO_SMA_LONG_LIST=21,23,25,27,29,31,35,40" >> $GITHUB_ENV ;;
+            trail-heavy)
+              echo "SCENARIO_TRAIL_MODE=1" >> $GITHUB_ENV
+              echo "SCENARIO_TRAIL_PCT=0.01" >> $GITHUB_ENV
+              echo "SCENARIO_PAPER_LATENCY_MS=150" >> $GITHUB_ENV ;;
             *) ;; # normal
           esac
       - name: Run mock scenario
@@ -71,6 +89,20 @@ jobs:
         run: npx ts-node src/tools/stats/stats-graph.ts --out stats-${{ matrix.scenario }}.json --svg stats-${{ matrix.scenario }}.svg
       - name: Build summary report
         run: npm run report:summary -- --source ${{ matrix.scenario }}
+      - name: Export ML dataset (streaming, cached)
+        run: npm run ml:export
+      - name: ML search (random, CI-friendly)
+        env:
+          PAIRS: btc_jpy
+          ML_MAX_WORKERS: '1'
+          ML_SEARCH_MODE: random
+          ML_RANDOM_STEPS: '60'
+        run: npm run ml:search > ml-search-${{ matrix.scenario }}.json
+      - name: Build Top3 CSV
+        run: |
+          if [ -f ml-search-top.json ]; then
+            cat ml-search-top.json | jq -r '.top[:3] | ("pair,RSI_OVER,RSI_UNDER,SMA_S,SMA_L,Win(%),PnL,Trades"), (.[] | [ .pair, .SELL_RSI_OVERBOUGHT, .BUY_RSI_OVERSOLD, .SMA_SHORT, .SMA_LONG, (.winRate*100|floor), .pnl, .trades ] | @csv )' > top3-${{ matrix.scenario }}.csv || true
+          fi
       - name: Archive stats (tar.gz)
         run: |
           tar -czf stats-${{ matrix.scenario }}.tar.gz \
@@ -84,6 +116,12 @@ jobs:
           name: paper-matrix-${{ matrix.scenario }}
           path: |
             stats-${{ matrix.scenario }}.tar.gz
+            ml-dataset.jsonl
+            ml-search-results.csv
+            ml-search-top.json
+            report-ml-random.json
+            report-ml-random.csv
+            top3-${{ matrix.scenario }}.csv
   summarize:
     runs-on: ubuntu-latest
     needs: matrix-run
@@ -118,12 +156,27 @@ jobs:
           echo "table<<EOF" >> $GITHUB_OUTPUT
           echo "$TABLE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+      - name: Build Top3 snippet
+        id: top3
+        run: |
+          echo "" > top3.md
+          for d in ./art/*; do
+            if [ -f "$d/ml-search-top.json" ]; then
+              echo "#### ${d#./art/}" >> top3.md
+              cat "$d/ml-search-top.json" | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","Params"] | @tsv ), (.[] | [ (input_line_number|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' | awk 'BEGIN{print "| # | pair | Win% | PnL | Params |\n| --- | --- | --- | --- | --- |"} NR>1{printf "| %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5}' >> top3.md
+              echo "" >> top3.md
+            fi
+          done
+          echo "md<<EOF" >> $GITHUB_OUTPUT
+          cat top3.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: GitHub comment (matrix totals)
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const body = `### Paper Matrix Totals\n\n${{ steps.build.outputs.table }}`;
+            const day = new Date().toISOString().slice(0,10);
+            const body = `### Paper Matrix Totals (report: reports/day-${day}/index.md)\n\n${{ steps.build.outputs.table }}\n\n### ML Top3 (per scenario)\n\n${{ steps.top3.outputs.md }}`;
             async function safe(fn, args){ try { return await fn(args); } catch(e){ core.warning(`comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safe(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
@@ -132,3 +185,31 @@ jobs:
             } else {
               core.info('No PR or push context; skip commenting.');
             }
+      - name: Publish reports into repo (branch)
+        if: always()
+        run: |
+          set -e
+          DAY=$(date -u +%Y-%m-%d)
+          DIR="reports/day-$DAY"
+          mkdir -p "$DIR"
+          # write index.md aggregate pointers
+          {
+            echo "# Paper Matrix Reports $DAY";
+            echo "\n## Scenarios";
+            for d in ./art/*; do
+              name=$(basename "$d");
+              tar -xzf "$d"/stats-*.tar.gz -C "$d" 2>/dev/null || true
+              rpt=$(ls "$d"/report-summary-*.json 2>/dev/null | head -n1)
+              if [ -f "$rpt" ]; then
+                b=$(basename "$rpt"); cp -f "$rpt" "$DIR/$b" || true; echo "- [$name]($b)";
+              else
+                echo "- $name";
+              fi
+            done
+          } > "$DIR/index.md"
+          # prune older than 14 days
+          ls -1 reports 2>/dev/null | grep '^day-' | sort | head -n -14 | while read d; do rm -rf "reports/$d" || true; done
+          git config user.name "github-actions"; git config user.email "github-actions@github.com"
+          git add reports || true
+          git commit -m "chore(reports): add $DAY (paper-matrix)" || true
+          git push || true

@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, test } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { sleep } from '../../../src/utils/toolkit';
 
 // Use a unique temp dir to avoid cross-file race with ml-search.cache.test
 const TMP = path.resolve(process.cwd(), 'tmp-test-ml-simulate');
@@ -16,59 +17,88 @@ describe('ml-simulate', ()=>{
     fs.mkdirSync(path.join(TMP,'features',pair), { recursive: true });
     process.env.FEATURES_LOG_DIR = TMP;
   });
-  it('computes winRate and pnl', ()=>{
-    const csvPath = path.join(TMP,'features',pair,`features-${date}.csv`);
-    const header = 'ts,pair,side,rsi,sma_short,sma_long,price,qty,pnl,win';
+  async function waitForFileNonEmpty(p: string, max = 10, intervalMs = 80) {
+    for (let i = 0; i < max; i++) {
+      try {
+        if (fs.existsSync(p)) {
+          const st = fs.statSync(p);
+          if (st.size > 0) return;
+        }
+      } catch {}
+      await sleep(intervalMs);
+    }
+  }
+  test.sequential('computes winRate and pnl', async ()=>{
+    const jsonlPath = path.join(TMP,'features',pair,`features-${date}.jsonl`);
     const now = Date.now();
-    const csvLines = [
-      header,
-      `${now-2000},${pair},ask,70,9,26,100,0.001,,`,
-      `${now-1000},${pair},ask,75,9,26,105,0.001,5,1`
-    ].join('\n');
-    fs.writeFileSync(csvPath, csvLines);
+  const jsonlLines = [
+      { ts: now-2000, pair, side:'ask', rsi:70, sma_short:9, sma_long:26, price:100, qty:0.001 },
+      { ts: now-1000, pair, side:'ask', rsi:75, sma_short:9, sma_long:26, price:105, qty:0.001, pnl:5, win:1 }
+  ].map(o=>JSON.stringify(o)).join('\n');
+  fs.writeFileSync(jsonlPath, jsonlLines);
+    await waitForFileNonEmpty(jsonlPath);
     const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
-    const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair} --params '{"SELL_RSI_OVERBOUGHT":65,"BUY_RSI_OVERSOLD":25,"SMA_SHORT":9,"SMA_LONG":26}'`;
+  const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair}`;
     process.env.QUIET = '1';
-    const out = execSync(cmd, { encoding: 'utf8' });
+    const out = execSync(cmd, { encoding: 'utf8', env: { ...process.env } as any });
     const stdoutLines = out.trim().split(/\r?\n/).filter(Boolean);
     const jsonLine = [...stdoutLines].reverse().find(l => {
       const t = l.trim();
       return t.startsWith('{') && t.endsWith('}');
     }) || stdoutLines[stdoutLines.length-1];
     const res = JSON.parse(jsonLine);
-    expect(res.trades).toBe(1);
-    expect(res.winRate).toBe(1);
-    expect(res.pnl).toBe(5);
+    try {
+      expect(res.trades).toBe(1);
+      expect(res.winRate).toBe(1);
+      expect(res.pnl).toBe(5);
+    } catch (e) {
+      // Diagnostics on failure
+      console.error(`[WARN][DIAG] rowsCount=${res.rowsCount}, scanned=${JSON.stringify(res.scanned)}, filesByDir=${JSON.stringify(res.filesByDir)}`);
+      throw e;
+    }
   });
 
-  it('counts trade even when only win flag is present', ()=>{
-    const csvPath = path.join(TMP,'features',pair,`features-${date}.csv`);
-    const header = 'ts,pair,side,rsi,sma_short,sma_long,price,qty,pnl,win';
-    const now = Date.now();
-    const csvLines = [header, `${now-1000},${pair},ask,70,9,26,100,0.001,,1`].join('\n');
-    fs.writeFileSync(csvPath, csvLines);
+  test.sequential('counts trade even when only win flag is present', async ()=>{
+  const jsonlPath = path.join(TMP,'features',pair,`features-${date}.jsonl`);
+  const now = Date.now();
+  const jsonlLines2 = [{ ts: now-1000, pair, side:'ask', rsi:70, sma_short:9, sma_long:26, price:100, qty:0.001, win:1 }].map(o=>JSON.stringify(o)).join('\n');
+  fs.writeFileSync(jsonlPath, jsonlLines2);
+    await waitForFileNonEmpty(jsonlPath);
     const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
-    const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair} --params '{"SELL_RSI_OVERBOUGHT":65,"BUY_RSI_OVERSOLD":25,"SMA_SHORT":9,"SMA_LONG":26}'`;
+  const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair}`;
     process.env.QUIET = '1';
-  const out = execSync(cmd, { encoding: 'utf8' });
-  const lines = out.trim().split(/\r?\n/).filter(Boolean);
-  const jsonLine = [...lines].reverse().find(l => { const t = l.trim(); return t.startsWith('{') && t.endsWith('}'); }) || lines[lines.length-1];
+    const out = execSync(cmd, { encoding: 'utf8', env: { ...process.env } as any });
+  const outLines = out.trim().split(/\r?\n/).filter(Boolean);
+  const jsonLine = [...outLines].reverse().find(l => { const t = l.trim(); return t.startsWith('{') && t.endsWith('}'); }) || outLines[outLines.length-1];
   const res = JSON.parse(jsonLine);
-    expect(res.trades).toBe(1);
-    expect(res.winRate).toBe(1);
+    try {
+      expect(res.trades).toBe(1);
+      expect(res.winRate).toBe(1);
+    } catch (e) {
+      console.error(`[WARN][DIAG] rowsCount=${res.rowsCount}, scanned=${JSON.stringify(res.scanned)}, filesByDir=${JSON.stringify(res.filesByDir)}`);
+      throw e;
+    }
   });
 
-  it('returns zeros when no rows', ()=>{
+  test.sequential('returns zeros when no rows', async ()=>{
     const dir = path.join(TMP,'features',pair);
     // ensure empty directory exists
     fs.mkdirSync(dir, { recursive: true });
+    await sleep(50);
     const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
-    const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair} --params '{"SELL_RSI_OVERBOUGHT":65}'`;
+  const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair}`;
     process.env.QUIET = '1';
-    const out = execSync(cmd, { encoding: 'utf8' });
-    const res = JSON.parse(out.trim());
-    expect(res.trades).toBe(0);
-    expect(res.winRate).toBe(0);
-    expect(res.pnl).toBe(0);
+    const out = execSync(cmd, { encoding: 'utf8', env: { ...process.env } as any });
+    const stdoutLines = out.trim().split(/\r?\n/).filter(Boolean);
+    const jsonLine = [...stdoutLines].reverse().find(l => { const t = l.trim(); return t.startsWith('{') && t.endsWith('}'); }) || stdoutLines[stdoutLines.length-1];
+    const res = JSON.parse(jsonLine);
+    try {
+      expect(res.trades).toBe(0);
+      expect(res.winRate).toBe(0);
+      expect(res.pnl).toBe(0);
+    } catch (e) {
+      console.error(`[WARN][DIAG] rowsCount=${res.rowsCount}, scanned=${JSON.stringify(res.scanned)}, filesByDir=${JSON.stringify(res.filesByDir)}`);
+      throw e;
+    }
   });
 });

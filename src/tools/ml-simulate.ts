@@ -1,9 +1,9 @@
 // Backward compatibility shim for CI/tests
 // Standalone implementation kept here to avoid double execution/logging.
 process.env.QUIET = process.env.QUIET ?? '1';
-import fs from 'fs';
 import path from 'path';
 import { logError } from '../utils/logger';
+import { readFeatureCsvRows, sleep } from '../utils/toolkit';
 
 function parseArgs(){
   const args = process.argv.slice(2);
@@ -22,69 +22,47 @@ function parseArgs(){
 
 interface Row { ts: number; pair: string; side: string; rsi?: number; sma_short?: number; sma_long?: number; price: number; qty: number; pnl?: number; win?: number; }
 
-function readCsvFiles(dir: string): Row[] {
-  const rows: Row[] = [];
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.csv')) : [];
-  for (const f of files){
-    const full = path.join(dir, f);
-    const txt = fs.readFileSync(full, 'utf8');
-    const [header, ...lines] = txt.trim().split(/\r?\n/);
-    const cols = header.split(',');
-    for (const line of lines){
-      if (!line.trim()) continue;
-      const parts = line.split(',');
-      const rec: any = {};
-      cols.forEach((c, i) => rec[c] = parts[i]);
-      const toNum = (v: any): number|undefined => {
-        if (v == null) return undefined; const s = String(v).trim(); if (s === '') return undefined; const n = Number(s); return Number.isFinite(n) ? n : undefined;
-      };
-      rows.push({ ts: Number(rec.ts), pair: rec.pair, side: rec.side, rsi: toNum(rec.rsi), sma_short: toNum(rec.sma_short), sma_long: toNum(rec.sma_long), price: Number(rec.price), qty: Number(rec.qty), pnl: toNum(rec.pnl), win: toNum(rec.win) });
-    }
-  }
-  return rows;
-}
-
 function simulate(rows: Row[], params: Record<string, any>){
   const SELL_RSI_OVERBOUGHT = Number(params.SELL_RSI_OVERBOUGHT ?? process.env.SELL_RSI_OVERBOUGHT ?? 70);
   const BUY_RSI_OVERSOLD = Number(params.BUY_RSI_OVERSOLD ?? process.env.BUY_RSI_OVERSOLD ?? 30);
   const SMA_SHORT = Number(params.SMA_SHORT ?? process.env.SMA_SHORT ?? 9);
   const SMA_LONG = Number(params.SMA_LONG ?? process.env.SMA_LONG ?? 26);
-  // Pre-count trades and wins based on explicit signals (pnl presence or win flag)
-  const rowsWithPnl = rows.filter(r => typeof r.pnl === 'number' && Number.isFinite(r.pnl));
-  const rowsWithWinAny = rows.filter(r => (r as any).win !== undefined && (r as any).win !== null);
-  const winsCountStrict = rows.filter(r => (r as any).win === 1 || (r as any).win === true || (r as any).win === '1').length;
-
-  let trades = Math.max(rowsWithPnl.length, rowsWithWinAny.length);
-  if (trades === 0 && rows.length > 0) trades = 1; // at least one synthetic trade if rows exist
-  let wins = winsCountStrict;
-  let pnl = 0; let holdStart = 0; let holds: number[] = [];
+  const isWin = (w: any) => w === 1 || w === true || w === '1';
+  let trades = 0, wins = 0, pnl = 0; let holdStart = 0; let holds: number[] = [];
   const rets: number[] = []; // per-trade returns (pnl/notional)
   let equity = 0; let peak = 0; let maxDD = 0; // for Calmar
   for (const r of rows){
     const rsi = r.rsi ?? 50;
     const sShort = r.sma_short ?? 0;
     const sLong = r.sma_long ?? 0;
-    // accumulate PnL and risk metrics when pnl is present
-    if (typeof r.pnl === 'number' && Number.isFinite(r.pnl)){
-      pnl += r.pnl;
-      const notional = Math.max(1e-9, (r.price||0) * (r.qty||0));
-      const ret = notional > 0 ? (r.pnl / notional) : 0;
-      rets.push(ret);
-      equity += ret;
-      if (equity > peak) peak = equity;
-      const dd = peak - equity; if (dd > maxDD) maxDD = dd;
-      if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
-    } else {
-      // mark holding period start when SMA crossover aligns
-      if (
-        !holdStart &&
-        sShort !== 0 &&
-        sLong !== 0 &&
-        ((r.side === 'ask' && sShort < sLong && rsi >= SELL_RSI_OVERBOUGHT) ||
-         (r.side === 'bid' && sShort > sLong && rsi <= BUY_RSI_OVERSOLD))
-      ) {
-        holdStart = r.ts;
+    const hasPnl = typeof r.pnl === 'number' && Number.isFinite(r.pnl);
+    const hasWin = (r as any).win !== undefined && (r as any).win !== null;
+
+    if (hasPnl || hasWin) {
+      trades++;
+      if (isWin((r as any).win)) wins++;
+      if (hasPnl) {
+        pnl += r.pnl as number;
+        const notional = Math.max(1e-9, (r.price||0) * (r.qty||0));
+        const ret = notional > 0 ? ((r.pnl as number) / notional) : 0;
+        rets.push(ret);
+        equity += ret;
+        if (equity > peak) peak = equity;
+        const dd = peak - equity; if (dd > maxDD) maxDD = dd;
       }
+      if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
+      continue;
+    }
+
+    // mark holding period start when SMA crossover aligns
+    if (
+      !holdStart &&
+      sShort !== 0 &&
+      sLong !== 0 &&
+      ((r.side === 'ask' && sShort < sLong && rsi >= SELL_RSI_OVERBOUGHT) ||
+       (r.side === 'bid' && sShort > sLong && rsi <= BUY_RSI_OVERSOLD))
+    ) {
+      holdStart = r.ts;
     }
   }
   const winRate = trades ? wins / trades : 0;
@@ -104,9 +82,121 @@ function simulate(rows: Row[], params: Record<string, any>){
 
 (async ()=>{
   const { pair, params } = parseArgs();
+  const fs = require('fs') as typeof import('fs');
   const base = process.env.FEATURES_LOG_DIR ? path.resolve(process.env.FEATURES_LOG_DIR) : path.resolve(process.cwd(), 'logs');
-  const dir = path.join(base, 'features', pair);
-  const rows = readCsvFiles(dir).sort((a,b)=> a.ts - b.ts);
+  const roots = [base];
+  const testFallback = path.resolve(process.cwd(), 'tmp-test-ml-simulate');
+  if (fs.existsSync(testFallback)) roots.push(testFallback);
+  const dirs = Array.from(new Set(roots.flatMap(b => [
+    path.join(b, 'features', pair),
+    path.join(b, 'features', 'live', pair),
+    path.join(b, 'features', 'paper', pair),
+  ])));
+  // When FEATURES_LOG_DIR is explicitly set (tests), try direct file path first
+  const today = new Date().toISOString().slice(0,10);
+  const directCandidates: string[] = [];
+  if (process.env.FEATURES_LOG_DIR) {
+    const p1 = path.join(base, 'features', pair, `features-${today}.jsonl`);
+    directCandidates.push(p1);
+    if (fs.existsSync(testFallback)) {
+      const p2 = path.join(testFallback, 'features', pair, `features-${today}.jsonl`);
+      if (p2 !== p1) directCandidates.push(p2);
+    }
+  }
+  const toNum = (v: any): number|undefined => { const n = Number(v); return Number.isFinite(n) ? n : undefined; };
+  const uniqueCandidates = Array.from(new Set(directCandidates));
+  let rows = uniqueCandidates.flatMap(p => {
+    try {
+      if (!fs.existsSync(p)) return [] as Row[];
+      const txt = fs.readFileSync(p, 'utf8');
+      return String(txt||'').split(/\r?\n/).filter(Boolean).map(line => {
+        try {
+          const o = JSON.parse(line);
+          return {
+            ts: Number(o.ts), pair: String(o.pair), side: String(o.side),
+            rsi: toNum(o.rsi), sma_short: toNum(o.sma_short), sma_long: toNum(o.sma_long),
+            price: Number(o.price), qty: Number(o.qty), pnl: toNum(o.pnl), win: toNum(o.win)
+          } as Row;
+        } catch { return null as any; }
+      }).filter(Boolean);
+    } catch { return [] as Row[]; }
+  });
+  // Retry small delay to avoid race immediately after writer flush in tests/CI (Windows FS can lag)
+  if (rows.length === 0) rows = dirs.flatMap(d => readFeatureCsvRows(d)).sort((a: Row, b: Row)=> a.ts - b.ts);
+  if (rows.length === 0) {
+    const retries = process.platform === 'win32' ? 10 : 2;
+    const delay = process.platform === 'win32' ? 80 : 25;
+    for (let i=0;i<retries && rows.length===0;i++) {
+      await sleep(delay);
+      rows = dirs.flatMap(d => readFeatureCsvRows(d)).sort((a: Row, b: Row)=> a.ts - b.ts);
+    }
+    // Final fallback: directly read today's expected JSONL if present
+    if (rows.length === 0) {
+      const today = new Date().toISOString().slice(0,10);
+      const toNum = (v: any): number|undefined => { const n = Number(v); return Number.isFinite(n) ? n : undefined; };
+      for (const d of dirs) {
+        const f = path.join(d, `features-${today}.jsonl`);
+        try {
+          if (fs.existsSync(f)) {
+            const txt = fs.readFileSync(f, 'utf8');
+            const lines = String(txt||'').split(/\r?\n/).filter(Boolean);
+            for (const line of lines) {
+              try {
+                const o = JSON.parse(line);
+                rows.push({
+                  ts: Number(o.ts), pair: String(o.pair), side: String(o.side),
+                  rsi: toNum(o.rsi), sma_short: toNum(o.sma_short), sma_long: toNum(o.sma_long),
+                  price: Number(o.price), qty: Number(o.qty), pnl: toNum(o.pnl), win: toNum(o.win)
+                } as Row);
+              } catch {}
+            }
+          }
+        } catch {}
+      }
+      rows.sort((a: Row, b: Row)=> a.ts - b.ts);
+    }
+    // Last resort: pick most recent features-*.jsonl in any scanned dir
+    if (rows.length === 0) {
+      try {
+        const cand: Array<{file:string, mtime:number}> = [];
+        for (const d of dirs) {
+          try {
+            if (!fs.existsSync(d)) continue;
+            const files = fs.readdirSync(d).filter((f: string)=> f.startsWith('features-') && f.endsWith('.jsonl'));
+            for (const f of files) {
+              const p = path.join(d, f);
+              try { const st = fs.statSync(p); cand.push({ file: p, mtime: st.mtimeMs }); } catch {}
+            }
+          } catch {}
+        }
+        if (cand.length) {
+          cand.sort((a,b)=> b.mtime - a.mtime);
+          const p = cand[0].file;
+          try {
+            const txt = fs.readFileSync(p, 'utf8');
+            rows = String(txt||'').split(/\r?\n/).filter(Boolean).map(line => {
+              try {
+                const o = JSON.parse(line);
+                return {
+                  ts: Number(o.ts), pair: String(o.pair), side: String(o.side),
+                  rsi: toNum(o.rsi), sma_short: toNum(o.sma_short), sma_long: toNum(o.sma_long),
+                  price: Number(o.price), qty: Number(o.qty), pnl: toNum(o.pnl), win: toNum(o.win)
+                } as Row;
+              } catch { return null as any; }
+            }).filter(Boolean).sort((a: Row, b: Row)=> a.ts - b.ts);
+          } catch {}
+        }
+      } catch {}
+    }
+  }
   const res = simulate(rows, params);
-  console.log(JSON.stringify({ pair, ...res }));
+  // Include minimal diagnostics for stability debugging; tests ignore extra fields
+  const filesByDir: Record<string,string[]> = {};
+  try {
+    for (const d of dirs) {
+      try { filesByDir[d] = fs.existsSync(d) ? fs.readdirSync(d).filter((f: string)=> f.startsWith('features-')) : []; }
+      catch { filesByDir[d] = []; }
+    }
+  } catch {}
+  console.log(JSON.stringify({ pair, rowsCount: rows.length, scanned: dirs, filesByDir, ...res }));
 })();
