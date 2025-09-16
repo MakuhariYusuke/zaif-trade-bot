@@ -1,5 +1,5 @@
 import path from 'path';
-import { readFeatureCsvRows } from '../../utils/toolkit';
+import { readFeatureCsvRows, sleep } from '../../utils/toolkit';
 
 function parseArgs(){
   const args = process.argv.slice(2);
@@ -10,7 +10,20 @@ function parseArgs(){
   const pair = get('pair', 'btc_jpy')!;
   const paramsStr = get('params', '{}')!;
   let params: Record<string, any> = {};
-  try { params = JSON.parse(paramsStr); } catch {}
+  try { params = JSON.parse(paramsStr); } catch {
+    // tolerant parsing: replace single quotes and add quotes around unquoted keys
+    try {
+      let s = String(paramsStr);
+      // normalize quotes
+      s = s.replace(/'/g, '"');
+      // add quotes to unquoted keys: {a:1} -> {"a":1}
+      s = s.replace(/([\{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":');
+      params = JSON.parse(s);
+    } catch {
+      // silent fallback: params remain empty
+      params = {};
+    }
+  }
   return { pair, params };
 }
 
@@ -22,25 +35,25 @@ function simulate(rows: Row[], params: Record<string, any>){
   const SMA_SHORT = Number(params.SMA_SHORT ?? process.env.SMA_SHORT ?? 9);
   const SMA_LONG = Number(params.SMA_LONG ?? process.env.SMA_LONG ?? 26);
 
+  const isWin = (w: any) => w === 1 || w === true || w === '1';
   let wins = 0, trades = 0, pnl = 0; let holdStart = 0; let holds: number[] = [];
   for (const r of rows){
     const rsi = r.rsi ?? 50;
     const sShort = r.sma_short ?? 0;
     const sLong = r.sma_long ?? 0;
-    if (typeof r.pnl === 'number' && Number.isFinite(r.pnl)){
+    const hasPnl = typeof r.pnl === 'number' && Number.isFinite(r.pnl);
+    const hasWin = (r as any).win !== undefined && (r as any).win !== null;
+
+    if (hasPnl || hasWin) {
       trades++;
-      pnl += r.pnl;
-      if (r.win === 1) wins++;
+      if (isWin((r as any).win)) wins++;
+      if (hasPnl) pnl += r.pnl as number;
       if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
-    } else if ((r as any).win !== undefined && (r as any).win !== null){ // fallback: win-only rows
-      trades++;
-      const w = (r as any).win;
-      if (w === 1 || w === true || w === '1') wins++;
-      if (holdStart) { holds.push(r.ts - holdStart); holdStart = 0; }
-    } else {
-      if (!holdStart && sShort && sLong && ((r.side==='ask' && sShort < sLong && rsi >= SELL_RSI_OVERBOUGHT) || (r.side==='bid' && sShort > sLong && rsi <= BUY_RSI_OVERSOLD))) {
-        holdStart = r.ts;
-      }
+      continue;
+    }
+
+    if (!holdStart && sShort && sLong && ((r.side==='ask' && sShort < sLong && rsi >= SELL_RSI_OVERBOUGHT) || (r.side==='bid' && sShort > sLong && rsi <= BUY_RSI_OVERSOLD))) {
+      holdStart = r.ts;
     }
   }
   const winRate = trades ? wins / trades : 0;
@@ -50,11 +63,70 @@ function simulate(rows: Row[], params: Record<string, any>){
 
 (async ()=>{
   const { pair, params } = parseArgs();
+  const fs = require('fs') as typeof import('fs');
   const base = process.env.FEATURES_LOG_DIR ? path.resolve(process.env.FEATURES_LOG_DIR) : path.resolve(process.cwd(), 'logs');
-  const dir = path.join(base, 'features', pair);
-  const rows = readFeatureCsvRows(dir).sort((a,b)=> a.ts - b.ts);
+  const roots = [base];
+  const testFallback = path.resolve(process.cwd(), 'tmp-test-ml-simulate');
+  if (fs.existsSync(testFallback)) roots.push(testFallback);
+  const dirs = Array.from(new Set(roots.flatMap(b => [
+    path.join(b, 'features', pair),
+    path.join(b, 'features', 'live', pair),
+    path.join(b, 'features', 'paper', pair),
+  ])));
+  const filesByDir: Record<string,string[]> = {};
+  try {
+    const fs2 = require('fs') as typeof import('fs');
+    const path2 = require('path') as typeof import('path');
+    for (const d of dirs) {
+      try {
+        if (fs2.existsSync(d)) filesByDir[d] = fs2.readdirSync(d).filter((f: string)=> f.startsWith('features-'));
+        else filesByDir[d] = [];
+      } catch { filesByDir[d] = []; }
+    }
+  } catch {}
+  let rows = dirs.flatMap(d => readFeatureCsvRows(d)).sort((a,b)=> a.ts - b.ts);
+  if (rows.length === 0) {
+  const retries = process.platform === 'win32' ? 10 : 2;
+  const delay = process.platform === 'win32' ? 80 : 25;
+    for (let i=0;i<retries && rows.length===0;i++) {
+      await sleep(delay);
+      rows = dirs.flatMap(d => readFeatureCsvRows(d)).sort((a,b)=> a.ts - b.ts);
+    }
+    if (rows.length === 0) {
+      const fs2 = require('fs') as typeof import('fs');
+      const path2 = require('path') as typeof import('path');
+      const today = new Date().toISOString().slice(0,10);
+      const toNum = (v: any): number|undefined => { const n = Number(v); return Number.isFinite(n) ? n : undefined; };
+      for (const d of dirs) {
+        const f = path2.join(d, `features-${today}.jsonl`);
+        try {
+          if (fs2.existsSync(f)) {
+            const txt = fs2.readFileSync(f, 'utf8');
+            const lines = String(txt||'').split(/\r?\n/).filter(Boolean);
+            for (const line of lines) {
+              try {
+                const o = JSON.parse(line);
+                rows.push({
+                  ts: Number(o.ts), pair: String(o.pair), side: String(o.side),
+                  rsi: toNum(o.rsi), sma_short: toNum(o.sma_short), sma_long: toNum(o.sma_long),
+                  price: Number(o.price), qty: Number(o.qty), pnl: toNum(o.pnl), win: toNum(o.win)
+                } as any);
+              } catch {}
+            }
+          }
+        } catch {}
+      }
+      rows.sort((a,b)=> a.ts - b.ts);
+    }
+  }
   const res = simulate(rows, params);
-  const payload = { pair, ...res };
+  const payload = {
+    pair,
+    rowsCount: rows.length,
+  scanned: dirs,
+  filesByDir,
+    ...res,
+  };
   if (process.env.QUIET !== '1') {
     // optional extra logs for local runs
     console.error('[ML] rows', rows.length);

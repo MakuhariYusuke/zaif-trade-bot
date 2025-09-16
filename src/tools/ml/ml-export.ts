@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { enumerateFeatureFiles, getFeaturesRoot, readLines } from '../../utils/toolkit';
 
 function parseArgs(){
@@ -15,10 +16,9 @@ function readAllFeatureFiles(root: string, date?: string){
   return all.filter(f => f.file.includes(date));
 }
 
-async function mergeCsv(files: Array<{file:string; format: 'csv'|'jsonl'; source:'paper'|'live'}>, outPath: string){
-  const header = 'ts,pair,side,rsi,sma_short,sma_long,price,qty,pnl,win,source,tradeFlow,durationSec';
+async function mergeJsonl(files: Array<{file:string; format: 'csv'|'jsonl'; source:'paper'|'live'}>, outPath: string){
   const tradeFlow = process.env.TRADE_FLOW || '';
-  const chunks: string[] = [header + '\n'];
+  const out = fs.createWriteStream(outPath, { encoding: 'utf8' });
   const tasks = files.map(({file:fp, format, source})=> (async()=>{
     let lastTs: number | null = null;
     if (format === 'jsonl'){
@@ -35,14 +35,14 @@ async function mergeCsv(files: Array<{file:string; format: 'csv'|'jsonl'; source
           } else {
             lastTs = ts;
           }
-          const csv = [o.ts,o.pair,o.side,o.rsi??'',o.sma_short??'',o.sma_long??'',o.price,o.qty,o.pnl??'',(typeof o.win==='boolean'?(o.win?1:0):o.win??'')].join(',');
-          chunks.push(csv + ',"' + source + '","' + tradeFlow + '",' + String(durationSec) + '\n');
+          const rec = { ...o, source, tradeFlow, durationSec };
+          out.write(JSON.stringify(rec) + '\n');
         } catch {}
       }
     } else {
-  let hdr: string[] | null = null;
-  let ci: any = null;
-  for await (const line of readLines(fp)){
+      let hdr: string[] | null = null;
+      let ci: any = null;
+      for await (const line of readLines(fp)){
         const t = String(line).trim(); if (!t) continue;
         if (!hdr){
           hdr = t.split(',');
@@ -67,34 +67,56 @@ async function mergeCsv(files: Array<{file:string; format: 'csv'|'jsonl'; source
         } else {
           lastTs = ts;
         }
-        chunks.push(t + ',"' + source + '","' + tradeFlow + '",' + String(durationSec) + '\n');
+        const rec: any = { ts:Number(cols[ci.ts]), pair:cols[ci.pair], side:cols[ci.side], rsi:cols[ci.rsi]||undefined, sma_short:cols[ci.sma_short]||undefined, sma_long:cols[ci.sma_long]||undefined, price:Number(cols[ci.price]), qty:Number(cols[ci.qty]) };
+        if (pnlStr !== '') rec.pnl = Number(pnlStr);
+        if (winStr !== '') rec.win = (winStr==='1') ? 1 : 0;
+        out.write(JSON.stringify({ ...rec, source, tradeFlow, durationSec }) + '\n');
       }
     }
   })());
   await Promise.allSettled(tasks);
-  fs.writeFileSync(outPath, chunks.join(''));
+  out.end();
 }
 
 (async ()=>{
   const { date } = parseArgs();
   const root = getFeaturesRoot();
   const files = readAllFeatureFiles(root, date);
-  const out = path.resolve(process.cwd(), 'ml-dataset.csv');
+  const out = path.resolve(process.cwd(), 'ml-dataset.jsonl');
+  const cacheMetaPath = path.resolve(process.cwd(), 'ml-dataset.cache.json');
   try {
-    if (process.env.ML_EXPORT_USE_CACHE !== '0' && fs.existsSync(out)){
+  if (process.env.ML_EXPORT_USE_CACHE !== '0' && fs.existsSync(out)){
       // if output is newer than all inputs, reuse
-      const outMtime = fs.statSync(out).mtimeMs;
-      let newestInput = 0;
+      const outSt = fs.statSync(out);
+      const outMtime = outSt.mtimeMs;
+      let newestInput = 0; let totalInputSize = 0;
+      const sigParts: string[] = [];
       for (const f of files){
-        try { const st = fs.statSync(f.file); if (st.mtimeMs > newestInput) newestInput = st.mtimeMs; } catch {}
+        try { const st = fs.statSync(f.file); if (st.mtimeMs > newestInput) newestInput = st.mtimeMs; totalInputSize += st.size||0; sigParts.push(`${f.file}:${st.mtimeMs}:${st.size||0}`); } catch {}
       }
-      if (newestInput && outMtime >= newestInput){
-        try { console.log('[CACHE] ml-export using existing dataset'); } catch {}
+      const signature = crypto.createHash('sha1').update(sigParts.join('|')).digest('hex');
+      const fileListSig = crypto.createHash('sha1').update(files.map(f=>f.file).sort().join('|')).digest('hex');
+      // optional size/hash signature check via sidecar cache
+      let cacheOk = false;
+      try {
+        const meta = JSON.parse(fs.readFileSync(cacheMetaPath,'utf8')) as { totalInputSize?: number; signature?: string; fileListSig?: string };
+        if (meta && typeof meta.totalInputSize === 'number' && meta.totalInputSize === totalInputSize && meta.signature === signature && meta.fileListSig === fileListSig) cacheOk = true;
+      } catch {}
+      if (newestInput && outMtime >= newestInput && cacheOk){
+        try { console.log(`[CACHE] ml-export using existing dataset sig=${signature.slice(0,8)}`); } catch {}
         console.log(JSON.stringify({ dataset: out, count: files.length, date: date || null }));
         return;
       }
     }
   } catch {}
-  await mergeCsv(files, out);
+  await mergeJsonl(files, out);
+  // write/update sidecar cache meta
+  try {
+  let totalInputSize = 0; const sigParts: string[] = []; let newestInput=0;
+  for (const f of files){ try { const st = fs.statSync(f.file); totalInputSize += st.size||0; if (st.mtimeMs>newestInput) newestInput=st.mtimeMs; sigParts.push(`${f.file}:${st.mtimeMs}:${st.size||0}`); } catch {} }
+  const signature = crypto.createHash('sha1').update(sigParts.join('|')).digest('hex');
+  const fileListSig = crypto.createHash('sha1').update(files.map(f=>f.file).sort().join('|')).digest('hex');
+  fs.writeFileSync(cacheMetaPath, JSON.stringify({ totalInputSize, newestInput, signature, fileListSig }, null, 2));
+  } catch {}
   console.log(JSON.stringify({ dataset: out, count: files.length, date: date || null }));
 })();

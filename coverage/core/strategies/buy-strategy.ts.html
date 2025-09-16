@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">98.66% </span>
+                <span class="strong">98.85% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>74/75</span>
+                <span class='fraction'>86/87</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">51.61% </span>
+                <span class="strong">52.94% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>16/31</span>
+                <span class='fraction'>18/34</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">98.66% </span>
+                <span class="strong">98.85% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>74/75</span>
+                <span class='fraction'>86/87</span>
             </div>
         
             
@@ -138,7 +138,19 @@
 <a name='L73'></a><a href='#L73'>73</a>
 <a name='L74'></a><a href='#L74'>74</a>
 <a name='L75'></a><a href='#L75'>75</a>
-<a name='L76'></a><a href='#L76'>76</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -155,6 +167,12 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -213,12 +231,19 @@
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, describeExit, calculateSma, calculateRsi } from "../risk";
-import { logInfo } from "../../utils/logger";
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, describeExit, calculateSma, calculateRsi, CoreRiskManager } from "../risk";
+import { logInfo, logger } from "../../utils/logger";
 import { logSignal } from "../../utils/trade-logger";
 import { appendPriceSamples, getPriceSeries } from "../../utils/price-cache";
 import { incTrailStop, incBuyEntry, incRsiExit, incTrailExit } from "../../utils/daily-stats";
 import { logFeatureSample } from "../../utils/features-logger";
+import { BaseStrategy } from "./base-strategy";
 &nbsp;
 export interface StrategyContext {
   positions: Position[];
@@ -230,63 +255,74 @@ export interface StrategyContext {
   pair?: string;
 }
 &nbsp;
-export function runBuyStrategy(ctx: StrategyContext) {
-  // price series and indicators
-  appendPriceSamples(ctx.trades.map((t:any)=&gt; ({ ts:t.date? t.date*<span class="branch-0 cbranch-no" title="branch not covered" >1000: ctx.nowMs, p</span>rice:t.price })));
-  const priceSeries=getPriceSeries(Math.max(ctx.riskCfg.smaPeriod,200));
-  const base = (ctx.<span class="branch-0 cbranch-no" title="branch not covered" >pair || '').s</span>plit('_')[0]?.toUpperCase();
-  const resolve = (baseKey: string, genericKey: string, fallbackKey: string, def: number) =&gt; {
-    if (base) { const v = process.env[`${base}_${baseKey}`]; if (v != null) <span class="branch-0 cbranch-no" title="branch not covered" >return Number(v); }</span>
-    if (process.env[genericKey] != null) return Number(process.env[genericKey]);
-    if (process.env[fallbackKey] != null) return Number(process.env[fallbackKey]<span class="branch-0 cbranch-no" title="branch not covered" >);</span>
-<span class="cstat-no" title="statement not covered" >    return def;</span>
-  };
-  const shortPeriod=resolve('BUY_SMA_SHORT','BUY_SMA_SHORT','SMA_SHORT',9);
-  const longPeriod=resolve('BUY_SMA_LONG','BUY_SMA_LONG','SMA_LONG',26);
-  const rsiPeriod=Number(process.env.<span class="branch-0 cbranch-no" title="branch not covered" >RSI_PERIOD||14)</span>;
-  const smaShort=calculateSma(priceSeries, shortPeriod);
-  const smaLong=calculateSma(priceSeries, longPeriod);
-  const rsi=calculateRsi(priceSeries, rsiPeriod);
-  try { logFeatureSample({ ts: ctx.nowMs, pair: ctx.<span class="branch-0 cbranch-no" title="branch not covered" >pair || 'unknown', s</span>ide: 'bid', rsi: <span class="branch-0 cbranch-no" title="branch not covered" >rsi ?? undefined, s</span>ma_short: <span class="branch-0 cbranch-no" title="branch not covered" >smaShort ?? undefined, s</span>ma_long: <span class="branch-0 cbranch-no" title="branch not covered" >smaLong ?? undefined, p</span>rice: ctx.currentPrice, qty: 0 }); <span class="branch-0 cbranch-no" title="branch not covered" >} catch {}</span>
-&nbsp;
-  // exits for short positions (BUY-back)
-  const shortPositions=ctx.positions.filter((p:Position)=&gt; p.side === 'short');
-  const exits=evaluateExitConditions(shortPositions, ctx.currentPrice, calculateSma(priceSeries, ctx.riskCfg.smaPeriod), ctx.riskCfg, rsi);
-&nbsp;
-  // trailing stop management
-  const exitTrail: string[] = [];
-  for (const pos of ctx.positions){
-    const trail = manageTrailingStop(ctx.currentPrice, pos as any, ctx.nowMs);
-    if (trail?.signal==='EXIT_TRAIL'){ exitTrail.push(pos.id); }
+export class BuyStrategy extends BaseStrategy {
+  protected applyRisk(decision: any, ctx: any){
+    try { const r = this.risk.validateOrder(decision); if ((r as any)?.ok === false) this.logger?.warn?.('risk rejected', (r as any).error); <span class="branch-0 cbranch-no" title="branch not covered" >} catch {}</span>
+    return decision;
   }
-  const allExits=[...exits];
-  for (const x of exits){ if (x.reason==='RSI_EXIT') incRsiExit(new Date().toISOString().slice(0,10), ctx.pair); }
-  if (exitTrail.length){
-    const d=new Date().toISOString().slice(0,10);
-    for(const id of exitTrail){
-      const pos=ctx.positions.find(p=&gt;p.id===id);
-      if(pos) allExits.push({ position:pos, reason:'TRAIL_STOP', targetPrice:ctx.currentPrice });
-  incTrailStop(d, ctx.pair);
-  incTrailExit(d, ctx.pair);
+  protected async decide(ctx: StrategyContext): Promise&lt;any&gt; {
+    // price series and indicators
+    appendPriceSamples(ctx.trades.map((t:any)=&gt; ({ ts:t.date? t.date*<span class="branch-0 cbranch-no" title="branch not covered" >1000: ctx.nowMs, p</span>rice:t.price })));
+    const priceSeries=getPriceSeries(Math.max(ctx.riskCfg.smaPeriod,200));
+    const base = (ctx.<span class="branch-0 cbranch-no" title="branch not covered" >pair || '').s</span>plit('_')[0]?.toUpperCase();
+    const resolve = (baseKey: string, genericKey: string, fallbackKey: string, def: number) =&gt; {
+      if (base) { const v = process.env[`${base}_${baseKey}`]; if (v != null) <span class="branch-0 cbranch-no" title="branch not covered" >return Number(v); }</span>
+      if (process.env[genericKey] != null) return Number(process.env[genericKey]);
+      if (process.env[fallbackKey] != null) return Number(process.env[fallbackKey]<span class="branch-0 cbranch-no" title="branch not covered" >);</span>
+<span class="cstat-no" title="statement not covered" >      return def;</span>
+    };
+    const shortPeriod=resolve('BUY_SMA_SHORT','BUY_SMA_SHORT','SMA_SHORT',9);
+    const longPeriod=resolve('BUY_SMA_LONG','BUY_SMA_LONG','SMA_LONG',26);
+    const rsiPeriod=Number(process.env.<span class="branch-0 cbranch-no" title="branch not covered" >RSI_PERIOD||14)</span>;
+    const smaShort=calculateSma(priceSeries, shortPeriod);
+    const smaLong=calculateSma(priceSeries, longPeriod);
+    const rsi=calculateRsi(priceSeries, rsiPeriod);
+    try { logFeatureSample({ ts: ctx.nowMs, pair: ctx.<span class="branch-0 cbranch-no" title="branch not covered" >pair || 'unknown', s</span>ide: 'bid', rsi: <span class="branch-0 cbranch-no" title="branch not covered" >rsi ?? undefined, s</span>ma_short: <span class="branch-0 cbranch-no" title="branch not covered" >smaShort ?? undefined, s</span>ma_long: <span class="branch-0 cbranch-no" title="branch not covered" >smaLong ?? undefined, p</span>rice: ctx.currentPrice, qty: 0 }); <span class="branch-0 cbranch-no" title="branch not covered" >} catch {}</span>
+&nbsp;
+    // exits for short positions (BUY-back)
+    const shortPositions=ctx.positions.filter((p:Position)=&gt; p.side === 'short');
+    const exits=evaluateExitConditions(shortPositions, ctx.currentPrice, calculateSma(priceSeries, ctx.riskCfg.smaPeriod), ctx.riskCfg, rsi);
+&nbsp;
+    // trailing stop management
+    const exitTrail: string[] = [];
+    for (const pos of ctx.positions){
+      const trail = manageTrailingStop(ctx.currentPrice, pos as any, ctx.nowMs);
+      if (trail?.signal==='EXIT_TRAIL'){ exitTrail.push(pos.id); }
     }
-  }
-  // Exit logs are handled in app/index.ts to avoid duplication
+    const allExits=[...exits];
+    for (const x of exits){ if (x.reason==='RSI_EXIT') incRsiExit(new Date().toISOString().slice(0,10), ctx.pair); }
+    if (exitTrail.length){
+      const d=new Date().toISOString().slice(0,10);
+      for(const id of exitTrail){
+        const pos=ctx.positions.find(p=&gt;p.id===id);
+        if(pos) allExits.push({ position:pos, reason:'TRAIL_STOP', targetPrice:ctx.currentPrice });
+        incTrailStop(d, ctx.pair);
+        incTrailExit(d, ctx.pair);
+      }
+    }
+    // Exit logs are handled in app/index.ts to avoid duplication
 &nbsp;
-  // BUY モードのシグナル（例: デッドクロスからの反発条件）
-  const haveLong=ctx.positions.some((p:Position)=&gt; p.side==='long');
-  const coreBuy=!!(smaShort &amp;&amp; smaLong &amp;&amp; smaShort &gt; smaLong);
-  const rsiTh = resolve('BUY_RSI_OVERSOLD','BUY_RSI_OVERSOLD','BUY_RSI_OVERSOLD',30);
-  const rsiBuyBoost=!!(rsi &amp;&amp; rsi &lt;= rsiTh);
-  const finalBuySignal=!haveLong &amp;&amp; coreBuy &amp;&amp; rsiBuyBoost;
-  if (finalBuySignal){
-    const msg = `[SIGNAL][mode=BUY] BUY entry condition met`;
-    logInfo(msg);
-    logSignal(msg);
-  incBuyEntry(new Date().toISOString().slice(0,10), ctx.pair);
-    try { logFeatureSample({ ts: Date.now(), pair: ctx.<span class="branch-0 cbranch-no" title="branch not covered" >pair || 'unknown', s</span>ide: 'bid', rsi: <span class="branch-0 cbranch-no" title="branch not covered" >rsi ?? undefined, s</span>ma_short: <span class="branch-0 cbranch-no" title="branch not covered" >smaShort ?? undefined, s</span>ma_long: <span class="branch-0 cbranch-no" title="branch not covered" >smaLong ?? undefined, p</span>rice: ctx.currentPrice, qty: 0 }); <span class="branch-0 cbranch-no" title="branch not covered" >} catch {}</span>
-  }
+    // BUY モードのシグナル（例: デッドクロスからの反発条件）
+    const haveLong=ctx.positions.some((p:Position)=&gt; p.side==='long');
+    const coreBuy=!!(smaShort &amp;&amp; smaLong &amp;&amp; smaShort &gt; smaLong);
+    const rsiTh = resolve('BUY_RSI_OVERSOLD','BUY_RSI_OVERSOLD','BUY_RSI_OVERSOLD',30);
+    const rsiBuyBoost=!!(rsi &amp;&amp; rsi &lt;= rsiTh);
+    const finalBuySignal=!haveLong &amp;&amp; coreBuy &amp;&amp; rsiBuyBoost;
+    if (finalBuySignal){
+      const msg = `[SIGNAL][mode=BUY] BUY entry condition met`;
+      logInfo(msg);
+      logSignal(msg);
+      incBuyEntry(new Date().toISOString().slice(0,10), ctx.pair);
+      try { logFeatureSample({ ts: Date.now(), pair: ctx.<span class="branch-0 cbranch-no" title="branch not covered" >pair || 'unknown', s</span>ide: 'bid', rsi: <span class="branch-0 cbranch-no" title="branch not covered" >rsi ?? undefined, s</span>ma_short: <span class="branch-0 cbranch-no" title="branch not covered" >smaShort ?? undefined, s</span>ma_long: <span class="branch-0 cbranch-no" title="branch not covered" >smaLong ?? undefined, p</span>rice: ctx.currentPrice, qty: 0 }); <span class="branch-0 cbranch-no" title="branch not covered" >} catch {}</span>
+    }
 &nbsp;
-  return { allExits };
+    return { allExits };
+  }
+}
+&nbsp;
+export function runBuyStrategy(ctx: StrategyContext) {
+  const s = new BuyStrategy(logger, new CoreRiskManager());
+  return s.runCycle(ctx);
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -295,7 +331,7 @@ export function runBuyStrategy(ctx: StrategyContext) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-14T13:15:01.839Z
+                at 2025-09-16T20:09:45.096Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

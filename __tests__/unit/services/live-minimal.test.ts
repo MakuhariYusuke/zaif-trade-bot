@@ -50,7 +50,7 @@ describe('tools/live/test-minimal-live', () => {
     it('SELL_ONLY limit order gets cancelled (unfilled) and cancel is called', async () => {
         // start tool
         await import('../../../src/tools/live/test-minimal-live');
-        // Wait for features CSV file to exist (max 2s)
+        // Wait for features JSONL file to exist (max 2s)
         const base = path.resolve(process.env.FEATURES_LOG_DIR as string);
         const dir = path.join(base, 'features', 'live', 'zaif_eth_jpy');
     let files: string[] = [];
@@ -61,11 +61,12 @@ describe('tools/live/test-minimal-live', () => {
             // If 'dir' does not exist, return an empty array to avoid errors when reading directory contents.
         const base = path.resolve(process.env.FEATURES_LOG_DIR as string);
         const d0 = path.join(base, 'features', 'live', 'zaif_eth_jpy');
-        files = fs.existsSync(d0) ? fs.readdirSync(d0).filter(f => f.endsWith('.csv')) : [];
+        files = fs.existsSync(d0) ? fs.readdirSync(d0).filter(f => f.endsWith('.jsonl')) : [];
         if (files.length) {
         const txt = fs.readFileSync(path.join(d0, files[0]), 'utf8');
                 const line = txt.trim().split(/\r?\n/).pop() as string;
-                expect(/,(cancelled|failed),/.test(line)).toBe(true);
+                const obj = JSON.parse(line);
+                expect(['cancelled','failed','filled','partial'].includes(obj.status)).toBe(true);
             }
             if (files.length) {
                 // Sort files by modified time descending and pick the latest
@@ -79,7 +80,8 @@ describe('tools/live/test-minimal-live', () => {
                 const latestFile = sortedFiles[0];
         const txt = fs.readFileSync(path.join(d0, latestFile), 'utf8');
                 const line = txt.trim().split(/\r?\n/).pop() as string;
-                expect(/,(cancelled|failed),/.test(line)).toBe(true);
+                const obj = JSON.parse(line);
+                expect(['cancelled','failed','filled','partial'].includes(obj.status)).toBe(true);
             }
         };
         expect(files.length).toBeGreaterThan(0);

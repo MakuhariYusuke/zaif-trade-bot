@@ -12,7 +12,7 @@ describe('services/market-service cache', () => {
   beforeEach(()=>{ vi.resetModules(); vi.clearAllMocks(); process.env.MARKET_CACHE_TTL_MS = '1500'; delete process.env.TEST_MODE; delete process.env.VITEST_WORKER_ID; });
 
   it('uses cached ticker within TTL', async () => {
-  const mod = await import('../../../src/services/market-service');
+  const mod = await import('../../../src/adapters/market-service');
     const r1 = await mod.fetchTicker('btc_jpy');
     const r2 = await mod.fetchTicker('btc_jpy');
     expect(pub.getTicker).toHaveBeenCalledTimes(1);

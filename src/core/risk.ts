@@ -1,8 +1,7 @@
-import fs from "fs";
-import path from "path";
-import { logInfo, logError, logWarn } from "../utils/logger";
 import { getMaxHoldSec } from "../utils/toolkit";
 import { updatePositionFields } from "./position-store";
+import type { RiskManager, TrailingAction, ClampedIntent } from "@contracts";
+import { ok, err } from "../utils/result";
 
 export interface RiskConfig { stopLossPct: number; takeProfitPct: number; positionPct: number; smaPeriod: number; positionsFile: string; trailTriggerPct: number; trailStopPct: number; dcaStepPct: number; maxPositions: number; maxDcaPerPair: number; minTradeSize: number; maxSlippagePct: number; indicatorIntervalSec: number; }
 export type PositionSide = "long" | "short";
@@ -51,53 +50,23 @@ export function manageTrailingStop(lastPrice: number, position: Position, now: n
  * @returns {RiskConfig} The risk management configuration.
  */
 export function getRiskConfig(): RiskConfig {
-    const positionsFile = process.env.POSITIONS_FILE || path.resolve(process.cwd(), ".positions.json");
-    return { stopLossPct: Number(process.env.RISK_STOP_LOSS_PCT || 0.02), takeProfitPct: Number(process.env.RISK_TAKE_PROFIT_PCT || 0.05), positionPct: Number(process.env.RISK_POSITION_PCT || 0.05), smaPeriod: Number(process.env.RISK_SMA_PERIOD || 20), positionsFile, trailTriggerPct: Number(process.env.RISK_TRAIL_TRIGGER_PCT || 0.05), trailStopPct: Number(process.env.RISK_TRAIL_STOP_PCT || 0.03), dcaStepPct: Number(process.env.RISK_DCA_STEP_PCT || 0.01), maxPositions: Number(process.env.RISK_MAX_POSITIONS || 5), maxDcaPerPair: Number(process.env.RISK_MAX_DCA_PER_PAIR || 3), minTradeSize: Number(process.env.RISK_MIN_TRADE_SIZE || 0.0001), maxSlippagePct: Number(process.env.RISK_MAX_SLIPPAGE_PCT || 0.005), indicatorIntervalSec: Number(process.env.RISK_INDICATOR_INTERVAL_SEC || 60) };
-}
-function readFileSafe(file: string): string | null {
-    try {
-        return fs.readFileSync(file, "utf8");
-    } catch { return null; }
-}
-export function getPositions(file: string): Position[] {
-    const txt = readFileSafe(file);
-    if (!txt) return [];
-    try {
-        const data = JSON.parse(txt);
-        if (Array.isArray(data)) return data as Position[];
-    } catch (err) { logError("JSON parse fail", err); }
-    return [];
-}
-export function savePositionsToFile(file: string, positions: Position[]) {
-    try { fs.writeFileSync(file, JSON.stringify(positions, null, 2)); } catch (err) { logError("save positions fail", err); }
-}
-export function openPosition(file: string, p: Omit<Position, "id" | "timestamp"> & { entryPrice: number; amount: number; }): Position {
-    const positions = getPositions(file);
-    const pos: Position = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        timestamp: Date.now(),
-        ...p,
-        highestPrice: p.entryPrice,
-        dcaCount: 0,
-        openOrderIds: []
+    return {
+        stopLossPct: Number(process.env.RISK_STOP_LOSS_PCT || 0.02),
+        takeProfitPct: Number(process.env.RISK_TAKE_PROFIT_PCT || 0.05),
+        positionPct: Number(process.env.RISK_POSITION_PCT || 0.05),
+        smaPeriod: Number(process.env.RISK_SMA_PERIOD || 20),
+        positionsFile: String(process.env.POSITIONS_FILE || ".positions.json"),
+        trailTriggerPct: Number(process.env.RISK_TRAIL_TRIGGER_PCT || 0.05),
+        trailStopPct: Number(process.env.RISK_TRAIL_STOP_PCT || 0.03),
+        dcaStepPct: Number(process.env.RISK_DCA_STEP_PCT || 0.01),
+        maxPositions: Number(process.env.RISK_MAX_POSITIONS || 5),
+        maxDcaPerPair: Number(process.env.RISK_MAX_DCA_PER_PAIR || 3),
+        minTradeSize: Number(process.env.RISK_MIN_TRADE_SIZE || 0.0001),
+        maxSlippagePct: Number(process.env.RISK_MAX_SLIPPAGE_PCT || 0.005),
+        indicatorIntervalSec: Number(process.env.RISK_INDICATOR_INTERVAL_SEC || 60)
     };
-    positions.push(pos);
-    savePositionsToFile(file, positions);
-    logInfo(`ポジション追加 id=${pos.id} pair=${pos.pair} entry=${pos.entryPrice}`);
-    return pos;
 }
-export function incrementDca(file: string, posId: string) {
-    const positions = getPositions(file);
-    const target = positions.find(p => p.id === posId);
-    if (target) {
-        target.dcaCount = (target.dcaCount || 0) + 1;
-        savePositionsToFile(file, positions);
-    }
-}
-export function removePosition(file: string, id: string) {
-    const positions = getPositions(file).filter(p => p.id !== id);
-    savePositionsToFile(file, positions);
-}
+// IO helpers moved to adapters/risk-config
 export function calculateSma(prices: number[], period: number): number | null {
     if (prices.length < period) return null;
     const slice = prices.slice(0, period);
@@ -141,7 +110,6 @@ export function evaluateExitConditions(positions: Position[], currentPrice: numb
     }
     for (const pos of positions) {
         if (maxHold != null && (Date.now() - pos.timestamp) >= maxHold * 1000) {
-            logWarn(`[TIME_LIMIT] force exit id=${pos.id} pair=${pos.pair} holdSec=${Math.floor((Date.now()-pos.timestamp)/1000)}>=${maxHold}`);
             signals.push({ position: pos, reason: 'TIME_LIMIT', targetPrice: currentPrice });
             continue;
         }
@@ -205,4 +173,47 @@ export function evaluateExitConditions(positions: Position[], currentPrice: numb
 }
 export function describeExit(signal: ExitSignal): string {
     return `exit(${signal.reason}) id=${signal.position.id} entry=${signal.position.entryPrice} -> price=${signal.targetPrice}`;
+}
+
+// --- Contract implementation (non-breaking) ---
+export class CoreRiskManager implements RiskManager {
+    validateOrder(intent: any) {
+        const minQty = Number(process.env.RISK_MIN_TRADE_SIZE || "0.0001");
+        const maxNotional = Number(process.env.MAX_ORDER_NOTIONAL_JPY || "100000");
+        const qty = Number(intent?.qty || 0);
+        const price = Number(intent?.price || 0);
+        if (qty <= 0) return err('RISK_QTY', `qty<=0`);
+        if (qty < minQty) return err('RISK_MIN_SIZE', `min trade size ${minQty}`);
+        if (price > 0 && price * qty > maxNotional) return err('RISK_NOTIONAL', `max notional ${maxNotional}`);
+        return ok(void 0);
+    }
+    manageTrailingStop(state: any, price: number): TrailingAction | null {
+        if (!state) return null;
+        const TRIGGER_PCT = Number(process.env.RISK_TRAIL_TRIGGER_PCT || 0.01);
+        const TRAIL_PCT = Number(process.env.RISK_TRAIL_STOP_PCT || 0.005);
+        const entry = Number(state.entryPrice || 0);
+        const side = (state.side === 'short') ? 'sell' : 'buy';
+        if (!state.trailArmed) {
+            if (entry > 0 && (Math.abs(price / entry - 1) >= TRIGGER_PCT)) {
+                state.trailArmed = true;
+                state.highestPrice = price;
+            }
+            return null;
+        }
+        const hp = state.highestPrice || price;
+        if ((side === 'buy' && price > hp) || (side === 'sell' && price < hp)) state.highestPrice = price;
+        const trigger = side === 'buy' ? state.highestPrice * (1 - TRAIL_PCT) : state.highestPrice * (1 + TRAIL_PCT);
+        state.trailStop = trigger;
+        return { side, trigger };
+    }
+    clampExposure(balance: any, intent: any): ClampedIntent {
+        const positionPct = Number(process.env.RISK_POSITION_PCT || "0.05");
+        const price = Number(intent?.price || 0);
+        const side = String(intent?.side || 'buy') as 'buy'|'sell';
+        if (!price) return { side, qty: 0, price };
+        const alloc = Number(balance?.jpy || balance?.JPY || 0) * positionPct;
+        const maxQty = Math.floor((alloc / price) * 1e8) / 1e8;
+        const qty = Math.min(Number(intent?.qty || 0), maxQty);
+        return { side, qty, price };
+    }
 }

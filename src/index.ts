@@ -7,7 +7,9 @@ dotenv.config();
 
 // Importing app/index.ts performs one-time initialization (adapters, services, etc.)
 import { strategyOnce } from './app/index';
+import { sleep } from './utils/toolkit';
 export { strategyOnce };
+export * from './contracts';
 
 // Simple runner so npm start (ts-node src/index.ts) executes the loop.
 if (require.main === module) {
@@ -17,7 +19,7 @@ if (require.main === module) {
 		const EXECUTE = process.env.DRY_RUN !== '1';
 		for (;;) {
 			await strategyOnce(pair, EXECUTE);
-			await new Promise((r) => setTimeout(r, intervalMs));
+			await sleep(intervalMs);
 		}
 	})().catch((err) => {
 		console.error('[FATAL] entry runner error', err?.message || err);
