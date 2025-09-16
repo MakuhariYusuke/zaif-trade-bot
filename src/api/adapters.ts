@@ -1,5 +1,11 @@
 import { PrivateApi } from "../types/private";
 
+// Exchange adapter contract to unify access points.
+export interface ExchangeAdapter {
+    private: PrivateApi;
+    // public endpoints could be added later, keeping compatibility for now.
+}
+
 /**
  * Lazy import per exchange to avoid bundling everything and keep deps minimal.
  * @param {string} exchange Exchange identifier
