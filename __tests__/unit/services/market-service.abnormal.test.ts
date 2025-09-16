@@ -11,7 +11,7 @@ describe('services/market-service abnormal responses', () => {
       getOrderBook: vi.fn(async () => ({ bids: [[100,1]], asks: [[102,1]] })),
       getTrades: vi.fn(async () => { const e = new Error('429 Too Many Requests') as Error & { code?: number }; e.code = 429; throw e; }),
     }));
-    const mod = await import('../../../src/services/market-service');
+  const mod = await import('../../../src/adapters/market-service');
     const priv: any = { get_info2: async () => ({ success: 1, return: { funds: { jpy: 100000, btc: 1 } } }) };
     mod.init(priv);
     const res = await mod.fetchMarketOverview('btc_jpy');
@@ -22,7 +22,7 @@ describe('services/market-service abnormal responses', () => {
   });
 
   it('fetchBalance throws Unauthorized from private api', async () => {
-    const mod = await import('../../../src/services/market-service');
+  const mod = await import('../../../src/adapters/market-service');
     const priv: any = { get_info2: async () => ({ success: 0, error: 'Unauthorized' }) };
     mod.init(priv);
     await expect(mod.fetchBalance()).rejects.toThrow('Unauthorized');

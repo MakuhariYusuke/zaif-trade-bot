@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
+import { readLines } from '../utils/toolkit';
 
 function getArg(name: string, def?: string){
   const args = process.argv.slice(2);
@@ -9,15 +11,31 @@ function getArg(name: string, def?: string){
   return i>=0 ? args[i+1] : def;
 }
 
-(async ()=>{
+(()=>{
   const source = getArg('source', 'live')!;
   const cacheOut = `report-summary-${source}.json`;
+  const sidecar = `report-summary-${source}.cache.json`;
   try {
     if (process.env.REPORT_SUMMARY_USE_CACHE !== '0' && fs.existsSync(cacheOut)){
       const today = new Date().toISOString().slice(0,10);
       const cached = JSON.parse(fs.readFileSync(cacheOut,'utf8'));
-      if (cached && cached.summaryText && (cached.date === undefined || String(cached.date||'').startsWith(today))){
-        console.log('[CACHE] report-summary using existing output');
+      // optional stronger cache key: stats/diff size signature matches
+      let sizeOk = true;
+  try {
+        const meta = JSON.parse(fs.readFileSync(sidecar,'utf8')) as { statsSize?: number; diffSize?: number; signature?: string };
+        const sStat = (()=>{ const fname = `stats-${source}.json`; return fs.existsSync(fname) ? fs.statSync(fname) : (fs.existsSync('stats.json') ? fs.statSync('stats.json') : null); })();
+        const sDiff = (()=>{ const fname = `stats-diff-${source}.json`; return fs.existsSync(fname) ? fs.statSync(fname) : (fs.existsSync('stats-diff.json') ? fs.statSync('stats-diff.json') : null); })();
+        const ss = sStat ? `${sStat.mtimeMs}:${sStat.size}` : '0:0';
+        const sd = sDiff ? `${sDiff.mtimeMs}:${sDiff.size}` : '0:0';
+        const curSig = crypto.createHash('sha1').update(`${ss}|${sd}`).digest('hex');
+  if (meta && (typeof meta.statsSize==='number' || typeof meta.diffSize==='number')){
+          if ((typeof meta.statsSize==='number' && meta.statsSize !== (sStat?.size||0)) || (typeof meta.diffSize==='number' && meta.diffSize !== (sDiff?.size||0))) sizeOk = false;
+          if (meta.signature && meta.signature !== curSig) sizeOk = false;
+        }
+      } catch {}
+      if (sizeOk && cached && cached.summaryText && (cached.date === undefined || String(cached.date||'').startsWith(today))){
+        const sigShort = (()=>{ try{ const sStat = (()=>{ const fname = `stats-${source}.json`; return fs.existsSync(fname) ? fs.statSync(fname) : (fs.existsSync('stats.json') ? fs.statSync('stats.json') : null); })(); const sDiff = (()=>{ const fname = `stats-diff-${source}.json`; return fs.existsSync(fname) ? fs.statSync(fname) : (fs.existsSync('stats-diff.json') ? fs.statSync('stats-diff.json') : null); })(); const ss = sStat ? `${sStat.mtimeMs}:${sStat.size}` : '0:0'; const sd = sDiff ? `${sDiff.mtimeMs}:${sDiff.size}` : '0:0'; return crypto.createHash('sha1').update(`${ss}|${sd}`).digest('hex').slice(0,8);}catch{return '';} })();
+        console.log(`[CACHE] report-summary using existing output sig=${sigShort}`);
         console.log(JSON.stringify({ out: cacheOut, pairs: (cached.perPair||[]).length }));
         return;
       }
@@ -46,6 +64,25 @@ function getArg(name: string, def?: string){
     try {
       const dir = getStatsDir();
       const p = pair ? path.join(dir, 'pairs', pair, `stats-${date}.json`) : path.join(dir, `stats-${date}.json`);
+      const pJsonl = p.replace(/\.json$/, '.jsonl');
+      if (fs.existsSync(pJsonl)){
+        try {
+          // [STREAM] read last non-empty line from JSONL
+          // eslint-disable-next-line no-console
+          console.log(`[STREAM] reading JSONL ${pJsonl}`);
+          const stat = fs.statSync(pJsonl);
+          if (stat.size <= 5_000_000){
+            const data = fs.readFileSync(pJsonl, 'utf8');
+            const lines = data.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+            const last = lines[lines.length-1] || '';
+            if (last) return JSON.parse(last);
+          } else {
+            // fallback to JSON when too large for sync JSONL path
+            // eslint-disable-next-line no-console
+            console.warn(`[STREAM] fallback JSON (file too large): ${p}`);
+          }
+        } catch { /* ignore and fallback */ }
+      }
       if (!fs.existsSync(p)) return null;
       return JSON.parse(fs.readFileSync(p,'utf8'));
     } catch { return null; }
@@ -120,5 +157,16 @@ function getArg(name: string, def?: string){
   const out = `report-summary-${source}.json`;
   try { const dir = path.dirname(out); if (dir && dir !== '.' && !fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch {}
   fs.writeFileSync(out, JSON.stringify(bodyOut, null, 2));
+  // sidecar cache meta for stronger cache validation
+  try {
+    const sStat = (()=>{ const fname = `stats-${source}.json`; return fs.existsSync(fname) ? fs.statSync(fname) : (fs.existsSync('stats.json') ? fs.statSync('stats.json') : null); })();
+    const sDiff = (()=>{ const fname = `stats-diff-${source}.json`; return fs.existsSync(fname) ? fs.statSync(fname) : (fs.existsSync('stats-diff.json') ? fs.statSync('stats-diff.json') : null); })();
+    const statsSize = sStat?.size || 0; const diffSize = sDiff?.size || 0;
+    const ss = sStat ? `${sStat.mtimeMs}:${sStat.size}` : '0:0';
+    const sd = sDiff ? `${sDiff.mtimeMs}:${sDiff.size}` : '0:0';
+    const signature = crypto.createHash('sha1').update(`${ss}|${sd}`).digest('hex');
+    const fileListSig = crypto.createHash('sha1').update([fs.existsSync(`stats-${source}.json`) ? `stats-${source}.json` : (fs.existsSync('stats.json') ? 'stats.json' : ''), fs.existsSync(`stats-diff-${source}.json`) ? `stats-diff-${source}.json` : (fs.existsSync('stats-diff.json') ? 'stats-diff.json' : '')].filter(Boolean).join('|')).digest('hex');
+    fs.writeFileSync(sidecar, JSON.stringify({ statsSize, diffSize, signature, fileListSig }, null, 2));
+  } catch {}
   console.log(JSON.stringify({ out, pairs: perPair.length }));
 })();

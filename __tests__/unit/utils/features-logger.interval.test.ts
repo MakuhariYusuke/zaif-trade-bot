@@ -16,7 +16,7 @@ describe('features-logger interval flush', () => {
   });
 
   it('flushes by interval when enabled', async () => {
-    // enable interval and not test mode
+  // enable interval and not test mode
     process.env.TEST_MODE = '0';
     delete process.env.VITEST_WORKER_ID;
     process.env.FEATURES_FLUSH_INTERVAL_MS = '50';
@@ -24,8 +24,7 @@ describe('features-logger interval flush', () => {
     const mod = await import('../../../src/utils/features-logger');
     mod.logFeatureSample({ ts: Date.now(), pair, side:'bid', price:1, qty:1 } as any);
     await new Promise(res=>setTimeout(res, 120));
-    const csvPath = path.join(root, 'features', pair, `features-${date}.csv`);
-    // header is not written until first flush when not in test mode
-    expect(fs.existsSync(csvPath)).toBe(true);
+  const jsonlPath = path.join(root, 'features', pair, `features-${date}.jsonl`);
+  expect(fs.existsSync(jsonlPath)).toBe(true);
   });
 });

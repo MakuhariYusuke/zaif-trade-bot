@@ -1,6 +1,15 @@
 import { defineConfig } from 'vitest/config';
+import path from 'node:path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@contracts': path.resolve(__dirname, 'src', 'contracts'),
+  '@utils': path.resolve(__dirname, 'src', 'utils'),
+  '@adapters': path.resolve(__dirname, 'src', 'adapters'),
+  '@core': path.resolve(__dirname, 'src', 'core'),
+    }
+  },
   test: {
     environment: 'node',
   setupFiles: ['src/test/setup.ts'],
@@ -15,10 +24,6 @@ export default defineConfig({
         'src/app/**',
         'src/api/**',
         'src/tools/**',
-        // services: exclude utility wrappers we don't test in unit scope
-        'src/services/risk-service.ts',
-        'src/services/market-service.ts',
-        'src/services/risk-guards.ts',
       ]
     },
   include: ['__tests__/unit/**/*.test.ts'],

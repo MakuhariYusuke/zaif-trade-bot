@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
 
@@ -32,6 +32,8 @@ jobs:
         run: npm run mock:scenario
       - name: Stats diff
         run: npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json
+      - name: Weekly trend
+        run: npm run trend:weekly
       - name: Export ML dataset
         run: npm run ml:export
       - name: Grid search
@@ -46,6 +48,8 @@ jobs:
           ML_SEARCH_MODE: random
           ML_RANDOM_STEPS: '120'
         run: npm run ml:search > ml-search-random.json
+      - name: Feature importance
+        run: npm run feature:importance
       - name: Run stats graph timeline
         run: npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
       - name: Build summary report (paper)
@@ -58,9 +62,11 @@ jobs:
         with:
           name: paper-ml
           path: |
-            ml-dataset.csv
+            ml-dataset.jsonl
             ml-search-results.csv
             ml-search-top.json
+            report-ml-feature-importance.json
+            importance.csv
             report-ml-random.json
             report-ml-random.csv
             top3.csv
@@ -71,7 +77,8 @@ jobs:
         if: always()
         run: |
           tar -czf paper-ml-bundle.tar.gz \
-            ml-dataset.csv ml-search-results.csv ml-search-top.json top3.csv \
+            ml-dataset.jsonl ml-search-results.csv ml-search-top.json top3.csv \
+            report-ml-feature-importance.json importance.csv \
             report-ml-random.json report-ml-random.csv \
             stats-timeline.svg stats-diff.json report-summary-paper.json || true
       - name: Upload summary bundle
@@ -80,6 +87,32 @@ jobs:
         with:
           name: paper-ml-bundle
           path: paper-ml-bundle.tar.gz
+      - name: Publish reports into repo (branch)
+        if: always()
+        run: |
+          set -e
+          DAY=$(date -u +%Y-%m-%d)
+          DIR="reports/day-$DAY"
+          mkdir -p "$DIR"
+          # write index.md
+          {
+            echo "# Paper ML Reports $DAY";
+            echo "\n## Artifacts";
+            for f in stats-timeline.svg stats-diff.json report-summary-paper.json ml-search-top.json report-ml-feature-importance.json importance.csv report-ml-random.json report-ml-random.csv top3.csv; do
+              [ -f "$f" ] && echo "- [$f](./$f)";
+            done;
+            if [ -f reports/latest/trend-weekly.json ]; then echo "- [trend-weekly.json](../latest/trend-weekly.json)"; fi
+          } > "$DIR/index.md"
+          # copy files
+          for f in stats-timeline.svg stats-diff.json report-summary-paper.json ml-search-top.json report-ml-feature-importance.json importance.csv report-ml-random.json report-ml-random.csv top3.csv; do
+            [ -f "$f" ] && cp -f "$f" "$DIR/" || true;
+          done
+          # prune older than 14 days
+          ls -1 reports 2>/dev/null | grep '^day-' | sort | head -n -14 | while read d; do rm -rf "reports/$d" || true; done
+          git config user.name "github-actions"; git config user.email "github-actions@github.com"
+          git add reports || true
+          git commit -m "chore(reports): add $DAY (paper-ml)" || true
+          git push || true
       - name: Slack notify with summary
         if: always()
         env:
@@ -90,6 +123,7 @@ jobs:
           DIFF=$(cat stats-diff.json 2>/dev/null || echo '{}')
           RPT=$(cat report-summary-paper.json 2>/dev/null || echo '{}')
           ML=$(cat report-ml-random.json 2>/dev/null || echo '{}')
+          FI=$(cat report-ml-feature-importance.json 2>/dev/null || echo '{}')
           ICON="✅"; STATUS="passed"
           if [ "${{ job.status }}" != "success" ]; then ICON="❌"; STATUS="failed"; fi
           incBuy=$(echo "$DIFF" | jq -r '.diff.buyEntries // 0')
@@ -100,7 +134,9 @@ jobs:
           t7=$(echo "$RPT" | jq -r '.totals.trend7dWinRate // 0')
           TOP=$(echo "$ML" | jq -r '.top[0] | select(.) | "Win%="+((.winRate//0)*100|tostring)+" PnL="+((.pnl//0)|tostring)+" params={S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)+"}"' || true)
           TOP3=$(cat ml-search-top.json 2>/dev/null | jq -r '.top[:3] | ( ["#","pair","Win%","PnL","MaxDD","Params"] | @tsv ), (.[] | [ (input_line_number-1|tostring), .pair, ((.winRate//0)*100|floor|tostring), ((.pnl//0)|tostring), ((.maxDrawdown//0)//0|tostring), ("S="+((.SMA_SHORT//0)|tostring)+",L="+((.SMA_LONG//0)|tostring)+",RSI="+((.SELL_RSI_OVERBOUGHT//0)|tostring)+","+((.BUY_RSI_OVERSOLD//0)|tostring)) ] | @tsv )' || true)
-          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd Trend7dWin%=$((t7*100))\nML(random) Top: ${TOP:-N/A}\nTop 3:\n$TOP3"
+          TOPF=$(echo "$FI" | jq -r '.top_features[:5] | map(.name) | join(", ")' 2>/dev/null || echo "")
+          RLNK="reports/day-$(date -u +%Y-%m-%d)/index.md"
+          TEXT="$ICON Paper ML $STATUS\nDiff: buy+$incBuy / sell+$incSell / PnL+$pnl\nTotals: PnL=$(echo $RPT | jq -r '.totals.PnL // 0') Win%=$((win*100)) MaxDD=$maxdd Trend7dWin%=$((t7*100))\nTop Features: ${TOPF:-N/A}\nAdded report: $RLNK\nML(random) Top: ${TOP:-N/A}\nTop 3:\n$TOP3"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
       - name: GitHub comment with perPair
         if: always()
@@ -127,7 +163,8 @@ jobs:
               const body = rows.map((r,i)=>`| ${i+1} | ${r.pair} | ${Math.round((r.winRate||0)*100)} | ${r.pnl||0} | S=${r.SMA_SHORT},L=${r.SMA_LONG},RSI=${r.SELL_RSI_OVERBOUGHT},${r.BUY_RSI_OVERSOLD} |`).join('\n');
               return `| ${header.join(' | ')} |\n| --- | --- | --- | --- | --- |\n${body}`;
             }
-            const body = `### Paper ML Summary\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}\n\n${mdTable(perPair)}`;
+            const day = new Date().toISOString().slice(0,10);
+            const body = `### Paper ML Summary (report: reports/day-${day}/index.md)\n\nTotals: PnL=${totals.PnL||0} Win%=${Math.round((totals.winRate||0)*100)} MaxDD=${totals.maxDrawdown||0} Trend7dWin%=${Math.round((totals.trend7dWinRate||0)*100)}\n\nTop 3 Results (random):\n\n${mdTop3(top3)}\n\n${mdTable(perPair)}`;
             async function safe(fn, args){ try { return await fn(args); } catch(e){ core.warning(`comment failed: ${e.message}`); } }
             if (context.payload.pull_request) {
               await safe(github.rest.issues.createComment, { issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body });
