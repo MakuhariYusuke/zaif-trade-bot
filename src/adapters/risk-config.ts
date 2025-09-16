@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { logInfo, logError } from '../utils/logger';
 
-export interface RiskConfig { stopLossPct: number; takeProfitPct: number; positionPct: number; smaPeriod: number; positionsFile: string; trailTriggerPct: number; trailStopPct: number; dcaStepPct: number; maxPositions: number; maxDcaPerPair: number; minTradeSize: number; maxSlippagePct: number; indicatorIntervalSec: number; }
+export interface RiskConfig { stopLossPct: number; takeProfitPct: number; positionPct: number; smaPeriod: number; positionsFile: string; trailTriggerPct: number; trailStopPct: number; dcaStepPct: number; maxPositions: number; maxDcaPerPair: number; minTradeSize: number; maxSlippagePct: number; indicatorIntervalSec: number; qtyDecimalsDefault?: number; pairQtyDecimals?: Record<string, number>; }
 export type PositionSide = "long" | "short";
 export interface Position { id: string; pair: string; side: PositionSide; entryPrice: number; amount: number; timestamp: number; highestPrice?: number; dcaCount?: number; openOrderIds?: number[]; }
 
@@ -21,9 +21,36 @@ export function loadRiskConfig(): RiskConfig {
 		maxDcaPerPair: Number(process.env.RISK_MAX_DCA_PER_PAIR || 3),
 		minTradeSize: Number(process.env.RISK_MIN_TRADE_SIZE || 0.0001),
 		maxSlippagePct: Number(process.env.RISK_MAX_SLIPPAGE_PCT || 0.005),
-		indicatorIntervalSec: Number(process.env.RISK_INDICATOR_INTERVAL_SEC || 60)
+		indicatorIntervalSec: Number(process.env.RISK_INDICATOR_INTERVAL_SEC || 60),
+		qtyDecimalsDefault: Number(process.env.QTY_DECIMALS_DEFAULT || 8),
+		pairQtyDecimals: safeParseMap(process.env.QTY_DECIMALS_MAP)
 	};
 }
+
+function safeParseMap(val?: string): Record<string, number> | undefined {
+	if (!val) return undefined;
+	try {
+		const obj = JSON.parse(val);
+		if (obj && typeof obj === 'object') {
+			const out: Record<string, number> = {};
+			for (const [k, v] of Object.entries(obj)) out[k] = Number(v as any);
+			return out;
+		}
+	} catch {}
+	return undefined;
+}
+
+export function getQtyDecimals(pair: string): number {
+	const cfg = loadRiskConfig();
+	const map = cfg.pairQtyDecimals || {};
+	const key = String(pair || '').toLowerCase();
+	const v = map[key];
+	const dflt = Number.isFinite(cfg.qtyDecimalsDefault as any) ? (cfg.qtyDecimalsDefault as number) : 8;
+	const n = Number.isFinite(v) ? Number(v) : dflt;
+	return Math.max(0, Math.floor(n));
+}
+
+export function getQtyEpsilon(pair: string): number { const d = getQtyDecimals(pair); return Math.pow(10, -d); }
 
 function readFileSafe(file: string): string | null {
 	try { return fs.readFileSync(file, 'utf8'); } catch { return null; }
