@@ -1,4 +1,4 @@
-import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, describeExit, savePositionsToFile, calculateSma, calculateRsi, CoreRiskManager } from "../risk";
+import { Position, RiskConfig, evaluateExitConditions, manageTrailingStop, calculateSma, calculateRsi, CoreRiskManager } from "../risk";
 import { logInfo, logger } from "../../utils/logger";
 import { logSignal } from "../../utils/trade-logger";
 import { appendPriceSamples, getPriceSeries } from "../../utils/price-cache";
@@ -26,7 +26,6 @@ export class SellStrategy extends BaseStrategy {
   appendPriceSamples(ctx.trades.map((t:any)=> ({ ts:t.date? t.date*1000: ctx.nowMs, price:t.price })));
   const priceSeries=getPriceSeries(Math.max(ctx.riskCfg.smaPeriod,200));
   const base = (ctx.pair || '').split('_')[0]?.toUpperCase();
-  const pickNum = (k: string, def: number) => { const v = process.env[k]; return v != null ? Number(v) : def; };
   const resolve = (baseKey: string, genericKey: string, fallbackKey: string, def: number) => {
     if (base) {
       const v = process.env[`${base}_${baseKey}`]; if (v != null) return Number(v);

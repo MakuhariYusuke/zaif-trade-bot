@@ -7,20 +7,20 @@ export function setupJsonLogs() {
 }
 
 export function captureLogs() {
-  const logs: { level: 'WARN'|'ERROR'|'INFO'|'DEBUG'; category?: string; message: string; data?: any }[] = [];
+  const logs: { level: 'WARN'|'ERROR'|'INFO'|'DEBUG'; category?: string; message: string; data?: any, raw?: string }[] = [];
   const origLog = console.log;
   const origWarn = console.warn;
   const origErr = console.error;
-  vi.spyOn(console, 'log').mockImplementation((line: any) => {
-    try { const e = JSON.parse(String(line)); if (e && e.level && e.message) logs.push({ level: e.level, category: e.category, message: e.message, data: e.data?.[0] }); } catch {}
+  vi.spyOn(console, 'log').mockImplementation((line: any, ...rest: any[]) => {
+    try { const e = JSON.parse(String(line)); if (e && e.level && e.message) logs.push({ level: e.level, category: e.category, message: e.message, data: e.data?.[0], raw: String(line) }); } catch { logs.push({ level: 'DEBUG', message: String(line), raw: String(line) }); }
     origLog(line);
   });
-  vi.spyOn(console, 'warn').mockImplementation((line: any) => {
-    try { const e = JSON.parse(String(line)); if (e && e.level && e.message) logs.push({ level: e.level, category: e.category, message: e.message, data: e.data?.[0] }); } catch {}
+  vi.spyOn(console, 'warn').mockImplementation((line: any, ...rest: any[]) => {
+    try { const e = JSON.parse(String(line)); if (e && e.level && e.message) logs.push({ level: e.level, category: e.category, message: e.message, data: e.data?.[0], raw: String(line) }); } catch { logs.push({ level: 'WARN', message: String(line), raw: String(line) }); }
     origWarn(line);
   });
-  vi.spyOn(console, 'error').mockImplementation((line: any) => {
-    try { const e = JSON.parse(String(line)); if (e && e.level && e.message) logs.push({ level: e.level, category: e.category, message: e.message, data: e.data?.[0] }); } catch {}
+  vi.spyOn(console, 'error').mockImplementation((line: any, ...rest: any[]) => {
+    try { const e = JSON.parse(String(line)); if (e && e.level && e.message) logs.push({ level: e.level, category: e.category, message: e.message, data: e.data?.[0], raw: String(line) }); } catch { logs.push({ level: 'ERROR', message: String(line), raw: String(line) }); }
     origErr(line);
   });
   return logs;
@@ -32,5 +32,11 @@ export function expectJsonLog(logs: any[], category: string, level: 'WARN'|'ERRO
   if (hit && metaKeys && metaKeys.length) {
     for (const k of metaKeys) expect(hit.data, `missing meta ${k}`).toHaveProperty(k);
   }
+  return hit;
+}
+
+export function expectPlainLog(logs: any[], categoryRe: RegExp, messageRe: RegExp) {
+  const hit = logs.find(l => l.raw && categoryRe.test(l.raw) && messageRe.test(l.raw));
+  expect(hit, `expected plain log matching ${categoryRe} & ${messageRe}`).toBeTruthy();
   return hit;
 }

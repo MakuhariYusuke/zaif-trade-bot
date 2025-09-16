@@ -11,6 +11,7 @@ import { updateOnFill, clearOpenOrderId, loadPosition, savePosition } from "./po
 import { appendFillPnl } from "../utils/daily-stats";
 import { getAndResetLastRequestNonceRetries } from "../api/private";
 import { OrderLifecycleSummary } from "../types/domain";
+import { getQtyEpsilon } from "./risk-config";
 
 const RETRY_TIMEOUT_MS = Number(process.env.RETRY_TIMEOUT_MS ?? 15000);
 const RETRY_PRICE_OFFSET_PCT = Number(process.env.RETRY_PRICE_OFFSET_PCT ?? 0.002); // 0.2%
@@ -254,7 +255,8 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
             const r = await placeLimitOrder(p.currency_pair, actionSide, price, p.amount);
             const dt = Date.now() - t0;
             const acceptedQty = Number((r as any)?.submitted_amount ?? (r as any)?.amount ?? p.amount);
-            const qtyRounded = Math.abs(acceptedQty - p.amount) > 1e-12;
+            const eps = getQtyEpsilon(p.currency_pair);
+            const qtyRounded = Math.abs(acceptedQty - p.amount) > eps;
             if (dt > 800) execSvc.clog('ORDER','WARN','slow accept',{ requestId, pair: p.currency_pair, side: p.side === 'bid' ? 'buy' : 'sell', amount: p.amount, price, retries: 0, elapsedMs: dt });
             if (qtyRounded) execSvc.clog('ORDER','WARN','quantity rounded',{ requestId, pair: p.currency_pair, side: p.side === 'bid' ? 'buy' : 'sell', amount: p.amount, price, retries: 0, acceptedAmount: acceptedQty });
             return String(r.order_id || '');
