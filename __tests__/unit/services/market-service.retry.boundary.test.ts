@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setupJsonLogs, captureLogs, expectJsonLog } from '../helpers/logging';
+import { setupJsonLogs, captureLogs, expectJsonLog } from '../../helpers/logging';
 
 describe('adapters/market-service retry boundaries', () => {
   beforeEach(() => { vi.resetModules(); setupJsonLogs(); });
