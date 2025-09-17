@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: Install deps
@@ -63,8 +64,10 @@ jobs:
           name: paper-ml
           path: |
             ml-dataset.jsonl
+            ml-search.json
             ml-search-results.csv
             ml-search-top.json
+            ml-search-random.json
             report-ml-feature-importance.json
             importance.csv
             report-ml-random.json
@@ -73,6 +76,7 @@ jobs:
             stats-timeline.svg
             stats-diff.json
             report-summary-paper.json
+          if-no-files-found: warn
       - name: Archive summary bundle (tar.gz)
         if: always()
         run: |
@@ -87,6 +91,7 @@ jobs:
         with:
           name: paper-ml-bundle
           path: paper-ml-bundle.tar.gz
+          if-no-files-found: warn
       - name: Publish reports into repo (branch)
         if: always()
         run: |
