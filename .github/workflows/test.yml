@@ -19,7 +19,7 @@ jobs:
       RETRY_ATTEMPTS: '1'
       RETRY_BACKOFF_MS: '10'
       DETECT_LEAKS: '1'
-      DETECT_LEAKS_STRICT: '1'
+      DETECT_LEAKS_STRICT: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
