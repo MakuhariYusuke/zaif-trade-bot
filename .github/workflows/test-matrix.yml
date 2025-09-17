@@ -39,6 +39,7 @@ jobs:
       DETECT_LEAKS: '1'
       DETECT_LEAKS_STRICT: '0'
       CI: 'true'
+      COVERAGE_STMTS: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,6 +64,9 @@ jobs:
   nightly-long:
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_long == 'true')
     runs-on: ubuntu-latest
+    env:
+      LONG_TESTS: '1'
+      COVERAGE_STMTS: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -186,6 +190,17 @@ jobs:
             } >> $GITHUB_STEP_SUMMARY
           else
             echo "No merged summary produced" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Enforce merged coverage threshold
+        if: always()
+        run: |
+          THRESHOLD=${COVERAGE_STMTS_THRESHOLD:-70}
+          if [ -f coverage-merged/summary.json ]; then
+            STMT=$(node -p "parseFloat(require('./coverage-merged/summary.json').statements || '0')")
+            echo "Merged statements coverage=${STMT}%, threshold=${THRESHOLD}%"
+            awk -v s="$STMT" -v t="$THRESHOLD" 'BEGIN { exit (s+0 >= t+0) ? 0 : 1 }'
+          else
+            echo 'No merged summary produced'; exit 1
           fi
       - name: Comment merged coverage on PR/Commit
         if: always()
