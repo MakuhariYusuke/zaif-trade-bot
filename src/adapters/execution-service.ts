@@ -4,12 +4,11 @@ import { sleep } from "../utils/toolkit";
 let privExec: PrivateApi | undefined;
 export function init(privateApi: PrivateApi) { privExec = privateApi; }
 import { logExecution, logTradeError, logSignal } from "../utils/trade-logger";
-import { logInfo } from "../utils/logger";
 import BaseService from "./base-service";
 import type { Logger } from "../utils/logger";
 import { loadPosition, savePosition } from "./position-store";
 import { appendFillPnl } from "../utils/daily-stats";
-import { getAndResetLastRequestNonceRetries } from "../api/private";
+import { getAndResetLastRequestNonceRetries } from "../api/zaif-private";
 import { OrderLifecycleSummary } from "../types/domain";
 import { getQtyEpsilon } from "./risk-config";
 import { getEventBus } from "../application/events/bus";
