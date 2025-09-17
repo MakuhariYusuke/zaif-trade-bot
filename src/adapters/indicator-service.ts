@@ -1,8 +1,6 @@
 import { ema, rsi, sma, macd, bollinger, stochastic, ichimoku, dmiAdx, envelopes, deviationPct, roc, momentum, williamsR, cci, atr, donchianWidth, bbWidth, hma, kama, psarStep, fibPosition } from '../utils/indicators';
 import BaseService from './base-service';
 
-export type OHLC = { high: number; low: number; close: number };
-
 export interface IndicatorSnapshot {
   ts: number;
   price: number;
