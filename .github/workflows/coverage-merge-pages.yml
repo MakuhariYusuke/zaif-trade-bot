@@ -1,0 +1,105 @@
+name: Coverage Merge & Pages
+
+on:
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Tests (Matrix)"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-coverage"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download merged coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-merged
+          path: coverage-merged
+        continue-on-error: true
+      - name: Fallback: download per-group artifacts
+        if: ${{ !hashFiles('coverage-merged/coverage-final.json') }}
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: coverage-*
+          merge-multiple: true
+      - name: Merge coverage (fallback)
+        if: ${{ !hashFiles('coverage-merged/coverage-final.json') }}
+        run: |
+          set -e
+          mkdir -p merged
+          find artifacts -type f -name 'coverage-final.json' -print0 | xargs -0 -I{} cp -f "{}" merged/ || true
+          if [ "$(ls -1 merged 2>/dev/null | wc -l)" = "0" ]; then
+            echo "No coverage files found; exiting gracefully"; mkdir -p coverage-merged; echo '{}' > coverage-merged/coverage-final.json; fi
+          node << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const dir = 'merged';
+          if (!fs.existsSync(dir)) process.exit(0);
+          const files = fs.readdirSync(dir).filter(f=>f.endsWith('.json'));
+          const agg = {};
+          for (const f of files){
+            const data = JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));
+            for (const [file, cov] of Object.entries(data)){
+              if (!agg[file]) { agg[file] = cov; continue; }
+              const a = agg[file], b = cov;
+              if (a.statementMap && b.statementMap && a.s && b.s){
+                for (const k of Object.keys(b.s)) a.s[k] = (a.s[k]||0) + (b.s[k]||0);
+              }
+              if (a.fnMap && b.fnMap && a.f && b.f){
+                for (const k of Object.keys(b.f)) a.f[k] = (a.f[k]||0) + (b.f[k]||0);
+              }
+              if (a.branchMap && b.branchMap && a.b && b.b){
+                for (const k of Object.keys(b.b)){
+                  if (!a.b[k]) a.b[k] = b.b[k];
+                  else {
+                    const arrA = a.b[k]; const arrB = b.b[k];
+                    for (let i=0;i<Math.max(arrA.length, arrB.length);i++) a.b[k][i] = (arrA[i]||0) + (arrB[i]||0);
+                  }
+                }
+              }
+            }
+          }
+          fs.mkdirSync('coverage-merged',{recursive:true});
+          fs.writeFileSync('coverage-merged/coverage-final.json', JSON.stringify(agg));
+          EOF
+      - name: Prepare Pages from merged coverage
+        run: |
+          mkdir -p public
+          if [ -f coverage-merged/coverage-final.json ]; then
+            cp -r coverage-merged public/coverage
+            # If single HTML report exists from any artifact, prefer it
+            if ls artifacts/**/index.html 1> /dev/null 2>&1; then
+              mkdir -p public/coverage-html
+              cp -r $(dirname $(ls -1 artifacts/**/index.html | head -n1))/* public/coverage-html/
+            fi
+          fi
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

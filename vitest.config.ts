@@ -25,6 +25,8 @@ export default defineConfig({
         'src/api/**',
         'src/tools/**',
         '__tests__/helpers/**',
+        '__tests__/mocks/**',
+        'src/**/__mocks__/**',
       ]
     },
   include: ['__tests__/**/*.test.ts'],
