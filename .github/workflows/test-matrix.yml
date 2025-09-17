@@ -106,72 +106,79 @@ jobs:
       - name: Merge coverage (v8 JSON)
         run: |
           set -e
-          mkdir -p merged
-          # Prefer coverage-final.json from each job; fall back to coverage/coverage-final.json
-          find artifacts -type f -name 'coverage-final.json' -print0 | xargs -0 -I{} cp -f "{}" merged/
-          if [ "$(ls -1 merged | wc -l)" = "0" ]; then
-            find artifacts -type f -path '*/coverage/coverage-final.json' -print0 | xargs -0 -I{} cp -f "{}" merged/
-          fi
-          echo "Found $(ls -1 merged | wc -l) coverage files"
-          # Merge by concatenating into one JSON with per-file statements merged
+          echo "Scanning artifacts for coverage-final.json files..."
           node << 'EOF'
           const fs = require('fs');
           const path = require('path');
-          const dir = 'merged';
-          const files = fs.readdirSync(dir).filter(f=>f.endsWith('.json'));
+          const base = 'artifacts';
+          function listFiles(dir) {
+            let out = [];
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const p = path.join(dir, entry.name);
+              if (entry.isDirectory()) out = out.concat(listFiles(p));
+              else if (entry.isFile() && entry.name === 'coverage-final.json') out.push(p);
+            }
+            return out;
+          }
+          const files = fs.existsSync(base) ? listFiles(base) : [];
+          console.log(`Found ${files.length} coverage files`);
           const agg = {};
-          for (const f of files){
-            const data = JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));
-            for (const [file, cov] of Object.entries(data)){
+          let parsed = 0, skipped = 0;
+          for (const f of files) {
+            const raw = fs.readFileSync(f, 'utf8');
+            let text = raw.trim();
+            let data;
+            try {
+              data = JSON.parse(text);
+            } catch (e) {
+              const start = text.indexOf('{');
+              const end = text.lastIndexOf('}');
+              if (start !== -1 && end !== -1 && end > start) {
+                try { data = JSON.parse(text.slice(start, end + 1)); } catch (e2) {}
+              }
+            }
+            if (!data || typeof data !== 'object') { skipped++; continue; }
+            parsed++;
+            for (const [file, cov] of Object.entries(data)) {
               if (!agg[file]) { agg[file] = cov; continue; }
               const a = agg[file], b = cov;
-              if (a.statementMap && b.statementMap && a.s && b.s){
-                for (const k of Object.keys(b.s)){
-                  a.s[k] = (a.s[k]||0) + (b.s[k]||0);
-                }
+              if (a.statementMap && b.statementMap && a.s && b.s) {
+                for (const k of Object.keys(b.s)) a.s[k] = (a.s[k]||0) + (b.s[k]||0);
               }
-              if (a.fnMap && b.fnMap && a.f && b.f){
-                for (const k of Object.keys(b.f)){
-                  a.f[k] = (a.f[k]||0) + (b.f[k]||0);
-                }
+              if (a.fnMap && b.fnMap && a.f && b.f) {
+                for (const k of Object.keys(b.f)) a.f[k] = (a.f[k]||0) + (b.f[k]||0);
               }
-              if (a.branchMap && b.branchMap && a.b && b.b){
-                for (const k of Object.keys(b.b)){
+              if (a.branchMap && b.branchMap && a.b && b.b) {
+                for (const k of Object.keys(b.b)) {
                   if (!a.b[k]) a.b[k] = b.b[k];
                   else {
                     const arrA = a.b[k]; const arrB = b.b[k];
-                    for (let i=0;i<Math.max(arrA.length, arrB.length);i++){
-                      a.b[k][i] = (arrA[i]||0) + (arrB[i]||0);
-                    }
+                    const n = Math.max(arrA.length, arrB.length);
+                    for (let i=0;i<n;i++) a.b[k][i] = (arrA[i]||0) + (arrB[i]||0);
                   }
                 }
               }
             }
           }
-          fs.mkdirSync('coverage-merged',{recursive:true});
+          fs.mkdirSync('coverage-merged', { recursive: true });
           fs.writeFileSync('coverage-merged/coverage-final.json', JSON.stringify(agg));
-          EOF
-          # Derive summary using a minimal reporter
-          node << 'EOF'
-          const fs = require('fs');
-          const data = JSON.parse(fs.readFileSync('coverage-merged/coverage-final.json','utf8'));
+          console.log(`Parsed ${parsed}, skipped ${skipped}`);
+          // Derive summary
           let totalSt=0, coveredSt=0, totalLn=0, coveredLn=0;
-          for (const cov of Object.values(data)){
+          for (const cov of Object.values(agg)){
             const sMap = cov.statementMap||{}; const sHits = cov.s||{};
-            for (const k of Object.keys(sMap)){
-              totalSt++; if ((sHits[k]||0)>0) coveredSt++;
-            }
+            for (const k of Object.keys(sMap)) { totalSt++; if ((sHits[k]||0)>0) coveredSt++; }
             const bMap = cov.branchMap||{}; const bHits = cov.b||{};
-            for (const k of Object.keys(bMap)){
+            for (const k of Object.keys(bMap)) {
               const arr = bHits[k]||[]; const len = Array.isArray(arr)?arr.length:0;
-              totalLn += len; coveredLn += (arr.filter(x=>x>0).length);
+              totalLn += len; coveredLn += arr.filter(x=>x>0).length;
             }
           }
           const pctSt = totalSt? (coveredSt/totalSt*100).toFixed(2): '0.00';
           const pctLn = totalLn? (coveredLn/totalLn*100).toFixed(2): '0.00';
+          fs.writeFileSync('coverage-merged/summary.json', JSON.stringify({ statements: pctSt, lines: pctLn }));
           console.log(`STATEMENTS=${pctSt}`);
           console.log(`LINES=${pctLn}`);
-          fs.writeFileSync('coverage-merged/summary.json', JSON.stringify({ statements: pctSt, lines: pctLn }));
           EOF
       - name: Upload merged coverage
         uses: actions/upload-artifact@v4
