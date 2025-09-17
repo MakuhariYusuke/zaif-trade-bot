@@ -280,3 +280,9 @@ try {
   process.on('beforeExit', async ()=>{ await flushFeatureLogBuffers(); });
   process.on('exit', ()=>{});
 } catch {}
+
+// test helper: stop timers for leak-free teardown
+export function stopFeaturesLoggerTimers(){
+  try { if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; } } catch {}
+  try { if (intervalTimer) { clearInterval(intervalTimer); intervalTimer = null; } } catch {}
+}
