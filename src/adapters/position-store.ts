@@ -9,7 +9,6 @@ import {
     CorePositionStore
 } from "./position-store-fs";
 import type { PositionStore as IPositionStore } from "@contracts";
-export type { PositionStore as PositionStoreContract } from "@contracts";
 
 // Re-export legacy types for compatibility
 export interface StoredPosition {
@@ -31,10 +30,7 @@ export interface FillEvent { pair: string; side: 'bid' | 'ask'; price: number; a
 export function loadPosition(pair: string) { return fsLoad(pair); }
 export function savePosition(pos: StoredPosition) { return fsSave(pos as any); }
 export function removePosition(pair: string) { return fsRemove(pair); }
-export function updateFields(pair: string, patch: Partial<StoredPosition>) {
-    const cur = fsLoad(pair) || { pair, qty: 0, avgPrice: 0, dcaCount: 0, openOrderIds: [] } as StoredPosition;
-    return fsSave({ ...(cur as any), ...patch });
-}
+// removed: updateFields (use updatePositionFields via core adapter if needed)
 export function addOpenOrderId(pair: string, orderId: number) { return fsAddOpenOrderId(pair, orderId); }
 export function clearOpenOrderId(pair: string, orderId: number) { return fsClearOpenOrderId(pair, orderId); }
 export function updateOnFill(fill: FillEvent) { return fsUpdateOnFill(fill as any); }
@@ -42,4 +38,4 @@ export function updateOnFill(fill: FillEvent) { return fsUpdateOnFill(fill as an
 // Factory for contract consumers (optional)
 export function createServicePositionStore(): IPositionStore { return new CorePositionStore(); }
 
-export interface OrderSummaryStats { totalTrades: number; totalFilledQty: number; avgSlippagePct: number; maxSlippagePct: number; }
+// removed: OrderSummaryStats (moved or unused)

@@ -21,4 +21,6 @@ export type OrderEvent =
   | ({ type: 'SLIPPAGE_REPRICED' } & EventBaseMeta & { orderId: string; attempts: number })
   | ({ type: 'PNL_REALIZED' } & EventBaseMeta & { pnl: number });
 
-export type AppEvent = OrderEvent;
+export type ErrorEvent = ({ type: 'EVENT/ERROR' } & EventBaseMeta & { code: string });
+
+export type AppEvent = OrderEvent | ErrorEvent;
