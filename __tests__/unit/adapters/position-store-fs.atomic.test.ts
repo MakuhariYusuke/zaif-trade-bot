@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { CorePositionStore } from '../../../src/adapters/position-store-fs';
@@ -32,5 +32,19 @@ describe('position-store-fs atomic writes', () => {
       const obj = JSON.parse(txt);
       expect(obj.qty).toBe(qty);
     }
+  });
+
+  it('on rename failure, original file remains intact (no corruption)', async () => {
+    const store = new CorePositionStore();
+    const pair = 'eth_jpy';
+    const file = path.join(TMP_DIR, `${pair}.json`);
+    fs.writeFileSync(file, JSON.stringify({ pair, qty: 1, avgPrice: 100, dcaCount: 0, openOrderIds: [] }, null, 2));
+
+    const spy = vi.spyOn(fs, 'renameSync').mockImplementation(() => { throw new Error('inject rename failure'); });
+    await store.update(pair, { pair, qty: 2 } as any).catch(()=>{/* ignored by store's logger */});
+    spy.mockRestore();
+    const txt = fs.readFileSync(file, 'utf8');
+    const obj = JSON.parse(txt);
+    expect(obj.qty).toBe(1);
   });
 });
