@@ -10,6 +10,7 @@ node_modules/
 coverage/
 coverage-*.json
 vitest-report.json
+vitest-report-*.json
 
 # Temp and cache directories
 tmp*/
@@ -17,6 +18,13 @@ tmp-*/
 .tmp-*/
 *.tmp
 *.cache
+
+# Local IDE and positions
+.vscode/
+.positions/
+
+# Reports
+reports/
 
 # Local runtime artifacts
 *.log

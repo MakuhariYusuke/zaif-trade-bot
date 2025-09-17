@@ -16,6 +16,7 @@ import { runBuyStrategy } from "../core/strategies/buy-strategy";
 import { incBuyEntry, incSellEntry } from "../utils/daily-stats";
 import { initMarket } from "../core/market";
 import { sleep } from '../utils/toolkit'; // Moved to top-level static import
+import { registerAllSubscribers } from '../application/events';
 
 const EX = (process.env.EXCHANGE || 'zaif').toLowerCase();
 const privateApi: PrivateApi = createPrivateApi();
@@ -23,6 +24,8 @@ logInfo(`[EXCHANGE] ${EX}`);
 logInfo(`[BACKEND] ${process.env.USE_PRIVATE_MOCK === "1" ? "MOCK" : "REAL"}`);
 initMarket(privateApi);
 initExecution(privateApi);
+// Register application-wide event subscribers (position/stats/logger/trade-logger)
+try { registerAllSubscribers(); } catch {}
 const appConfig = loadAppConfig();
 if (EX === 'zaif') {
     restoreNonce(appConfig.nonceStorePath);
