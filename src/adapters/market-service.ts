@@ -2,6 +2,7 @@ import { getTicker, getOrderBook, getTrades } from "../api/public";
 import { PrivateApi, CancelOrderParams, TradeResult } from "../types/private";
 import type { Side } from "../types/domain";
 import { logWarn, log as logCat } from "../utils/logger";
+import { cacheHit, cacheMiss, cacheStale } from "../utils/cache-metrics";
 import { sleep } from "../utils/toolkit";
 import BaseService from "./base-service";
 function toPosInt(val: any, def: number){ const n = Number(val); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : def; }
@@ -20,7 +21,12 @@ class MarketService extends BaseService {
 
   async fetchTicker(pair: string){
     const hit = this.cacheTicker.get(pair);
-  if (hit && this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit ticker',{ pair }); } catch {} return hit.val; }
+    if (hit) {
+      if (this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit ticker',{ pair }); } catch {} cacheHit('market:ticker'); return hit.val; }
+      cacheStale('market:ticker');
+    } else {
+      cacheMiss('market:ticker');
+    }
     const t0 = Date.now();
     const v = await this.withRetry(()=>getTicker(pair), 'getTicker', undefined, undefined, { category: 'API-PUBLIC', requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
     const dt = Date.now() - t0; if (dt > 800) { this.clog('API-PUBLIC','WARN','slow public API',{ pair, op: 'getTicker', elapsedMs: dt }); }
@@ -30,7 +36,12 @@ class MarketService extends BaseService {
 
   async fetchBoard(pair: string){
     const hit = this.cacheOrderBook.get(pair);
-  if (hit && this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit orderbook',{ pair }); } catch {} return hit.val; }
+    if (hit) {
+      if (this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit orderbook',{ pair }); } catch {} cacheHit('market:orderbook'); return hit.val; }
+      cacheStale('market:orderbook');
+    } else {
+      cacheMiss('market:orderbook');
+    }
     const t0 = Date.now();
     const v = await this.withRetry(()=>getOrderBook(pair), 'getOrderBook', undefined, undefined, { category: 'API-PUBLIC', requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
     const dt = Date.now() - t0; if (dt > 800) { this.clog('API-PUBLIC','WARN','slow public API',{ pair, op: 'getOrderBook', elapsedMs: dt }); }
@@ -40,7 +51,12 @@ class MarketService extends BaseService {
 
   async fetchRecentTrades(pair: string){
     const hit = this.cacheTrades.get(pair);
-  if (hit && this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit trades',{ pair }); } catch {} return hit.val; }
+    if (hit) {
+      if (this.isFresh(hit.at)) { try { logCat('DEBUG','CACHE','hit trades',{ pair }); } catch {} cacheHit('market:trades'); return hit.val; }
+      cacheStale('market:trades');
+    } else {
+      cacheMiss('market:trades');
+    }
     const t0 = Date.now();
     const v = await this.withRetry(()=>getTrades(pair), 'getTrades', undefined, undefined, { category: 'API-PUBLIC', requestId: undefined, pair, side: undefined, amount: undefined, price: undefined });
     const dt = Date.now() - t0; if (dt > 800) { this.clog('API-PUBLIC','WARN','slow public API',{ pair, op: 'getTrades', elapsedMs: dt }); }
