@@ -2,8 +2,6 @@ name: Publish Coverage to Pages
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [ main ]
 
 permissions:
   contents: read

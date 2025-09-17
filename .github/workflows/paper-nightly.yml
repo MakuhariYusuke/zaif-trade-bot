@@ -139,7 +139,7 @@ jobs:
             } else {
               body += `\n`;
             }
-            const tTot = (trend as any).totals || {};
+            const tTot = (trend && trend.totals) || {};
             if (tTot && (tTot.PnL!=null || tTot.winRate!=null)) {
               body += `Trend7d: PnL=${tTot.PnL||0} Win%=${Math.round(((tTot.winRate||0))*100)}\n\n`;
             }
