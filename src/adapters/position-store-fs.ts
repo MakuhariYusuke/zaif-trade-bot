@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { logTradeError, logTradeInfo } from "../utils/trade-logger";
+import { writeFileAtomic } from "../utils/fs-atomic";
 import type { PositionStore as IPositionStore, PositionState } from "@contracts";
 
 export interface StoredPosition { pair: string; qty: number; avgPrice: number; dcaCount: number; openOrderIds: number[]; dcaRemainder?: number; highestPrice?: number; trailArmed?: boolean; trailStop?: number; lastTrailAt?: number; side?: 'long' | 'short'; }
@@ -18,7 +19,12 @@ function loadFromPerPair(pair: string): StoredPosition | undefined {
   try { const f = pairFile(pair); if (!fs.existsSync(f)) return undefined; return JSON.parse(fs.readFileSync(f,'utf8')); } catch { return undefined; }
 }
 function savePerPair(pos: StoredPosition) {
-  try { const dir = getStoreDir(); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(pairFile(pos.pair), JSON.stringify(pos, null, 2)); } catch (err:any) { logTradeError('Position store write failed', { error: err?.message||String(err) }); }
+  try {
+    const file = pairFile(pos.pair);
+    writeFileAtomic(file, JSON.stringify(pos, null, 2));
+  } catch (err:any) {
+    logTradeError('Position store write failed', { error: err?.message||String(err) });
+  }
 }
 export function loadPosition(pair: string) {
   const per = loadFromPerPair(pair); if (per) return per;
