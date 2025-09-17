@@ -23,13 +23,13 @@ jobs:
         group: [ unit, integration, cb-rate, event-metrics ]
         include:
           - group: unit
-            script: npm run test:unit
+            script: npm run test:unit -- --coverage
           - group: integration
-            script: npm run test:integration-fast
+            script: npm run test:integration-fast -- --coverage
           - group: cb-rate
-            script: npm run test:cb-rate
+            script: npm run test:cb-rate -- --coverage
           - group: event-metrics
-            script: npm run test:event-metrics
+            script: npm run test:event-metrics -- --coverage
     env:
       FAST_CI: '1'
       TEST_SLEEP_MS: '5'
@@ -73,8 +73,8 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-      - name: Run long/heavy tests
-        run: npm run test:long
+      - name: Run long/heavy tests (with coverage)
+        run: npm run test:long -- --coverage
       - name: Upload coverage (long)
         if: always()
         uses: actions/upload-artifact@v4
@@ -89,6 +89,121 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: coverage-*
+          merge-multiple: true
+      - name: Install Node + nyc
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Merge coverage (v8 JSON)
+        run: |
+          set -e
+          mkdir -p merged
+          # Prefer coverage-final.json from each job; fall back to coverage/coverage-final.json
+          find artifacts -type f -name 'coverage-final.json' -print0 | xargs -0 -I{} cp -f "{}" merged/
+          if [ "$(ls -1 merged | wc -l)" = "0" ]; then
+            find artifacts -type f -path '*/coverage/coverage-final.json' -print0 | xargs -0 -I{} cp -f "{}" merged/
+          fi
+          echo "Found $(ls -1 merged | wc -l) coverage files"
+          # Merge by concatenating into one JSON with per-file statements merged
+          node << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const dir = 'merged';
+          const files = fs.readdirSync(dir).filter(f=>f.endsWith('.json'));
+          const agg = {};
+          for (const f of files){
+            const data = JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));
+            for (const [file, cov] of Object.entries(data)){
+              if (!agg[file]) { agg[file] = cov; continue; }
+              const a = agg[file], b = cov;
+              if (a.statementMap && b.statementMap && a.s && b.s){
+                for (const k of Object.keys(b.s)){
+                  a.s[k] = (a.s[k]||0) + (b.s[k]||0);
+                }
+              }
+              if (a.fnMap && b.fnMap && a.f && b.f){
+                for (const k of Object.keys(b.f)){
+                  a.f[k] = (a.f[k]||0) + (b.f[k]||0);
+                }
+              }
+              if (a.branchMap && b.branchMap && a.b && b.b){
+                for (const k of Object.keys(b.b)){
+                  if (!a.b[k]) a.b[k] = b.b[k];
+                  else {
+                    const arrA = a.b[k]; const arrB = b.b[k];
+                    for (let i=0;i<Math.max(arrA.length, arrB.length);i++){
+                      a.b[k][i] = (arrA[i]||0) + (arrB[i]||0);
+                    }
+                  }
+                }
+              }
+            }
+          }
+          fs.mkdirSync('coverage-merged',{recursive:true});
+          fs.writeFileSync('coverage-merged/coverage-final.json', JSON.stringify(agg));
+          EOF
+          # Derive summary using a minimal reporter
+          node << 'EOF'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('coverage-merged/coverage-final.json','utf8'));
+          let totalSt=0, coveredSt=0, totalLn=0, coveredLn=0;
+          for (const cov of Object.values(data)){
+            const sMap = cov.statementMap||{}; const sHits = cov.s||{};
+            for (const k of Object.keys(sMap)){
+              totalSt++; if ((sHits[k]||0)>0) coveredSt++;
+            }
+            const bMap = cov.branchMap||{}; const bHits = cov.b||{};
+            for (const k of Object.keys(bMap)){
+              const arr = bHits[k]||[]; const len = Array.isArray(arr)?arr.length:0;
+              totalLn += len; coveredLn += (arr.filter(x=>x>0).length);
+            }
+          }
+          const pctSt = totalSt? (coveredSt/totalSt*100).toFixed(2): '0.00';
+          const pctLn = totalLn? (coveredLn/totalLn*100).toFixed(2): '0.00';
+          console.log(`STATEMENTS=${pctSt}`);
+          console.log(`LINES=${pctLn}`);
+          fs.writeFileSync('coverage-merged/summary.json', JSON.stringify({ statements: pctSt, lines: pctLn }));
+          EOF
+      - name: Upload merged coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-merged
+          path: coverage-merged/**
+      - name: Post merged coverage to summary
+        run: |
+          if [ -f coverage-merged/summary.json ]; then
+            STMT=$(node -p "require('./coverage-merged/summary.json').statements || 'N/A'")
+            LINES=$(node -p "require('./coverage-merged/summary.json').lines || 'N/A'")
+            {
+              echo "## Merged Coverage";
+              echo "- Statements: ${STMT}%";
+              echo "- Lines: ${LINES}%";
+            } >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No merged summary produced" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Comment merged coverage on PR/Commit
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let stmt='N/A', lines='N/A';
+            try { const s = JSON.parse(fs.readFileSync('coverage-merged/summary.json','utf8')); stmt=s.statements; lines=s.lines; } catch {}
+            const body = `## Merged Coverage\n\n- Statements: ${stmt}%\n- Lines: ${lines}%\n`;
+            async function safeCall(fn, args){ try { return await fn(args); } catch (e){ core.warning(`Comment failed: ${e.message}`); } }
+            if (context.payload.pull_request) {
+              await safeCall(github.rest.issues.createComment, { owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            } else if (context.eventName === 'push') {
+              await safeCall(github.rest.repos.createCommitComment, { owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });
+            } else {
+              core.info('No PR or push context; skip commenting.');
+            }
       - name: Summarize matrix results
         uses: actions/github-script@v7
         with:
