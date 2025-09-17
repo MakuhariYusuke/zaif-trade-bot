@@ -25,6 +25,7 @@ jobs:
           DRY_RUN: '1'
           PAIRS: btc_jpy,eth_jpy
           FEATURES_SOURCE: paper
+          LONG_TESTS: '1'
         run: |
           npm run mock:scenario
           npx ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json
