@@ -177,43 +177,4 @@ export async function cancelOrders(orderIds: number[]) { return marketSvc.cancel
 
 export async function fetchTradeHistory(pair: string, params: { since?: number; from_id?: number; count?: number } = {}) { return marketSvc.fetchTradeHistory(pair, params); }
 
-export interface RealizedPnLResult {
-  realized: number; // in quote currency (e.g. JPY) simplistic
-  trades: number;
-}
-
-// Very naive PnL calc: sums (sell_amount*price) - (buy_amount*price) matched FIFO until flat.
-/**
- * Calculates realized PnL from trade history.
- * @param history Array of trade objects, each with:
- *   - trade_type: "bid" for buy, "ask" for sell
- *   - price: trade price
- *   - amount: trade amount
- */
-export function calcRealizedPnL(
-  history: Array<{ trade_type: string; price: number; amount: number }>
-): RealizedPnLResult {
-  const buys: Array<{ amount: number; price: number }> = [];
-  let head = 0;
-  let realized = 0;
-  const EPS = 1e-12;
-
-  for (const h of history) {
-    if (h.trade_type === "bid") {
-      buys.push({ amount: h.amount, price: h.price });
-      continue;
-    }
-
-    let remain = h.amount;
-    while (remain > 0 && head < buys.length) {
-      const lot = buys[head];
-      const used = Math.min(remain, lot.amount);
-      realized += used * (h.price - lot.price);
-      lot.amount -= used;
-      remain -= used;
-      if (lot.amount <= EPS) head++;
-    }
-  }
-
-  return { realized, trades: history.length };
-}
+// realized PnL helpers are provided in core/market.ts
