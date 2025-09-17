@@ -33,7 +33,6 @@ export function updatePositionFields(pair: string, patch: Partial<StoredPosition
   if (!cur) return;
   const next = { ...cur, ...patch } as StoredPosition; savePerPair(next);
 }
-export function updateFields(pair: string, patch: Partial<StoredPosition>) { return updatePositionFields(pair, patch); }
 export function addOpenOrderId(pair: string, orderId: number) {
   const p = loadPosition(pair) || { pair, qty: 0, avgPrice: 0, dcaCount: 0, openOrderIds: [] } as StoredPosition;
   if (!p.openOrderIds.includes(orderId)) p.openOrderIds.push(orderId);
