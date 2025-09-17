@@ -6,6 +6,15 @@ on:
     paths:
       - 'src/**/*.ts'
       - 'tsconfig.json'
+  push:
+    branches:
+      - 'ci/run-ts-prune'
+    # Trigger on relevant file changes and workflow updates; keep broad to allow empty commits
+    paths:
+      - '**/*.ts'
+      - 'tsconfig.json'
+      - '.github/workflows/ts-prune.yml'
+      - 'package.json'
 
 permissions:
   contents: read
