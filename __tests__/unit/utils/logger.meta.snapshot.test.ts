@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { logger, setLoggerContext, addLoggerRedactFields } from '../../../src/utils/logger';
+import { logger, addLoggerRedactFields } from '../../../src/utils/logger';
 
 describe('logger JSON required meta and redaction', () => {
   beforeEach(() => {

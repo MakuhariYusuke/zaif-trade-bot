@@ -2,6 +2,8 @@ import { sleep } from "../utils/toolkit";
 import { logger as defaultLogger } from "../utils/logger";
 import type { Logger } from "../utils/logger";
 import type { PrivateApi } from "../types/private";
+import { getEventBus } from "../application/events/bus";
+import { buildErrorEventMeta, normalizeErrorCode } from "../application/errors";
 
 function toPosInt(val: number | string | undefined | null, def: number) {
   const n = Number(val);
@@ -96,6 +98,7 @@ export class BaseService {
       const err: any = new Error('circuit_open');
       err.code = 'CIRCUIT_OPEN';
       err.cause = { code: 'CIRCUIT_OPEN' };
+      try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'CIRCUIT_OPEN', ...buildErrorEventMeta(baseMeta, err) } as any); } catch {}
       throw err;
     }
 
@@ -129,6 +132,7 @@ export class BaseService {
         const err: any = new Error('rate_limited');
         err.code = 'RATE_LIMITED';
         err.cause = { code: 'RATE_LIMITED' };
+        try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'RATE_LIMITED', ...buildErrorEventMeta(baseMeta, err) } as any); } catch {}
         throw err;
       }
     }
@@ -168,6 +172,10 @@ export class BaseService {
       retries: max,
       cause: { code: (lastErr?.code || lastErr?.cause?.code) ?? null, message: lastErr?.message }
     });
+    try {
+      const code = normalizeErrorCode(lastErr);
+      getEventBus().publish({ type: 'EVENT/ERROR', code, ...buildErrorEventMeta(baseMeta, lastErr) } as any);
+    } catch {}
     throw wrapped;
   }
 
