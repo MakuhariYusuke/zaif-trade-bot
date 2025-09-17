@@ -1,7 +1,7 @@
 name: Coverage Merge & Pages
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   workflow_run:
     workflows: ["Tests (Matrix)"]
     types:
@@ -13,42 +13,47 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-coverage"
+  group: pages-coverage
   cancel-in-progress: true
 
 jobs:
   build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download merged coverage
+
+      - name: Try download merged coverage
+        id: dl_merged
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: coverage-merged
           path: coverage-merged
-        continue-on-error: true
-      - name: Fallback: download per-group artifacts
+
+      - name: Download per-group artifacts (fallback)
         if: ${{ !hashFiles('coverage-merged/coverage-final.json') }}
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           pattern: coverage-*
           merge-multiple: true
+
       - name: Merge coverage (fallback)
         if: ${{ !hashFiles('coverage-merged/coverage-final.json') }}
+        shell: bash
         run: |
           set -e
           mkdir -p merged
           find artifacts -type f -name 'coverage-final.json' -print0 | xargs -0 -I{} cp -f "{}" merged/ || true
           if [ "$(ls -1 merged 2>/dev/null | wc -l)" = "0" ]; then
-            echo "No coverage files found; exiting gracefully"; mkdir -p coverage-merged; echo '{}' > coverage-merged/coverage-final.json; fi
+            echo "No coverage files found; creating empty coverage";
+            mkdir -p coverage-merged; echo '{}' > coverage-merged/coverage-final.json; exit 0; fi
           node << 'EOF'
           const fs = require('fs');
           const path = require('path');
           const dir = 'merged';
-          if (!fs.existsSync(dir)) process.exit(0);
           const files = fs.readdirSync(dir).filter(f=>f.endsWith('.json'));
           const agg = {};
           for (const f of files){
@@ -76,23 +81,38 @@ jobs:
           fs.mkdirSync('coverage-merged',{recursive:true});
           fs.writeFileSync('coverage-merged/coverage-final.json', JSON.stringify(agg));
           EOF
-      - name: Prepare Pages from merged coverage
+
+      - name: Prepare public bundle
+        shell: bash
         run: |
-          mkdir -p public
+          set -e
+          mkdir -p public/coverage
           if [ -f coverage-merged/coverage-final.json ]; then
-            cp -r coverage-merged public/coverage
-            # If single HTML report exists from any artifact, prefer it
-            if ls artifacts/**/index.html 1> /dev/null 2>&1; then
-              mkdir -p public/coverage-html
-              cp -r $(dirname $(ls -1 artifacts/**/index.html | head -n1))/* public/coverage-html/
-            fi
+            cp -r coverage-merged/coverage-final.json public/coverage/coverage-final.json
+          else
+            echo '{}' > public/coverage/coverage-final.json
           fi
+          # Attach first HTML coverage if exists in artifacts
+          if ls artifacts/**/index.html 1> /dev/null 2>&1; then
+            mkdir -p public/coverage-html
+            FIRST_HTML_DIR=$(dirname $(ls -1 artifacts/**/index.html | head -n1))
+            cp -r "$FIRST_HTML_DIR"/* public/coverage-html/
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Upload artifact
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
+
+      - name: Upload public bundle (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-public
+          path: ./public
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
