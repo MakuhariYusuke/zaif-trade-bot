@@ -34,12 +34,17 @@ export class InMemoryEventBus implements EventBus {
   private intervalMs = Math.max(0, Number(process.env.EVENT_METRICS_INTERVAL_MS || 60000));
   private timer: NodeJS.Timeout | null = null;
   constructor(){
+    const isTest = (process.env.TEST_MODE === '1') || !!process.env.VITEST_WORKER_ID;
+    if (isTest && process.env.EVENT_METRICS_INTERVAL_IN_TEST !== '1') {
+      this.intervalMs = 0;
+    }
     if (this.intervalMs > 0) {
       this.timer = setInterval(() => {
         try { this.flushMetrics(); } catch { /* ignore */ }
       }, this.intervalMs).unref?.();
     }
   }
+  private stopTimer(){ if (this.timer) { try { clearInterval(this.timer); } catch {} this.timer = null; } }
   private getHandlerId(h: EventHandler): string {
     let id = this.handlerIds.get(h);
     if (!id) { id = `h${this.nextId++}:${(h as any).name || 'anon'}`; this.handlerIds.set(h, id); }
@@ -178,7 +183,8 @@ export class InMemoryEventBus implements EventBus {
   }
   async flush(): Promise<void> { await new Promise((res) => setTimeout(res, 0)); }
   setErrorHandler(h: (error: any, event: AppEvent, handler: EventHandler) => void) { this.onError = h; }
-  clear(){ this.handlers.clear(); }
+  clear(){ this.handlers.clear(); this.stopTimer(); }
+  stop(){ this.stopTimer(); }
 }
 
 let _bus: EventBus | undefined;
@@ -186,7 +192,13 @@ export function getEventBus(): EventBus {
   if (!_bus) _bus = new InMemoryEventBus();
   return _bus;
 }
-export function setEventBus(bus: EventBus){ _bus = bus; }
+export function setEventBus(bus: EventBus){
+  const prev = _bus;
+  if (prev && prev instanceof InMemoryEventBus) {
+    try { prev.stop?.(); } catch {}
+  }
+  _bus = bus;
+}
 export type EventBusErrorHandler = (error: any, event: AppEvent, handler: EventHandler) => void;
 export function setEventBusErrorHandler(handler: EventBusErrorHandler) {
   const bus = getEventBus();
