@@ -1,4 +1,17 @@
-# Reports 2025-09-17
-\n## Artifacts
-- [stats-diff.json](./stats-diff.json)
-- [ml-search-top.json](./ml-search-top.json)
+# Paper Matrix Reports 2025-09-17
+\n## Scenarios
+- [paper-matrix-composite](report-summary-composite.json)
+- [paper-matrix-composite-2](report-summary-composite-2.json)
+- [paper-matrix-error](report-summary-error.json)
+- [paper-matrix-hf-light](report-summary-hf-light.json)
+- [paper-matrix-hf-mid](report-summary-hf-mid.json)
+- [paper-matrix-hf-stress](report-summary-hf-stress.json)
+- [paper-matrix-high-error](report-summary-high-error.json)
+- [paper-matrix-latency](report-summary-latency.json)
+- [paper-matrix-normal](report-summary-normal.json)
+- [paper-matrix-stress](report-summary-stress.json)
+- [paper-matrix-sweep-rsi](report-summary-sweep-rsi.json)
+- [paper-matrix-sweep-sma](report-summary-sweep-sma.json)
+- [paper-matrix-sweep-wide](report-summary-sweep-wide.json)
+- [paper-matrix-timeout](report-summary-timeout.json)
+- [paper-matrix-trail-heavy](report-summary-trail-heavy.json)
