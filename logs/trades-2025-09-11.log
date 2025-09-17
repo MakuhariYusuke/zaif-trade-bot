@@ -1,3 +1,0 @@
-{"ts":"2025-09-11T07:50:36.597Z","type":"SIGNAL","message":"exit(MA_BREAK) id=1757540917762-df584x entry=16765300 -> price=16870000","data":{"pos":{"id":"1757540917762-df584x","timestamp":1757540917762,"pair":"btc_jpy","side":"long","entryPrice":16765300,"amount":0.00029823,"highestPrice":16870000,"dcaCount":0,"openOrderIds":[]},"price":16870000}}
-{"ts":"2025-09-11T07:50:36.599Z","type":"EXECUTION","message":"Closed position (simulated)","data":{"id":"1757540917762-df584x","pnl":31.224681000000004,"slippagePct":0}}
-{"ts":"2025-09-11T07:50:36.602Z","type":"ORDER","message":"Initial entry (simulated)","data":{"size":0.00029638,"price":16870000}}
