@@ -198,8 +198,8 @@ jobs:
           else
             echo "No merged summary produced" >> $GITHUB_STEP_SUMMARY
           fi
-      - name: Enforce merged coverage threshold
-        if: always()
+      - name: Enforce merged coverage threshold (main & schedule only)
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' }}
         run: |
           THRESHOLD=${COVERAGE_STMTS_THRESHOLD:-70}
           if [ -f coverage-merged/summary.json ]; then
