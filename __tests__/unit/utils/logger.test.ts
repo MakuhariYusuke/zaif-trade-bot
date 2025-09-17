@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { logTrace, logDebug, logInfo, logWarn, logError, logFatal, setLoggerContext, clearLoggerContext } from '../../../src/utils/logger';
+import { logTrace, logDebug, logInfo, logWarn, logError, logFatal } from '../../../src/utils/logger';
 
 type LogLevel = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
@@ -18,7 +18,7 @@ describe('utils/logger', () => {
         vi.spyOn(console, 'log').mockImplementation((...a: any[]) => { logs.push(a.join(' ')); });
         vi.spyOn(console, 'warn').mockImplementation((...a: any[]) => { warns.push(a.join(' ')); });
         vi.spyOn(console, 'error').mockImplementation((...a: any[]) => { errs.push(a.join(' ')); });
-        clearLoggerContext();
+    // no-op: logger context APIs are internal now
     });
 
     afterEach(() => {
@@ -63,17 +63,17 @@ describe('utils/logger', () => {
     });
 
 
-    it('outputs JSON when LOG_JSON=1 and includes context', () => {
+    it('outputs JSON when LOG_JSON=1 and includes meta', () => {
         process.env.LOG_LEVEL = 'INFO';
         process.env.LOG_JSON = '1';
-        setLoggerContext({ reqId: 'abc' });
         logInfo('hello', { x: 1 });
         // Expect logInfo to output to logs array
         expect(logs.length).toBeGreaterThan(0);
         const obj = JSON.parse(logs[0]);
         expect(obj.level).toBe('INFO');
         expect(obj.message).toBe('hello');
-        expect(obj.reqId).toBe('abc');
+        expect(Array.isArray(obj.data)).toBe(true);
+        expect(obj.data[0].x).toBe(1);
     });
 
     it('suppresses non-error logs in TEST_MODE', () => {

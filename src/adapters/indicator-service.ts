@@ -1,7 +1,7 @@
 import { ema, rsi, sma, macd, bollinger, stochastic, ichimoku, dmiAdx, envelopes, deviationPct, roc, momentum, williamsR, cci, atr, donchianWidth, bbWidth, hma, kama, psarStep, fibPosition } from '../utils/indicators';
 import BaseService from './base-service';
 
-export interface IndicatorSnapshot {
+interface IndicatorSnapshot {
   ts: number;
   price: number;
   sma_short?: number|null;
@@ -29,7 +29,7 @@ export interface IndicatorSnapshot {
   fib_pos?: number|null;
 }
 
-export interface IndicatorServiceOptions {
+interface IndicatorServiceOptions {
   smaShort?: number; smaLong?: number;
   emaShort?: number; emaLong?: number;
   wmaShort?: number; // placeholder

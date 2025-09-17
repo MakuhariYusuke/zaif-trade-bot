@@ -15,6 +15,8 @@ on:
       - 'tsconfig.json'
       - '.github/workflows/ts-prune.yml'
       - 'package.json'
+  schedule:
+    - cron: '0 4 * * 1'
 
 permissions:
   contents: read
@@ -36,6 +38,10 @@ jobs:
           npx ts-prune -p tsconfig.json > ts-prune.txt || true
           # Convert to JSON array for easier consumption
           node -e "const fs=require('fs'); const lines=(fs.readFileSync('ts-prune.txt','utf8')||'').split(/\r?\n/).filter(Boolean); fs.writeFileSync('ts-prune.json', JSON.stringify(lines, null, 2));"
+          # Persist with date for history
+          node -e "const fs=require('fs'), path=require('path'); const d=new Date(); const pad=n=>String(n).padStart(2,'0'); const y=d.getUTCFullYear(); const m=pad(d.getUTCMonth()+1); const day=pad(d.getUTCDate()); const dir=path.join('ci','reports'); fs.mkdirSync(dir,{recursive:true}); fs.copyFileSync('ts-prune.json', path.join(dir, `ts-prune-${y}${m}${day}.json`));"
+          # Simple summary JSON
+          node -e "const fs=require('fs'); let lines=[]; try{lines=JSON.parse(fs.readFileSync('ts-prune.json','utf8'))}catch{}; const out={ count: lines.length, top: lines.slice(0,20) }; fs.writeFileSync('ts-prune-summary.json', JSON.stringify(out,null,2));"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -43,6 +49,8 @@ jobs:
           path: |
             ts-prune.txt
             ts-prune.json
+            ts-prune-summary.json
+            ci/reports/ts-prune-*.json
       - name: Comment summary on PR
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v7

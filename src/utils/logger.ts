@@ -136,7 +136,7 @@ function emit(level: Level, message: string, ...args: any[]) {
  * The resulting context is a shallow copy of the previous context with overwritten keys.
  * @param {Record<string, any>} ctx - An object containing key-value pairs to add to the logger context.
  */
-export function setLoggerContext(ctx: Record<string, any>) {
+function setLoggerContext(ctx: Record<string, any>) {
   context = { ...context, ...ctx };
 }
 
@@ -156,7 +156,7 @@ export function warnOnce(id: string, message: string, meta?: any){
  * If keys are provided, only those keys are removed from the context.
  * @param {string[]} [keys] - Optional array of keys to remove from the context. If omitted, clears all context.
  */
-export function clearLoggerContext(keys?: string[]) {
+function clearLoggerContext(keys?: string[]) {
   if (!keys) { context = {}; return; }
   for (const k of keys) delete context[k];
 }

@@ -1,5 +1,6 @@
 import fs from "fs";
-import fsp from "fs/promises";
+import { getEventBus } from "../application/events/bus";
+import { buildErrorEventMeta } from "../application/errors";
 import path from "path";
 
 let CACHE_FILE = process.env.PRICE_CACHE_FILE || path.resolve(process.cwd(), "price_cache.json");
@@ -48,6 +49,7 @@ function ensureLoaded(){
         }
     } catch (err) {
         console.error("Failed to load price cache:", err);
+        try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'CACHE_ERROR', ...buildErrorEventMeta({ requestId: null, pair: null, side: null, amount: null, price: null }, err) } as any); } catch {}
     } finally { loaded = true; loadedForFile = CACHE_FILE; }
 }
 
@@ -87,6 +89,7 @@ export function appendPriceSamples(prices: PricePoint[]) {
         fs.writeFileSync(CACHE_FILE, JSON.stringify(toArray()));
     } catch (err) {
         console.error("Failed to write price cache:", err);
+        try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'CACHE_ERROR', ...buildErrorEventMeta({ requestId: null, pair: null, side: null, amount: null, price: null }, err) } as any); } catch {}
     }
 }
 
