@@ -33,7 +33,7 @@ export function ema(values: number[], period: number, prevEma?: number): Num {
  */
 export function wma(values: number[], period: number): Num {
   if (period <= 0 || values.length < period) return null;
-  let num = 0, den = 0; let w = 1;
+  let num = 0, den = 0, w = 1;
   for (let i = values.length - period; i < values.length; i++) { num += values[i] * w; den += w; w++; }
   return num / den;
 }
@@ -49,9 +49,7 @@ export function stddev(values: number[], period: number): Num {
   return Math.sqrt(v);
 }
 
-/**
- * Hull Moving Average (HMA)
- */
+/** Bollinger Bands */
 export function bollinger(values: number[], period = 20, k = 2): { basis: Num; upper: Num; lower: Num } {
   const basis = sma(values, period);
   const sd = stddev(values, period);
@@ -285,7 +283,7 @@ export function hma(values: number[], period = 20): Num {
   // Construct rolling window for final WMA approximation
   const tempArr: number[] = [];
   for (let i = values.length - sqrtP; i < values.length; i++) {
-    if (i < half || i < period) continue;
+    if (i < half) continue;
     const wma1i = wma(values.slice(i - half, i + 1), half);
     const wma2i = wma(values.slice(i - period, i + 1), period);
     if (wma1i == null || wma2i == null) continue;
@@ -327,7 +325,23 @@ export function kama(values: number[], period = 10, fast = 2, slow = 30, prevKam
   return prev + sc * (values[values.length - 1] - prev);
 }
 
-/** Parabolic SAR (one-step, needs previous state) */
+/**
+ * Parabolic SAR (one-step, needs previous state)
+ * @param prev - Previous SAR state object:
+ *   sar: number - Previous SAR value
+ *   ep: number - Extreme point (highest high or lowest low)
+ *   af: number - Acceleration factor
+ *   uptrend: boolean - True if in uptrend, false if in downtrend
+ * @param high - Current high price
+ * @param low - Current low price
+ * @param step - Acceleration factor step (default: 0.02)
+ * @param max - Maximum acceleration factor (default: 0.2)
+ * @returns Updated SAR state object:
+ *   sar: number - New SAR value
+ *   ep: number - Updated extreme point
+ *   af: number - Updated acceleration factor
+ *   uptrend: boolean - Updated trend direction
+ */
 export function psarStep(prev: { sar: number; ep: number; af: number; uptrend: boolean }, high: number, low: number, step = 0.02, max = 0.2) {
   let { sar, ep, af, uptrend } = prev;
   if (uptrend) {
@@ -352,6 +366,7 @@ export function fibPosition(high: number[], low: number[], close: number[], look
   return (c - l) / diff;
 }
 
+// (removed) fibonacciRetracement: not used anywhere; keep API minimal
 /**
  * Fibonacci retracement levels
  */

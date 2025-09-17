@@ -7,6 +7,21 @@
 - EVENT/METRICS: 平均/ p95 / ハンドラ別の件数・失敗を定期出力（`EVENT_METRICS_INTERVAL_MS`）。
 - metrics-dash: EVENT/METRICS表示を追加（スパークライン、タイプ別集計）。
 
+## 2.1.0 - 2025-09-18
+
+- Errors: エラーコードを統一し、`EVENT/ERROR` を全レイヤで発火
+	- BaseService: `CIRCUIT_OPEN`/`RATE_LIMITED`/最終失敗で `EVENT/ERROR` を publish
+	- price-cache: 讀み書き失敗で `CACHE_ERROR` を publish
+	- zaif-private: `NONCE`/`SIGNATURE`/`API_ERROR`/`NETWORK` を publish（必須メタ付き）
+- CI/Artifacts: マージ後の別名 `coverage-merged/coverage-merged.json` を出力
+- ts-prune: 結果を日付付き `ci/reports/ts-prune-YYYYMMDD.json` として永続化
+- Cleanups (Batch 4): モジュール内専用の型 export を非公開化
+	- adapters/indicator-service: `IndicatorSnapshot`, `IndicatorServiceOptions` を非公開化
+	- adapters/execution-service: `OrderBookLevel`, `OrderSnapshot`, `SubmitParams`, `SubmitRetryParams` を非公開化
+	- adapters/market-service: `MarketOverview` を非公開化
+- Tests: `unit`/`integration-fast`/`cb-rate`/`event-metrics` 全てグリーン
+- Deps: axios / vite / vitest / coverage-v8 を最新安定版へ更新（アドバイザリ 0）
+
 ## 2.0.0 - 2025-09-17
 
 - Breaking: 旧 `src/services/*` / `src/strategies/*` を削除（実体を完全除去）。`@adapters/*` / `@application/*` に移行。

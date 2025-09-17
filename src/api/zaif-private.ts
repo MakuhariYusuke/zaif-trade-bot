@@ -7,6 +7,8 @@ import { loadAppConfig, restoreNonce, persistNonce } from "../utils/config";
 import { logWarn, logError, logDebug } from "../utils/logger";
 import { ok, err, Result } from "../utils/result";
 import { BaseExchangePrivate } from "./base-private";
+import { getEventBus } from "../application/events/bus";
+import { buildErrorEventMeta } from "../application/errors";
 export function getNonceRetryTotal() { return nonceRetryTotal; }
 let lastRequestNonceRetries = 0;
 export function getAndResetLastRequestNonceRetries() { const v = lastRequestNonceRetries; lastRequestNonceRetries = 0; return v; }
@@ -189,11 +191,23 @@ class ZaifRealPrivateApi extends BaseExchangePrivate implements PrivateApi {
 				const headerNames = Object.keys(headers);
 				const lowerOk = headerNames.every(h => h === h.toLowerCase());
 				const logBase = { method, status, success: bodyDump?.success, return: bodyDump?.return, msg, bodyHash: debugHash, headers: headerNames, lowercaseHeaders: lowerOk };
-				if (/signature/i.test(msg)) { logError('[PrivateAPI SignatureMismatch]', { ...logBase, rawBodyMasked: maskBody(body) }); lastError = e; break; }
+				const metaBase = {
+					requestId: undefined as any,
+					pair: (extra as any)?.currency_pair ?? undefined,
+					side: ((extra as any)?.action === 'bid' ? 'buy' : (extra as any)?.action === 'ask' ? 'sell' : undefined) as any,
+					amount: (extra as any)?.amount ?? undefined,
+					price: (extra as any)?.price ?? undefined,
+				};
+				if (/signature/i.test(msg)) {
+					logError('[PrivateAPI SignatureMismatch]', { ...logBase, rawBodyMasked: maskBody(body) });
+					try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'SIGNATURE', retries: attempt, ...buildErrorEventMeta(metaBase, { code: 'SIGNATURE', message: msg, cause: e }) } as any); } catch {}
+					lastError = e; break;
+				}
 				if (/nonce/i.test(msg)) {
 					logWarn('[PrivateAPI NonceIssue]', { ...logBase, lastNonce: getLastNonce(), attemptedNonce: bodyObj.nonce });
 					nonceRetryTotal++;
 					lastRequestNonceRetries++;
+					try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'NONCE', retries: attempt, ...buildErrorEventMeta(metaBase, { code: 'NONCE', message: msg, cause: e }) } as any); } catch {}
 					if (this.config.nonceStorePath && restoreOnError) {
 						try {
 							restoreNonce(this.config.nonceStorePath);
@@ -219,7 +233,15 @@ class ZaifRealPrivateApi extends BaseExchangePrivate implements PrivateApi {
 					}
 					else { logError('[NONCE] retries exhausted'); }
 				}
-				if (/permission/i.test(msg)) logWarn('[PrivateAPI Permission]', { ...logBase }); else logError('[PrivateAPI Error]', logBase); lastError = e; break;
+				if (/permission/i.test(msg)) {
+					logWarn('[PrivateAPI Permission]', { ...logBase });
+					try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'API_ERROR', retries: attempt, ...buildErrorEventMeta(metaBase, { code: 'API_ERROR', message: msg, cause: e }) } as any); } catch {}
+				} else {
+					logError('[PrivateAPI Error]', logBase);
+					const code = (e?.code && /ECONNRESET|ETIMEDOUT|ENETUNREACH|ECONNREFUSED|EAI_AGAIN/i.test(String(e.code))) ? 'NETWORK' : 'API_ERROR';
+					try { getEventBus().publish({ type: 'EVENT/ERROR', code, retries: attempt, ...buildErrorEventMeta(metaBase, { code, message: msg, cause: e }) } as any); } catch {}
+				}
+				lastError = e; break;
 			}
 		}
 		throw lastError || new Error('Private API call failed');
@@ -236,7 +258,9 @@ class ZaifRealPrivateApi extends BaseExchangePrivate implements PrivateApi {
 			const data: GetInfo2Response = res.data;
 			if (data?.success === 1) return ok(data);
 			const msg = data?.error || 'unknown';
-			return err(/nonce/i.test(msg) ? 'NONCE' : /signature/i.test(msg) ? 'SIGNATURE' : 'API_ERROR', normalizePermMsg(msg));
+			const code = /nonce/i.test(msg) ? 'NONCE' : /signature/i.test(msg) ? 'SIGNATURE' : 'API_ERROR';
+			try { getEventBus().publish({ type: 'EVENT/ERROR', code, retries: 0, ...buildErrorEventMeta({ requestId: undefined, pair: undefined, side: undefined, amount: undefined, price: undefined } as any, { code, message: msg }) } as any); } catch {}
+			return err(code as any, normalizePermMsg(msg));
 		} catch (e: any) { return err('NETWORK', e?.message || 'error', e); }
 	}
 	async testGetInfo2(): Promise<Result<GetInfo2Response>> {
