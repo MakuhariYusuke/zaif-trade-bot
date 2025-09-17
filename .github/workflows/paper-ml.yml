@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 18 * * *'
   workflow_dispatch: {}
+  push:
+    branches:
+      - ci/run-paper-ml
 
 permissions:
   contents: write
@@ -120,10 +123,8 @@ jobs:
           git push || true
       - name: Slack notify with summary
         if: always()
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          WEBHOOK="$SLACK_WEBHOOK_URL"
+          WEBHOOK="${SLACK_WEBHOOK_URL:-}"
           if [ -z "$WEBHOOK" ]; then echo "No webhook; skipping"; exit 0; fi
           DIFF=$(cat stats-diff.json 2>/dev/null || echo '{}')
           RPT=$(cat report-summary-paper.json 2>/dev/null || echo '{}')
