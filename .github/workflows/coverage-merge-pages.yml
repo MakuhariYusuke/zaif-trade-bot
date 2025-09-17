@@ -21,6 +21,17 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion != '' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check Pages availability (optional)
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.repos.getPages({ owner: context.repo.owner, repo: context.repo.repo });
+              core.info('Pages appears enabled.');
+            } catch (e) {
+              core.warning(`Pages not enabled or inaccessible: ${e.message}`);
+            }
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -138,6 +149,7 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        continue-on-error: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -160,3 +172,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
