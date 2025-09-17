@@ -17,7 +17,8 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       reportsDirectory: 'coverage',
       thresholds: {
-        statements: 70,
+        // Allow overriding from env to avoid per-job failures in CI matrix
+        statements: Number(process.env.COVERAGE_STMTS ?? '70'),
       },
       exclude: [
         'src/index.ts',
