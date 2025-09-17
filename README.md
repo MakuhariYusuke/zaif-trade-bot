@@ -1,3 +1,190 @@
+## Application Events
+
+The application uses a lightweight in-memory EventBus to decouple execution from side-effecting concerns (positions, stats, logging). The bus is internal-only and not exposed externally.
+
+- Bus: `src/application/events/bus.ts` (in-memory, async dispatch via microtask)
+- Types: `src/application/events/types.ts`
+- Subscribers: `src/application/events/subscribers/*`
+- Registration: `registerAllSubscribers()` is called from `src/app/index.ts`
+
+Supported order events (subset):
+- `ORDER_SUBMITTED` — order placed successfully
+- `ORDER_FILLED` — order fully filled (payload includes `filled`, `avgPrice`)
+- `ORDER_PARTIAL` — partial fill (reserved)
+- `ORDER_CANCELED` — order canceled/not found
+- `ORDER_EXPIRED` — polling timed out; treated as expired
+- `SLIPPAGE_REPRICED` — reprice performed due to slippage
+
+Metadata is included consistently across events:
+- `requestId`, `eventId`, `pair`, `side`, `amount`, `price`, `orderId?`, `retries?`, `cause?`
+
+Example subscription (型推論強化):
+
+```ts
+import { getEventBus } from './application/events';
+
+// K が 'ORDER_FILLED' に絞られ、ハンドラ引数の型が自動で絞り込まれます
+getEventBus().subscribe('ORDER_FILLED', (e) => {
+	console.log('filled', e.orderId, e.filled, e.avgPrice);
+});
+```
+
+Idempotency: subscribers should tolerate duplicate events. Use `eventId`/`requestId` as idempotency keys.
+
+Circuit Breaker
+- 内部のサーキットブレーカーで API・実行系の暴走を防ぎます。状態は `CLOSED`/`OPEN`/`HALF_OPEN`。
+- 判定材料: 直近ウィンドウの失敗率・連続失敗回数・レイテンシ中央値。
+- 適用カテゴリ: `API-PUBLIC` / `API-PRIVATE` / `EXEC`（`BaseService.withRetry` が自動で参照）。
+  - 注: `API-PUBLIC` は観測のみ（非ゲート）。`API-PRIVATE` と `EXEC` はゲートされ、`OPEN` 時は実行を即ブロックします。
+- ログ:
+	- 遷移時: `CB/INFO`（例: `{ from: "CLOSED", to: "OPEN", reason: "failure_rate" }`）
+	- ブロック時: `CB/ERROR blocked`（`code: "CIRCUIT_OPEN"` を投げます）
+- HALF_OPEN: `OPEN` から一定クールダウン後に限定試行を許可。試行内の成功率が回復すると `CLOSED` に復帰。
+
+主な既定値（環境変数で上書き可）
+- `CB_WINDOW_SIZE`=50, `CB_FAILURE_THRESHOLD`=0.5, `CB_MAX_CONSEC_FAIL`=5
+- `CB_LATENCY_THRESHOLD_MS`=30000, `CB_HALF_OPEN_TRIAL`=5, `CB_COOLDOWN_MS`=60000
+
+withRetry でのカテゴリ指定例:
+```ts
+import { withRetry } from '@adapters/base-service';
+
+// 公開API
+await withRetry(() => publicApi.fetchDepth('btc_jpy'), 'fetchDepth', 2, 100, { category: 'API-PUBLIC' });
+
+// 認証API
+await withRetry(() => privateApi.getBalance(), 'getBalance', 3, 150, { category: 'API-PRIVATE' });
+
+// 実行系（キャンセル等）
+await withRetry(() => exec.cancelOrder(orderId), 'cancelOrder', 3, 150, { category: 'EXEC' });
+```
+
+Rate Limiter
+- 集中トークンバケツで API 呼び出しのスループットを平準化します。プロセス内シングルトン。
+- 適用位置: Circuit Breaker ゲート直後（CB → Rate → Execute）。
+- 既定: `capacity=100`, `refill=10 tokens/sec`, 予約枠 10%（high 優先, EXEC など）。
+- 取得待機: 最大 1 秒待機し、取得できなければ `RATE_LIMITED` で例外。
+- ログ:
+	- `RATE/INFO acquired`（`waitedMs` を含む）
+	- `RATE/WARN waited`（待機 > 500ms かつ連続時に連番 `consec` を含む）
+	- `RATE/ERROR rejected`（1 秒以内に取得できなかった場合）
+	- `RATE/METRICS metrics`（直近50件の統計: 平均待機/拒否率/カテゴリ内訳 + カテゴリ詳細）
+
+環境変数（Rate）
+- `RATE_LIMITER_ENABLED` (1|0, 既定 1)
+- `RATE_CAPACITY` (既定 100)
+- `RATE_REFILL` (tokens/sec, 既定 10)
+- `RATE_RESERVE_RATIO` (0..1, 既定 0.1)
+  - 後方互換: `RATE_REFILL_PER_SEC`, `RATE_PRIORITY_RESERVE` も読み取り
+- `RATE_METRICS_INTERVAL_MS` (既定 60000, 0 で無効)
+
+カテゴリ別レート設定（NEW）
+- カテゴリごとに独立したバケツを作成し、容量/補充速度を指定できます。未指定は共通値にフォールバックします。
+- 環境変数:
+	- `RATE_CAPACITY_PUBLIC`, `RATE_CAPACITY_PRIVATE`, `RATE_CAPACITY_EXEC`
+	- `RATE_REFILL_PUBLIC`, `RATE_REFILL_PRIVATE`, `RATE_REFILL_EXEC`
+- 例（PowerShell）:
+```powershell
+$env:RATE_CAPACITY_PUBLIC="100"; $env:RATE_REFILL_PUBLIC="20";
+$env:RATE_CAPACITY_PRIVATE="50";  $env:RATE_REFILL_PRIVATE="5";
+```
+`RATE/METRICS` の `details` に各カテゴリの `capacity` と `refillPerSec` が含まれます。
+
+使用例（優先度指定）
+```ts
+import { withRetry } from '@adapters/base-service';
+
+// 市場系（低優先）
+await withRetry(() => publicApi.getTicker('btc_jpy'), 'getTicker', 2, 100, { category: 'API-PUBLIC', priority: 'low', opType: 'QUERY' });
+
+// 認証系（通常）
+await withRetry(() => privateApi.getBalance(), 'getBalance', 3, 150, { category: 'API-PRIVATE', priority: 'normal' });
+
+// 実行系（高優先: 予約枠は ORDER のみ使用可能）
+await withRetry(() => exec.placeOrder(req), 'placeOrder', 3, 150, { category: 'EXEC', priority: 'high', opType: 'ORDER' });
+// 取消は通常枠（予約枠対象外）
+await withRetry(() => exec.cancelOrder(orderId), 'cancelOrder', 3, 150, { category: 'EXEC', priority: 'high', opType: 'CANCEL' });
+```
+
+メトリクス出力サンプル（`RATE/METRICS`）
+```
+[INFO][RATE] metrics {
+	"window": 50,
+	"avgWaitMs": 142,
+	"rejectRate": 0.12,
+	"byCategory": { "PUBLIC": 30, "PRIVATE": 10, "EXEC": 10 },
+	"details": {
+		"PUBLIC":  { "count": 30, "acquired": 28, "rejected": 2,  "avgWaitMs": 41,  "rejectRate": 0.067 },
+		"PRIVATE": { "count": 10, "acquired": 9,  "rejected": 1,  "avgWaitMs": 121, "rejectRate": 0.1   },
+		"EXEC":    { "count": 10, "acquired": 9,  "rejected": 1,  "avgWaitMs": 212, "rejectRate": 0.1   }
+	}
+}
+```
+
+Cache Metrics
+- 簡易キャッシュ観測を追加しました。ヒット/ミス/ステール（TTL 超過）をカウントし、一定間隔で `CACHE/METRICS` を INFO 出力します。
+- 主な用途: 市場系キャッシュ（`market:ticker`/`market:orderbook`/`market:trades`）の可視化。
+- 実装: `src/utils/cache-metrics.ts`（in-memory）。`src/adapters/market-service.ts` に計測フックを実装済み。
+
+環境変数（Cache Metrics）
+- `CACHE_METRICS_INTERVAL_MS`（既定 60000, 0 で無効）
+- `MARKET_CACHE_TTL_MS`（市場系キャッシュ TTL；既定はコード参照）
+
+メトリクス出力サンプル（`CACHE/METRICS`）
+```
+[INFO][CACHE] metrics {
+	"market:ticker":   { "hits": 42, "misses": 8,  "stale": 3, "hitRate": 0.84 },
+	"market:orderbook":{ "hits": 35, "misses": 12, "stale": 5, "hitRate": 0.745 }
+}
+```
+
+### ダッシュボード（軽量 CLI）
+- 直近の `RATE/CACHE/EVENT` メトリクスをターミナルに要約表示します。
+- JSON ログが必要です。`LOG_JSON=1` を有効にして稼働させてください。
+
+使い方:
+```
+npm run dash
+```
+オプション:
+```
+npm run dash -- --file .\\logs\\trades-2025-09-17.log --lines 8000
+```
+備考:
+- 既定では `logs/*.log` と `tmp-*/logs/*.log` から最終更新のファイルを探索します。
+- JSONL 以外のログ形式では解析できません（`LOG_JSON=1` が必要）。
+
+#### リアルタイム監視（--watch）
+- 一定間隔で再読み込みし、最新のメトリクスを更新表示します。
+```
+npm run dash -- --watch            # 2秒ごと
+npm run dash -- --watch 5000       # 5秒ごと
+```
+ヒント:
+- レート制御やキャッシュ、イベントハンドラの実行状況（平均/ p95）を運用観測できます。
+- メトリクス出力間隔の短縮（例）:
+	- `$env:RATE_METRICS_INTERVAL_MS="1000"; $env:CACHE_METRICS_INTERVAL_MS="1000"; $env:EVENT_METRICS_INTERVAL_MS="1000"`
+
+#### 画面操作と色分け
+- キー操作: `↑/↓` RATE/CACHE 切替, `←/→` スパーク幅調整, `q` 終了
+- 色分けルール:
+	- RATE: `rejRate >10%` 赤, `>5%` 黄, それ以下 緑
+	- WAIT: `avgWaitMs >2000ms` 赤, `>500ms` 黄, それ以下 緑
+	- CACHE: `hitRate <50%` 赤, `<80%` 黄, それ以上 緑
+- NO_COLOR: 環境変数 `NO_COLOR=1` で色を無効化
+
+#### 表示項目（高度指標）
+- RATE: 平均待ち時間の `p95` を併記（スパークの履歴から計算）
+- CACHE: `stale` 比率（`stale / (hits+misses)`）を併記
+- EVENT: 種別ごとの `publishes/calls/errors/avgMs/p95Ms` とトップハンドラ名を表示
+
+### CI（分割・最適化）
+
+- 5分割（unit / integration / cb-rate / event-metrics / long）で並列実行。
+- 日中: `unit`/`integration`/`cb-rate`/`event-metrics` をPR/Pushで実行。
+- 夜間: `schedule` により `long` を含むフル実行。
+- ワークフロー: `.github/workflows/test-matrix.yml`
+
 # Zaif Trade Bot
 
 軽量・検証重視の **Zaif 自動売買ボット**。SELL ファースト戦略 / モック駆動テスト / リスク管理を抑えた拡張しやすい土台です。
@@ -116,7 +303,7 @@ src/
 	- 例外メッセージは外部レスポンスの要点を含めつつ機密はログに出さない。
 
 - テスト/ツール命名
-	- 最小実行ツールは `src/tools/*`、テストスクリプトは `src/tools/tests/*`。
+	- 最小実行ツールは `src/tools/*`、テストユーティリティは `__tests__/helpers/*`。
 	- フロー検証は `test-<exchange>-flow.ts` の形式を推奨。
 
 ### 既存リネームの指針（対比）
@@ -361,6 +548,32 @@ Pages を無効のままでも、上記の `reports/day-YYYY-MM-DD/` で日次�
 ワークフロー（paper-nightly / paper-ml など）から自動実行・コミットされ、Slack/PR コメントにも `Trend7d` が含まれます。
 
 #### 通知（Slack / GitHub コメント）: Trend7dWin%
+
+---
+
+## Rate Limiter
+
+- 集中トークンバケツで API 呼び出しを制御します。
+- 既定: `capacity=100`, `refill=10 tokens/sec`, 予約枠 `RATE_PRIORITY_RESERVE=0.1`（高優先専用）。
+- 優先度: `high`（発注/取消）、`normal`（約定ポーリング等）、`low`（市場データ/統計）。
+- `BaseService.withRetry` のフロー順序: CircuitBreaker → RateLimiter → 実行。
+
+ログ仕様
+- `RATE/INFO` … 取得成功（`waitedMs` 同報）
+- `RATE/WARN` … 200ms 超の待機
+- `RATE/ERROR` … 1 秒以内にトークン取得できず拒否（`code: RATE_LIMITED`）
+
+環境変数
+- `RATE_CAPACITY`（既定 100）
+- `RATE_REFILL_PER_SEC`（既定 10）
+- `RATE_PRIORITY_RESERVE`（既定 0.1）
+
+使い方（カテゴリと優先度の例）
+```ts
+await withRetry(() => getTicker('btc_jpy'), 'getTicker', 2, 100, { category: 'API-PUBLIC', priority: 'low' });
+await withRetry(() => private.placeLimitOrder(...), 'placeLimitOrder', 3, 150, { category: 'API-PRIVATE', priority: 'normal' });
+await withRetry(() => exec.cancelOrder(id), 'cancelOrder', 3, 150, { category: 'EXEC', priority: 'high' });
+```
 
 `report-summary-*.json` を各ワークフロー（live-ml / live-trade / paper-ml / paper-nightly）で生成し、Totals に PnL/Win%/MaxDD に加えて 7 日移動の勝率 `Trend7dWin%` を含めて通知します。
 

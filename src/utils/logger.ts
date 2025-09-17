@@ -11,7 +11,9 @@ type Level = "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL";
 let context: Record<string, any> = {};
 let redactKeys = new Set<string>([
   'apiKey','apikey','key','secret','passphrase','signature','token','refreshToken',
-  'privateKey','seed','mnemonic','accountId','authorization','auth','password'
+  'privateKey','seed','mnemonic','accountId','authorization','auth','password',
+  // event payload common
+  'detail','raw'
 ]);
 const onceFlags = new Set<string>();
 
@@ -57,16 +59,19 @@ function redactMeta(meta: any): any {
   if (Array.isArray(meta)) return meta.map(redactMeta);
   if (typeof meta !== 'object') return meta;
   const out: any = Array.isArray(meta) ? [] : {};
+  let redacted = false;
   for (const [k, v] of Object.entries(meta)) {
     const keyLower = k.toLowerCase();
-    if (redactKeys.has(keyLower)) { out[k] = '***'; continue; }
+    if (redactKeys.has(keyLower)) { out[k] = '***'; redacted = true; continue; }
     // nested common sensitive paths
     if (keyLower === 'headers' && typeof v === 'object') {
       out[k] = { ...v, Authorization: v && (v as any).Authorization ? '***' : (v as any)?.Authorization };
+      redacted = true;
       continue;
     }
     out[k] = redactMeta(v);
   }
+  if (redacted && typeof out === 'object' && !Array.isArray(out)) (out as any).redacted = true;
   return out;
 }
 
