@@ -4,6 +4,7 @@ import path from 'path';
 import { todayStr } from './toolkit';
 import zlib from 'zlib';
 import { IndicatorService } from '../adapters/indicator-service';
+import { getPriceSeries } from './price-cache';
 import { logDebug, logWarn } from './logger';
 
 export interface FeatureSample {
@@ -178,7 +179,7 @@ export function logFeatureSample(s: FeatureSample){
   // derive spread/slippage if not provided and bestBid/Ask present
   let spread = s.spread;
   let slippage = s.slippage;
-  if ((spread == null || slippage == null) && s.bestAsk && s.bestBid){
+  if ((spread == null || slippage == null) && s.bestAsk != null && s.bestBid != null){
     const mid = (s.bestAsk + s.bestBid) / 2;
     if (spread == null) spread = (s.bestAsk - s.bestBid) / mid;
     if (slippage == null) slippage = (s.price - mid) / mid;
@@ -187,7 +188,22 @@ export function logFeatureSample(s: FeatureSample){
   try {
     const key = `${s.pair}:${src||'root'}`;
     let svc = indicatorServices.get(key);
-    if (!svc) { svc = new IndicatorService({}); indicatorServices.set(key, svc); }
+    if (!svc) {
+      svc = new IndicatorService({});
+      indicatorServices.set(key, svc);
+      try {
+        const series = getPriceSeries(200);
+        if (Array.isArray(series) && series.length > 0) {
+          const n = Math.min(series.length, 200);
+          const start = s.ts - n * 1000;
+          for (let i = series.length - n; i < series.length; i++) {
+            const t = start + (i - (series.length - n)) * 1000;
+            const p = Number(series[i]);
+            if (Number.isFinite(p)) svc.update(t, p);
+          }
+        }
+      } catch {}
+    }
     const ind = svc.update(s.ts, s.price, s.bestBid, s.bestAsk);
     if (IND_LOG_EVERY_N > 0) {
       const ctrKey = `__ind_ctr_${key}`;
@@ -199,42 +215,42 @@ export function logFeatureSample(s: FeatureSample){
     }
     s = {
       ...s,
-      rsi: s.rsi ?? ind.rsi,
-      roc: (s as any).roc ?? ind.roc,
-      mom: (s as any).mom ?? ind.mom,
-      willr: (s as any).willr ?? ind.willr,
-      cci: (s as any).cci ?? ind.cci,
-      sma_short: s.sma_short ?? ind.sma_short,
-      sma_long: s.sma_long ?? ind.sma_long,
-      ema_short: (s as any).ema_short ?? ind.ema_short,
-      ema_long: (s as any).ema_long ?? ind.ema_long,
+      rsi: s.rsi ?? (ind.rsi ?? null),
+      roc: (s as any).roc ?? (ind.roc ?? null),
+      mom: (s as any).mom ?? (ind.mom ?? null),
+      willr: (s as any).willr ?? (ind.willr ?? null),
+      cci: (s as any).cci ?? (ind.cci ?? null),
+      sma_short: s.sma_short ?? (ind.sma_short ?? null),
+      sma_long: s.sma_long ?? (ind.sma_long ?? null),
+      ema_short: (s as any).ema_short ?? (ind.ema_short ?? null),
+      ema_long: (s as any).ema_long ?? (ind.ema_long ?? null),
       wma_short: (s as any).wma_short ?? (null as any),
-      hma_long: (s as any).hma_long ?? ind.hma_long,
-      kama: (s as any).kama ?? ind.kama,
-      macd: (s as any).macd ?? ind.macd,
-      macdSignal: (s as any).macdSignal ?? ind.macdSignal,
-      macdHist: (s as any).macdHist ?? ind.macdHist,
-      bb_basis: (s as any).bb_basis ?? ind.bb_basis,
-      bb_upper: (s as any).bb_upper ?? ind.bb_upper,
-      bb_lower: (s as any).bb_lower ?? ind.bb_lower,
-      bb_width: (s as any).bb_width ?? ind.bb_width,
-      don_width: (s as any).don_width ?? ind.don_width,
-      atr: (s as any).atr ?? ind.atr,
-      stoch_k: (s as any).stoch_k ?? ind.stoch_k,
-      stoch_d: (s as any).stoch_d ?? ind.stoch_d,
-      ichi_tenkan: (s as any).ichi_tenkan ?? ind.ichi_tenkan,
-      ichi_kijun: (s as any).ichi_kijun ?? ind.ichi_kijun,
-      ichi_spanA: (s as any).ichi_spanA ?? ind.ichi_spanA,
-      ichi_spanB: (s as any).ichi_spanB ?? ind.ichi_spanB,
-      ichi_chikou: (s as any).ichi_chikou ?? ind.ichi_chikou,
-      adx: (s as any).adx ?? ind.adx,
-      plusDi: (s as any).plusDi ?? ind.plusDi,
-      minusDi: (s as any).minusDi ?? ind.minusDi,
-      env_upper: (s as any).env_upper ?? ind.env_upper,
-      env_lower: (s as any).env_lower ?? ind.env_lower,
-      dev_pct: (s as any).dev_pct ?? ind.dev_pct,
-      psar: (s as any).psar ?? ind.psar,
-      fib_pos: (s as any).fib_pos ?? ind.fib_pos,
+      hma_long: (s as any).hma_long ?? (ind.hma_long ?? null),
+      kama: (s as any).kama ?? (ind.kama ?? null),
+      macd: (s as any).macd ?? (ind.macd ?? null),
+      macdSignal: (s as any).macdSignal ?? (ind.macdSignal ?? null),
+      macdHist: (s as any).macdHist ?? (ind.macdHist ?? null),
+      bb_basis: (s as any).bb_basis ?? (ind.bb_basis ?? null),
+      bb_upper: (s as any).bb_upper ?? (ind.bb_upper ?? null),
+      bb_lower: (s as any).bb_lower ?? (ind.bb_lower ?? null),
+      bb_width: (s as any).bb_width ?? (ind.bb_width ?? null),
+      don_width: (s as any).don_width ?? (ind.don_width ?? null),
+      atr: (s as any).atr ?? (ind.atr ?? null),
+      stoch_k: (s as any).stoch_k ?? (ind.stoch_k ?? null),
+      stoch_d: (s as any).stoch_d ?? (ind.stoch_d ?? null),
+      ichi_tenkan: (s as any).ichi_tenkan ?? (ind.ichi_tenkan ?? null),
+      ichi_kijun: (s as any).ichi_kijun ?? (ind.ichi_kijun ?? null),
+      ichi_spanA: (s as any).ichi_spanA ?? (ind.ichi_spanA ?? null),
+      ichi_spanB: (s as any).ichi_spanB ?? (ind.ichi_spanB ?? null),
+      ichi_chikou: (s as any).ichi_chikou ?? (ind.ichi_chikou ?? null),
+      adx: (s as any).adx ?? (ind.adx ?? null),
+      plusDi: (s as any).plusDi ?? (ind.plusDi ?? null),
+      minusDi: (s as any).minusDi ?? (ind.minusDi ?? null),
+      env_upper: (s as any).env_upper ?? (ind.env_upper ?? null),
+      env_lower: (s as any).env_lower ?? (ind.env_lower ?? null),
+      dev_pct: (s as any).dev_pct ?? (ind.dev_pct ?? null),
+      psar: (s as any).psar ?? (ind.psar ?? null),
+      fib_pos: (s as any).fib_pos ?? (ind.fib_pos ?? null),
     } as FeatureSample;
     // Emit one WARN line per process as a sample of indicators
     const onceKey = `__ind_warn_once_${key}`;

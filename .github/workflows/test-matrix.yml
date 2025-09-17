@@ -1,0 +1,112 @@
+name: Tests (Matrix)
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [ unit, integration, cb-rate, event-metrics ]
+        include:
+          - group: unit
+            script: npm run test:unit
+          - group: integration
+            script: npm run test:integration-fast
+          - group: cb-rate
+            script: npm run test:cb-rate
+          - group: event-metrics
+            script: npm run test:event-metrics
+    env:
+      FAST_CI: '1'
+      TEST_SLEEP_MS: '5'
+      ML_MAX_WORKERS: '1'
+      RETRY_ATTEMPTS: '1'
+      RETRY_BACKOFF_MS: '10'
+      DETECT_LEAKS: '1'
+      DETECT_LEAKS_STRICT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Run tests (${{ matrix.group }})
+        run: ${{ matrix.script }}
+      - name: Upload coverage (${{ matrix.group }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.group }}
+          path: |
+            coverage/**
+            vitest-report-*.json
+
+  nightly-long:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_long == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Run long/heavy tests
+        run: npm run test:long
+      - name: Upload coverage (long)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-long
+          path: |
+            coverage/**
+            vitest-report-long.json
+
+  summarize:
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summarize matrix results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            const rows = jobs.data.jobs
+              .filter(j => j.name && j.name.includes('test'))
+              .map(j => `| ${j.name.replace('test / ', '')} | ${j.conclusion || 'in_progress'} |`);
+            const body = `## Matrix Test Results\n\n| Group | Status |\n|---|---|\n${rows.join('\n')}`;
+            if (context.payload.pull_request) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            } else {
+              core.info(body);
+            }
