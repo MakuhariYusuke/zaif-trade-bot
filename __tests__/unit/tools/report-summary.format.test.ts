@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 describe('report-summary formatted fields', () => {
-  const TMP = path.resolve(process.cwd(), 'tmp-test-report');
+  const TMP = path.resolve(process.cwd(), 'tmp-test-report-b');
   beforeEach(()=>{
     if (fs.existsSync(TMP)) fs.rmSync(TMP, { recursive: true, force: true });
     fs.mkdirSync(TMP, { recursive: true });
