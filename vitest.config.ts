@@ -24,9 +24,10 @@ export default defineConfig({
         'src/app/**',
         'src/api/**',
         'src/tools/**',
+        '__tests__/helpers/**',
       ]
     },
-  include: ['__tests__/unit/**/*.test.ts'],
+  include: ['__tests__/**/*.test.ts'],
   exclude: ['__tests__/**/*.test.js', '__tests__/*.test.ts']
   }
 });
