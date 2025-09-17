@@ -6,6 +6,12 @@ on:
     paths:
       - 'src/**/*.ts'
       - 'tsconfig.json'
+  push:
+    branches:
+      - ci/run-ts-prune
+    paths:
+      - 'src/**/*.ts'
+      - 'tsconfig.json'
 
 permissions:
   contents: read
