@@ -20,8 +20,8 @@ const TOL_QTY_PCT = Number(process.env.TOL_QTY_PCT || 0.005);
 const TOL_PRICE_PCT = Number(process.env.TOL_PRICE_PCT || 0.01);
 const ABS_QTY_TOL = Number(process.env.ABS_QTY_TOL || 1e-8);
 
-export interface OrderBookLevel { price: number; amount: number; }
-export interface OrderSnapshot { 
+interface OrderBookLevel { price: number; amount: number; }
+interface OrderSnapshot { 
     side: "bid" | "ask"; 
     intendedPrice: number; 
     amount: number; 
@@ -36,7 +36,7 @@ export interface OrderSnapshot {
     originalAmount?: number; 
     retryCount?: number; 
 }
-export interface SubmitParams { 
+interface SubmitParams { 
     currency_pair: string; 
     side: "bid" | "ask"; 
     limitPrice: number; 
@@ -165,7 +165,7 @@ export async function pollFillState(pair: string, orderSnapshot: OrderSnapshot, 
 
 export const computeSlippage = (intendedPrice: number, avgFillPrice?: number): number =>
     intendedPrice === 0 || !avgFillPrice ? 0 : (avgFillPrice - intendedPrice) / intendedPrice;
-export interface SubmitRetryParams extends Omit<SubmitParams, 'timeoutMs'> {
+interface SubmitRetryParams extends Omit<SubmitParams, 'timeoutMs'> {
     primaryTimeoutMs?: number;
     retryTimeoutMs?: number;
     improvePricePct?: number;

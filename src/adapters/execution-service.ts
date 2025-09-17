@@ -5,7 +5,6 @@ let privExec: PrivateApi | undefined;
 export function init(privateApi: PrivateApi) { privExec = privateApi; }
 import { logExecution, logTradeError, logSignal } from "../utils/trade-logger";
 import BaseService from "./base-service";
-import type { Logger } from "../utils/logger";
 import { loadPosition, savePosition } from "./position-store";
 import { appendFillPnl } from "../utils/daily-stats";
 import { getAndResetLastRequestNonceRetries } from "../api/zaif-private";
@@ -23,11 +22,10 @@ const ABS_QTY_TOL = Number(process.env.ABS_QTY_TOL ?? 1e-8);
 
 // Local BaseService instance for retry + category logging without changing public API
 const execSvc = new BaseService();
-export function setExecutionLogger(lg: Logger) { execSvc.setLogger(lg); }
 
-export interface OrderBookLevel { price: number; amount: number; }
+interface OrderBookLevel { price: number; amount: number; }
 
-export interface OrderSnapshot {
+interface OrderSnapshot {
     side: "bid" | "ask";
     intendedPrice: number; // price aimed
     amount: number;
@@ -43,7 +41,7 @@ export interface OrderSnapshot {
     retries?: number; // total retry attempts
 }
 
-export interface SubmitParams {
+interface SubmitParams {
     currency_pair: string;
     side: "bid" | "ask";
     limitPrice: number;
@@ -211,7 +209,7 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
     return snap;
 }
 
-export function shouldWarnPollingSlow(startMs: number, nowMs: number, thresholdMs = 30000): { warn: boolean; elapsed: number } {
+function shouldWarnPollingSlow(startMs: number, nowMs: number, thresholdMs = 30000): { warn: boolean; elapsed: number } {
     const elapsed = nowMs - startMs;
     return { warn: elapsed > thresholdMs, elapsed };
 }
@@ -222,12 +220,9 @@ export function shouldWarnPollingSlow(startMs: number, nowMs: number, thresholdM
  * @param avgFillPrice The average price at which the order was actually filled.
  * @returns The slippage as a percentage.
  */
-export function computeSlippage(intendedPrice: number, avgFillPrice?: number) {
-    if (!avgFillPrice) return 0;
-    return (avgFillPrice - intendedPrice) / intendedPrice;
-}
+// computeSlippage: unused in this adapter; remove to minimize public API
 
-export interface SubmitRetryParams extends Omit<SubmitParams, 'timeoutMs'> {
+interface SubmitRetryParams extends Omit<SubmitParams, 'timeoutMs'> {
     primaryTimeoutMs?: number;
     retryTimeoutMs?: number;
     improvePricePct?: number; // override

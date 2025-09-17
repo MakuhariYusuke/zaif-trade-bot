@@ -137,11 +137,17 @@ jobs:
           mkdir -p public/coverage
           if [ -f coverage-merged/coverage-final.json ]; then
             cp -r coverage-merged/coverage-final.json public/coverage/coverage-final.json
+            if [ -f coverage-merged/summary.json ]; then
+              cp -r coverage-merged/summary.json public/coverage/summary.json
+            fi
           else
             echo '{}' > public/coverage/coverage-final.json
           fi
           # Attach first HTML coverage if exists in artifacts
-          if ls artifacts/**/index.html 1> /dev/null 2>&1; then
+          if [ -d coverage-merged/html ] && [ -f coverage-merged/html/index.html ]; then
+            mkdir -p public/coverage-html
+            cp -r coverage-merged/html/* public/coverage-html/
+          elif ls artifacts/**/index.html 1> /dev/null 2>&1; then
             mkdir -p public/coverage-html
             FIRST_HTML_DIR=$(dirname $(ls -1 artifacts/**/index.html | head -n1))
             cp -r "$FIRST_HTML_DIR"/* public/coverage-html/

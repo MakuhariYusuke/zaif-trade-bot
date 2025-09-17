@@ -132,7 +132,7 @@ class MarketService extends BaseService {
   }
 }
 
-export interface MarketOverview {
+interface MarketOverview {
   ticker?: Awaited<ReturnType<typeof getTicker>>;
   orderBook: Awaited<ReturnType<typeof getOrderBook>>;
   trades: Awaited<ReturnType<typeof getTrades>>;

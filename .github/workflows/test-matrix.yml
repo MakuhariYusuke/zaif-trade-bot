@@ -162,6 +162,8 @@ jobs:
           }
           fs.mkdirSync('coverage-merged', { recursive: true });
           fs.writeFileSync('coverage-merged/coverage-final.json', JSON.stringify(agg));
+          // Also output a stable alias for downstream tools
+          fs.writeFileSync('coverage-merged/coverage-merged.json', JSON.stringify(agg));
           console.log(`Parsed ${parsed}, skipped ${skipped}`);
           // Derive summary
           let totalSt=0, coveredSt=0, totalLn=0, coveredLn=0;
@@ -180,6 +182,18 @@ jobs:
           console.log(`STATEMENTS=${pctSt}`);
           console.log(`LINES=${pctLn}`);
           EOF
+      - name: Attach first HTML coverage into merged
+        if: always()
+        run: |
+          set -e
+          mkdir -p coverage-merged/html || true
+          if ls artifacts/**/index.html 1> /dev/null 2>&1; then
+            FIRST_HTML_DIR=$(dirname $(ls -1 artifacts/**/index.html | head -n1))
+            cp -r "$FIRST_HTML_DIR"/* coverage-merged/html/
+            echo "Attached HTML from $FIRST_HTML_DIR"
+          else
+            echo "No HTML coverage found in artifacts"
+          fi
       - name: Upload merged coverage
         uses: actions/upload-artifact@v4
         with:
