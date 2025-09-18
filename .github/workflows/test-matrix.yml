@@ -1,7 +1,12 @@
 name: Tests (Matrix)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      enforce_threshold:
+        description: 'Enforce merged coverage threshold (true/false)'
+        required: false
+        default: 'false'
   pull_request:
   push:
     branches: [ main ]
@@ -223,8 +228,8 @@ jobs:
           else
             echo "No merged summary produced" >> $GITHUB_STEP_SUMMARY
           fi
-      - name: Enforce merged coverage threshold (main & schedule only)
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule') && steps.merge_cov.outputs.has_coverage == 'true' }}
+      - name: Enforce merged coverage threshold (schedule or manual opt-in)
+        if: ${{ ((github.event_name == 'schedule') || (github.event_name == 'workflow_dispatch' && github.event.inputs.enforce_threshold == 'true')) && steps.merge_cov.outputs.has_coverage == 'true' }}
         run: |
           THRESHOLD=${COVERAGE_STMTS_THRESHOLD:-70}
           if [ -f coverage-merged/summary.json ]; then
