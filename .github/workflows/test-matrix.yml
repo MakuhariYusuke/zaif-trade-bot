@@ -104,6 +104,7 @@ jobs:
         with:
           node-version: 20
       - name: Merge coverage (v8 JSON)
+        id: merge_cov
         run: |
           set -e
           echo "Scanning artifacts for coverage-final.json files..."
@@ -182,6 +183,16 @@ jobs:
           console.log(`STATEMENTS=${pctSt}`);
           console.log(`LINES=${pctLn}`);
           EOF
+          if [ -f coverage-merged/summary.json ]; then
+            STMT=$(node -p "parseFloat(require('./coverage-merged/summary.json').statements || '0')")
+            if awk -v s="$STMT" 'BEGIN { exit (s+0 > 0) ? 0 : 1 }'; then
+              echo "has_coverage=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_coverage=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "has_coverage=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Attach first HTML coverage into merged
         if: always()
         run: |
@@ -213,7 +224,7 @@ jobs:
             echo "No merged summary produced" >> $GITHUB_STEP_SUMMARY
           fi
       - name: Enforce merged coverage threshold (main & schedule only)
-        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule') && steps.merge_cov.outputs.has_coverage == 'true' }}
         run: |
           THRESHOLD=${COVERAGE_STMTS_THRESHOLD:-70}
           if [ -f coverage-merged/summary.json ]; then
