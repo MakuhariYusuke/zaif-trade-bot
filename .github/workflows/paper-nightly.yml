@@ -33,6 +33,11 @@ jobs:
           npm run ml:search
           npx ts-node src/tools/stats/stats-graph.ts --out stats.json --svg stats-timeline.svg
           npm run trend:weekly
+      - name: Trade plan (dry-run)
+        env:
+          DRY_RUN: '1'
+        run: |
+          npm run -s trade:live:dry > trade-plan.json
       - name: Build summary report (paper)
         run: npm run report:summary -- --source paper
       - name: Upload artifacts
@@ -46,6 +51,7 @@ jobs:
             stats-timeline.svg
             stats-diff.json
             report-summary-paper.json
+            trade-plan.json
             logs/features/**
       - name: Publish reports into repo (branch)
         if: always()
@@ -61,10 +67,11 @@ jobs:
             for f in stats-timeline.svg stats-diff.json report-summary-paper.json ml-search-top.json; do
               [ -f "$f" ] && echo "- [$f](./$f)";
             done;
+            if [ -f trade-plan.json ]; then echo "- [trade-plan.json](./trade-plan.json)"; fi
             if [ -f reports/latest/trend-weekly.json ]; then echo "- [trend-weekly.json](../latest/trend-weekly.json)"; fi
           } > "$DIR/index.md"
           # copy files
-          for f in stats-timeline.svg stats-diff.json report-summary-paper.json ml-search-top.json; do
+          for f in stats-timeline.svg stats-diff.json report-summary-paper.json ml-search-top.json trade-plan.json; do
             [ -f "$f" ] && cp -f "$f" "$DIR/" || true;
           done
           # copy trend for the day
@@ -87,6 +94,8 @@ jobs:
           DIFF_JSON=$(cat stats-diff.json 2>/dev/null || echo '{}')
           RPT=$(cat report-summary-paper.json 2>/dev/null || echo '{}')
           TREND=$(cat reports/latest/trend-weekly.json 2>/dev/null || echo '{}')
+          TPLAN=$(cat trade-plan.json 2>/dev/null || echo '{}')
+          TSTATE=$(cat trade-state.json 2>/dev/null || echo '{}')
           ZERO=$(echo "$DIFF_JSON" | jq '.diff | to_entries | map(.value) | all(.==0)')
           ICON="✅"; STATUS="passed"
           if [ "$JOB_STATUS" != "success" ]; then ICON="❌"; STATUS="failed"; fi
@@ -104,13 +113,18 @@ jobs:
           TM=$(echo "$RPT" | jq -r '.totals.maxDrawdown // 0')
           TWK_PNL=$(echo "$TREND" | jq -r '.totals.PnL // 0')
           TWK_WIN=$(echo "$TREND" | jq -r '.totals.winRate // 0')
+          # Trade plan & phase
+          PLAN_ORD=$(echo "$TPLAN" | jq -r '.plannedOrders // 0')
+          PLAN_PHASE=$(echo "$TPLAN" | jq -r '.phase // 0')
+          PHASE_NOW=$(echo "$TSTATE" | jq -r '.phase // 0')
+          SUCC_TOT=$(echo "$TSTATE" | jq -r '.totalSuccess // 0')
           # Per-pair summary (from stats.json if present)
           PAIRS_SUMMARY=""
           if [ -f stats.json ]; then
             PAIRS_SUMMARY=$(jq -r '.pairs[] | "• \(.pair): PnL=\(.realizedPnl) Win=\(((.winRate)*100|floor))% StreakW=\(.streakWin // 0) StreakL=\(.streakLoss // 0)"' stats.json | sed ':a;N;$!ba;s/\n/\\n/g')
           fi
           RLNK="reports/day-$(date -u +%Y-%m-%d)/index.md"
-          TEXT="$ICON Paper Nightly $STATUS\nDiff: buy+$BUY / sell+$SELL / rsi+$RSI / trailExit+$TRLEX / trailStops+$TSTOP / PnL+$PNL / Win%~${WIN}%\nTotals: PnL=$TP Win%=$((TW*100)) MaxDD=$TM\nTrend7d: PnL=$TWK_PNL Win%=$((TWK_WIN*100))\nAdded report: $RLNK\n$PAIRS_SUMMARY\n<$RUN_URL|Open Run / Artifacts>"
+          TEXT="$ICON Paper Nightly $STATUS\nTradePlan: phase=${PLAN_PHASE} planned=${PLAN_ORD} (now phase=${PHASE_NOW}, totalSuccess=${SUCC_TOT})\nDiff: buy+$BUY / sell+$SELL / rsi+$RSI / trailExit+$TRLEX / trailStops+$TSTOP / PnL+$PNL / Win%~${WIN}%\nTotals: PnL=$TP Win%=$((TW*100)) MaxDD=$TM\nTrend7d: PnL=$TWK_PNL Win%=$((TWK_WIN*100))\nAdded report: $RLNK\n$PAIRS_SUMMARY\n<$RUN_URL|Open Run / Artifacts>"
           curl -s -X POST -H 'Content-type: application/json' --data "{\"text\":\"$TEXT\"}" "$WEBHOOK" || true
       - name: Comment results on PR/Commit (nightly)
         if: always()
@@ -120,9 +134,13 @@ jobs:
             const fs = require('fs');
             let stats = {}, diff = {};
             let rpt = {};
+            let tplan = {};
+            let tstate = {};
             try { stats = JSON.parse(fs.readFileSync('stats.json','utf8')); } catch {}
             try { diff = JSON.parse(fs.readFileSync('stats-diff.json','utf8')); } catch {}
             try { rpt = JSON.parse(fs.readFileSync('report-summary-paper.json','utf8')); } catch {}
+            try { tplan = JSON.parse(fs.readFileSync('trade-plan.json','utf8')); } catch {}
+            try { tstate = JSON.parse(fs.readFileSync('trade-state.json','utf8')); } catch {}
             const pairs = stats.pairs || [];
             const pairsDiff = (diff.pairsDiff || []).reduce((m, d)=>{ m[d.pair]=d.diff; return m; }, {});
             const vals = diff.values || {};
@@ -133,6 +151,11 @@ jobs:
             try { trend = JSON.parse(fs.readFileSync('reports/latest/trend-weekly.json','utf8')); } catch {}
             const day = new Date().toISOString().slice(0,10);
             let body = `## Paper Nightly (report: reports/day-${day}/index.md)\n\n`;
+            if (tplan && (tplan.phase!=null || tplan.plannedOrders!=null)) {
+              const nowPhase = (tstate && typeof tstate.phase==='number') ? tstate.phase : '-';
+              const totalSuccess = (tstate && typeof tstate.totalSuccess==='number') ? tstate.totalSuccess : 0;
+              body += `TradePlan: phase=${tplan.phase||'-'} planned=${tplan.plannedOrders||0} (now phase=${nowPhase}, totalSuccess=${totalSuccess})\n`;
+            }
             body += `Diff: buy +${d.buyEntries||0}, sell +${d.sellEntries||0}, rsi +${d.rsiExits||0}, trailExit +${d.trailExitTotal||0}, trailStops +${d.trailStops||0}, PnL +${(d.realizedPnl||0)}\n`;
             body += `Win% (agg): ${winPct}%\n`;
             if (totals && (totals.PnL!=null || totals.winRate!=null || totals.maxDrawdown!=null)) {

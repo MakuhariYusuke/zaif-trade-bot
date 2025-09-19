@@ -4,6 +4,7 @@ import path from 'path';
 import { todayStr } from './toolkit';
 import zlib from 'zlib';
 import { IndicatorService } from '../adapters/indicator-service';
+import { getEventBus } from '../application/events/bus';
 import { getPriceSeries } from './price-cache';
 import { logDebug, logWarn } from './logger';
 
@@ -171,6 +172,7 @@ function pushBuffer(filePath: string, line: string){
 }
 
 export function logFeatureSample(s: FeatureSample){
+  const providedRsi = s.rsi;
   const date = todayStr();
   const base = process.env.FEATURES_LOG_DIR ? path.resolve(process.env.FEATURES_LOG_DIR) : path.resolve(process.cwd(), 'logs');
   const src = process.env.FEATURES_SOURCE; // optional: 'paper' | 'live'
@@ -205,6 +207,10 @@ export function logFeatureSample(s: FeatureSample){
       } catch {}
     }
     const ind = svc.update(s.ts, s.price, s.bestBid, s.bestAsk);
+    try {
+      const isTestPub = process.env.TEST_MODE === '1' || !!process.env.VITEST_WORKER_ID;
+      getEventBus().publish({ type: 'EVENT/INDICATOR', ts: s.ts, pair: s.pair, snapshot: ind } as any, { async: !isTestPub });
+    } catch {}
     if (IND_LOG_EVERY_N > 0) {
       const ctrKey = `__ind_ctr_${key}`;
       const g: any = global as any;
@@ -252,6 +258,8 @@ export function logFeatureSample(s: FeatureSample){
       psar: (s as any).psar ?? (ind.psar ?? null),
       fib_pos: (s as any).fib_pos ?? (ind.fib_pos ?? null),
     } as FeatureSample;
+  // explicitly preserve provided RSI if caller supplied it
+  if (providedRsi != null) (s as any).rsi = providedRsi;
     // Emit one WARN line per process as a sample of indicators
     const onceKey = `__ind_warn_once_${key}`;
     const g: any = global as any;
@@ -285,4 +293,11 @@ try {
 export function stopFeaturesLoggerTimers(){
   try { if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; } } catch {}
   try { if (intervalTimer) { clearInterval(intervalTimer); intervalTimer = null; } } catch {}
+  // reset once-per-process flags and cached services for clean test isolation
+  try {
+    const g: any = global as any;
+    delete g.__ind_warn_mfi_missing;
+    delete g.__ind_warn_obv_missing;
+  } catch {}
+  try { indicatorServices.clear(); } catch {}
 }

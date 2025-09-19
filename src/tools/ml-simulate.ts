@@ -121,6 +121,28 @@ function simulate(rows: Row[], params: Record<string, any>){
       }).filter(Boolean);
     } catch { return [] as Row[]; }
   });
+  // Windows FS で直後読みが空になるレース緩和: リトライ最大5回
+  if (rows.length === 0 && process.platform === 'win32' && uniqueCandidates.length) {
+    for (let i=0;i<5 && rows.length===0;i++) {
+      try { await sleep(60); } catch {}
+      rows = uniqueCandidates.flatMap(p => {
+        try {
+          if (!fs.existsSync(p)) return [] as Row[];
+          const txt = fs.readFileSync(p, 'utf8');
+          return String(txt||'').split(/\r?\n/).filter(Boolean).map(line => {
+            try {
+              const o = JSON.parse(line);
+              return {
+                ts: Number(o.ts), pair: String(o.pair), side: String(o.side),
+                rsi: toNum(o.rsi), sma_short: toNum(o.sma_short), sma_long: toNum(o.sma_long),
+                price: Number(o.price), qty: Number(o.qty), pnl: toNum(o.pnl), win: toNum(o.win)
+              } as Row;
+            } catch { return null as any; }
+          }).filter(Boolean);
+        } catch { return [] as Row[]; }
+      });
+    }
+  }
   // Retry small delay to avoid race immediately after writer flush in tests/CI (Windows FS can lag)
   if (rows.length === 0) rows = dirs.flatMap(d => readFeatureCsvRows(d)).sort((a: Row, b: Row)=> a.ts - b.ts);
   if (rows.length === 0) {
