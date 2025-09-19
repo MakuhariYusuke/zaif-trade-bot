@@ -34,8 +34,13 @@ export function buildSlackSummary(dir?: string) {
       if (m.plannedOrders && planned === '?') planned = m.plannedOrders;
     }
   } catch {}
+  let pnlIcon = '';
+  const pnlNum = typeof pnl === 'number' ? pnl : Number(pnl);
+  if (!Number.isNaN(pnlNum) && pnlNum !== 0) {
+    pnlIcon = pnlNum > 0 ? ' 🔺' : ' 🔻';
+  }
   const warn = (guards && guards > 0) ? ' ⚠️' : '';
-  return `Phase=${phase} Planned=${planned} Exec=${executed} Fail=${fail} PnL=${pnl}${warn}`;
+  return `Phase=${phase} Planned=${planned} Exec=${executed} Fail=${fail} PnL=${pnl}${pnlIcon}${warn}`;
 }
 
 if (require.main === module) {
