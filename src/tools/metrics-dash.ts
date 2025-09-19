@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { loadTradeConfig, getOrdersPerDay } from '../config/trade-config';
+import { loadTradeState } from '../config/trade-state';
 
 export type RateDetails = {
   count: number;
@@ -370,7 +372,15 @@ export function runOnceCollect(file?: string, lines?: number) {
   const { entries, ratePlain, cachePlain, eventPlain } = parseEntriesFromContent(content, maxLines);
   const { rate, cache, event } = pickLatestMetrics(entries, { ratePlain, cachePlain, eventPlain });
   const tradePhase = readTradePhase();
-  return { rate, cache, events: event, tradePhase };
+  // plannedOrders: derive from trade-config + state phase
+  let plannedOrders: number | null = null;
+  try {
+    const cfg = loadTradeConfig();
+    const st = loadTradeState();
+    const phase = (tradePhase && tradePhase.phase) || st.phase || cfg.phase;
+    if (phase) plannedOrders = getOrdersPerDay(cfg, Number(phase));
+  } catch { /* ignore */ }
+  return { rate, cache, events: event, tradePhase, plannedOrders };
 }
 
 function runOnceJson(file?: string, lines?: number) {
