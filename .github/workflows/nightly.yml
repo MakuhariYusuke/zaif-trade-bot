@@ -1,0 +1,49 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch: {}
+
+concurrency: nightly-ml
+
+jobs:
+  nightly-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: ML export/search/simulate
+        run: npm run ml:export && npm run ml:search && npm run ml:simulate
+      - name: Archive trade plan
+        run: node dist/tools/nightly/archive-plan.js
+      - name: Archive metrics
+        run: node dist/tools/nightly/archive-metrics.js || echo 'metrics archive failed (no logs?)'
+      - name: Upload nightly report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ github.run_id }}
+          path: reports/nightly
+      - name: Summary
+        run: |
+          PLAN_JSON=$(ls -1 reports/nightly/*/trade-plan.json | tail -n1)
+          if [ -f "$PLAN_JSON" ]; then
+            PHASE=$(jq -r '.phase' "$PLAN_JSON")
+            PLANNED=$(jq -r '.plannedOrders' "$PLAN_JSON")
+            TODAY=$(jq -r '.today' "$PLAN_JSON")
+            STATE_JSON=${PLAN_JSON%trade-plan.json}trade-state.json
+            SUCCESS=$(jq -r '.totalSuccess // "-"' "$STATE_JSON" 2>/dev/null || echo '-')
+            echo "Phase=$PHASE Planned=$PLANNED Success=$SUCCESS Date=$TODAY" >> $GITHUB_STEP_SUMMARY
+          else
+            echo 'No plan json found' >> $GITHUB_STEP_SUMMARY
+          fi
