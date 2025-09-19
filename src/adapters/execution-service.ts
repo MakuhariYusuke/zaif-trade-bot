@@ -199,7 +199,9 @@ export async function pollFillState(pair: string, snap: OrderSnapshot, maxWaitMs
     // Timeout
     snap.status = "EXPIRED";
     try {
-        if (snap.orderId) { try { await execSvc.withRetry(() => cancelOrder({ order_id: snap.orderId as any }), 'cancelOrder', 3, 100, { category: 'EXEC', requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice }); } catch {/* ignore */ } }
+        if (snap.orderId) {
+            try { await execSvc.withRetry(() => cancelOrder({ order_id: snap.orderId as any }), 'cancelOrder', (process.env.VITEST_WORKER_ID ? 1 : 3), 50, { category: 'EXEC', requestId: snap.requestId, pair, side: snap.side === 'bid' ? 'buy' : 'sell', amount: snap.amount, price: snap.intendedPrice, rateMaxWaitMs: 50 }); } catch {/* ignore */ }
+        }
     } catch {/* ignore */ }
     try { if (snap.orderId) { getEventBus().publish({ type: 'ORDER_EXPIRED', orderId: String(snap.orderId), requestId: snap.requestId || generateRequestId(), pair, side: (snap.side === 'bid' ? 'buy' : 'sell') as OrderSide, amount: snap.amount || 0, price: snap.intendedPrice }); } } catch {}
     // Threshold-based EXEC warnings

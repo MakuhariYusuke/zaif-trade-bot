@@ -14,7 +14,17 @@ export function todayStr(d: Date = new Date()): string { return d.toISOString().
 export function sleep(ms: number): Promise<void> {
   let delay = ms;
   try {
-    if (process.env.FAST_CI === '1') {
+    const isVitest = !!process.env.VITEST_WORKER_ID;
+    const isTestMode = process.env.TEST_MODE === '1';
+    if (isVitest || isTestMode) {
+      const capEnv = process.env.TEST_SLEEP_MS;
+      if (capEnv != null) {
+        const cap = Math.max(0, Number(capEnv));
+        delay = Math.min(delay, cap);
+      } else {
+        delay = Math.min(delay, 1);
+      }
+    } else if (process.env.FAST_CI === '1') {
       const cap = Math.max(0, Number(process.env.TEST_SLEEP_MS || '5'));
       delay = Math.min(delay, cap);
     }

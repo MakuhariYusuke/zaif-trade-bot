@@ -21,8 +21,8 @@ describe('RateLimiter per-category configs', () => {
     const p = [] as Promise<any>[];
     for (let i=0;i<6;i++) p.push(withRetry(async ()=>1, 'p', 1, 1, { category: 'API-PUBLIC', priority: 'normal', opType: 'QUERY' }));
     await Promise.all(p);
-    // Next PUBLIC within short time should wait/reject; PRIVATE still has tokens
-    await expect(withRetry(async ()=>1, 'p2', 1, 1, { category: 'API-PUBLIC', priority: 'normal', opType: 'QUERY' })).rejects.toBeTruthy().catch(()=>{});
+    // Next PUBLIC within short time should reject quickly with tight max wait
+    await expect(withRetry(async ()=>1, 'p2', 1, 1, { category: 'API-PUBLIC', priority: 'normal', opType: 'QUERY', rateMaxWaitMs: 50 })).rejects.toBeTruthy();
     // PRIVATE has capacity 3
     const q = [] as Promise<any>[];
     for (let i=0;i<3;i++) q.push(withRetry(async ()=>1, 'q', 1, 1, { category: 'API-PRIVATE', priority: 'normal', opType: 'QUERY' }));

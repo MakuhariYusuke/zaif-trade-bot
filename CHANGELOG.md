@@ -2,10 +2,27 @@
 
 ## Unreleased
 
-- CI: テストを5分割（unit/integration/cb-rate/event-metrics/long）し、並列実行対応（`.github/workflows/test-matrix.yml`）。
-- EventBus: 型推論強化（subscribe/publishの型絞り込み）。
-- EVENT/METRICS: 平均/ p95 / ハンドラ別の件数・失敗を定期出力（`EVENT_METRICS_INTERVAL_MS`）。
-- metrics-dash: EVENT/METRICS表示を追加（スパークライン、タイプ別集計）。
+_No changes yet._
+
+## 2.2.1 - 2025-09-19
+
+Patch: 安定化と不要コード整理のみ（後方互換）。
+
+- Cleanup: remove deprecated adapters `adapters/risk-service` and `adapters/position-store` (migrated tests to core/fs implementations).
+- Stabilization (price-cache): corrupted JSON recovery emits guaranteed single synchronous `CACHE_ERROR` (Windows race hardening).
+- Stabilization (indicator-service): missing-volume WARN test now captures structured console args (logger suppression safe).
+- Stabilization (ml-simulate): Windows file visibility race mitigated via direct candidate retry + test sleep (timeout消滅)。
+- CI/Observability: EVENT/METRICS 出力と metrics-dash の追加強化（平均/latency p95, handler counts）。
+- Dev: EventBus subscribe/publish の型推論改善。
+
+## 2.2.0 - 2025-09-19
+
+- README: 全面見直し（Quick Start 最上段、EventBus/publishAndWait、TEST_MODE/Vitest の安定化ポイント、Rate Limiter 章の統合・最新化、live:minimal の使い方整理、旧 services 記述の削除）。
+- EventBus: テスト時に `publishAndWait()` で `TRADE_PLAN`/`TRADE_PHASE` を同期発行（レース回避）。
+- Trade Live: TEST_MODE の昇格閾値デフォルトを緩和（1→2 を 1 日で許容）。
+- Toolkit: `sleep` を Vitest/TEST_MODE 下で自動的に短縮。
+- Rate Limiter: テストスイートがカスタム limiter を注入した場合に強制有効化（メトリクス系テストの安定化）。
+- Docs: スクリプト一覧/主要環境変数/注意事項/CI/Coverage の説明を現状に整合。
 
 ## 2.1.0 - 2025-09-18
 

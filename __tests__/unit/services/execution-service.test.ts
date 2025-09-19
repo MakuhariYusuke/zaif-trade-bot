@@ -18,7 +18,7 @@ describe('services/execution-service.onExitFill', () => {
   it('appends realized PnL and reduces position qty', async () => {
     const pair = 'btc_jpy';
   const { onExitFill } = await import('../../../src/adapters/execution-service');
-  const { savePosition, loadPosition } = await import('../../../src/adapters/position-store');
+  const { savePosition, loadPosition } = await import('../../../src/core/position-store');
     const { loadDaily } = await import('../../../src/utils/daily-stats');
     // seed a long position: avg 100, qty 1
     savePosition({ pair, qty: 1, avgPrice: 100, dcaCount: 0, openOrderIds: [] });

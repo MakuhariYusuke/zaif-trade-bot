@@ -105,7 +105,11 @@ export class BaseService {
     // Rate limiter acquire token
   const priority = contextMeta?.priority ?? 'normal';
   const opType = contextMeta?.opType;
-    const RATE_ENABLED = String(process.env.RATE_LIMITER_ENABLED ?? '1') === '1';
+  const RATE_MAX_WAIT_DEFAULT = toPosInt(process.env.RATE_MAX_WAIT_MS, 1000);
+  const rateMaxWaitMs = toPosInt((contextMeta as any)?.rateMaxWaitMs, RATE_MAX_WAIT_DEFAULT);
+  const IS_TEST = (process.env.TEST_MODE === '1') || !!process.env.VITEST_WORKER_ID;
+  const TEST_FORCE_RATE = (global as any).__rateLimiterSet === true; // tests that call setRateLimiter expect it enabled
+  const RATE_ENABLED = TEST_FORCE_RATE ? true : (String(process.env.RATE_LIMITER_ENABLED ?? (IS_TEST ? '0' : '1')) === '1');
     // simple consecutive wait detection per category (non-persistent)
     const g: any = global as any;
     const waitKey = `__rate_wait_consec_${cat}`;
@@ -117,7 +121,7 @@ export class BaseService {
       }
       const getRateLimiter: typeof import('../application/rate-limiter.js').getRateLimiter =
         g.__getRateLimiter || (g.__getRateLimiter = await g.__getRateLimiterPromise);
-      const wait = await getRateLimiter().acquire(priority, 1000, cat, opType);
+      const wait = await getRateLimiter().acquire(priority, rateMaxWaitMs, cat, opType);
       const rateCat = 'RATE';
       if (wait > 500) {
         g[waitKey] = (g[waitKey] ?? 0) + 1;

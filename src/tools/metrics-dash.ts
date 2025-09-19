@@ -41,7 +41,7 @@ export type EventMetrics = {
 };
 
 function parseArgs(argv: string[]) {
-  const out: any = { file: undefined as string | undefined, lines: 4000 as number, watch: false as boolean, watchMs: 2000 as number };
+  const out: any = { file: undefined as string | undefined, lines: 4000 as number, watch: false as boolean, watchMs: 2000 as number, json: false as boolean };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if ((a === '--file' || a === '-f') && argv[i + 1]) { out.file = argv[++i]; continue; }
@@ -51,13 +51,14 @@ function parseArgs(argv: string[]) {
       if (argv[i + 1] && !argv[i + 1].startsWith('--')) { out.watchMs = Math.max(200, Number(argv[++i]) || 2000); }
       continue;
     }
+    if (a === '--json') { out.json = true; continue; }
     if (a === '--help' || a === '-h') { out.help = true; }
   }
   return out;
 }
 
 function printHelp() {
-  console.log('Usage: ts-node src/tools/metrics-dash.ts [--file <log>] [--lines N] [--watch [intervalMs]]');
+  console.log('Usage: ts-node src/tools/metrics-dash.ts [--file <log>] [--lines N] [--watch [intervalMs]] [--json]');
   console.log('Notes: Prefer LOG_JSON=1 logs. Also attempts plain-text parsing as fallback.');
 }
 
@@ -348,9 +349,39 @@ export async function runDash(opts: { file?: string; lines?: number; watch?: boo
   }
 }
 
+function readTradePhase() {
+  try {
+    const statePath = process.env.TRADE_STATE_FILE || 'trade-state.json';
+    if (!fs.existsSync(statePath)) return null;
+    const s = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    const phase = typeof s.phase === 'number' ? s.phase : null;
+    const totalSuccess = typeof s.totalSuccess === 'number' ? s.totalSuccess : null;
+    return { phase, totalSuccess };
+  } catch { return null; }
+}
+
+export function runOnceCollect(file?: string, lines?: number) {
+  const f = file || process.env.METRICS_LOG || findLatestLogFile();
+  const maxLines = lines ?? 4000;
+  if (!f || !fs.existsSync(f)) {
+    return { error: 'log_not_found', file: f || null } as any;
+  }
+  const content = fs.readFileSync(f, 'utf8');
+  const { entries, ratePlain, cachePlain, eventPlain } = parseEntriesFromContent(content, maxLines);
+  const { rate, cache, event } = pickLatestMetrics(entries, { ratePlain, cachePlain, eventPlain });
+  const tradePhase = readTradePhase();
+  return { rate, cache, events: event, tradePhase };
+}
+
+function runOnceJson(file?: string, lines?: number) {
+  const res = runOnceCollect(file, lines);
+  console.log(JSON.stringify(res));
+}
+
 function runCli() {
   const args = parseArgs(process.argv);
   if (args.help) { printHelp(); return; }
+  if (args.json) { runOnceJson(args.file, args.lines); return; }
   runDash({ file: args.file, lines: args.lines, watch: args.watch, watchMs: args.watchMs }).catch(err => {
     console.error(err?.message || String(err));
     process.exitCode = 1;

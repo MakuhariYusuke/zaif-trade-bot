@@ -2,7 +2,9 @@ import dotenv from "dotenv";
 dotenv.config();
 import { fetchMarketOverview, getAccountBalance, getActiveOrders, cancelOpenOrders } from "../core/market";
 import { initExecution } from "../core/execution";
-import { getRiskConfig, getPositions, calcSMA as calculateSma, describeExit, savePositionsToFile } from "../adapters/risk-service";
+// Migrate away from deprecated adapters/risk-service: use core exports directly
+import { getRiskConfig, calculateSma as calculateSma, describeExit } from "../core/risk";
+import { loadPositions as getPositions, savePositions as savePositionsToFile } from "../adapters/risk-config";
 import { logInfo, logError } from "../utils/logger";
 import { getPriceSeries } from "../utils/price-cache";
 import { createPrivateApi } from "../api/adapters";

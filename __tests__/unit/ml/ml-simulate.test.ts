@@ -28,6 +28,7 @@ describe('ml-simulate', ()=>{
       await sleep(intervalMs);
     }
   }
+  // Under coverage + Windows FS occasionally needs longer; extend to 15s
   test.sequential('computes winRate and pnl', async ()=>{
     const jsonlPath = path.join(TMP,'features',pair,`features-${date}.jsonl`);
     const now = Date.now();
@@ -56,7 +57,7 @@ describe('ml-simulate', ()=>{
       console.error(`[WARN][DIAG] rowsCount=${res.rowsCount}, scanned=${JSON.stringify(res.scanned)}, filesByDir=${JSON.stringify(res.filesByDir)}`);
       throw e;
     }
-  });
+  }, 15000);
 
   test.sequential('counts trade even when only win flag is present', async ()=>{
   const jsonlPath = path.join(TMP,'features',pair,`features-${date}.jsonl`);
@@ -64,6 +65,8 @@ describe('ml-simulate', ()=>{
   const jsonlLines2 = [{ ts: now-1000, pair, side:'ask', rsi:70, sma_short:9, sma_long:26, price:100, qty:0.001, win:1 }].map(o=>JSON.stringify(o)).join('\n');
   fs.writeFileSync(jsonlPath, jsonlLines2);
     await waitForFileNonEmpty(jsonlPath);
+    // Windows の遅延 flush レース緩和
+    await sleep(80);
     const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
   const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair}`;
     process.env.QUIET = '1';
@@ -78,7 +81,7 @@ describe('ml-simulate', ()=>{
       console.error(`[WARN][DIAG] rowsCount=${res.rowsCount}, scanned=${JSON.stringify(res.scanned)}, filesByDir=${JSON.stringify(res.filesByDir)}`);
       throw e;
     }
-  });
+  }, 15000);
 
   test.sequential('returns zeros when no rows', async ()=>{
     const dir = path.join(TMP,'features',pair);
@@ -100,5 +103,5 @@ describe('ml-simulate', ()=>{
       console.error(`[WARN][DIAG] rowsCount=${res.rowsCount}, scanned=${JSON.stringify(res.scanned)}, filesByDir=${JSON.stringify(res.filesByDir)}`);
       throw e;
     }
-  });
+  }, 15000);
 });

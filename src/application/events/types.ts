@@ -23,4 +23,29 @@ export type OrderEvent =
 
 export type ErrorEvent = ({ type: 'EVENT/ERROR' } & EventBaseMeta & { code: string });
 
-export type AppEvent = OrderEvent | ErrorEvent;
+export type IndicatorEvent = {
+  type: 'EVENT/INDICATOR';
+  ts: number;
+  pair: string;
+  snapshot: any;
+};
+
+export type TradePlanEvent = {
+  type: 'EVENT/TRADE_PLAN';
+  ts: number;
+  pair: string;
+  phase: number;
+  plannedOrders: number;
+  dryRun: boolean;
+};
+
+export type TradePhaseEvent = {
+  type: 'EVENT/TRADE_PHASE';
+  ts: number;
+  pair: string;
+  fromPhase: number;
+  toPhase: number;
+  reason?: string;
+};
+
+export type AppEvent = OrderEvent | ErrorEvent | IndicatorEvent | TradePlanEvent | TradePhaseEvent;
