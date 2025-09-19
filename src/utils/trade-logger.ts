@@ -1,27 +1,18 @@
 import fs from "fs";
 import path from "path";
 
-const LOG_DIR = process.env.LOG_DIR || path.resolve(process.cwd(), "logs");
-
+function getLogDir(){
+    return process.env.LOG_DIR || path.resolve(process.cwd(), "logs");
+}
 function dailyLogPath(dateStr?: string) {
     const d = dateStr || new Date().toISOString().slice(0, 10);
-    return path.join(LOG_DIR, `trades-${d}.log`);
+    return path.join(getLogDir(), `trades-${d}.log`);
 }
-
-let currentDate = new Date().toISOString().slice(0, 10);
-let currentLogPath = dailyLogPath(currentDate);
-
-function rotateIfNeeded() {
-    const today = new Date().toISOString().slice(0, 10);
-    if (today !== currentDate) {
-        currentDate = today;
-        currentLogPath = dailyLogPath(today);
-    }
+function ensureDir(dir?: string) {
+    fs.mkdirSync(dir || getLogDir(), { recursive: true });
 }
-
-function ensureDir() {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-}
+// Rotation simplified: path recomputed on each write (date + env sensitive)
+function currentLogFile(){ return dailyLogPath(); }
 
 export type TradeLogType = "SIGNAL" | "ORDER" | "EXECUTION" | "ERROR" | "INFO";
 
@@ -34,9 +25,9 @@ export interface TradeLogEntry {
 
 export function logTrade(entry: TradeLogEntry) {
     try {
-        rotateIfNeeded();
-        ensureDir();
-        fs.appendFileSync(currentLogPath, JSON.stringify(entry) + "\n");
+    const p = currentLogFile();
+    ensureDir(path.dirname(p));
+    fs.appendFileSync(p, JSON.stringify(entry) + "\n");
     } catch (err) {
         console.error("Failed to write trade log:", err);
     }
