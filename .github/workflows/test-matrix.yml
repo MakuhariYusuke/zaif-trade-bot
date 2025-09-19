@@ -294,3 +294,12 @@ jobs:
             } else {
               core.info(body);
             }
+      - name: Slack Summary (optional)
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || '' }}
+        run: |
+          echo "Posting Slack summary (optional)";
+          echo "Note: Using test coverage + trade summary if available.";
+          # Provide minimal payload
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Tests matrix run completed: ${GITHUB_REPOSITORY} #${GITHUB_RUN_NUMBER}\"}" "$SLACK_WEBHOOK_URL" || echo 'slack post failed'
