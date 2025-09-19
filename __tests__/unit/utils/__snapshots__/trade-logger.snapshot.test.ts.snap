@@ -1,0 +1,38 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`trade-logger snapshots > writes SIGNAL/EXECUTION/ERROR/INFO lines and daily report aggregates 1`] = `
+[
+  {
+    "data": {
+      "a": 1,
+    },
+    "message": "sig1",
+    "ts": "T",
+    "type": "SIGNAL",
+  },
+  {
+    "data": {
+      "pnl": 5,
+    },
+    "message": "exec1",
+    "ts": "T",
+    "type": "EXECUTION",
+  },
+  {
+    "data": {
+      "reason": "x",
+    },
+    "message": "err1",
+    "ts": "T",
+    "type": "ERROR",
+  },
+  {
+    "data": {
+      "note": true,
+    },
+    "message": "info1",
+    "ts": "T",
+    "type": "INFO",
+  },
+]
+`;

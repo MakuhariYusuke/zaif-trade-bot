@@ -192,6 +192,29 @@ JSON 出力例（`--json`）
 
 ---
 
+## テスト構成 (2025-09 リファクタ後)
+
+| 種別 | パス | 内容 |
+|------|------|------|
+| Unit | `__tests__/unit/application/events` | EventBus / subscriber 系 (旧 `unit/events` 統合) |
+| Unit | `__tests__/unit/core` | 戦略・実行・ポジション等純粋ロジック |
+| Unit | `__tests__/unit/tools` | CLI/ダッシュ/設定系ユニット |
+| Unit | `__tests__/unit/adapters` | FS/価格キャッシュ/リスク計算アダプタ |
+| Unit | `__tests__/unit/ml` | ML シミュレーション/特徴量/探索 |
+| Unit | `__tests__/unit/obs` | システムメトリクスなど観測系 |
+| Integration | `__tests__/integration/trade-live` | trade-live フロー/フェーズ昇格 |
+
+変更点:
+- `integration-fast` → `integration` に統合
+- `unit/events` を削除し `unit/application/events` に一元化
+- `test:integration-fast` スクリプトが新パスを参照
+
+拡張指針:
+- API 実結合: `__tests__/integration/api/`
+- シナリオ/E2E: `__tests__/integration/scenario/`
+
+---
+
 ## Trade Live（段階制御 / Phase-driven）
 
 - 設定: `trade-config.json`（`TRADE_CONFIG_FILE` で切替）
