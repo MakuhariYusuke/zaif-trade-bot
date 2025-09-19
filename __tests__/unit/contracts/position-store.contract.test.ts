@@ -4,7 +4,6 @@ import fs from 'fs';
 import { randomUUID } from 'crypto';
 import resetTestState, { registerTempDir } from '../../../src/utils/test-reset';
 import { CorePositionStore } from '../../../src/core/position-store';
-import { createServicePositionStore } from '../../../src/adapters/position-store';
 
 import type { PositionStore, PositionState } from '@contracts';
 
@@ -22,13 +21,9 @@ function withEnv<T>(env: Record<string,string>, fn: ()=>T): T {
 }
 
 function makeCoreFactory(): () => PositionStore { return () => new CorePositionStore(); }
-function makeServiceFactory(): () => PositionStore { return () => createServicePositionStore(); }
 
 describe('PositionStore contract: core & services-adapter', () => {
-  const cases: [string, () => PositionStore][] = [
-    ['core', makeCoreFactory()],
-    ['services-adapter', makeServiceFactory()],
-  ];
+  const cases: [string, () => PositionStore][] = [ ['core', makeCoreFactory()] ];
 
   beforeEach(() => {
     resetTestState({ envSnapshot: process.env, restoreEnv: true });

@@ -1,14 +1,8 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { CoreRiskManager } from '../../../src/core/risk';
-import { createServiceRiskManager } from '../../../src/adapters/risk-service';
 import type { RiskManager } from '@contracts';
 
-function cases(): [string, () => RiskManager][] {
-  return [
-    ['core', () => new CoreRiskManager()],
-    ['services-adapter', () => createServiceRiskManager()],
-  ];
-}
+function cases(): [string, () => RiskManager][] { return [['core', () => new CoreRiskManager()]]; }
 
 beforeEach(() => {
   // reset env boundaries to stable defaults

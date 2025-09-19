@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InMemoryEventBus, setEventBus, getEventBus } from '../../../src/application/events/bus';
 import { registerPositionSubscriber } from '../../../src/application/events/subscribers/position-subscriber';
-import * as store from '../../../src/adapters/position-store';
+import * as store from '../../../src/core/position-store';
 
 describe('position-subscriber', () => {
   beforeEach(() => { setEventBus(new InMemoryEventBus()); });

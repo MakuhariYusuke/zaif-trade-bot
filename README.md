@@ -1,254 +1,365 @@
-## Application Events
+# Zaif Trade Bot
 
-The application uses a lightweight in-memory EventBus to decouple execution from side-effecting concerns (positions, stats, logging). The bus is internal-only and not exposed externally.
+軽量・検証重視の Zaif/Coincheck 向け自動売買ボット。SELL ファースト戦略、モック駆動テスト、堅牢なリトライ/CB/Rate 制御を備え、拡張しやすい土台を提供します。
 
-- Bus: `src/application/events/bus.ts` (in-memory, async dispatch via microtask)
-- Types: `src/application/events/types.ts`
-- Subscribers: `src/application/events/subscribers/*`
-- Registration: `registerAllSubscribers()` is called from `src/app/index.ts`
+---
 
-Supported order events (subset):
-- `ORDER_SUBMITTED` — order placed successfully
-- `ORDER_FILLED` — order fully filled (payload includes `filled`, `avgPrice`)
-- `ORDER_PARTIAL` — partial fill (reserved)
-- `ORDER_CANCELED` — order canceled/not found
-- `ORDER_EXPIRED` — polling timed out; treated as expired
-- `SLIPPAGE_REPRICED` — reprice performed due to slippage
+## すぐ使う（Quick Start）
 
-Metadata is included consistently across events:
-- `requestId`, `eventId`, `pair`, `side`, `amount`, `price`, `orderId?`, `retries?`, `cause?`
+1) 依存インストール
+```
+npm install
+```
 
-Example subscription (型推論強化):
+2) 最速検証（モック + ドライラン）
+```
+$env:USE_PRIVATE_MOCK="1"; $env:DRY_RUN="1"; npm start
+```
 
+3) 最小ライブ検証（自己責任・即キャンセル）
+```
+npm run live:minimal
+```
+ヒント: PowerShell では環境変数の一時設定に `$env:NAME="value"` を使用します。
+
+安全上の注意: 本リポジトリは学習・検証目的の参考実装です。実運用はご自身の責任で、極小サイズから十分に検証してください。
+
+---
+
+## アーキテクチャ概要
+
+- `core/`: 純粋ロジック（I/O・fs・env に非依存）
+- `adapters/`: I/O・外部 API 委譲（FS/HTTP/署名/レート制御等）
+- `application/`: 戦略やユースケースのオーケストレーション（イベント購読/集計）
+- `app/`: メインの定期実行ループ（`npm start`）
+- `tools/`: live/paper/ml/stats の各 CLI
+
+移行状況メモ
+- 旧 `src/services/*` は削除済みです。新規/既存コードとも `@adapters/*` を使用してください。
+- 型は `src/contracts` に集約し `@contracts` で import できます。
+
+---
+
+## アプリケーションイベント（EventBus）
+
+軽量なインメモリ EventBus で実行と副作用（ポジション/統計/ロギング）を分離します。外部公開はしません。
+
+- バス: `src/application/events/bus.ts`（既定は非同期 dispatch）
+- 型: `src/application/events/types.ts`
+- サブスクライバ: `src/application/events/subscribers/*`
+- 登録: `registerAllSubscribers()` を `src/app/index.ts` で呼び出し
+
+主なイベント（抜粋）
+- `ORDER_SUBMITTED` / `ORDER_FILLED` / `ORDER_CANCELED` / `ORDER_EXPIRED`
+- `SLIPPAGE_REPRICED`（スリッページによりリプライス）
+- `TRADE_PLAN` / `TRADE_PHASE`（trade-live ツールの計画・段階進行）
+
+共通メタデータ: `requestId`, `eventId`, `pair`, `side`, `amount`, `price`, `orderId?`, `retries?`, `cause?`
+
+購読例（型安全）
 ```ts
-import { getEventBus } from './application/events';
-
-// K が 'ORDER_FILLED' に絞られ、ハンドラ引数の型が自動で絞り込まれます
+import { getEventBus } from '@application/events';
 getEventBus().subscribe('ORDER_FILLED', (e) => {
-	console.log('filled', e.orderId, e.filled, e.avgPrice);
+  console.log('filled', e.orderId, e.filled, e.avgPrice);
 });
 ```
 
-Idempotency: subscribers should tolerate duplicate events. Use `eventId`/`requestId` as idempotency keys.
+Idempotency: `eventId`/`requestId` をキーに重複に耐性を持つ実装にしてください。
 
-Circuit Breaker
-- 内部のサーキットブレーカーで API・実行系の暴走を防ぎます。状態は `CLOSED`/`OPEN`/`HALF_OPEN`。
-- 判定材料: 直近ウィンドウの失敗率・連続失敗回数・レイテンシ中央値。
-- 適用カテゴリ: `API-PUBLIC` / `API-PRIVATE` / `EXEC`（`BaseService.withRetry` が自動で参照）。
-  - 注: `API-PUBLIC` は観測のみ（非ゲート）。`API-PRIVATE` と `EXEC` はゲートされ、`OPEN` 時は実行を即ブロックします。
-- ログ:
-	- 遷移時: `CB/INFO`（例: `{ from: "CLOSED", to: "OPEN", reason: "failure_rate" }`）
-	- ブロック時: `CB/ERROR blocked`（`code: "CIRCUIT_OPEN"` を投げます）
-- HALF_OPEN: `OPEN` から一定クールダウン後に限定試行を許可。試行内の成功率が回復すると `CLOSED` に復帰。
+テスト時の同期発行: 競合を避けるため、Vitest/TEST_MODE では `publishAndWait()` を用いて `TRADE_PLAN`/`TRADE_PHASE` を同期発行しています。
 
-主な既定値（環境変数で上書き可）
-- `CB_WINDOW_SIZE`=50, `CB_FAILURE_THRESHOLD`=0.5, `CB_MAX_CONSEC_FAIL`=5
-- `CB_LATENCY_THRESHOLD_MS`=30000, `CB_HALF_OPEN_TRIAL`=5, `CB_COOLDOWN_MS`=60000
+---
 
-withRetry でのカテゴリ指定例:
+## Circuit Breaker（内蔵）
+
+- 状態: `CLOSED`/`OPEN`/`HALF_OPEN`。判定は失敗率・連続失敗・レイテンシ中央値。
+- 適用: `API-PUBLIC`（観測のみ）, `API-PRIVATE`/`EXEC`（ゲート対象）。
+- ログ: 遷移は `CB/INFO`、ブロックは `CB/ERROR blocked`（`CIRCUIT_OPEN`）。
+- 既定（環境で上書き可）: `CB_WINDOW_SIZE=50`, `CB_FAILURE_THRESHOLD=0.5`, `CB_MAX_CONSEC_FAIL=5`, `CB_LATENCY_THRESHOLD_MS=30000`, `CB_HALF_OPEN_TRIAL=5`, `CB_COOLDOWN_MS=60000`。
+
+withRetry 使用例
 ```ts
 import { withRetry } from '@adapters/base-service';
-
-// 公開API
 await withRetry(() => publicApi.fetchDepth('btc_jpy'), 'fetchDepth', 2, 100, { category: 'API-PUBLIC' });
-
-// 認証API
 await withRetry(() => privateApi.getBalance(), 'getBalance', 3, 150, { category: 'API-PRIVATE' });
-
-// 実行系（キャンセル等）
 await withRetry(() => exec.cancelOrder(orderId), 'cancelOrder', 3, 150, { category: 'EXEC' });
 ```
 
-Rate Limiter
-- 集中トークンバケツで API 呼び出しのスループットを平準化します。プロセス内シングルトン。
-- 適用位置: Circuit Breaker ゲート直後（CB → Rate → Execute）。
-- 既定: `capacity=100`, `refill=10 tokens/sec`, 予約枠 10%（high 優先, EXEC など）。
-- 取得待機: 最大 1 秒待機し、取得できなければ `RATE_LIMITED` で例外。
-- ログ:
-	- `RATE/INFO acquired`（`waitedMs` を含む）
-	- `RATE/WARN waited`（待機 > 500ms かつ連続時に連番 `consec` を含む）
-	- `RATE/ERROR rejected`（1 秒以内に取得できなかった場合）
-	- `RATE/METRICS metrics`（直近50件の統計: 平均待機/拒否率/カテゴリ内訳 + カテゴリ詳細）
+---
 
-環境変数（Rate）
+## Rate Limiter（カテゴリ別・予約枠対応）
+
+- 概要: トークンバケツでスループットを平準化（プロセス内シングルトン）。適用順は CB → Rate → Execute。
+- 既定: `capacity=100`, `refill=10 tokens/sec`, 予約枠 10%（`opType:'ORDER'` のみ使用）。
+- 動作: 最大 1 秒取得待機。未取得で `RATE_LIMITED` を投げます。
+- ログ: `RATE/INFO acquired`, `RATE/WARN waited`, `RATE/ERROR rejected`, `RATE/METRICS metrics`（直近 N=50 の平均待機/拒否率/カテゴリ詳細）。
+
+環境変数（最新）
 - `RATE_LIMITER_ENABLED` (1|0, 既定 1)
-- `RATE_CAPACITY` (既定 100)
-- `RATE_REFILL` (tokens/sec, 既定 10)
-- `RATE_RESERVE_RATIO` (0..1, 既定 0.1)
-  - 後方互換: `RATE_REFILL_PER_SEC`, `RATE_PRIORITY_RESERVE` も読み取り
-- `RATE_METRICS_INTERVAL_MS` (既定 60000, 0 で無効)
+- `RATE_CAPACITY` / `RATE_REFILL`（共通）
+- `RATE_RESERVE_RATIO`（0..1, 既定 0.1）
+- `RATE_METRICS_INTERVAL_MS`（既定 60000, 0 で無効）
+- カテゴリ別: `RATE_CAPACITY_PUBLIC|PRIVATE|EXEC`, `RATE_REFILL_PUBLIC|PRIVATE|EXEC`
+  - 後方互換: `RATE_REFILL_PER_SEC`, `RATE_PRIORITY_RESERVE` も解釈されます。
 
-カテゴリ別レート設定（NEW）
-- カテゴリごとに独立したバケツを作成し、容量/補充速度を指定できます。未指定は共通値にフォールバックします。
-- 環境変数:
-	- `RATE_CAPACITY_PUBLIC`, `RATE_CAPACITY_PRIVATE`, `RATE_CAPACITY_EXEC`
-	- `RATE_REFILL_PUBLIC`, `RATE_REFILL_PRIVATE`, `RATE_REFILL_EXEC`
-- 例（PowerShell）:
-```powershell
-$env:RATE_CAPACITY_PUBLIC="100"; $env:RATE_REFILL_PUBLIC="20";
-$env:RATE_CAPACITY_PRIVATE="50";  $env:RATE_REFILL_PRIVATE="5";
-```
-`RATE/METRICS` の `details` に各カテゴリの `capacity` と `refillPerSec` が含まれます。
-
-使用例（優先度指定）
+withRetry の指定例
 ```ts
-import { withRetry } from '@adapters/base-service';
-
-// 市場系（低優先）
 await withRetry(() => publicApi.getTicker('btc_jpy'), 'getTicker', 2, 100, { category: 'API-PUBLIC', priority: 'low', opType: 'QUERY' });
-
-// 認証系（通常）
 await withRetry(() => privateApi.getBalance(), 'getBalance', 3, 150, { category: 'API-PRIVATE', priority: 'normal' });
-
-// 実行系（高優先: 予約枠は ORDER のみ使用可能）
 await withRetry(() => exec.placeOrder(req), 'placeOrder', 3, 150, { category: 'EXEC', priority: 'high', opType: 'ORDER' });
-// 取消は通常枠（予約枠対象外）
-await withRetry(() => exec.cancelOrder(orderId), 'cancelOrder', 3, 150, { category: 'EXEC', priority: 'high', opType: 'CANCEL' });
+await withRetry(() => exec.cancelOrder(id), 'cancelOrder', 3, 150, { category: 'EXEC', priority: 'high', opType: 'CANCEL' });
 ```
 
-メトリクス出力サンプル（`RATE/METRICS`）
-```
-[INFO][RATE] metrics {
-	"window": 50,
-	"avgWaitMs": 142,
-	"rejectRate": 0.12,
-	"byCategory": { "PUBLIC": 30, "PRIVATE": 10, "EXEC": 10 },
-	"details": {
-		"PUBLIC":  { "count": 30, "acquired": 28, "rejected": 2,  "avgWaitMs": 41,  "rejectRate": 0.067 },
-		"PRIVATE": { "count": 10, "acquired": 9,  "rejected": 1,  "avgWaitMs": 121, "rejectRate": 0.1   },
-		"EXEC":    { "count": 10, "acquired": 9,  "rejected": 1,  "avgWaitMs": 212, "rejectRate": 0.1   }
-	}
-}
-```
+テスト時の扱い（重要）
+- 既定でテストはレート制御を無効化しますが、スイート側でカスタム limiter を注入した場合はグローバルフラグで強制有効になります（メトリクス系テストの安定性向上）。
 
-Cache Metrics
-- 簡易キャッシュ観測を追加しました。ヒット/ミス/ステール（TTL 超過）をカウントし、一定間隔で `CACHE/METRICS` を INFO 出力します。
-- 主な用途: 市場系キャッシュ（`market:ticker`/`market:orderbook`/`market:trades`）の可視化。
-- 実装: `src/utils/cache-metrics.ts`（in-memory）。`src/adapters/market-service.ts` に計測フックを実装済み。
+---
 
-環境変数（Cache Metrics）
-- `CACHE_METRICS_INTERVAL_MS`（既定 60000, 0 で無効）
-- `MARKET_CACHE_TTL_MS`（市場系キャッシュ TTL；既定はコード参照）
+## キャッシュ・メトリクス（任意）
 
-メトリクス出力サンプル（`CACHE/METRICS`）
-```
-[INFO][CACHE] metrics {
-	"market:ticker":   { "hits": 42, "misses": 8,  "stale": 3, "hitRate": 0.84 },
-	"market:orderbook":{ "hits": 35, "misses": 12, "stale": 5, "hitRate": 0.745 }
-}
-```
+- 市場系キャッシュのヒット/ミス/ステールをカウントし、`CACHE/METRICS` を定期出力。
+- 主に `market:ticker`/`market:orderbook`/`market:trades` を可視化。
+- 環境: `CACHE_METRICS_INTERVAL_MS`, `MARKET_CACHE_TTL_MS`。
 
-### ダッシュボード（軽量 CLI）
-- 直近の `RATE/CACHE/EVENT` メトリクスをターミナルに要約表示します。
-- JSON ログが必要です。`LOG_JSON=1` を有効にして稼働させてください。
+---
 
-使い方:
+## ダッシュボード（軽量 CLI）
+
+直近の RATE/CACHE/EVENT メトリクスを要約表示します（`LOG_JSON=1` 前提）。
 ```
 npm run dash
+npm run dash -- --watch         # 2 秒ごと
+npm run dash -- --watch 5000    # 5 秒ごと
 ```
-オプション:
+PowerShell 例
 ```
-npm run dash -- --file .\\logs\\trades-2025-09-17.log --lines 8000
+npm run dash -- --file .\logs\trades-2025-09-17.log --lines 8000
 ```
-備考:
-- 既定では `logs/*.log` と `tmp-*/logs/*.log` から最終更新のファイルを探索します。
-- JSONL 以外のログ形式では解析できません（`LOG_JSON=1` が必要）。
 
-#### リアルタイム監視（--watch）
-- 一定間隔で再読み込みし、最新のメトリクスを更新表示します。
-```
-npm run dash -- --watch            # 2秒ごと
-npm run dash -- --watch 5000       # 5秒ごと
-```
-ヒント:
-- レート制御やキャッシュ、イベントハンドラの実行状況（平均/ p95）を運用観測できます。
-- メトリクス出力間隔の短縮（例）:
-	- `$env:RATE_METRICS_INTERVAL_MS="1000"; $env:CACHE_METRICS_INTERVAL_MS="1000"; $env:EVENT_METRICS_INTERVAL_MS="1000"`
+使い方（補足）
+- フラグ: `--file <path>`（既定は最新ログ自動検出/`METRICS_LOG`）、`--lines N`（末尾N行）、`--watch [ms]`（継続監視）、`--json`（1回分のJSON出力）
+- インタラクティブ操作: 上下矢印で RATE/CACHE/EVENT を切替、左右でスパークライン幅、`q` で終了
+- 表示: RATE は p95/拒否率とカテゴリ別、CACHE はヒット率/ステール率、EVENT はタイプ別 pub/calls/errors/avg/p95 と最頻ハンドラ
+- TRADE_PHASE: `TRADE_STATE_FILE`（既定 `trade-state.json`）を読み取り、現在フェーズと累計成功を併記
+- 精度: `LOG_JSON=1` を推奨（プレーンテキストは簡易パーサのフォールバック）
 
-#### 画面操作と色分け
-- キー操作: `↑/↓` RATE/CACHE 切替, `←/→` スパーク幅調整, `q` 終了
-- 色分けルール:
-	- RATE: `rejRate >10%` 赤, `>5%` 黄, それ以下 緑
-	- WAIT: `avgWaitMs >2000ms` 赤, `>500ms` 黄, それ以下 緑
-	- CACHE: `hitRate <50%` 赤, `<80%` 黄, それ以上 緑
-- NO_COLOR: 環境変数 `NO_COLOR=1` で色を無効化
-
-#### 表示項目（高度指標）
-- RATE: 平均待ち時間の `p95` を併記（スパークの履歴から計算）
-- CACHE: `stale` 比率（`stale / (hits+misses)`）を併記
-- EVENT: 種別ごとの `publishes/calls/errors/avgMs/p95Ms` とトップハンドラ名を表示
-
-### CI（分割・最適化）
-
-- 5分割（unit / integration / cb-rate / event-metrics / long）で並列実行。
-- 日中: `unit`/`integration`/`cb-rate`/`event-metrics` をPR/Pushで実行。
-- 夜間: `schedule` により `long` を含むフル実行。
-- ワークフロー: `.github/workflows/test-matrix.yml`
-
-# Zaif Trade Bot
-
-軽量・検証重視の **Zaif 自動売買ボット**。SELL ファースト戦略 / モック駆動テスト / リスク管理を抑えた拡張しやすい土台です。
-
----
-
-## 📌 概要
-
-- SELL エントリーを起点に SMA / RSI / トレーリングストップでエグジット判断
-- DRY_RUN で実注文なしの検証 / USE_PRIVATE_MOCK=1 でモック fills シミュレーション
-- EXCHANGE=zaif|coincheck で取引所を切替 (初期値 zaif)
-- 冪等 nonce・署名 / 約定ヒューリスティック補完 / 日次統計とトレードログ
-
----
-
-## 📂 ディレクトリ構成
-
-```
-src/
- ├─ app/                 # メイン戦略ループ / 起動制御
- ├─ core/                # execution / market / risk / position-store などコアドメイン
- │   └─ strategies/      # モード別戦略: sell-strategy.ts / buy-strategy.ts
- ├─ api/                 # Zaif REST (public/private) + mock 実装
- ├─ services/            # 互換 shim（次メジャーで削除予定）
- ├─ application/         # ← 新規: 戦略/ユースケースのエントリポイント集約
- ├─ adapters/            # ← services を移行中の実体（@adapters/* を利用）
- ├─ types/               # 型定義 (PrivateApi, OrderLifecycleSummary 等)
- ├─ utils/               # logger, signer, daily-stats, price-cache
- └─ tools/
-### Adapters 移行について（重要）
-
-旧 `src/services/*` は削除されました。`@adapters/*` を使用してください。
-
-- CONFIG/WARN: "Import path deprecated: use @adapters/<name> (will be removed in next major)."
-
-新規コードは `@adapters/*` を使用してください。
-
-### Application 層（戦略エントリ）
-
-- 役割: 戦略/ユースケースの入口を `src/application/` に集約します。
-- 互換性: 既存の `core/strategies/{buy,sell}-strategy.ts` の `run*` は継続提供。
-- 旧 `src/strategies/*` は削除しました。`@application/strategies/*` を使用してください。
-- 例: `import { runBuyStrategy } from '@application/strategies/buy-strategy-app'`。
-
-### Core の最小正本化（第一歩）
-
-- 方針: core は純粋ロジックのみ（I/O, fs, env, console などの副作用なし）
-- adapters は I/O や外部委譲の実装置き場。application は orchestration
-- 本コミットでは以下を追加/調整
-	- `@adapters/risk-config`: リスク設定/ポジション永続への薄いアダプタ（現状は core に委譲）
-	- `@adapters/position-store-fs`: PositionStore の FS 向けアダプタ
-	- `@adapters/risk-service` は `risk-config` 経由の re-export に
-	- 今後、core から I/O を段階的に排除していきます
-
-	 ├─ live/            # ライブ環境向けツール（health, 最小トレード, coincheck/zaif テスト等）
-	 ├─ paper/           # モック/ペーパー用ツール（シナリオ, スモーク, リセット）
-	 ├─ ml/              # 機械学習データ生成・探索
-	 ├─ stats/           # 日次統計の取得・グラフ化
-	 └─ tests/           # 統合テスト系
+JSON 出力例（`--json`）
+```json
+{
+	"rate": { "avgWaitMs": 120, "rejectRate": 0.03, "details": { "PUBLIC": {"acquired": 50} } },
+	"cache": { "ticker": { "hits": 90, "misses": 10, "stale": 2, "hitRate": 0.9 } },
+	"events": { "windowMs": 60000, "types": { "ORDER_FILLED": { "publishes": 3 } } },
+	"tradePhase": { "phase": 2, "totalSuccess": 21 }
+}
 ```
 
 ---
 
-## 🧩 命名規則 (抜粋)
+## 観測性（Observability）まとめ
+
+- ログ形式: 既定はプレーン。`LOG_JSON=1` で JSONL（`ts`,`level`,`category`,`message`,`data[]`）。カテゴリーは `RATE`/`CACHE`/`EVENT` などを使用
+- メトリクス:
+	- Rate Limiter: `RATE/METRICS` を定期出力（平均待機/拒否率/カテゴリ別詳細）。間隔は `RATE_METRICS_INTERVAL_MS`
+	- Cache: `CACHE/METRICS`（ヒット/ミス/ステール）。`CACHE_METRICS_INTERVAL_MS`
+	- Event: `EVENT/METRICS`（タイプ別 pub/calls/errors/latency）。ダッシュが拾います
+- レッドアクション: 機密キー/シークレット/Authorization/生ペイロード等は自動マスク（`src/utils/logger.ts` の `addLoggerRedactFields` で拡張可）
+- 推奨レベル: 運用は `INFO`、調査/CI は `DEBUG`。テスト時は低レベルログを抑制しつつ、重要イベント（ERROR/WARN/メトリクス）は出力
+- 付随メタデータ: `requestId`/`eventId`/`pair`/`side` などをイベントに付与（冪等/相関用）
+
+---
+
+## Trade Live（段階制御 / Phase-driven）
+
+- 設定: `trade-config.json`（`TRADE_CONFIG_FILE` で切替）
+- 状態: `trade-state.json`（`TRADE_STATE_FILE` で切替）
+- コマンド: `npm run trade:live` / `npm run trade:live:dry`
+- 昇格ルールは環境で調整: `PROMO_TO2_DAYS`, `PROMO_TO3_SUCCESS`, `PROMO_TO4_SUCCESS`
+- テストでは `publishAndWait()` により `TRADE_PLAN`/`TRADE_PHASE` を同期発行し、昇格閾値も TEST_MODE デフォルトで緩和（1 日で 1→2 を許可）
+
+### Trading Phases 詳細
+
+- 設定ファイル: `trade-config.json`（`TRADE_CONFIG_FILE` で差し替え）
+	- 例:
+		```json
+		{ "pair":"btc_jpy", "phase":1, "phaseSteps":[
+			{"phase":1,"ordersPerDay":1}, {"phase":2,"ordersPerDay":3}, {"phase":3,"ordersPerDay":5}, {"phase":4,"ordersPerDay":10}
+		]}
+		```
+- 状態ファイル: `trade-state.json`（`TRADE_STATE_FILE`）。`{ phase, consecutiveDays, totalSuccess, lastDate }`
+- 昇格ルール（環境で上書き）: `PROMO_TO2_DAYS`（既定 5・TEST_MODE は 1）/`PROMO_TO3_SUCCESS`（既定 20）/`PROMO_TO4_SUCCESS`（既定 50）
+- CLI:
+	- ドライラン: `npm run -s trade:live:dry > trade-plan.json`（標準出力に計画 JSON: `pair/phase/plannedOrders/today`）
+	- ライブ: `npm run trade:live`（当日の成功数に応じて `trade-state.json` を更新し、必要時 `EVENT/TRADE_PHASE` を発行）
+- テスト安定化: Vitest/TEST_MODE では `publishAndWait()` で `TRADE_PLAN/TRADE_PHASE` を同期発行し、日次成功の既定を 1 に短縮
+
+---
+
+## 日常の使い方
+
+戦略モード切替（`TRADE_MODE=SELL|BUY`）
+- SELL/BUY で戦略を切替。ログに `[SIGNAL][mode=SELL|BUY]` が出ます。
+
+オーダーフロー（`TRADE_FLOW`）
+- `BUY_ONLY|SELL_ONLY|BUY_SELL|SELL_BUY`（既定 BUY_SELL）。
+- `TEST_FLOW_QTY>0` で 1 サイクル内にフロー実行。DRY_RUN=1 なら即時 fill をシミュレート。
+
+Coincheck 切替
+```
+$env:EXCHANGE="coincheck"; npm start
+```
+注意: 最小単位や丸めが異なります。小サイズで開始してください。
+
+---
+
+## スクリプト一覧（主要）
+
+package.json に定義された主なコマンド:
+
+- 実行
+  - `npm start`（メインループ）
+  - `npm run live:minimal`（最小ライブ検証・即キャンセル）
+  - `npm run health`（署名/nonce/permission ヘルス）
+- テスト
+  - `npm run test:unit` / `:int-fast` / `:cb-rate` / `:event-metrics` / `:long`
+  - `npm run test`（カバレッジ込みフル）
+- ツール
+  - `npm run dash`（メトリクスダッシュ）
+  - `npm run stats:today` / `stats:graph`
+  - ML: `ml:export` / `ml:search` / `feature:importance`
+
+---
+
+## TEST_MODE/Vitest の振る舞い（安定化の工夫）
+
+- EventBus: `TRADE_PLAN`/`TRADE_PHASE` を `publishAndWait()` で同期発行。
+- Trade Live: テストでは daySuccess 既定を 1 に短縮し、1→2 昇格を観測しやすくしています。
+- Sleep: `utils/toolkit.sleep` は Vitest/TEST_MODE で自動的に短縮（デフォルト ~1ms）。
+- Live minimal: テスト時は重いサブプロセス/サマリー書き込みをスキップし、タイムアウト回避。
+- Rate Limiter: 既定無効。ただしテストでカスタム limiter をセットした場合は強制有効化しメトリクスを出力。
+- 一時ディレクトリ: テストは一時領域を用い、実データと混ざらないよう配慮（`STATS_DIR`, `POSITION_STORE_DIR` など）。
+
+---
+
+## Coverage / CI
+
+- GitHub Actions で `unit / integration / cb-rate / event-metrics / long` に分割実行。
+- Coverage レポートは Pages に公開可能。ワークフロー: `.github/workflows/coverage-pages.yml`。
+- 既定しきい値: Statements >= 70%。
+
+### テストマトリクス（分割）
+- `unit`: 純粋ロジック/ユーティリティ
+- `integration-fast`: 主要フローの高速結合（EventBus 同期発行でレース回避）
+- `cb-rate`: Circuit Breaker/Rate Limiter の待機・拒否・メトリクス
+- `event-metrics`: EVENT/METRICS の集計とハンドラ健全性
+- `long`（任意）: 長時間スモーク
+
+### Nightly / Paper
+- `paper-nightly`: 1 日分をドライランし、`reports/day-YYYY-MM-DD/` に成果をコミット
+- 主要成果: `stats-timeline.svg`, `stats-diff.json`, `report-summary-paper.json`, `ml-search-top.json`, `trade-plan.json`
+- `trade-plan.json`: `npm run -s trade:live:dry` の出力 JSON。レポート index にリンク
+- `ts-prune.yml`: 未使用エクスポート件数の推移を `ci/reports/ts-prune-*.json` に保存（count/top20 サマリ付き）
+
+### CI チェックリスト
+- テスト green: unit / integration-fast / cb-rate / event-metrics
+- Coverage >= 70%（Pages 有効なら `/coverage/` で HTML 確認）
+- `trade:live:dry` が成功し `trade-plan.json` が生成（レポート index に含まれる）
+- `npm run dash -- --json` が rate/cache/event/tradePhase を返す
+- ts-prune 件数が直近から悪化していない（WoW）
+
+---
+
+## ストレージ破損時の挙動（Recovery Semantics）
+
+対象: price-cache (`price_cache.json`), position-store (`positions.json` など fs 保存物)。
+
+- 原則: 読み込み時に JSON パース失敗すると「破損」と見なし、イベント/ログを 1 回だけ出します。
+	- price-cache: `CACHE_ERROR`（2.2.1 で同期単発保証）。
+	- position-store: 破損は即座に空状態として再初期化（次の write が健全ファイルを再生成）。
+- リカバリ: 過去履歴の再構築は行いません（シンプルさと一貫性優先）。
+- 推奨運用: 日次/週次で `logs/` or `artifacts/` を外部へローテーションし、必要なら別途履歴保管層を実装。
+- チューニング: 高頻度書き込み競合は atomic write（`fs-atomic`）と一時ファイル rename で抑制しています。
+
+FAQ:
+- Q: 破損イベント後はトレード止めるべき？ → 重要度によります。price-cache は再生成されますが、履歴指標計算が乖離するリスクがあるため再計測/監視を推奨。
+
+---
+
+## Live 起動前セーフティチェックリスト
+
+次の最低限を満たしてから `npm run trade:live` もしくは `live:minimal` を実行してください。
+
+1. DRY RUN から開始: `$env:DRY_RUN="1"` で期待ログ/イベントを確認済み
+2. API キー: 取引所（Zaif/Coincheck）側で権限/残高/手数料を確認（最初は極小数量）
+3. `TRADE_CONFIG_FILE`: phaseSteps が意図通り（例: `1,3,10,25`）か再チェック
+4. SAFETY_MODE 有効: `$env:SAFETY_MODE="1"` と clamp ログ動作確認
+5. Rate/Circuit 設定: 既定の `CB_*` / `RATE_*` を本番レイテンシ・API 制限に合わせ調整済み
+6. ログ出力形式: `LOG_JSON=1` でメトリクス/イベントを可視化できる状態
+7. タイムゾーン/時計: OS 時刻同期が取れている（約定タイムスタンプ依存指標を守る）
+8. バックアップ: `trade-state.json` / ポジションファイルの初期バックアップを取得
+9. テスト済み: `npm run test:unit` / `:int-fast` / `:cb-rate` / `:event-metrics` が local green
+10. 失敗ハンドリング: `EVENT/ERROR` ログを監視する簡易アラート（tail or dashboard）用意
+
+追加推奨:
+- 小さな `TEST_FLOW_QTY` で 1 サイクル流し fill→EXIT ライフサイクルを live:minimal で先に確認
+- 監視: 5〜10 分間は手動監視し、意図しない連続注文が無いか確認
+
+---
+
+---
+
+## Live Minimal（DRY_RUN 統合）
+
+最小の発注→即キャンセル検証を `live:minimal` に統合。`DRY_RUN=1` ならモック/ドライラン、`DRY_RUN=0` なら実発注（要 API キー）。
+
+環境変数
+- `EXCHANGE` / `PAIR` / `TRADE_FLOW`
+- `TEST_FLOW_QTY`（DRY_RUN=1 既定 0.002）
+- `TEST_FLOW_RATE` / `ORDER_TYPE=market|limit`
+- `DRY_RUN=0|1`, `SAFETY_MODE=1`, `SAFETY_CLAMP_PCT`, `EXPOSURE_WARN_PCT`
+
+PowerShell 例（実発注・即キャンセル）
+```powershell
+$env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="1"; $env:TEST_FLOW_RATE="490"; $env:DRY_RUN="0"; $env:SAFETY_MODE="1"; npm run live:minimal
+```
+
+---
+
+## テクニカル指標と特徴量ログ
+
+`features-logger` が RSI/SMA/MACD/ATR/BB 幅など多様な指標を自動計算し JSONL で記録します。観測開始時に 1 回だけサンプル WARN を出力します。
+
+---
+
+## 主要な環境変数（抜粋）
+
+| 変数 | 用途 |
+|------|------|
+| `EXCHANGE` | 取引所切替（`zaif`/`coincheck`） |
+| `DRY_RUN` | 実注文せずシミュレーション |
+| `PAIR` | 取引ペア（例: `btc_jpy`） |
+| `TRADE_MODE` | `SELL`/`BUY` |
+| `TRADE_FLOW` / `TEST_FLOW_QTY` | フロー/数量（ワンショット検証） |
+| `ZAIF_API_KEY`/`ZAIF_API_SECRET` | Zaif 認証 |
+| `COINCHECK_API_KEY`/`COINCHECK_API_SECRET` | Coincheck 認証 |
+| `SAFETY_MODE`/`SAFETY_CLAMP_PCT`/`EXPOSURE_WARN_PCT` | 安全クランプ/露出警告 |
+| `RATE_*` / `CB_*` / `CACHE_*` | レート/CB/キャッシュ計測 |
+
+より詳細な一覧はコードの各モジュール（`utils/config` ほか）を参照してください。
+
+---
+
+## 注意事項（重要）
+
+本リポジトリは学習・検証目的です。実運用前に以下を検討してください。
+- API レート制限/指数バックオフ、WebSocket 約定照合、秘密情報管理、冗長化/復旧/アラート、時刻同期（NTP）/nonce 管理。
+
+---
+
+## 変更履歴 / ライセンス
+
+- 変更履歴は `CHANGELOG.md` を参照してください。
+- ライセンスは検討中です。現時点では個人学習向けの利用を想定しています（将来 OSS ライセンス付与予定）。
+
 
 | 種別 | 規則 | 例 |
 |------|------|----|
@@ -589,6 +700,13 @@ Totals: pnl=+12.34, winRate=61.1%, maxDD=3.2, Trend7dWin%=64.3
 {
 	"source": "live",
 	"totals": {
+
+		"winRate": 0.611,
+		"maxDrawdown": 3.2,
+		"trend7dWinRate": 0.643
+	}
+}
+```
 ## 🧼 Core 純化と I/O の外出し（今回の変更）
 
 - 目標: core は純粋ロジックのみ。I/O（fs/HTTP）、logger、環境変数依存は adapters に集約。
@@ -607,13 +725,6 @@ Totals: pnl=+12.34, winRate=61.1%, maxDD=3.2, Trend7dWin%=64.3
 推奨移行先（新規コード）:
 - PositionStore: `import { loadPosition, savePosition } from '@adapters/position-store-fs'`
 - Risk 設定/永続: `import { getRiskConfig, getPositions, savePositionsToFile } from '@adapters/risk-service'`
-
-		"winRate": 0.611,
-		"maxDrawdown": 3.2,
-		"trend7dWinRate": 0.643
-	}
-}
-```
 
 ---
 
@@ -702,6 +813,15 @@ CI 連携
 - 通知（Slack/GitHub コメント）に「ML(random) Top: Win%/PnL/params」に加えて「Top Features: name1,name2,name3…」を 1 行で追記します
 
 備考: `stats-graph` は paper / live の PnL・勝率のテキストオーバーレイを含む SVG を出力します。
+
+---
+## インジケータ（補足）
+
+- 実装: 純粋関数群は `src/utils/indicators.ts` に集約（副作用なし）。EMA/SMA/RSI/MACD/ATR/ボリンジャー/一目/CCI/ROC/Momentum/HMA/KAMA/Donchian/Choppiness/Aroon/Vortex/SuperTrend 等
+- エイリアス推奨: `rsi14`/`atr14`/`macd_hist` など既定パラメータのショート名を採用
+- スナップショット: 指標は features-logger から JSONL に追記。`IND_LOG_EVERY_N>0` で N レコードおきに `[IND]` ダイジェストを DEBUG 出力
+- 欠落サンプルの WARN: 監視開始時に 1 回だけ代表値を WARN ログで提示（冗長抑制のため once）
+- 体感的な注意点: 体積（出来高）依存の指標は現行フローで取得が無い場合があり、その際は null を返します（WARN 付与）。アルゴ側で null セーフに取り扱ってください
 
 ---
 ### テスト実行時の環境変数の注意

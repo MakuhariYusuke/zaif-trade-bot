@@ -1,4 +1,7 @@
-/** @deprecated 次メジャーで core に統合予定 */
+/**
+ * @deprecated 次メジャーで削除予定。`core/position-store` を直接利用してください。
+ * 互換のための薄い facade のみ残しています。
+ */
 import {
     loadPosition as fsLoad,
     savePosition as fsSave,
@@ -26,7 +29,7 @@ export interface StoredPosition {
 }
 export interface FillEvent { pair: string; side: 'bid' | 'ask'; price: number; amount: number; ts: number; matchMethod?: string; }
 
-// Thin adapter delegating to core implementation; public API kept identical
+// Thin facade delegating to core implementation; public API kept identical
 export function loadPosition(pair: string) { return fsLoad(pair); }
 export function savePosition(pos: StoredPosition) { return fsSave(pos as any); }
 export function removePosition(pair: string) { return fsRemove(pair); }

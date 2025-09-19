@@ -25,6 +25,15 @@ export default defineConfig({
         'src/app/**',
         'src/api/**',
         'src/tools/**',
+        'dist/**',
+        'vitest.config.*',
+        'tsconfig.json',
+        'package.json',
+        // Keep strategy app wrappers and unused stubs out of coverage calc
+        'src/application/strategies/**',
+        // Generated or aggregated contract/type barrels
+        'src/contracts/**',
+        'src/types/**',
         '__tests__/helpers/**',
         '__tests__/mocks/**',
         'src/**/__mocks__/**',

@@ -33,6 +33,8 @@ function ensureLoaded(){
             return;
         }
     }
+    let errHappened = false;
+    let emitted = false;
     try {
         if (!fs.existsSync(CACHE_FILE)) { loaded = true; loadedForFile = CACHE_FILE; return; }
         const arr = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
@@ -49,8 +51,13 @@ function ensureLoaded(){
         }
     } catch (err) {
         console.error("Failed to load price cache:", err);
-        try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'CACHE_ERROR', ...buildErrorEventMeta({ requestId: null, pair: null, side: null, amount: null, price: null }, err) } as any); } catch {}
-    } finally { loaded = true; loadedForFile = CACHE_FILE; }
+        errHappened = true;
+        try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'CACHE_ERROR', ...buildErrorEventMeta({ requestId: null, pair: null, side: null, amount: null, price: null }, err) } as any, { async: false }); emitted = true; } catch {}
+    } finally {
+        if (errHappened && !emitted) {
+            try { getEventBus().publish({ type: 'EVENT/ERROR', code: 'CACHE_ERROR', ...buildErrorEventMeta({ requestId: null, pair: null, side: null, amount: null, price: null }, new Error('cache_load_error')) } as any, { async: false }); } catch {}
+        }
+        loaded = true; loadedForFile = CACHE_FILE; }
 }
 
 function toArray(): PricePoint[] {

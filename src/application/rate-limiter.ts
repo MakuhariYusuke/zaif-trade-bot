@@ -158,4 +158,4 @@ export function getRateLimiter(): RateLimiter {
   if (!globalLimiter) globalLimiter = new RateLimiter();
   return globalLimiter;
 }
-export function setRateLimiter(l: RateLimiter | null) { globalLimiter = l; }
+export function setRateLimiter(l: RateLimiter | null) { globalLimiter = l; (globalThis as any).__rateLimiterSet = true; }
