@@ -48,4 +48,16 @@ export type TradePhaseEvent = {
   reason?: string;
 };
 
-export type AppEvent = OrderEvent | ErrorEvent | IndicatorEvent | TradePlanEvent | TradePhaseEvent;
+export type TradeExecutedEvent = {
+  type: 'EVENT/TRADE_EXECUTED';
+  ts: number;
+  pair: string;
+  side: 'BUY' | 'SELL';
+  qty: number;
+  price: number;
+  pnl?: number;
+  success: boolean;
+  requestId: string;
+};
+
+export type AppEvent = OrderEvent | ErrorEvent | IndicatorEvent | TradePlanEvent | TradePhaseEvent | TradeExecutedEvent;
