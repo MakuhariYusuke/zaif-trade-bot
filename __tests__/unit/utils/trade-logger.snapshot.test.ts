@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { logSignal, logExecution, logTradeError, logTradeInfo, generateDailyReport } from '../../../src/utils/trade-logger';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../../src/application/events/bus';
+import { registerTradeLoggerSubscriber } from '../../../src/application/events/subscribers/trade-logger-subscriber';
 import { setLoggerContext, clearLoggerContext, logInfo, logWarn, logError } from '../../../src/utils/logger';
 
 describe('trade-logger snapshots', () => {
@@ -41,5 +43,19 @@ describe('trade-logger snapshots', () => {
     expect(calls.some(l=>/runId=RID/.test(String(l)))).toBe(true);
     expect(calls.some(l=>/phase=2/.test(String(l)))).toBe(true);
     expect(calls.some(l=>/phase=2/.test(String(l)))).toBe(true);
+  });
+
+  it('event subscriber appends ORDER_SUBMITTED line', async () => {
+    // fresh bus & log dir
+    const logsDir = path.join(tmpDir);
+    setEventBus(new InMemoryEventBus());
+    registerTradeLoggerSubscriber();
+    getEventBus().publish({ type: 'ORDER_SUBMITTED', orderId: '1', requestId: 'r1', pair: 'btc_jpy', side: 'buy', amount: 0.1, price: 100 } as any);
+    const today = new Date().toISOString().slice(0,10);
+    const file = path.join(logsDir, `trades-${today}.log`);
+    for (let i=0;i<40 && !fs.existsSync(file);i++) await new Promise(r=>setTimeout(r,5));
+    expect(fs.existsSync(file)).toBe(true);
+    const txt = fs.readFileSync(file, 'utf8');
+    expect(/ORDER_SUBMITTED/.test(txt)).toBe(true);
   });
 });
