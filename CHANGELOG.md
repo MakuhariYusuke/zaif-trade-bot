@@ -4,6 +4,18 @@
 
 _No changes yet._
 
+## 2.2.2 - 2025-09-20
+
+Observability & Metrics Enhancements.
+
+- EventBus: `slowHandlerCount`, `slowRatio`, configurable `EVENTBUS_SLOW_HANDLER_MS` (WARN: `[EVENT] slow-handler`).
+- Metrics Dash: 表示列に slow / slow% 追加、phaseEscalations / phaseDowngrades カウント表示対応。
+- Trade Phase Tracking: escalation / downgrade イベントを集計し Slack summary へ反映。
+- Slack Summary: coverage, commit SHA, RSS / eventLoop delay p95 (SYS) を追加。`--json` オプション導入。
+- System Metrics: `SYS` カテゴリで RSS / heap / handles / event loop p95 を interval 収集 (`SYSTEM_METRICS_INTERVAL_MS`).
+- Validation: trade-live 起動時 validate + system metrics 自動開始。
+- Tests: slow handler WARN / slowRatio / phase counts / system metrics / slack summary JSON 追加。
+
 ## 2.2.1 - 2025-09-19
 
 Patch: 安定化と不要コード整理のみ（後方互換）。

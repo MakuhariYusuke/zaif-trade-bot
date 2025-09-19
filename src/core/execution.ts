@@ -265,7 +265,8 @@ export async function submitOrderWithRetry(p: SubmitRetryParams): Promise<OrderL
                 const bestAsk = snapshot.expectedPx * (actionSide === 'BUY' ? 1 : 1.001);
                 const bestBid = snapshot.expectedPx * (actionSide === 'BUY' ? 0.999 : 1);
                 const refPx = avgFillPrice > 0 ? avgFillPrice : (actionSide === 'BUY' ? bestAsk : bestBid);
-                const slip = Math.abs((refPx - snapshot.expectedPx) / snapshot.expectedPx);
+                const baseSlip = Math.abs((refPx - snapshot.expectedPx) / snapshot.expectedPx);
+                const slip = (process.env.TEST_FORCE_SLIP === '1') ? Math.abs(Number(process.env.TEST_FORCE_SLIP_PCT || '0.01')) : baseSlip;
                 if (slip > maxSlip) {
                     if (repriceAttempts < maxReprice) {
                         if (snapshot.orderId !== 'DRYRUN') {

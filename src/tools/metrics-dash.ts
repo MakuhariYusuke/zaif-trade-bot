@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadTradeConfig, getOrdersPerDay } from '../config/trade-config';
+import { validateConfig } from '../config/validate-config';
 import { loadTradeState } from '../config/trade-state';
 
 export type RateDetails = {
@@ -38,6 +39,7 @@ export type EventMetrics = {
     errors: number;
     avgLatencyMs: number;
     p95LatencyMs: number;
+    slowHandlerCount: number;
     handlers: Record<string, { name: string; calls: number; errors: number; avgLatencyMs: number; p95LatencyMs: number }>;
   }>;
 };
@@ -197,7 +199,7 @@ export function printEvent(ev: EventMetrics, history?: number[]) {
   console.log('=== EVENT/METRICS ===');
   if (history && history.length) console.log(`avgLatency spark: ${buildSparkline(history)}`);
   console.log(`window=${Math.round(ev.windowMs/1000)}s types=${Object.keys(ev.types).length}`);
-  const heads = ['Type','pub','calls','errors','avgMs','p95Ms','topHandler'];
+  const heads = ['Type','pub','calls','errors','avgMs','p95Ms','slow','slow%','topHandler'];
   console.log(heads.join('\t'));
   const entries = Object.entries(ev.types).sort((a,b)=>b[1].handlerCalls - a[1].handlerCalls).slice(0, 8);
   for (const [type, s] of entries) {
@@ -208,7 +210,8 @@ export function printEvent(ev: EventMetrics, history?: number[]) {
     for (const [id, hs] of Object.entries(s.handlers || {})) {
       if (hs.calls > maxCalls) { maxCalls = hs.calls; top = hs.name || id; }
     }
-    console.log([type, s.publishes, s.handlerCalls, errC(String(s.errors)), s.avgLatencyMs, s.p95LatencyMs, top].join('\t'));
+  const slowPct = s.handlerCalls ? ((s.slowHandlerCount / s.handlerCalls)*100).toFixed(1) : '0.0';
+  console.log([type, s.publishes, s.handlerCalls, errC(String(s.errors)), s.avgLatencyMs, s.p95LatencyMs, s.slowHandlerCount || 0, slowPct, top].join('\t'));
   }
   console.log('');
 }
@@ -382,6 +385,8 @@ export function runOnceCollect(file?: string, lines?: number) {
   let failCount = 0;
   let pnlTotal = 0;
   let guardTrips = 0;
+  let phaseEscalations = 0;
+  let phaseDowngrades = 0;
   try {
     for (const e of entries) {
       if (e.category === 'EVENT' && e.message === 'published' && Array.isArray(e.data) && e.data[0]?.type === 'EVENT/TRADE_EXECUTED') {
@@ -393,16 +398,23 @@ export function runOnceCollect(file?: string, lines?: number) {
           failCount++;
           if (ev.reason === 'MAX_ORDERS' || ev.reason === 'MAX_LOSS' || ev.reason === 'SLIPPAGE') guardTrips++;
         }
+      } else if (e.category === 'EVENT' && e.message === 'published' && Array.isArray(e.data) && e.data[0]?.type === 'EVENT/TRADE_PHASE') {
+        const evp = e.data[0];
+        if (typeof evp.fromPhase === 'number' && typeof evp.toPhase === 'number') {
+          if (evp.toPhase > evp.fromPhase) phaseEscalations++;
+          else if (evp.toPhase < evp.fromPhase) phaseDowngrades++;
+        }
       }
     }
   } catch {}
   try {
-    const cfg = loadTradeConfig();
+  const cfg = loadTradeConfig();
+  try { validateConfig(cfg); } catch {}
     const st = loadTradeState();
     const phase = (tradePhase && tradePhase.phase) || st.phase || cfg.phase;
     if (phase) plannedOrders = getOrdersPerDay(cfg, Number(phase));
   } catch { /* ignore */ }
-  const result = { rate, cache, events: event, tradePhase, plannedOrders, executedCount, failCount, pnlTotal, guardTrips };
+  const result = { rate, cache, events: event, tradePhase, plannedOrders, executedCount, failCount, pnlTotal, guardTrips, phaseEscalations, phaseDowngrades };
   try { (global as any).lastExec = result; } catch {}
   return result;
 }
