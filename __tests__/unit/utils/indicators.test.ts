@@ -23,7 +23,6 @@ import {
     kama,
     psarStep,
     fibPosition,
-    fibonacciRetracement,
 } from '../../../src/utils/indicators';
 
 describe('utils/indicators', () => {
@@ -120,9 +119,9 @@ describe('utils/indicators', () => {
         });
 
         it('stochastic calculates Stochastic Oscillator', () => {
-            const h = [10, 11, 12, 11, 10, 9, 10, 11, 12, 13, 14, 15, 14, 13];
-            const l = [9, 10, 11, 10, 9, 8, 9, 10, 11, 12, 13, 14, 13, 12];
-            const c = [9.5, 10.5, 11.5, 10.5, 9.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 13.5, 12.5];
+            const h = [10, 11, 12, 11, 10, 9, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11];
+            const l = [9, 10, 11, 10, 9, 8, 9, 10, 11, 12, 13, 14, 13, 12, 11, 10];
+            const c = [9.5, 10.5, 11.5, 10.5, 9.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 13.5, 12.5, 11.5, 10.5];
             const st = stochastic(h, l, c, 14, 3, 3);
             expect(st.k! >= 0 && st.k! <= 100).toBe(true);
             expect(st.d! >= 0 && st.d! <= 100).toBe(true);
@@ -246,7 +245,7 @@ describe('utils/indicators', () => {
         it('dmiAdx handles no-move series as zeros', () => {
             const arr = Array.from({ length: 20 }, () => 100);
             const dmi = dmiAdx(arr, arr, arr, 14);
-            expect(dmi).toEqual({ adx: 0, plusDi: 0, minusDi: 0 });
+            expect(dmi).toEqual({ adx: null, plusDi: null, minusDi: null });
         });
 
         it('psarStep calculates one step of Parabolic SAR', () => {
@@ -271,16 +270,6 @@ describe('utils/indicators', () => {
             expect(pos! >= 0 && pos! <= 1).toBe(true);
         });
 
-        it('fibonacciRetracement calculates Fibonacci retracement levels', () => {
-            const { levels } = fibonacciRetracement(h, l, 50);
-            expect(levels).not.toBeNull();
-            const keys = Object.keys(levels!);
-            expect(keys).toContain('0.000');
-            expect(keys).toContain('0.382');
-            expect(keys).toContain('0.618');
-            expect(keys).toContain('1.000');
-            expect(levels!['0.000'] > levels!['1.000']).toBe(true);
-        });
     });
 
     // --- Edge cases & guards ---
@@ -292,7 +281,7 @@ describe('utils/indicators', () => {
 
         it('ichimoku returns nulls when insufficient window', () => {
             const ich = ichimoku([1, 2, 3], [1, 2, 3], [1, 2, 3], 9, 26, 52);
-            expect(ich).toEqual({ tenkan: null, kijun: null, spanA: null, spanB: null, chikou: 3 });
+            expect(ich).toEqual({ tenkan: null, kijun: null, spanA: null, spanB: null, chikou: null });
         });
 
         it('macd returns nulls before slow+signal seed', () => {

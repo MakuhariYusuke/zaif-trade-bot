@@ -1,5 +1,6 @@
 import { getEventBus } from '../bus';
-import { updateOnFill, clearOpenOrderId, addOpenOrderId } from '../../../adapters/position-store';
+// Use core position-store (adapter facade deprecated)
+import { updateOnFill, clearOpenOrderId, addOpenOrderId } from '../../../core/position-store';
 import { log } from '../../../utils/logger';
 
 export function registerPositionSubscriber(){
