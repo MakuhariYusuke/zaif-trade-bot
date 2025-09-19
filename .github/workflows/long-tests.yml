@@ -1,0 +1,33 @@
+name: long-tests
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '15 2 * * *' # 毎日 11:15 JST (02:15 UTC)
+
+jobs:
+  long:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      LONG_TESTS: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Run long rate limiter tests
+        run: npm run test:long -- --coverage=false
+      - name: Upload long report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-report-long
+          path: |
+            vitest-report-long.json
+            coverage

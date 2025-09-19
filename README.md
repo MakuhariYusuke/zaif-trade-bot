@@ -91,7 +91,7 @@ await withRetry(() => exec.cancelOrder(orderId), 'cancelOrder', 3, 150, { catego
 
 - 概要: トークンバケツでスループットを平準化（プロセス内シングルトン）。適用順は CB → Rate → Execute。
 - 既定: `capacity=100`, `refill=10 tokens/sec`, 予約枠 10%（`opType:'ORDER'` のみ使用）。
-- 動作: 最大 1 秒取得待機。未取得で `RATE_LIMITED` を投げます。
+- 動作: 通常は最大 1 秒取得待機（`RATE_MAX_WAIT_MS` で上書き可）。未取得で `RATE_LIMITED` を投げます。`LONG_TESTS=1` 環境ではスループット長時間検証用に内部待機上限を 200 秒へ自動拡張し、100〜1000 リクエストシナリオで拒否なく平準化挙動を観測します。
 - ログ: `RATE/INFO acquired`, `RATE/WARN waited`, `RATE/ERROR rejected`, `RATE/METRICS metrics`（直近 N=50 の平均待機/拒否率/カテゴリ詳細）。
 
 環境変数（最新）
@@ -112,6 +112,30 @@ await withRetry(() => exec.cancelOrder(id), 'cancelOrder', 3, 150, { category: '
 
 テスト時の扱い（重要）
 - 既定でテストはレート制御を無効化しますが、スイート側でカスタム limiter を注入した場合はグローバルフラグで強制有効になります（メトリクス系テストの安定性向上）。
+ - 長時間スループット検証 (`LONG_TESTS=1`): 待機上限拡張により拒否率ではなく待機時間分布の回帰を検知可能。
+
+### LONG_TESTS モード
+
+| 項目 | 内容 |
+|------|------|
+| 目的 | レートリミッタの 100 / 1000 リクエスト連続取得でのスループット回帰検知 |
+| 発動 | `LONG_TESTS=1` 環境変数（ローカル/CI） |
+| 主効果 | 内部 `RATE_MAX_WAIT_DEFAULT` を 1000ms → 200000ms に拡張 |
+| 対象テスト | `integration.api.rate.heavy.test.ts`, `rate-limiter.throughput.test.ts` |
+| 期待所要時間 | 100 リクエスト: ~9–12s / 1000 リクエスト: ~90–110s |
+| 本番影響 | 非発動時は従来の 1s 上限で動作 |
+
+ローカル実行例 (PowerShell):
+```powershell
+$env:LONG_TESTS=1; npm run test:long
+```
+
+直接指定例:
+```powershell
+$env:LONG_TESTS=1; npx vitest run __tests__/unit/integration.api.rate.heavy.test.ts __tests__/unit/rate-limiter.throughput.test.ts
+```
+
+CI では手動/ナイトリー用に `LONG_TESTS=1` を付与したワークフローを追加し、性能退行 (拒否増/時間短縮=不正な早期拒否) を監視することを推奨します。
 
 ---
 
