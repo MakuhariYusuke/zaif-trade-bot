@@ -1,4 +1,6 @@
 import { loadTradeConfig, getOrdersPerDay } from '../config/trade-config';
+import { validateConfig } from '../config/validate-config';
+import { startSystemMetrics } from '../obs/system-metrics';
 import { applyPhaseProgress, loadTradeState, saveTradeState, getPromotionRules } from '../config/trade-state';
 import { getEventBus } from '../application/events/bus';
 import { logInfo, logWarn } from '../utils/logger';
@@ -11,6 +13,15 @@ export interface RunTradeLiveOptions {
 
 export async function runTradeLive(opts: RunTradeLiveOptions = {}){
   const cfg = loadTradeConfig();
+  // Validate configuration (warnings emitted via warnOnce). Proceed even if invalid.
+  try {
+    const vr = validateConfig(cfg);
+    if (!vr.valid) {
+      try { logWarn('[CONFIG] trade-live proceeding with invalid config (non-fatal)'); } catch {}
+    }
+  } catch {}
+  // Start system metrics (interval controlled via env)
+  try { startSystemMetrics(); } catch {}
   const state = loadTradeState();
   const today = opts.today || new Date().toISOString().slice(0, 10);
   const phase = Math.max(1, Number(state.phase || cfg.phase));

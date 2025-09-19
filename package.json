@@ -1,6 +1,6 @@
 {
   "name": "zaif-trade-bot",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "main": "dist/index.js",
   "ts-node": {
     "require": [
@@ -38,11 +38,12 @@
     "trend:weekly": "ts-node src/tools/trend-weekly.ts",
   "trade:live": "ts-node src/tools/trade-live.ts",
   "trade:live:dry": "cross-env DRY_RUN=1 ts-node src/tools/trade-live.ts --dry-run",
+  "slack:summary": "ts-node src/tools/slack-summary.ts",
     "test:min-live": "ts-node src/tools/live/test-minimal-live.ts",
     "live:minimal": "ts-node src/tools/live-minimal.ts",
     "test": "vitest run --coverage --reporter=default --reporter=json --outputFile=vitest-report.json",
     "test:unit": "vitest run __tests__/unit/utils __tests__/unit/helpers __tests__/unit/tools __tests__/unit/contracts __tests__/unit/core --reporter=default --reporter=json --outputFile=vitest-report-unit.json",
-  "test:integration-fast": "vitest run __tests__/unit/services __tests__/unit/adapters/position-store-fs.sanity.test.ts __tests__/integration-fast --reporter=default --reporter=json --outputFile=vitest-report-integration.json",
+  "test:integration-fast": "vitest run __tests__/unit/services __tests__/unit/adapters/position-store-fs.sanity.test.ts __tests__/integration --reporter=default --reporter=json --outputFile=vitest-report-integration.json",
   "test:int-fast": "npm run -s test:integration-fast",
     "test:cb-rate": "vitest run __tests__/unit/circuit-breaker.test.ts __tests__/unit/adapters/base-service.cb.exec.test.ts __tests__/unit/adapters/base-service.cb.private.test.ts __tests__/unit/rate-limiter.category.test.ts __tests__/unit/rate-limiter.metrics.details.test.ts __tests__/unit/rate-limiter.metrics.test.ts __tests__/unit/rate-limiter.test.ts __tests__/unit/integration.api.rate.metrics.test.ts __tests__/unit/integration.api.rate.test.ts --reporter=default --reporter=json --outputFile=vitest-report-cb-rate.json",
     "test:event-metrics": "vitest run __tests__/unit/execution-service.events.test.ts __tests__/unit/events __tests__/unit/metrics-dash.watch.test.ts --reporter=default --reporter=json --outputFile=vitest-report-event-metrics.json",
@@ -50,7 +51,9 @@
     "test:integration": "cross-env EXCHANGE=paper DRY_RUN=1 USE_PRIVATE_MOCK=1 TEST_MODE=1 TEST_FLOW_QTY=0.001 npm run mock:scenario && ts-node src/tools/stats/stats-today.ts --diff > stats-diff.json && ts-node __tests__/helpers/test-flow.ts && ts-node src/tools/stats/stats-today.ts --diff > stats-diff-2.json && npm run ml:export && cross-env ML_MAX_WORKERS=1 PAIRS=btc_jpy npm run ml:search && ts-node __tests__/helpers/integration-assert.ts",
     "ci:test": "npm run test && npm run test:integration",
     "ci:test:full": "npm run test && npm run test:integration && npm run stats:today -- --diff",
-    "lint:unused": "ts-prune -p tsconfig.json"
+    "lint:unused": "ts-prune -p tsconfig.json",
+    "clean:tmp": "node -e \"const fs=require('fs');const path='.';for(const f of fs.readdirSync(path)){if(f.startsWith('tmp-')||f.startsWith('tmp_test_')){try{fs.rmSync(f,{recursive:true,force:true})}catch{}}}for(const f of fs.readdirSync('.')){if(/^vitest-report.*json$/.test(f)){try{fs.unlinkSync(f)}catch{}}}\"",
+    "pretest": "npm run -s clean:tmp"
   },
   "dependencies": {
     "axios": "^1.12.0",

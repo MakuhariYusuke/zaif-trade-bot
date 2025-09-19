@@ -47,3 +47,9 @@ jobs:
           else
             echo 'No plan json found' >> $GITHUB_STEP_SUMMARY
           fi
+      - name: Slack Summary (optional)
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || '' }}
+        run: |
+          node dist/tools/slack-summary.js || echo 'slack-summary failed'
