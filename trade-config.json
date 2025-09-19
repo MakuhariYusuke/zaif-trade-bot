@@ -1,0 +1,10 @@
+{
+  "pair": "btc_jpy",
+  "phase": 1,
+  "phaseSteps": [
+    { "phase": 1, "ordersPerDay": 1 },
+    { "phase": 2, "ordersPerDay": 3 },
+    { "phase": 3, "ordersPerDay": 10 },
+    { "phase": 4, "ordersPerDay": 25 }
+  ]
+}
