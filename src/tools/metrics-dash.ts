@@ -305,6 +305,10 @@ export async function runDash(opts: { file?: string; lines?: number; watch?: boo
           eventHistory.push(avg);
           printEvent(event, eventHistory.slice(-sparkWidth));
         }
+        try {
+          const execLine = `EXECUTIONS executed=${(global as any).lastExec?.executedCount ?? 'n/a'} fail=${(global as any).lastExec?.failCount ?? 'n/a'} pnl=${(global as any).lastExec?.pnlTotal ?? 'n/a'} guards=${(global as any).lastExec?.guardTrips ?? 'n/a'} planned=${(global as any).lastExec?.plannedOrders ?? 'n/a'}`;
+          console.log(execLine);
+        } catch {}
       } else if (showRate && rate) { rateHistory.push(Number(rate.avgWaitMs || 0)); console.log('(↑/↓ 切替, ←/→ 幅, q 終了)'); printRate(rate, rateHistory.map(x=>x).slice(-sparkWidth)); }
       else if (!showRate && cache) {
         const avgHit = (() => {
@@ -374,13 +378,33 @@ export function runOnceCollect(file?: string, lines?: number) {
   const tradePhase = readTradePhase();
   // plannedOrders: derive from trade-config + state phase
   let plannedOrders: number | null = null;
+  let executedCount = 0;
+  let failCount = 0;
+  let pnlTotal = 0;
+  let guardTrips = 0;
+  try {
+    for (const e of entries) {
+      if (e.category === 'EVENT' && e.message === 'published' && Array.isArray(e.data) && e.data[0]?.type === 'EVENT/TRADE_EXECUTED') {
+        const ev = e.data[0];
+        if (ev.success) {
+          executedCount++;
+          if (typeof ev.pnl === 'number') pnlTotal += ev.pnl;
+        } else {
+          failCount++;
+          if (ev.reason === 'MAX_ORDERS' || ev.reason === 'MAX_LOSS' || ev.reason === 'SLIPPAGE') guardTrips++;
+        }
+      }
+    }
+  } catch {}
   try {
     const cfg = loadTradeConfig();
     const st = loadTradeState();
     const phase = (tradePhase && tradePhase.phase) || st.phase || cfg.phase;
     if (phase) plannedOrders = getOrdersPerDay(cfg, Number(phase));
   } catch { /* ignore */ }
-  return { rate, cache, events: event, tradePhase, plannedOrders };
+  const result = { rate, cache, events: event, tradePhase, plannedOrders, executedCount, failCount, pnlTotal, guardTrips };
+  try { (global as any).lastExec = result; } catch {}
+  return result;
 }
 
 function runOnceJson(file?: string, lines?: number) {

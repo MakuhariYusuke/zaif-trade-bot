@@ -58,6 +58,9 @@ export type TradeExecutedEvent = {
   pnl?: number;
   success: boolean;
   requestId: string;
+  reason?: ExecutionFailReason;
 };
+
+export type ExecutionFailReason = 'MAX_ORDERS' | 'MAX_LOSS' | 'SLIPPAGE';
 
 export type AppEvent = OrderEvent | ErrorEvent | IndicatorEvent | TradePlanEvent | TradePhaseEvent | TradeExecutedEvent;
