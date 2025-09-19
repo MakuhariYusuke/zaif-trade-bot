@@ -20,10 +20,10 @@ describe('event bus publishAndWait', () => {
     expect(calls.length >= 0).toBe(true);
   });
 
-  it('captures handler error without throwing aggregate', async () => {
+  it('captures handler error via setErrorHandler without unhandled rejection', async () => {
     const bus = new InMemoryEventBus();
     let errorCaptured = false;
-    (bus as any).setErrorHandler?.(()=>{ errorCaptured = true; });
+    bus.setErrorHandler?.(()=>{ errorCaptured = true; });
     bus.subscribe('TRADE_EXECUTED' as any, ()=>{ throw new Error('boom'); });
     await bus.publishAndWait!({ type: 'TRADE_EXECUTED', eventId: 'E3' } as any, { timeoutMs: 50, captureErrors: true });
     expect(errorCaptured).toBe(true);
