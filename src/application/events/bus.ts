@@ -27,6 +27,7 @@ export class InMemoryEventBus implements EventBus {
       errors: number;
       sumLatency: number;
       lats: number[];
+      slowHandlerCount: number;
       byHandler: Map<string, { name: string; calls: number; errors: number; sumLatency: number; lats: number[] }>
     }>(),
   };
@@ -51,16 +52,21 @@ export class InMemoryEventBus implements EventBus {
     return id;
   }
   private recPublish(type: string){
-    const s = this.metrics.byType.get(type) || { publishes: 0, handlerCalls: 0, errors: 0, sumLatency: 0, lats: [] as number[], byHandler: new Map<string, { name: string; calls: number; errors: number; sumLatency: number; lats: number[] }>() };
+    const s = this.metrics.byType.get(type) || { publishes: 0, handlerCalls: 0, errors: 0, sumLatency: 0, lats: [] as number[], slowHandlerCount: 0, byHandler: new Map<string, { name: string; calls: number; errors: number; sumLatency: number; lats: number[] }>() };
     s.publishes++;
     this.metrics.byType.set(type, s);
   }
   private recCall(type: string, h: EventHandler, ok: boolean, latencyMs: number){
-    const s = this.metrics.byType.get(type) || { publishes: 0, handlerCalls: 0, errors: 0, sumLatency: 0, lats: [] as number[], byHandler: new Map<string, { name: string; calls: number; errors: number; sumLatency: number; lats: number[] }>() };
+    const s = this.metrics.byType.get(type) || { publishes: 0, handlerCalls: 0, errors: 0, sumLatency: 0, lats: [] as number[], slowHandlerCount: 0, byHandler: new Map<string, { name: string; calls: number; errors: number; sumLatency: number; lats: number[] }>() };
     s.handlerCalls++;
     if (!ok) s.errors++;
     s.sumLatency += latencyMs;
     if (s.lats.length < this.latCap) s.lats.push(latencyMs);
+    const slowThreshold = Number(process.env.EVENTBUS_SLOW_HANDLER_MS || 100);
+    if (latencyMs >= slowThreshold) {
+      s.slowHandlerCount++;
+      try { logCat('WARN','EVENT','slow-handler',{ type, latencyMs, handler: (h as any).name || 'anon', threshold: slowThreshold }); } catch {}
+    }
     const id = this.getHandlerId(h);
     const name = (h as any).name || 'anon';
     const hs = s.byHandler.get(id) || { name, calls: 0, errors: 0, sumLatency: 0, lats: [] as number[] };
@@ -99,6 +105,8 @@ export class InMemoryEventBus implements EventBus {
         errors: s.errors,
         avgLatencyMs: Math.round(avg),
         p95LatencyMs: Math.round(p95),
+        slowHandlerCount: s.slowHandlerCount,
+        slowRatio: s.handlerCalls ? Number((s.slowHandlerCount / s.handlerCalls).toFixed(3)) : 0,
         handlers: byHandler,
       };
     }
