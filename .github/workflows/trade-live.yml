@@ -1,0 +1,45 @@
+name: trade-live
+
+on:
+  workflow_dispatch: {}
+
+concurrency: trade-live
+
+jobs:
+  run-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Run live trading (simulation/real)
+        env:
+          # ここに実取引用の API KEY / SECRET などを repository secret として追加してください
+          # EXCHANGE_API_KEY: ${{ secrets.EXCHANGE_API_KEY }}
+          # EXCHANGE_API_SECRET: ${{ secrets.EXCHANGE_API_SECRET }}
+          NODE_ENV: production
+        run: npm run trade:live || echo 'trade:live exited with non-zero status'
+      - name: Nightly summary artifact (optional)
+        if: always()
+        run: |
+          # metrics-dash 実行などで metrics.json を生成している場合は archive-metrics を流用可
+          if [ -f dist/tools/nightly/slack-summary.js ]; then
+            SUMMARY=$(node dist/tools/nightly/slack-summary.js)
+            echo "${SUMMARY}" >> $GITHUB_STEP_SUMMARY
+            echo "Slack summary: ${SUMMARY}" # placeholder
+          else
+            echo 'slack-summary not built' >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Slack notify (placeholder)
+        if: always()
+        run: |
+          echo 'Implement Slack webhook: curl -X POST $SLACK_WEBHOOK -H "Content-Type: application/json" -d "{\"text\": \"'"$(node dist/tools/nightly/slack-summary.js 2>/dev/null || echo 'no-summary')"'\"}"'
