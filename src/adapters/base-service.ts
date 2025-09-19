@@ -105,7 +105,10 @@ export class BaseService {
     // Rate limiter acquire token
   const priority = contextMeta?.priority ?? 'normal';
   const opType = contextMeta?.opType;
-  const RATE_MAX_WAIT_DEFAULT = toPosInt(process.env.RATE_MAX_WAIT_MS, 1000);
+  // LONG_TESTS=1 の長時間スループット計測では 1000 件(≒100秒) 等を完了させるため
+  // デフォルト待機時間を大幅に引き上げる。通常実行では短い待ちで速やかに RATE_LIMITED を返す。
+  const LONG_MODE = String(process.env.LONG_TESTS || '0') === '1';
+  const RATE_MAX_WAIT_DEFAULT = toPosInt(process.env.RATE_MAX_WAIT_MS, LONG_MODE ? 200_000 : 1000);
   const rateMaxWaitMs = toPosInt((contextMeta as any)?.rateMaxWaitMs, RATE_MAX_WAIT_DEFAULT);
   const IS_TEST = (process.env.TEST_MODE === '1') || !!process.env.VITEST_WORKER_ID;
   const TEST_FORCE_RATE = (global as any).__rateLimiterSet === true; // tests that call setRateLimiter expect it enabled
