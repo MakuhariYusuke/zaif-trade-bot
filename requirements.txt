@@ -1,0 +1,27 @@
+# Python RL環境 必要ライブラリ
+# Stable-Baselines3 for PPO
+stable-baselines3[extra]>=2.0.0
+
+# PyTorch for neural networks
+torch>=2.0.0
+
+# Data processing
+pandas>=2.0.0
+pyarrow>=14.0.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Jupyter for analysis
+jupyterlab>=4.0.0
+
+# Hyperparameter optimization
+optuna>=3.0.0
+
+# Gym environment
+gymnasium>=0.29.0
+
+# Additional utilities
+numpy>=1.24.0
+scikit-learn>=1.3.0
