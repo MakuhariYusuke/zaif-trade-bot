@@ -314,12 +314,6 @@ export function appendFillPnl(date: string, pnl: number, pair?: string) {
     } catch { }
 }
 
-export function incTrailArmed(date: string, pair?: string) {
-    const agg = loadDaily(date, pair);
-    agg.trailArmedTotal = (agg.trailArmedTotal || 0) + 1;
-    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
-}
-
 export function incTrailExit(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.trailExitTotal = (agg.trailExitTotal || 0) + 1;
@@ -334,11 +328,6 @@ export function incSellEntry(date: string, pair?: string) {
 export function incBuyEntry(date: string, pair?: string) {
     const agg = loadDaily(date, pair);
     agg.buyEntries = (agg.buyEntries||0)+1;
-    try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
-}
-export function incBuyExit(date: string, pair?: string) {
-    const agg = loadDaily(date, pair);
-    agg.buyExits = (agg.buyExits||0)+1;
     try { const f = fileFor(date, pair); queueWrite(f, agg); } catch {}
 }
 export function incRsiExit(date: string, pair?: string) {

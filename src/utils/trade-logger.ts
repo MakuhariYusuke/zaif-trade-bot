@@ -36,9 +36,6 @@ export function logTrade(entry: TradeLogEntry) {
 export function logSignal(message: string, data?: any) {
     logTrade({ ts: new Date().toISOString(), type: "SIGNAL", message, data });
 }
-export function logOrder(message: string, data?: any) {
-    logTrade({ ts: new Date().toISOString(), type: "ORDER", message, data });
-}
 export function logExecution(message: string, data?: any) {
     logTrade({ ts: new Date().toISOString(), type: "EXECUTION", message, data });
 }
