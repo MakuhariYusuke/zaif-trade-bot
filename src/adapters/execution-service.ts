@@ -5,7 +5,7 @@ let privExec: PrivateApi | undefined;
 export function init(privateApi: PrivateApi) { privExec = privateApi; }
 import { logExecution, logTradeError, logSignal } from "../utils/trade-logger";
 import BaseService from "./base-service";
-import { loadPosition, savePosition } from "./position-store";
+import { loadPosition, savePosition } from "../core/position-store";
 import { appendFillPnl } from "../utils/daily-stats";
 import { getAndResetLastRequestNonceRetries } from "../api/zaif-private";
 import { OrderLifecycleSummary } from "../types/domain";

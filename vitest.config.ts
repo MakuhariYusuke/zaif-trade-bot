@@ -12,13 +12,20 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-  setupFiles: ['src/test/setup.ts'],
+    setupFiles: ['src/test/setup.ts'],
     coverage: {
-      reporter: ['text', 'json', 'html'],
+      enabled: true,
+      provider: 'v8',
+      reporter: ['text', 'text-summary', 'lcov', 'json'],
       reportsDirectory: 'coverage',
       thresholds: {
-        // Allow overriding from env to avoid per-job failures in CI matrix
-        statements: Number(process.env.COVERAGE_STMTS ?? '70'),
+        global: {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80
+        },
+        perFile: true
       },
       exclude: [
         'src/index.ts',
@@ -39,7 +46,7 @@ export default defineConfig({
         'src/**/__mocks__/**',
       ]
     },
-  include: ['__tests__/**/*.test.ts'],
-  exclude: ['__tests__/**/*.test.js', '__tests__/*.test.ts']
+    include: ['__tests__/**/*.test.ts'],
+    exclude: ['__tests__/**/*.test.js', '__tests__/*.test.ts']
   }
 });
