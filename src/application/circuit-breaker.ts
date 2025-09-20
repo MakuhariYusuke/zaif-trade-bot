@@ -127,11 +127,16 @@ export class CircuitBreaker {
     if (this.state === 'HALF_OPEN') {
       // immediate open if failure during trial
       this.transition('OPEN', 'half_open_failure');
+      logInfo('CIRCUIT_BREAKER', `Circuit opened due to failure in HALF_OPEN state. Cause: ${cause?.message || cause || 'unknown'}`);
       this.halfOpenAttempts = 0;
     } else {
       // CLOSED
       const shouldOpen = this.consecutiveFailures > this.maxConsecutiveFailures || this.failureRate() > this.failureThreshold;
-      if (shouldOpen) this.transition('OPEN', this.consecutiveFailures > this.maxConsecutiveFailures ? 'consecutive_fail' : 'failure_rate');
+      if (shouldOpen) {
+        const reason = this.consecutiveFailures > this.maxConsecutiveFailures ? 'consecutive_fail' : 'failure_rate';
+        this.transition('OPEN', reason);
+        logInfo('CIRCUIT_BREAKER', `Circuit opened due to ${reason}. Consecutive failures: ${this.consecutiveFailures}, Failure rate: ${(this.failureRate() * 100).toFixed(1)}%. Cause: ${cause?.message || cause || 'unknown'}`);
+      }
     }
     this.trimWindow();
   }
@@ -161,6 +166,7 @@ export class CircuitBreaker {
   private transition(next: CircuitState, reason: string) {
     const prev = this.state;
     if (prev === next) return;
+    logInfo('CIRCUIT_BREAKER', `State transition: ${prev} -> ${next} (reason: ${reason})`);
     this.state = next;
     this.lastStateChange = Date.now();
     if (next === 'HALF_OPEN') {
