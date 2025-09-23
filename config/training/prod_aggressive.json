@@ -1,0 +1,80 @@
+{
+  "data": {
+    "train_data": "data/features/2025/04/sample_04.parquet",
+    "test_data": "data/features/2025/09/*.parquet",
+    "validation_data": "data/features/2025/08/*.parquet"
+  },
+  "training": {
+    "total_timesteps": 1000000,
+    "eval_freq": 10000,
+    "n_eval_episodes": 10,
+    "batch_size": 128,
+    "n_steps": 4096,
+    "gamma": 0.99,
+    "learning_rate": 0.001,
+    "ent_coef": 0.05,
+    "clip_range": 0.2,
+    "n_epochs": 15,
+    "gae_lambda": 0.95,
+    "max_grad_norm": 0.5,
+    "vf_coef": 0.5,
+    "verbose": 1,
+    "seed": 123
+  },
+  "environment": {
+    "reward_scaling": 1.5,
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "risk_free_rate": 0.0,
+    "reward_type": "aggressive"
+  },
+  "optimization": {
+    "n_trials": 100,
+    "timeout": 3600,
+    "metric": "mean_reward",
+    "retrain_best": true,
+    "full_timesteps": 200000
+  },
+  "evaluation": {
+    "n_eval_episodes": 20,
+    "n_episodes": 20,
+    "max_steps_per_episode": 10000,
+    "deterministic": true,
+    "plot_style": "default"
+  },
+  "paths": {
+    "log_dir": "../logs/",
+    "model_dir": "../models/ppo_halfyear_aggressive",
+    "results_dir": "../results/",
+    "opt_dir": "../optimization/",
+    "tensorboard_log": "../tensorboard/"
+  },
+  "experiment": {
+    "name": "ppo_halfyear_aggressive",
+    "description": "1M steps training focused on aggressive trading with higher risk tolerance",
+    "seed": 123
+  },
+  "data_quality": {
+    "outlier_threshold_percent": 10.0
+  },
+  "notifications": {
+    "win_rate_threshold_percent": 50.0
+  },
+  "parallel_training": {
+    "generalization_priority": "high",
+    "aggressive_priority": "low",
+    "cpu_affinity_enabled": true,
+    "nice_values": {
+      "high": -10,
+      "low": 10
+    }
+  },
+  "fee_model": {
+    "default_fee_rate": 0.001,
+    "exchange_fees": {
+      "coincheck": 0.0,
+      "bitflyer": 0.001,
+      "binance": 0.001
+    }
+  }
+}
