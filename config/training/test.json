@@ -1,0 +1,52 @@
+{
+  "data": {
+    "train_data": "data/features/2025/04/sample_04.parquet",
+    "test_data": "data/features/2025/09/*.parquet",
+    "validation_data": "data/features/2025/08/*.parquet"
+  },
+  "training": {
+    "total_timesteps": 1000,
+    "eval_freq": 500,
+    "n_eval_episodes": 5,
+    "batch_size": 32,
+    "n_steps": 1024,
+    "gamma": 0.995,
+    "learning_rate": 0.0001,
+    "ent_coef": 0.02,
+    "clip_range": 0.15,
+    "n_epochs": 10,
+    "gae_lambda": 0.98,
+    "max_grad_norm": 0.3,
+    "vf_coef": 0.6,
+    "verbose": 1,
+    "seed": 42
+  },
+  "environment": {
+    "reward_scaling": 1.0,
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "risk_free_rate": 0.0,
+    "reward_type": "aggressive"
+  },
+  "optimization": {
+    "n_trials": 10,
+    "timeout": 300,
+    "metric": "mean_reward",
+    "retrain_best": true,
+    "full_timesteps": 1000
+  },
+  "evaluation": {
+    "n_eval_episodes": 5,
+    "n_episodes": 5,
+    "max_steps_per_episode": 1000,
+    "deterministic": true,
+    "plot_style": "default"
+  },
+  "paths": {
+    "log_dir": "../logs/",
+    "model_dir": "../models/ppo_halfyear_baseline",
+    "results_dir": "../results/",
+    "opt_dir": "../optimization/",
+    "tensorboard_log": "../tensorboard/"
+  }
+}
