@@ -84,11 +84,15 @@ class DiscordNotifier:
     def start_session(self, session_type: str = "training", config_name: str = "default") -> str:
         """セッション開始通知"""
         self.session_start_time = datetime.now()
-        self.session_id = self.session_start_time.strftime('%Y%m%d-%H%M')
+        self.session_id = self.session_start_time.strftime('%Y%m%d-%H%M%S')
 
-        content = f"{'🧪' if self.test_mode else '🚀'} **{session_type.title()} Session Started**\n\n**Session ID:** `{self.session_id}`\n**Config:** `{config_name}`\n**Start Time:** {self.session_start_time.strftime('%Y-%m-%d %H:%M:%S')} JST\n**Session Type:** {session_type.title()}"
+        icon = "🧪" if self.test_mode else "🚀"
+        title = f"{icon} **{session_type.title()} Session Started**"
 
-        self._send_notification(content, 0x00ff00)  # Green
+        content = f"{title}\n\n**Session ID:** `{self.session_id}`\n**Config:** `{config_name}`\n**Start Time:** {self.session_start_time.strftime('%Y-%m-%d %H:%M:%S')} JST\n**Session Type:** {session_type.title()}"
+
+        color = 0x00ff00  # Green for start
+        self._send_notification(content, color)
         return self.session_id
 
     def end_session(self, results: Dict[str, Any], session_type: str = "training") -> None:
@@ -129,11 +133,27 @@ class DiscordNotifier:
         pnl_unit = "BTC" if buy_ratio > sell_ratio else "JPY"
         total_pnl = pnl_stats.get('mean_total_pnl', 0)
 
-        content = f"{'🧪' if self.test_mode else '✅'} **{session_type.title()} Session Completed**\n\n**Session ID:** `{self.session_id}`\n**Duration:** `{str(duration).split('.')[0]}`\n**End Time:** {end_time.strftime('%Y-%m-%d %H:%M:%S')} JST\n\n**Win Rate:** {win_rate_percent:.1f}% {'(参考)' if win_rate_percent < win_rate_threshold else ''}\n**Total Trades:** {total_trades}\n**Profit Factor:** {profit_factor:.2f} {'(参考)' if total_trades < 100 else ''}\n**Total PnL:** {total_pnl:,.2f} {pnl_unit}\n**Max Drawdown:** {pnl_stats.get('max_drawdown', 0):.4f}\n**Avg Hold Time:** {trading_stats.get('mean_trades_per_episode', 0):.1f} trades/episode\n**Total Fees:** {total_trades * 0.001:,.4f} BTC\n**Max Position Size:** 1.0\n**Risk Reduction Triggers:** 0"
+        content = f"{'🧪' if self.test_mode else '✅'} **{session_type.title()} Session Completed**\n\n**Session ID:** `{self.session_id}`\n**Duration:** `{str(duration).split('.')[0]}`\n**End Time:** {end_time.strftime('%Y-%m-%d %H:%M:%S')} JST\n\n"
+
+        # 数値系をコードブロックにまとめる
+        content += "```\n"
+        content += f"Win Rate: {win_rate_percent:.1f}% {'(参考)' if win_rate_percent < win_rate_threshold else ''}\n"
+        content += f"Profit Factor: {profit_factor:.2f}\n"
+        content += f"Total Trades: {total_trades}\n"
+        content += f"Total PnL: {total_pnl:,.2f} {pnl_unit}\n"
+        content += f"Max Drawdown: {pnl_stats.get('max_drawdown', 0):.4f}\n"
+        content += f"Avg Hold Time: {trading_stats.get('mean_trades_per_episode', 0):.1f} trades/episode\n"
+        content += f"Total Fees: {total_trades * 0.001:,.4f} BTC\n"
+        content += f"Max Position Size: 1.0\n"
+        content += f"Risk Reduction Triggers: 0\n"
+        content += "```"
+
+        # 色設定：勝率が閾値下回りなら黄、それ以外は緑
+        color = 0xffff00 if win_rate_percent < win_rate_threshold else 0x00ff00
 
         # 勝率が閾値を下回った場合のみ通知
         if should_notify:
-            self._send_notification(content, 0x0000ff)  # Blue
+            self._send_notification(content, color)
         else:
             logging.info(f"Win rate {win_rate_percent:.1f}% is above threshold {win_rate_threshold}%, skipping notification")
 
@@ -141,7 +161,10 @@ class DiscordNotifier:
         """致命的エラー時の即時通知"""
         error_time = datetime.now()
 
-        content = f"🚨 **Critical Error Alert**\n\n**Session ID:** `{self.session_id or 'Unknown'}`\n**Error:** {error_message}\n**Error Time:** {error_time.strftime('%Y-%m-%d %H:%M:%S')} JST"
+        icon = "🧪" if self.test_mode else "🚨"
+        title = f"{icon} **Critical Error Alert**"
+
+        content = f"{title}\n\n**Session ID:** `{self.session_id or 'Unknown'}`\n**Error:** {error_message}\n**Error Time:** {error_time.strftime('%Y-%m-%d %H:%M:%S')} JST"
         if error_details:
             content += f"\n\n**Error Details:**\n```\n{error_details[:1000]}\n```"
 
