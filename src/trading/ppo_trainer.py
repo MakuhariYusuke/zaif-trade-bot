@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import torch
+import psutil
 from typing import Dict, Any, Optional
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
@@ -21,6 +22,8 @@ import seaborn as sns
 from datetime import datetime
 import json
 import logging
+import gzip
+from logging.handlers import BufferingHandler
 
 # ローカルモジュールのインポート
 # sys.path.append(str(Path(__file__).parent.parent.parent.parent))  # プロジェクトルートを追加
@@ -94,9 +97,23 @@ class CheckpointCallback(BaseCallback):
             if self.n_calls % self.save_freq == 0:
                 checkpoint_path = self.save_path / f"{self.name_prefix}_{self.n_calls}"
                 self.model.save(str(checkpoint_path))
+                
+                # gzip圧縮
+                try:
+                    zip_path = checkpoint_path.with_suffix('.zip')
+                    gz_path = checkpoint_path.with_suffix('.zip.gz')
+                    with open(str(zip_path), 'rb') as f_in:
+                        with gzip.open(str(gz_path), 'wb') as f_out:
+                            f_out.writelines(f_in)
+                    # 元ファイルを削除
+                    zip_path.unlink()
+                    checkpoint_path = gz_path
+                except Exception as e:
+                    logging.warning(f"Failed to compress checkpoint: {e}")
+                
                 total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
                 progress_percent = (self.n_calls / total_timesteps) * 100
-                progress_msg = f"Step {self.n_calls:,} / {self.locals.get('total_timesteps', 1000000):,} ({progress_percent:.1f}%)"
+                progress_msg = f"Step {self.n_calls:,} / {self.n_calls:,} ({progress_percent:.1f}%)"
 
                 # INFOログ
                 logging.info(progress_msg)
@@ -198,29 +215,28 @@ class PPOTrainer:
         self.df = self._load_data()
 
         # 環境の作成
-        # 環境の作成
         self.env = self._create_env()
 
-    def _setup_cpu_optimization(self):
+    def _setup_cpu_optimization(self) -> None:
         """CPU最適化設定"""
-        try:
-            import torch
-            # CPUスレッド数設定
-            num_threads = min(4, os.cpu_count() or 4)  # 最大4スレッド
-            torch.set_num_threads(num_threads)
-            
-            # 環境変数設定
-            os.environ['OMP_NUM_THREADS'] = str(num_threads)
-            os.environ['MKL_NUM_THREADS'] = str(num_threads)
-            os.environ['OPENBLAS_NUM_THREADS'] = str(num_threads)
-            
-            # MKL DNN有効化
-            if hasattr(torch.backends, 'mkldnn'):
-                torch.backends.mkldnn.enabled = True
-            
-            logging.info(f"CPU optimization set: {num_threads} threads")
-        except Exception as e:
-            logging.warning(f"Failed to setup CPU optimization: {e}")
+        # CPUコア数の取得
+        cpu_count = psutil.cpu_count(logical=False)  # 物理コア数
+        if cpu_count is None:
+            cpu_count = os.cpu_count() or 4
+        
+        # PyTorchスレッド数の設定（コア数÷2）
+        torch_threads = max(1, cpu_count // 2)
+        torch.set_num_threads(torch_threads)
+        
+        # 環境変数の設定
+        os.environ['OMP_NUM_THREADS'] = str(torch_threads)
+        os.environ['MKL_NUM_THREADS'] = str(torch_threads)
+        os.environ['OPENBLAS_NUM_THREADS'] = str(torch_threads)
+        
+        # MKL-DNN有効化
+        torch.backends.mkldnn.enabled = True
+        
+        logging.info(f"CPU optimization: {cpu_count} cores, {torch_threads} threads, MKL-DNN enabled")
 
     def _get_default_config(self) -> dict:
         """
@@ -364,6 +380,13 @@ class PPOTrainer:
         Raises:
             Exception: トレーニング中にエラーが発生した場合
         """
+        # I/O最適化: ログバッファリングを設定
+        buffer_handler = BufferingHandler(1000)  # 1000メッセージごとにフラッシュ
+        buffer_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        buffer_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(buffer_handler)
+        
         logging.info("Starting PPO training...")
         print("Starting PPO training...")
 
@@ -426,10 +449,15 @@ class PPOTrainer:
             logging.info(f"Model saved to {self.model_dir / 'final_model'}")
             print(f"Model saved to {self.model_dir / 'final_model'}")
 
+            # I/O最適化: バッファをフラッシュ
+            buffer_handler.flush()
+            
             return model
 
         except Exception as e:
             logging.exception(f"Training failed: {e}")
+            # I/O最適化: エラー時もバッファをフラッシュ
+            buffer_handler.flush()
             if notifier:
                 notifier.send_error_notification("Training Failed", f"Session {session_id}: {str(e)}")
             raise
