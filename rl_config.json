@@ -53,5 +53,28 @@
     "name": "ppo_halfyear_baseline_generalization",
     "description": "1M steps training focused on generalization with conservative hyperparameters",
     "seed": 42
+  },
+  "data_quality": {
+    "outlier_threshold_percent": 10.0
+  },
+  "notifications": {
+    "win_rate_threshold_percent": 50.0
+  },
+  "parallel_training": {
+    "generalization_priority": "high",
+    "aggressive_priority": "low",
+    "cpu_affinity_enabled": true,
+    "nice_values": {
+      "high": -10,
+      "low": 10
+    }
+  },
+  "fee_model": {
+    "default_fee_rate": 0.001,
+    "exchange_fees": {
+      "coincheck": 0.0,
+      "bitflyer": 0.001,
+      "binance": 0.001
+    }
   }
 }
