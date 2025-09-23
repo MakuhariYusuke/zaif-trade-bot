@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional, List
 
 # ローカルモジュールのインポート
-# sys.path.append(str(Path(__file__).parent.parent.parent))  # プロジェクトルートを追加
+sys.path.append(str(Path(__file__).parent.parent))  # プロジェクトルートを追加
 from src.trading.ppo_trainer import PPOTrainer
 from utils.notify.discord import (
     notify_session_start,
@@ -105,6 +105,15 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
     print("=" * 60)
     print("STARTING TRAINING PIPELINE")
     print("=" * 60)
+
+    # タイムステップガード: PRODUCTION=1 でない限り、5000超は1000に丸め
+    if os.getenv("PRODUCTION") != "1" and config['training']['total_timesteps'] > 5000:
+        orig = config['training']['total_timesteps']
+        config['training']['total_timesteps'] = 1000
+        logging.warning(f"[SAFETY] Non-production run: total_timesteps {orig} -> 1000 (clamped)")
+        notifier = DiscordNotifier()
+        notifier.send_custom_notification("🛡️ Safety Clamp",
+            f"Non-PRODUCTION run detected. Timesteps {orig} → **1000** に強制変更しました.")
 
     # Discord通知: セッション開始
     config_name = Path(args.config if args and hasattr(args, 'config') else 'rl_config.json').stem

@@ -35,3 +35,5 @@ report-ml-*.csv
 report-ml-*.json
 ml-*.csv
 ml-*.json
+trade-state.json
+trade-config.json
