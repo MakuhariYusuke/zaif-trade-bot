@@ -9,10 +9,55 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 import logging
+import queue
+import threading
+import time
 
 # ローカルモジュールのインポート
 sys.path.append(str(Path(__file__).parent.parent))
 from pathlib import Path
+
+
+class AsyncNotifier:
+    """非同期Discord通知クラス（キュー + 集約送信）"""
+    
+    def __init__(self, notifier, flush_sec=300):
+        self.n = notifier
+        self.q = queue.Queue()
+        self.flush_sec = flush_sec
+        self.buf = []
+        threading.Thread(target=self._loop, daemon=True).start()
+
+    def enqueue(self, msg):
+        """通常メッセージをキューに追加"""
+        self.q.put(("info", msg))
+    
+    def error(self, msg):
+        """エラーメッセージを即時送信"""
+        self.q.put(("error", msg))
+
+    def _loop(self):
+        last = time.time()
+        while True:
+            try:
+                kind, msg = self.q.get(timeout=1)
+                if kind == "error":
+                    self.n.send_custom_notification("🚨 Error", msg, color=0xFF0000)
+                else:
+                    self.buf.append(f"- {msg}")
+                # 定期的に集約送信
+                if time.time() - last >= self.flush_sec and self.buf:
+                    body = "\n".join(self.buf)
+                    self.buf.clear()
+                    last = time.time()
+                    self.n.send_custom_notification("📣 Training Update", body, color=0x00AAFF)
+            except queue.Empty:
+                # タイムアウト時も集約送信チェック
+                if time.time() - last >= self.flush_sec and self.buf:
+                    body = "\n".join(self.buf)
+                    self.buf.clear()
+                    last = time.time()
+                    self.n.send_custom_notification("📣 Training Update", body, color=0x00AAFF)
 
 
 class DiscordNotifier:
