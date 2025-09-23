@@ -24,11 +24,33 @@ import json
 import logging
 import gzip
 from logging.handlers import BufferingHandler
+import concurrent.futures
+import threading
 
 # ローカルモジュールのインポート
 # sys.path.append(str(Path(__file__).parent.parent.parent.parent))  # プロジェクトルートを追加
 from .environment import HeavyTradingEnv
+from ..utils.perf.cpu_tune import apply_cpu_tuning
 
+# 非同期チェックポイント保存用
+_save_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+_save_lock = threading.Lock()
+
+def save_checkpoint_async(model, path_base: str):
+    """チェックポイントを非同期で保存（gzip圧縮、重複保存ロック付き）"""
+    def _job():
+        tmp = f"{path_base}.zip"
+        try:
+            with _save_lock:
+                model.save(tmp)
+                gz = f"{tmp}.gz"
+                with open(tmp, "rb") as fi, gzip.open(gz, "wb") as fo:
+                    fo.writelines(fi)
+                os.remove(tmp)
+            logging.info(f"[CKPT] saved: {gz}")
+        except Exception as e:
+            logging.exception(f"[CKPT] save failed: {e}")
+    _save_executor.submit(_job)
 
 class TensorBoardCallback(BaseCallback):
     """TensorBoard用のコールバック"""
@@ -96,20 +118,8 @@ class CheckpointCallback(BaseCallback):
         try:
             if self.n_calls % self.save_freq == 0:
                 checkpoint_path = self.save_path / f"{self.name_prefix}_{self.n_calls}"
-                self.model.save(str(checkpoint_path))
-                
-                # gzip圧縮
-                try:
-                    zip_path = checkpoint_path.with_suffix('.zip')
-                    gz_path = checkpoint_path.with_suffix('.zip.gz')
-                    with open(str(zip_path), 'rb') as f_in:
-                        with gzip.open(str(gz_path), 'wb') as f_out:
-                            f_out.writelines(f_in)
-                    # 元ファイルを削除
-                    zip_path.unlink()
-                    checkpoint_path = gz_path
-                except Exception as e:
-                    logging.warning(f"Failed to compress checkpoint: {e}")
+                # 非同期保存
+                save_checkpoint_async(self.model, str(checkpoint_path))
                 
                 total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
                 progress_percent = (self.n_calls / total_timesteps) * 100
@@ -195,6 +205,9 @@ class PPOTrainer:
             checkpoint_interval (int): チェックポイント保存の間隔（ステップ数）
             checkpoint_dir (str): チェックポイント保存ディレクトリ
         """
+        # CPU最適化を最初に適用
+        apply_cpu_tuning()
+        
         self.data_path = Path(data_path)
         
         # CPU最適化設定

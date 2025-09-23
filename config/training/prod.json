@@ -5,11 +5,11 @@
     "validation_data": "data/features/2025/08/*.parquet"
   },
   "training": {
-    "total_timesteps": 1000000,
+    "total_timesteps": 1000,
     "eval_freq": 10000,
     "n_eval_episodes": 10,
-    "batch_size": 128,
-    "n_steps": 4096,
+    "batch_size": 64,
+    "n_steps": 2048,
     "gamma": 0.995,
     "learning_rate": 0.0001,
     "ent_coef": 0.02,

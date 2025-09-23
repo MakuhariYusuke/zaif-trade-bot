@@ -13,9 +13,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
 import logging
+import threading
+import queue
 
 # プロジェクトルートをパスに追加
-# sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent))
 
 # Discord通知モジュールのインポート
 from utils.notify.discord import DiscordNotifier
@@ -30,6 +32,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def _determine_process_count():
+    """プロセス数を自動決定（物理コア/2としつつ、メモリ1プロセスあたり~2GB目安）"""
+    physical = psutil.cpu_count(logical=False) or 1
+    avail_gb = psutil.virtual_memory().available / (1024**3)
+    base = max(1, physical // 2)
+    mem_cap = max(1, int(avail_gb // 2))
+    return max(1, min(base, mem_cap))
+
+def _pump_stream(name, stream, cfg, logger):
+    """ストリームを非同期で読み取る（Windows対応）"""
+    for line in iter(stream.readline, ''):
+        line = line.rstrip('\n')
+        if stream is cfg["proc"].stdout:
+            logger.info(f"[{cfg['name']}] {line}")
+        else:
+            logger.error(f"[{cfg['name']}] {line}")
+
 class ParallelTrainingManager:
     """並列学習マネージャー"""
 
@@ -41,21 +60,25 @@ class ParallelTrainingManager:
         self.log_files = []  # 監視対象ログファイル
         self.last_log_check = time.time()
         
+        # プロセス数を自動決定
+        self.num_processes = _determine_process_count()
+        os.environ['PARALLEL_PROCESSES'] = str(self.num_processes)
+        
         # 利用可能CPUを取得
-        available_cpus = list(range(psutil.cpu_count()))
+        available_cpus = list(range(psutil.cpu_count(logical=False) or 1))
         
         self.training_configs = [
             {
                 'name': 'generalization',
                 'config': 'config/training/prod.json',
                 'priority': 'high',
-                'cpu_affinity': self.calculate_cpu_affinity(0, 2, available_cpus)  # 最初のプロセス
+                'cpu_affinity': self.calculate_cpu_affinity(0, self.num_processes, available_cpus)
             },
             {
                 'name': 'aggressive',
                 'config': 'config/training/prod_aggressive.json',
                 'priority': 'low',
-                'cpu_affinity': self.calculate_cpu_affinity(1, 2, available_cpus)  # 2番目のプロセス
+                'cpu_affinity': self.calculate_cpu_affinity(1, self.num_processes, available_cpus)
             }
         ]
 
@@ -109,7 +132,7 @@ class ParallelTrainingManager:
         """学習プロセスを開始"""
         cmd = [
             sys.executable,
-            'scripts/train.py',
+            'train.py',
             '--config', config['config'],
             '--checkpoint-interval', '10000',
             '--checkpoint-dir', 'models/checkpoints',
@@ -119,13 +142,17 @@ class ParallelTrainingManager:
         logger.info(f"Starting training process: {config['name']}")
         logger.info(f"Command: {' '.join(cmd)}")
 
+        # 環境変数を子プロセスに渡す
+        env = os.environ.copy()
+        env['PARALLEL_PROCESSES'] = str(self.num_processes)
+
         # プロセス開始
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            
+            env=env,
             cwd=Path(__file__).parent  # プロジェクトルートをカレントディレクトリに設定
         )
 
@@ -135,7 +162,7 @@ class ParallelTrainingManager:
         return process
 
     def monitor_processes(self):
-        """プロセス監視"""
+        """プロセス監視（スレッド化されたストリーム読取を使用）"""
         while self.processes:
             # ログファイル更新チェック（30分ごと）
             current_time = time.time()
@@ -146,20 +173,16 @@ class ParallelTrainingManager:
             for i, (process, config) in enumerate(self.processes):
                 if process.poll() is not None:
                     # プロセス終了
-                    stdout, stderr = process.communicate()
                     exit_code = process.returncode
 
                     logger.info(f"Process {config['name']} finished with exit code: {exit_code}")
 
                     if exit_code != 0:
-                        logger.error(f"Process {config['name']} stderr: {stderr}")
-                        # エラー通知
+                        # エラー通知（ストリームはスレッドで既に読まれている）
                         self.notifier.send_error_notification(
                             f"Training Failed: {config['name']}",
-                            f"Exit code: {exit_code}\nStderr: {stderr[:500]}"
+                            f"Exit code: {exit_code}"
                         )
-                    else:
-                        logger.info(f"Process {config['name']} stdout: {stdout}")
 
                     # プロセスリストから削除
                     self.processes.pop(i)
@@ -224,6 +247,12 @@ class ParallelTrainingManager:
             for config in self.training_configs:
                 process = self.start_training_process(config)
                 self.processes.append((process, config))
+
+                # ストリーム読取スレッドを起動
+                t_out = threading.Thread(target=_pump_stream, args=("stdout", process.stdout, {"proc": process, "name": config["name"]}, logger), daemon=True)
+                t_err = threading.Thread(target=_pump_stream, args=("stderr", process.stderr, {"proc": process, "name": config["name"]}, logger), daemon=True)
+                t_out.start()
+                t_err.start()
 
                 logger.info(f"✅ Started {config['name']} training process (PID: {process.pid})")
                 logger.info(f"✅ Started {config['name']} training process (PID: {process.pid})")
