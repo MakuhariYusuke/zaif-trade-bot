@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 # Discord通知モジュールのインポート
-from rl.notify.discord.discord_notifications import DiscordNotifier
+from utils.notify.discord import DiscordNotifier
 
 def test_enhanced_logging():
     """強化されたログ機能をテスト"""

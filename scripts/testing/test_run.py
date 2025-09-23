@@ -10,6 +10,9 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
 
+# Add project root to path for imports
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
 # ローカルモジュールのインポート
 from src.trading.ppo_trainer import PPOTrainer
 from utils.notify.discord import notify_session_start, notify_session_end, notify_error, DiscordNotifier
@@ -24,6 +27,12 @@ def load_config() -> dict:
             config = json.load(f)
         # テスト実行時は必ず1000ステップに固定
         config['training']['total_timesteps'] = 1000
+        # experiment セクションを追加
+        config['experiment'] = {
+            'name': f'test_run_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
+            'description': 'Test run with 1000 timesteps',
+            'seed': 42
+        }
         print(f"Loaded test config from {config_path} (forced 1000 timesteps)")
     else:
         raise FileNotFoundError(f"Test config file not found: {config_path}")

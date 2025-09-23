@@ -49,7 +49,7 @@ class DiscordNotifier:
         if not self.webhook_url:
             logging.warning("DISCORD_WEBHOOK not found in environment variables")
 
-    def _send_notification(self, embed: Dict[str, Any]) -> bool:
+    def _send_notification(self, content: str, color: int = 0x0099ff) -> bool:
         """Discordに通知を送信"""
         if not self.webhook_url:
             logging.warning("No webhook URL configured, skipping notification")
@@ -57,8 +57,8 @@ class DiscordNotifier:
 
         try:
             payload = {
-                "content": "",  # Discord仕様上必須
-                "embeds": [embed],
+                "content": content,
+                "embeds": [{"color": color}],
                 "username": "Trading RL Bot",
                 "avatar_url": "https://i.imgur.com/4M34hi2.png"  # Trading bot avatar
             }
@@ -86,34 +86,9 @@ class DiscordNotifier:
         self.session_start_time = datetime.now()
         self.session_id = self.session_start_time.strftime('%Y%m%d-%H%M')
 
-        embed = {
-            "title": f"{'🧪' if self.test_mode else '🚀'} {session_type.title()} Session {'Started' if not self.test_mode else 'Started'}",
-            "description": f"**Session ID:** `{self.session_id}`\n**Config:** `{config_name}`",
-            "color": 0x00ff00,  # Green
-            "fields": [
-                {
-                    "name": "⏰ Start Time (JST)",
-                    "value": self.session_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    "inline": True
-                },
-                {
-                    "name": "📊 Session Type",
-                    "value": session_type.title(),
-                    "inline": True
-                },
-                {
-                    "name": "⚙️ Configuration",
-                    "value": config_name,
-                    "inline": True
-                }
-            ],
-            "timestamp": self.session_start_time.isoformat(),
-            "footer": {
-                "text": "Trading RL Bot - GitHub available"
-            }
-        }
+        content = f"{'🧪' if self.test_mode else '🚀'} **{session_type.title()} Session Started**\n\n**Session ID:** `{self.session_id}`\n**Config:** `{config_name}`\n**Start Time:** {self.session_start_time.strftime('%Y-%m-%d %H:%M:%S')} JST\n**Session Type:** {session_type.title()}"
 
-        self._send_notification(embed)
+        self._send_notification(content, 0x00ff00)  # Green
         return self.session_id
 
     def end_session(self, results: Dict[str, Any], session_type: str = "training") -> None:
@@ -154,76 +129,11 @@ class DiscordNotifier:
         pnl_unit = "BTC" if buy_ratio > sell_ratio else "JPY"
         total_pnl = pnl_stats.get('mean_total_pnl', 0)
 
-        embed = {
-            "title": f"{'🧪' if self.test_mode else '✅'} {session_type.title()} Session {'Completed' if not self.test_mode else 'Completed'}",
-            "description": f"**Session ID:** `{self.session_id}`\n**Duration:** `{str(duration).split('.')[0]}`",
-            "color": 0x0000ff,  # Blue
-            "fields": [
-                {
-                    "name": "⏰ End Time (JST)",
-                    "value": end_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    "inline": True
-                },
-                {
-                    "name": "⏱️ Duration",
-                    "value": str(duration).split('.')[0],
-                    "inline": True
-                },
-                {
-                    "name": "🎯 Win Rate",
-                    "value": f"{win_rate_percent:.1f}% {'(参考)' if win_rate_percent < win_rate_threshold else ''}",
-                    "inline": True
-                },
-                {
-                    "name": "📊 Total Trades",
-                    "value": str(total_trades),
-                    "inline": True
-                },
-                {
-                    "name": "💰 Profit Factor",
-                    "value": f"{profit_factor:.2f} {'(参考)' if total_trades < 100 else ''}",
-                    "inline": True
-                },
-                {
-                    "name": "💰 Total PnL",
-                    "value": f"{total_pnl:,.2f} {pnl_unit}",
-                    "inline": True
-                },
-                {
-                    "name": "📉 Max Drawdown",
-                    "value": f"{pnl_stats.get('max_drawdown', 0):.4f}",
-                    "inline": True
-                },
-                {
-                    "name": "⏳ Avg Hold Time",
-                    "value": f"{trading_stats.get('mean_trades_per_episode', 0):.1f} trades/episode",
-                    "inline": True
-                },
-                {
-                    "name": "💵 Total Fees",
-                    "value": f"{total_trades * 0.001:,.4f} BTC",  # 仮定の取引手数料
-                    "inline": True
-                },
-                {
-                    "name": "📈 Max Position Size",
-                    "value": "1.0",  # 仮定値
-                    "inline": True
-                },
-                {
-                    "name": "🛡️ Risk Reduction Triggers",
-                    "value": "0",  # 仮定値
-                    "inline": True
-                }
-            ],
-            "timestamp": end_time.isoformat(),
-            "footer": {
-                "text": f"Trading RL Bot - {session_type.title()} Complete - GitHub available"
-            }
-        }
+        content = f"{'🧪' if self.test_mode else '✅'} **{session_type.title()} Session Completed**\n\n**Session ID:** `{self.session_id}`\n**Duration:** `{str(duration).split('.')[0]}`\n**End Time:** {end_time.strftime('%Y-%m-%d %H:%M:%S')} JST\n\n**Win Rate:** {win_rate_percent:.1f}% {'(参考)' if win_rate_percent < win_rate_threshold else ''}\n**Total Trades:** {total_trades}\n**Profit Factor:** {profit_factor:.2f} {'(参考)' if total_trades < 100 else ''}\n**Total PnL:** {total_pnl:,.2f} {pnl_unit}\n**Max Drawdown:** {pnl_stats.get('max_drawdown', 0):.4f}\n**Avg Hold Time:** {trading_stats.get('mean_trades_per_episode', 0):.1f} trades/episode\n**Total Fees:** {total_trades * 0.001:,.4f} BTC\n**Max Position Size:** 1.0\n**Risk Reduction Triggers:** 0"
 
         # 勝率が閾値を下回った場合のみ通知
         if should_notify:
-            self._send_notification(embed)
+            self._send_notification(content, 0x0000ff)  # Blue
         else:
             logging.info(f"Win rate {win_rate_percent:.1f}% is above threshold {win_rate_threshold}%, skipping notification")
 
@@ -231,51 +141,23 @@ class DiscordNotifier:
         """致命的エラー時の即時通知"""
         error_time = datetime.now()
 
-        embed = {
-            "title": "🚨 Critical Error Alert",
-            "description": f"**Session ID:** `{self.session_id or 'Unknown'}`\n**Error:** {error_message}",
-            "color": 0xff0000,  # Red
-            "fields": [
-                {
-                    "name": "⏰ Error Time (JST)",
-                    "value": error_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    "inline": False
-                }
-            ],
-            "timestamp": error_time.isoformat(),
-            "footer": {
-                "text": "Trading RL Bot - Error Alert - GitHub available"
-            }
-        }
-
+        content = f"🚨 **Critical Error Alert**\n\n**Session ID:** `{self.session_id or 'Unknown'}`\n**Error:** {error_message}\n**Error Time:** {error_time.strftime('%Y-%m-%d %H:%M:%S')} JST"
         if error_details:
-            embed["fields"].append({
-                "name": "📋 Error Details",
-                "value": error_details[:1000],  # Discordの文字数制限対策
-                "inline": False
-            })
+            content += f"\n\n**Error Details:**\n```\n{error_details[:1000]}\n```"
 
-        self._send_notification(embed)
+        self._send_notification(content, 0xff0000)  # Red
 
     def send_custom_notification(self, title: str, message: str, color: int = 0x0099ff,
                                fields: Optional[List[Dict[str, Union[str, bool]]]] = None) -> None:
         """カスタム通知"""
-        notification_time = datetime.now()
-
-        embed = {
-            "title": title,
-            "description": message,
-            "color": color,
-            "timestamp": notification_time.isoformat(),
-            "footer": {
-                "text": "Trading RL Bot - GitHub available"
-            }
-        }
-
+        content = f"**{title}**\n\n{message}"
         if fields:
-            embed["fields"] = fields
+            for field in fields:
+                name = field.get('name', '')
+                value = field.get('value', '')
+                content += f"\n\n**{name}:** {value}"
 
-        self._send_notification(embed)
+        self._send_notification(content, color)
 
 
 # DiscordNotifierインスタンスのファクトリ関数

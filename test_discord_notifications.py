@@ -12,7 +12,7 @@ from typing import Dict, Any
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # Discord通知モジュールのインポート
-from rl.notify.discord.discord_notifications import DiscordNotifier
+from utils.notify.discord import DiscordNotifier
 
 def load_env_file():
     """環境変数ファイルを読み込み"""
