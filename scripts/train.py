@@ -183,6 +183,13 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
             checkpoint_interval=checkpoint_interval,
             checkpoint_dir=checkpoint_dir
         )
+        
+        # 設定ログ出力
+        cache_config = config.get('memory', {})
+        ckpt_config = config.get('training', {})
+        print(f"CACHE: compressor={cache_config.get('compressor', 'auto')}(level={cache_config.get('compression_level', 3)}), dir={cache_config.get('cache_dir', 'data/cache')}, max={cache_config.get('cache_max_mb', 1000)}MB, ttl={cache_config.get('max_age_days', 7)}d, proc=pid_{os.getpid()}")
+        print(f"CKPT: light={ckpt_config.get('checkpoint_light', False)}, compressor={ckpt_config.get('checkpoint_compressor', 'auto')}, keep_last={cache_config.get('keep_ckpt', 5)}, interval={checkpoint_interval}")
+        
         model = trainer.train(notifier=notifier, session_id=session_id)
 
         # 評価の実行
@@ -277,6 +284,16 @@ def main():
     parser.add_argument('--outlier-multiplier', type=float, default=2.5,
                        help='Outlier threshold multiplier')
     parser.add_argument('--timesteps', type=int, help='Override total_timesteps')
+    parser.add_argument('--no-cache', action='store_true', help='Disable feature caching')
+    parser.add_argument('--checkpoint-light', action='store_true', help='Save only policy in checkpoints (faster, lighter)')
+    parser.add_argument('--cache-compressor', type=str, choices=['auto', 'zstd', 'lz4', 'zlib'], default='auto',
+                       help='Cache compression algorithm (default: auto)')
+    parser.add_argument('--cache-access-pattern', type=str, choices=['frequent', 'balanced', 'archival'], default='balanced',
+                       help='Cache access pattern hint (default: balanced)')
+    parser.add_argument('--cache-max-mb', type=int, help='Maximum cache size in MB')
+    parser.add_argument('--cache-ttl-days', type=int, help='Cache TTL in days')
+    parser.add_argument('--checkpoint-compressor', type=str, choices=['auto', 'zstd', 'lz4', 'zlib'], default='auto',
+                       help='Checkpoint compression algorithm (default: auto)')
 
     args = parser.parse_args()
 
@@ -289,6 +306,40 @@ def main():
 
     # 設定の読み込み
     config = load_config(args.config)
+
+    # --no-cacheオプションの処理
+    if args.no_cache:
+        if 'memory' not in config:
+            config['memory'] = {}
+        config['memory']['enable_cache'] = False
+        print("Cache disabled via --no-cache option")
+
+    # --checkpoint-lightオプションの処理
+    if args.checkpoint_light:
+        if 'training' not in config:
+            config['training'] = {}
+        config['training']['checkpoint_light'] = True
+        print("Checkpoint light mode enabled via --checkpoint-light option")
+
+    # キャッシュ設定の処理
+    if 'memory' not in config:
+        config['memory'] = {}
+    
+    if args.cache_compressor != 'auto':
+        config['memory']['compressor'] = args.cache_compressor
+    if args.cache_access_pattern != 'balanced':
+        config['memory']['access_pattern'] = args.cache_access_pattern
+    if args.cache_max_mb:
+        config['memory']['cache_max_mb'] = args.cache_max_mb
+    if args.cache_ttl_days:
+        config['memory']['max_age_days'] = args.cache_ttl_days
+
+    # チェックポイント設定の処理
+    if 'training' not in config:
+        config['training'] = {}
+    
+    if args.checkpoint_compressor != 'auto':
+        config['training']['checkpoint_compressor'] = args.checkpoint_compressor
 
     # total_timestepsの調整
     if requested_timesteps:

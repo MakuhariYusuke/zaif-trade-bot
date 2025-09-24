@@ -101,9 +101,22 @@ class TieredFeeModel(FeeModel):
         return abs(trade_value) * rate
 
     def get_fee_rate(self, trade_type: str = 'buy') -> float:
-        """Get fee rate based on volume tiers"""
-        # For now, return the base rate
-        # In a real implementation, this would track volume
+        """
+        Get fee rate based on volume tiers.
+
+        Note:
+            Currently always returns the lowest tier rate (base rate).
+            In a future implementation, this method should accept a volume argument
+            and return the appropriate rate based on trading volume.
+
+        Args:
+            trade_type: Type of trade ('buy' or 'sell')
+
+        Returns:
+            Fee rate as decimal
+        """
+        # For now, return the base rate.
+        # In a real implementation, this would track volume.
         if trade_type.lower() == 'sell':
             return self.sell_tiers[0][1]
         return self.buy_tiers[0][1]
@@ -133,7 +146,7 @@ class ExchangeFeeModel(FeeModel):
         if exchange in self.exchange_fees:
             self.current_exchange = exchange
         else:
-            logging.warning(f"Exchange {exchange} not found, using default")
+            logging.warning(f"Exchange {exchange} not found, using default 'binance'")
 
     def calculate_fee(self, trade_value: float, trade_type: str = 'buy') -> float:
         """Calculate fee for current exchange"""
@@ -196,5 +209,5 @@ def load_fee_model_from_config(config_path: str) -> Optional[FeeModel]:
         return FeeModelFactory.create_fee_model(model_type, fee_config)
 
     except Exception as e:
-        logging.error(f"Failed to load fee model from config: {e}")
+        logging.error(f"Failed to load fee model from config file '{config_path}': {e}")
         return None
