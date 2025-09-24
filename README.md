@@ -1286,4 +1286,98 @@ python scripts/train.py --feature-set extended --timesteps 1000000
 ```
 
 詳細は `docs/evaluation.md` を参照してください。
+
+## 特徴量評価システムの運用改善
+
+### 概要
+
+特徴量評価システムの運用効率と保守性を向上させるための改善を実施しました。
+
+### 主な改善点
+
+#### 1. 評価閾値の外部化 (`config/evaluation.yaml`)
+
+- 再評価閾値: 0.05 (5%以上の改善で再評価対象)
+- 監視閾値: 0.01 (1%以上の変化で監視対象)
+- 最小サンプル数: 10000 (統計的有意性を確保)
+
+#### 2. Slack/Discord通知システム (`scripts/notifier.py`)
+
+- 評価レポート生成時の自動通知
+- 構造化されたサマリー情報（改善特徴量数、再評価対象数など）
+- SlackおよびDiscord webhook対応
+
+#### 3. 再評価リスト管理 (`re_evaluate_list.yaml`)
+
+- 特徴量の再評価サイクルを追跡
+- 定期的な再評価の自動スケジューリング
+- 評価結果に基づく優先順位付け
+
+#### 4. CI/CD統合 (`.github/workflows/ablation.yml`)
+
+- GitHub Actionsでの自動通知配信
+- 評価完了時のSlack通知
+- 環境変数によるwebhook URL設定
+
+### 使い方
+
+#### 通知付きレポート生成
+
+```bash
+# Slack通知
+python scripts/generate_weekly_report.py --notify slack
+
+# Discord通知
+python scripts/generate_weekly_report.py --notify discord
+
+# 通知なし
+python scripts/generate_weekly_report.py
 ```
+
+#### 環境変数設定
+
+```bash
+# Slack webhook URL
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+
+# Discord webhook URL
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+```
+
+### 運用フロー
+
+1. **定期評価**: CI/CDで自動実行されるアブレーション分析
+2. **レポート生成**: 評価結果の集計と可視化
+3. **通知配信**: Slack/Discordへの自動通知
+4. **再評価管理**: 改善特徴量の追跡と再評価スケジューリング
+
+### 設定ファイル
+
+#### `config/evaluation.yaml`
+
+```yaml
+thresholds:
+  re_evaluate: 0.05    # 再評価閾値
+  monitor: 0.01        # 監視閾値
+min_samples: 10000     # 最小サンプル数
+```
+
+#### `re_evaluate_list.yaml`
+
+```yaml
+features:
+  - name: "experimental_feature_1"
+    last_evaluated: "2025-09-25"
+    priority: "high"
+    reason: "significant improvement detected"
+```
+
+### 注意事項
+
+- 通知機能を使用するには、対応するwebhook URLの環境変数を設定してください
+- 評価閾値は運用状況に応じて`config/evaluation.yaml`で調整可能です
+- CI/CDでの通知はGitHub Secretsでwebhook URLを設定してください
+```
+
+ 
+ 
