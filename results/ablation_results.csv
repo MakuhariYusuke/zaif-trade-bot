@@ -1,0 +1,8 @@
+feature,is_experimental,success,runs,sharpe_mean,sharpe_std,sharpe_ci_low,sharpe_ci_high,delta_sharpe_mean,delta_sharpe_std,delta_sharpe_ci_low,delta_sharpe_ci_high
+MFI,False,False,3,3.280302,2.839616,0.246297,5.132575,,,,
+Lags,False,False,3,-0.894409,7.897623,-6.254377,7.529295,,,,
+VWAP,False,False,3,-4.400404,4.854557,-8.947589,0.27284,,,,
+Donchian,False,False,3,-7.236567,1.228826,-8.150772,-5.93784,,,,
+KalmanFilter,False,False,3,-0.394176,6.320254,-4.575824,6.355416,,,,
+MovingAverages,True,False,3,4.735227,9.015578,-1.269645,14.360558,,,,
+GradientSign,True,False,3,-1.456063,4.51331,-5.422479,3.081287,,,,
