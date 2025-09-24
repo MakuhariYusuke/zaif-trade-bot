@@ -35,6 +35,13 @@ class AsyncNotifier:
     def error(self, msg):
         """エラーメッセージを即時送信"""
         self.q.put(("error", msg))
+    
+    def flush(self):
+        """バッファを即時送信"""
+        if self.buf:
+            body = "\n".join(self.buf)
+            self.buf.clear()
+            self.n.send_custom_notification("📣 Training Update", body, color=0x00AAFF)
 
     def _loop(self):
         last = time.time()
@@ -95,36 +102,44 @@ class DiscordNotifier:
             logging.warning("DISCORD_WEBHOOK not found in environment variables")
 
     def _send_notification(self, content: str, color: int = 0x0099ff) -> bool:
-        """Discordに通知を送信"""
+        """Discordに通知を送信（指数バックオフ付きリトライ）"""
         if not self.webhook_url:
             logging.warning("No webhook URL configured, skipping notification")
             return False
 
-        try:
-            payload = {
-                "content": content,
-                "embeds": [{"color": color}],
-                "username": "Trading RL Bot",
-                "avatar_url": "https://i.imgur.com/4M34hi2.png"  # Trading bot avatar
-            }
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                payload = {
+                    "content": content,
+                    "embeds": [{"color": color}],
+                    "username": "Trading RL Bot",
+                    "avatar_url": "https://i.imgur.com/4M34hi2.png"  # Trading bot avatar
+                }
 
-            response = requests.post(
-                self.webhook_url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=10
-            )
+                response = requests.post(
+                    self.webhook_url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=10
+                )
 
-            if response.status_code in (200, 204):
-                logging.info("Discord notification sent successfully")
-                return True
-            else:
-                logging.error(f"Failed to send Discord notification: {response.status_code}, {response.text}")
-                return False
+                if response.status_code in (200, 204):
+                    logging.info("Discord notification sent successfully")
+                    return True
+                else:
+                    logging.error(f"Failed to send Discord notification: {response.status_code}, {response.text}")
+                    return False
 
-        except Exception as e:
-            logging.error(f"Error sending Discord notification: {e}")
-            return False
+            except Exception as e:
+                wait_time = 2 ** attempt  # 指数バックオフ
+                logging.warning(f"Discord notification attempt {attempt + 1} failed: {e}, retrying in {wait_time}s")
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+                else:
+                    logging.error(f"Discord notification failed after {max_retries} attempts")
+                    return False
+                    return False
 
     def start_session(self, session_type: str = "training", config_name: str = "default") -> str:
         """セッション開始通知"""
@@ -235,7 +250,11 @@ def get_notifier(webhook_url: Optional[str] = None) -> DiscordNotifier:
 
 def notify_session_start(session_type: str = "training", config_name: str = "default", notifier: Optional[DiscordNotifier] = None) -> str:
     """セッション開始を通知"""
-    notifier = notifier or get_notifier()
+    if notifier is None:
+        # PRODUCTION=1でないならtest_mode=True
+        test_mode = os.environ.get('PRODUCTION') != '1'
+        notifier = get_notifier()
+        notifier.test_mode = test_mode
     return notifier.start_session(session_type, config_name)
 
 
