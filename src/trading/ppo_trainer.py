@@ -8,6 +8,8 @@ import pandas as pd
 from pathlib import Path
 import torch
 import psutil
+import pickle
+import zlib
 from typing import Dict, Any, Optional
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
@@ -31,6 +33,8 @@ import threading
 # sys.path.append(str(Path(__file__).parent.parent.parent.parent))  # プロジェクトルートを追加
 from .environment import HeavyTradingEnv
 from ..utils.perf.cpu_tune import apply_cpu_tuning
+from ..utils.cache.feature_cache import FeatureCache
+from ..utils.memory.dtypes import downcast_df
 
 # 非同期チェックポイント保存用
 _save_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -38,34 +42,50 @@ _save_lock = threading.Lock()
 _keep_last = 5  # 保持世代数
 
 def save_checkpoint_async(model, path_base: str, notifier=None):
-    """チェックポイントを非同期で保存（原子的・世代管理付き）"""
+    """チェックポイントを非同期で保存（原子的・世代管理付き・ポリシーのみ）"""
     def _job():
         try:
             # tmpに保存
             tmp_path = f"{path_base}.tmp"
             final_path = f"{path_base}.zip"
-            
+
             with _save_lock:
-                model.save(tmp_path)
+                # 最小限のチェックポイント保存（ポリシーのみ）
+                import torch, json
+                payload = {
+                    "policy_state_dict": model.policy.state_dict(),
+                    "config": getattr(model, '_config', {}),  # 最小限の再現用
+                }
+                # VecNormalizeを使っている場合のみ
+                try:
+                    vecnorm = getattr(model.get_env(), "get_attr")("obs_rms")[0]
+                    payload["vecnormalize"] = {
+                        "mean": getattr(vecnorm, "mean", None),
+                        "var": getattr(vecnorm, "var", None),
+                        "count": getattr(vecnorm, "count", None),
+                    }
+                except Exception:
+                    pass
+                torch.save(payload, tmp_path)  # 既存のgzipラッパはそのまま活用
                 # 原子的rename
                 os.replace(tmp_path, final_path)
-            
+
             logging.info(f"[CKPT] saved: {final_path}")
-            
+
             # 世代管理: 同じprefixの古いファイルを削除
             dir_path = Path(final_path).parent
             prefix = Path(final_path).stem.split('_')[0] if '_' in Path(final_path).stem else Path(final_path).stem
-            
+
             checkpoints = sorted(dir_path.glob(f"{prefix}_*.zip"), key=lambda x: x.stat().st_mtime, reverse=True)
             for old_ckpt in checkpoints[_keep_last:]:
                 old_ckpt.unlink()
                 logging.info(f"[CKPT] removed old: {old_ckpt}")
-                
+
         except Exception as e:
             logging.exception(f"[CKPT] save failed: {e}")
             if notifier:
                 notifier.send_error_notification("Checkpoint Save Error", f"Failed to save {path_base}: {str(e)}")
-    
+
     _save_executor.submit(_job)
 
 class TensorBoardCallback(BaseCallback):
@@ -155,6 +175,10 @@ class CheckpointCallback(BaseCallback):
                 if self.verbose > 0:
                     print(progress_msg)
 
+                # メモリ効率化: ガーベジコレクション
+                import gc
+                gc.collect()
+
         except Exception as e:
             logging.error(f"Error in checkpoint callback: {e}")
             if self.notifier:
@@ -225,11 +249,17 @@ class PPOTrainer:
         apply_cpu_tuning()
         
         self.data_path = Path(data_path)
+        self.config = config or self._get_default_config()
         
         # CPU最適化設定
         self._setup_cpu_optimization()
         
         self.config = config or self._get_default_config()
+        
+        # config をフラット化（training セクションをトップレベルに）
+        if 'training' in self.config:
+            self.config.update(self.config['training'])
+        
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_dir = Path(checkpoint_dir)
 
@@ -315,6 +345,28 @@ class PPOTrainer:
         """
         data_path = Path(self.data_path)
 
+        # メモリ効率化: FeatureCacheチェック
+        memory_config = self.config.get('memory', {})
+        if memory_config.get('enable_cache', False):
+            cache = FeatureCache(memory_config.get('cache_dir', 'data/cache'))
+            params = {
+                "data_path": str(data_path),
+                "version": "v1",
+                "downcast": memory_config.get('downcast', True)
+            }
+            cached = cache.get(str(data_path), params)
+            if cached is not None:
+                logging.info(f"[CACHE] Hit for {data_path}")
+                df = pickle.loads(cached)
+                # ダウンキャスト適用
+                if memory_config.get('downcast', True):
+                    df = downcast_df(df, 
+                                   float_dtype=memory_config.get('float_dtype', 'float32'),
+                                   int_dtype=memory_config.get('int_dtype', 'int32'))
+                return df
+            else:
+                logging.info(f"[CACHE] Miss for {data_path}")
+
         # ワイルドカードが含まれる場合
         if '*' in str(data_path):
             # globパターンでファイルを検索
@@ -365,6 +417,25 @@ class PPOTrainer:
 
         print(f"Total loaded data: {len(df)} rows, {len(df.columns)} columns")
         print(f"Columns: {list(df.columns)}")
+
+        # メモリ効率化: ダウンキャスト
+        memory_config = self.config.get('memory', {})
+        if memory_config.get('downcast', True):
+            df = downcast_df(df, 
+                           float_dtype=memory_config.get('float_dtype', 'float32'),
+                           int_dtype=memory_config.get('int_dtype', 'int32'))
+            logging.info(f"[MEMORY] Downcast applied: float->{memory_config.get('float_dtype', 'float32')}, int->{memory_config.get('int_dtype', 'int32')}")
+
+        # メモリ効率化: キャッシュ保存
+        if memory_config.get('enable_cache', False):
+            cache = FeatureCache(memory_config.get('cache_dir', 'data/cache'))
+            params = {
+                "data_path": str(data_path),
+                "version": "v1",
+                "downcast": memory_config.get('downcast', True)
+            }
+            cache.put(str(data_path), params, df)
+            logging.info(f"[CACHE] Saved for {data_path}")
 
         return df
 
