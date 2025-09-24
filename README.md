@@ -1110,4 +1110,47 @@ for epoch in range(5):
 		loss = loss_fn(pred, yb)
 		opt.zero_grad(); loss.backward(); opt.step()
 	print('epoch', epoch, 'loss', float(loss))
+
+---
+
+## RLトレーニング運用ガイド
+
+### Quickモード vs Productionモード
+
+- **Quickモード（デフォルト）**: `PRODUCTION=1` 未設定時。`total_timesteps` を1000に強制クランプ。テスト/検証用。
+- **Productionモード**: `PRODUCTION=1` 設定時。本番学習（1Mステップ等）可能。
+
+### コマンド実行例
+
+```bash
+# Quick実行（1kステップ固定）
+python scripts/train.py --config config/training/test.json
+
+# Production実行（1Mステップ）
+PRODUCTION=1 python scripts/train.py --config config/training/prod.json
+
+# 手動timesteps指定（PRODUCTION未設定時はmin(requested, 1000)に丸め）
+python scripts/train.py --timesteps 50000  # → 1000に丸め
+PRODUCTION=1 python scripts/train.py --timesteps 50000  # → 50000実行
+```
+
+### 並列トレーニング時の注意
+
+- 総スレッド数 ≦ 物理コア数 を厳守（例: 8コアで2プロセス×4スレッド）。
+- 各プロセスに連続コア割当（P0: 0-3, P1: 4-7）。
+- 環境変数 `PARALLEL_PROCESSES`, `PROCESS_ID`, `CPU_AFFINITY` が自動設定。
+
+### Discord通知の見分け方
+
+- **🧪TEST**: Quick/テスト実行。タイトル先頭に🧪。
+- **🚀PROD**: Production実行。タイトル先頭に🚀。
+- **🚨ERROR**: エラー通知。即時送信。
+
+### 事故防止ルール
+
+- **長時間学習は必ず `--timesteps` 明示**。
+- **PRODUCTION=1 が付かない限り1k以内に丸め**。
+- 並列実行時は総メモリ使用量を確認（プロセス数×2GB目安）。
+
+---
 ```

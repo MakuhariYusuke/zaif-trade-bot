@@ -244,11 +244,32 @@ def main():
                        help='Directory to save checkpoints')
     parser.add_argument('--outlier-multiplier', type=float, default=2.5,
                        help='Outlier threshold multiplier')
+    parser.add_argument('--timesteps', type=int, help='Override total_timesteps')
 
     args = parser.parse_args()
 
+    # Safety Clamp: PRODUCTION=1でない限り、total_timestepsを1000に強制
+    is_production = os.environ.get('PRODUCTION') == '1'
+    if args.timesteps:
+        requested_timesteps = args.timesteps
+    else:
+        requested_timesteps = None
+
     # 設定の読み込み
     config = load_config(args.config)
+
+    # total_timestepsの調整
+    if requested_timesteps:
+        config['training']['total_timesteps'] = requested_timesteps
+    if not is_production:
+        original = config['training']['total_timesteps']
+        config['training']['total_timesteps'] = min(config['training']['total_timesteps'], 1000)
+        if original != config['training']['total_timesteps']:
+            print(f"Safety Clamp: total_timesteps clamped to {config['training']['total_timesteps']} (PRODUCTION!=1)")
+
+    # Discord prefix設定
+    discord_prefix = "🚀PROD" if is_production else "🧪TEST"
+    # 通知関数にprefixを渡す（後で実装）
 
     # ディレクトリのセットアップ
     setup_directories(config)

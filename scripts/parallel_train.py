@@ -33,12 +33,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def _determine_process_count():
-    """プロセス数を自動決定（物理コア/2としつつ、メモリ1プロセスあたり~2GB目安）"""
+    """プロセス数を自動決定（物理コア数と空きメモリを考慮）"""
     physical = psutil.cpu_count(logical=False) or 1
     avail_gb = psutil.virtual_memory().available / (1024**3)
     base = max(1, physical // 2)
     mem_cap = max(1, int(avail_gb // 2))
-    return max(1, min(base, mem_cap))
+    return min(base, mem_cap, 4)  # 上限4
 
 def _pump_stream(name, stream, cfg, logger):
     """ストリームを非同期で読み取る（Windows対応）"""
@@ -72,13 +72,15 @@ class ParallelTrainingManager:
                 'name': 'generalization',
                 'config': 'config/training/prod.json',
                 'priority': 'high',
-                'cpu_affinity': self.calculate_cpu_affinity(0, self.num_processes, available_cpus)
+                'cpu_affinity': self.calculate_cpu_affinity(0, self.num_processes, available_cpus),
+                'process_index': 0
             },
             {
                 'name': 'aggressive',
                 'config': 'config/training/prod_aggressive.json',
                 'priority': 'low',
-                'cpu_affinity': self.calculate_cpu_affinity(1, self.num_processes, available_cpus)
+                'cpu_affinity': self.calculate_cpu_affinity(1, self.num_processes, available_cpus),
+                'process_index': 1
             }
         ]
 
@@ -145,6 +147,8 @@ class ParallelTrainingManager:
         # 環境変数を子プロセスに渡す
         env = os.environ.copy()
         env['PARALLEL_PROCESSES'] = str(self.num_processes)
+        env['PROCESS_ID'] = str(config['process_index'])
+        env['CPU_AFFINITY'] = ','.join(map(str, config['cpu_affinity']))
 
         # プロセス開始
         process = subprocess.Popen(
@@ -255,6 +259,7 @@ class ParallelTrainingManager:
                 t_err.start()
 
                 logger.info(f"✅ Started {config['name']} training process (PID: {process.pid})")
+                logger.info(f"proc_name={config['name']}, pid={process.pid}, affinity={config['cpu_affinity']}")
                 logger.info(f"✅ Started {config['name']} training process (PID: {process.pid})")
                 # print(f"✅ Started {config['name']} training process (PID: {process.pid})")  # Use logger for unified output
             # プロセス監視（リアルタイムログ出力）
@@ -278,6 +283,12 @@ def main():
     parser = argparse.ArgumentParser(description='Parallel Training Script')
     parser.add_argument('--timesteps', type=int, help='Override total_timesteps from config')
     args = parser.parse_args()
+    
+    # Safety Clamp: PRODUCTION=1でない限り、total_timestepsを1000に強制
+    is_production = os.environ.get('PRODUCTION') == '1'
+    if not is_production and args.timesteps and args.timesteps > 1000:
+        args.timesteps = 1000
+        logger.warning("[SAFETY] Non-production run: total_timesteps clamped to 1000")
     
     manager = ParallelTrainingManager()
     if args.timesteps:
