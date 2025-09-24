@@ -1232,4 +1232,56 @@ python scripts/train.py --checkpoint-light
 - 並列実行時は総メモリ使用量を確認（プロセス数×2GB目安）。
 
 ---
+
+## 特徴量管理
+
+### 特徴量セット
+
+`config/feature_sets.yaml` で定義された特徴量セットを使用することで、検証規模に応じた適切な特徴量を選択できます。
+
+| セット | 特徴量数 | 目的 | 想定用途 |
+|--------|----------|------|----------|
+| **Minimal** | 5個 | 軽量テスト | 基本機能確認、CI/CD |
+| **Balanced** | 10個 | 標準検証 | 通常のバックテスト検証 |
+| **Medium** | 14個 | 中規模検証 | パフォーマンス評価、チューニング |
+| **Large** | 19個 | 広範検証 | 包括的な特徴量テスト |
+| **Extended** | 全量 | フル網羅 | 完全な特徴量評価 |
+
+### Harmfulフラグ
+
+一部の特徴量には `harmful` フラグが設定されており、以下の基準で判定されます：
+
+- **VIF (Variance Inflation Factor) > 10**: 多重共線性の問題
+- **MI (Mutual Information) ≈ 0**: ターゲット変数との関連性が低い
+- **アブレーション分析で Sharpe ratio 大幅低下**: 予測性能の悪化
+
+harmfulフラグが設定された特徴量は自動的に除外されます。詳細は `docs/features/harmful.md` を参照してください。
+
+### Experimentalフロー
+
+新しい特徴量の開発・評価フローは以下の通りです：
+
+1. **experimental.py** に実装
+2. **experimental_evaluator.py** で性能評価
+3. **ablation_runner.py** でアブレーション分析
+4. CI/CD で定期評価
+
+特徴量の成熟度は以下のレベルで管理されます：
+
+- **prototype**: 初期実装段階
+- **beta**: 評価・チューニング段階
+- **stable**: 本番投入可能
+
+### 使い方例
+
+```bash
+# Minimal セットで 1k テスト
+python scripts/train.py --feature-set minimal --timesteps 1000
+
+# Medium セットで 100k 検証
+python scripts/train.py --feature-set medium --timesteps 100000
+
+# Extended セットで 1M 学習
+python scripts/train.py --feature-set extended --timesteps 1000000
+```
 ```
