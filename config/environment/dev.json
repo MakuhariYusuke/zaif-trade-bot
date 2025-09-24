@@ -2,10 +2,19 @@
   "memory": {
     "enable_cache": true,
     "cache_dir": "data/cache",
+    "cache_max_mb": 500,
+    "max_age_days": 7,
+    "compressor": "auto",
+    "compression_level": 3,
+    "dynamic_sizing": false,
     "parquet_compression": "zstd",
     "downcast": true,
     "float_dtype": "float32",
     "int_dtype": "int32",
     "keep_ckpt": 5
+  },
+  "training": {
+    "checkpoint_light": false,
+    "checkpoint_compressor": "auto"
   }
 }

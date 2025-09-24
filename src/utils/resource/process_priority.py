@@ -7,7 +7,6 @@ and other resource management features for parallel training.
 """
 
 import os
-import sys
 import json
 import psutil
 from pathlib import Path
@@ -22,13 +21,19 @@ class ProcessPriorityManager:
 
     def __init__(self, config_path: Optional[str] = None):
         """
-        Initialize priority manager
+        Initialize priority manager.
 
         Args:
-            config_path: Path to configuration file
+            config_path: Path to configuration file. If not provided, will use the path from the
+                         ZAIF_TRADE_BOT_CONFIG environment variable if set, otherwise defaults to
+                         '<project_root>/config/rl_config.json'.
         """
         if config_path is None:
-            self.config_path = Path(__file__).parent.parent.parent / "config" / "rl_config.json"
+            env_config_path = os.environ.get("ZAIF_TRADE_BOT_CONFIG")
+            if env_config_path:
+                self.config_path = Path(env_config_path)
+            else:
+                self.config_path = Path(__file__).parent.parent.parent / "config" / "rl_config.json"
         else:
             self.config_path = Path(config_path)
         self.config = self._load_config()
@@ -50,6 +55,10 @@ class ProcessPriorityManager:
         Returns:
             Tuple of (priority_level, nice_value)
         """
+        valid_model_types = {'generalization', 'aggressive'}
+        if model_type.lower() not in valid_model_types:
+            raise ValueError(f"Invalid model_type '{model_type}'. Accepted values are: {valid_model_types}")
+
         logger.info(f"Setting resource control for {model_type} model")
 
         # Get configuration
@@ -74,11 +83,15 @@ class ProcessPriorityManager:
         """Set process nice value"""
         try:
             if hasattr(os, 'nice'):
-                current_nice = os.nice(0)
-                new_nice = os.nice(nice_value)
-                logger.info(f"Nice value changed: {current_nice} -> {new_nice}")
+                current_nice = os.nice(0)  # type: ignore
+                increment = nice_value - current_nice
+                if increment != 0:
+                    new_nice = os.nice(increment)  # type: ignore
+                    logger.info(f"Nice value changed: {current_nice} -> {new_nice}")
+                else:
+                    logger.info(f"Nice value unchanged: {current_nice}")
             else:
-                logger.info("Nice value setting: not supported on Windows")
+                logger.info("Nice value setting: not supported on this platform")
         except OSError as e:
             logger.error(f"Nice value setting error: {e}")
 
@@ -86,48 +99,24 @@ class ProcessPriorityManager:
         """Set CPU affinity for the process"""
         try:
             if hasattr(os, 'sched_setaffinity'):
-                cpu_count = psutil.cpu_count()
+                # Use physical cores for affinity to improve performance
+                cpu_count = psutil.cpu_count(logical=False)
                 if cpu_count is None:
                     cpu_count = 4  # Default fallback
 
                 if model_type.lower() == 'generalization':
-                    # Generalization model: first half of cores
+                    # Generalization model: first half of physical cores
                     cores = list(range(cpu_count // 2))
                 else:
-                    # Aggressive model: second half of cores
+                    # Aggressive model: second half of physical cores
                     cores = list(range(cpu_count // 2, cpu_count))
 
-                os.sched_setaffinity(0, cores)
-                logger.info(f"CPU affinity set to cores: {cores}")
+                os.sched_setaffinity(0, cores)  # type: ignore
+                logger.info(f"CPU affinity set to physical cores: {cores}")
             else:
-                logger.info("CPU affinity setting: not supported on Windows")
+                logger.info("CPU affinity setting: not supported on this platform")
         except OSError as e:
             logger.error(f"CPU affinity setting error: {e}")
-
-    def get_resource_info(self) -> Dict[str, Any]:
-        """Get current resource information"""
-        return {
-            'cpu_count': psutil.cpu_count(),
-            'cpu_percent': psutil.cpu_percent(interval=1),
-            'memory': {
-                'total': psutil.virtual_memory().total,
-                'available': psutil.virtual_memory().available,
-                'percent': psutil.virtual_memory().percent
-            },
-            'process': {
-                'pid': os.getpid(),
-                'nice': self._get_current_nice()
-            }
-        }
-
-    def _get_current_nice(self) -> Optional[int]:
-        """Get current process nice value"""
-        try:
-            if hasattr(os, 'nice'):
-                return os.nice(0)
-        except OSError:
-            pass
-        return None
 
     def reset_priority(self):
         """Reset process priority to default"""
@@ -135,28 +124,25 @@ class ProcessPriorityManager:
             if hasattr(os, 'nice'):
                 current_nice = os.nice(0)  # type: ignore
                 if current_nice != 0:
-                    os.nice(-current_nice)  # type: ignore  # Reset to 0
-                logger.info("Process priority reset to default")
+                    try:
+                        os.nice(-current_nice)  # type: ignore  # Reset to 0
+                        logger.info("Process priority reset to default")
+                    except PermissionError:
+                        logger.warning("Insufficient permissions to decrease nice value (increase priority). Run as root/administrator if needed.")
+                else:
+                    logger.info("Process priority already at default")
+            else:
+                logger.info("Resetting process priority: not supported on this platform")
         except OSError as e:
             logger.error(f"Failed to reset priority: {e}")
 
-
-def set_model_priority(model_type: str, config_path: Optional[str] = None) -> Tuple[str, int]:
-    """
-    Convenience function to set priority for a model type
-
-    Args:
-        model_type: Type of model ('generalization' or 'aggressive')
-        config_path: Path to configuration file
-
-    Returns:
-        Tuple of (priority_level, nice_value)
-    """
-    manager = ProcessPriorityManager(config_path)
-    return manager.set_process_priority(model_type)
-
-
-def get_system_resources() -> Dict[str, Any]:
-    """Get system resource information"""
-    manager = ProcessPriorityManager()
-    return manager.get_resource_info()
+    def get_nice_value(self) -> Optional[int]:
+        """Get current process nice value"""
+        try:
+            if hasattr(os, 'nice'):
+                return os.nice(0)  # type: ignore
+            else:
+                logger.info("Getting nice value: not supported on this platform")
+                return None
+        except OSError:
+            return None

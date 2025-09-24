@@ -20,7 +20,6 @@ import optuna
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
 import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import datetime
 import json
 import logging
@@ -36,106 +35,147 @@ from ..utils.perf.cpu_tune import apply_cpu_tuning
 from ..utils.cache.feature_cache import FeatureCache
 from ..utils.memory.dtypes import downcast_df
 
-# 非同期チェックポイント保存用
-_save_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-_save_lock = threading.Lock()
-_keep_last = 5  # 保持世代数
-
-def save_checkpoint_async(model, path_base: str, notifier=None):
-    """チェックポイントを非同期で保存（原子的・世代管理付き・ポリシーのみ）"""
+def save_checkpoint_async(model, path, notifier=None, light_mode=False, compressor="auto"):
+    """非同期チェックポイント保存（圧縮対応）"""
     def _job():
         try:
-            # tmpに保存
-            tmp_path = f"{path_base}.tmp"
-            final_path = f"{path_base}.zip"
-
-            with _save_lock:
-                # 最小限のチェックポイント保存（ポリシーのみ）
-                import torch, json
-                payload = {
-                    "policy_state_dict": model.policy.state_dict(),
-                    "config": getattr(model, '_config', {}),  # 最小限の再現用
+            # 圧縮方式の選択
+            if compressor == "auto":
+                # データサイズ推定（500MB基準）
+                estimated_size = 500 * 1024 * 1024
+                selected_compressor = _select_checkpoint_compressor(estimated_size)
+            else:
+                selected_compressor = compressor
+            
+            if light_mode:
+                # 軽量モード: policy + value_net + scaler の最小保存セット
+                checkpoint_data = {
+                    'policy': model.policy.state_dict(),
+                    'value_net': model.value_net.state_dict() if hasattr(model, 'value_net') else None,
+                    'scaler': getattr(model, 'scaler', None)
                 }
-                # VecNormalizeを使っている場合のみ
-                try:
-                    vecnorm = getattr(model.get_env(), "get_attr")("obs_rms")[0]
-                    payload["vecnormalize"] = {
-                        "mean": getattr(vecnorm, "mean", None),
-                        "var": getattr(vecnorm, "var", None),
-                        "count": getattr(vecnorm, "count", None),
-                    }
-                except Exception:
-                    pass
-                torch.save(payload, tmp_path)  # 既存のgzipラッパはそのまま活用
-                # 原子的rename
+                
+                # pickle化して圧縮
+                import pickle
+                data = pickle.dumps(checkpoint_data, protocol=pickle.HIGHEST_PROTOCOL)
+                compressed_data = _compress_data(data, selected_compressor)
+                
+                # 原子的保存
+                tmp_path = path + "_light.tmp"
+                final_path = path + "_light.zip"
+                Path(tmp_path).write_bytes(compressed_data)
                 os.replace(tmp_path, final_path)
-
-            logging.info(f"[CKPT] saved: {final_path}")
-
-            # 世代管理: 同じprefixの古いファイルを削除
-            dir_path = Path(final_path).parent
-            prefix = Path(final_path).stem.split('_')[0] if '_' in Path(final_path).stem else Path(final_path).stem
-
-            checkpoints = sorted(dir_path.glob(f"{prefix}_*.zip"), key=lambda x: x.stat().st_mtime, reverse=True)
-            for old_ckpt in checkpoints[_keep_last:]:
-                old_ckpt.unlink()
-                logging.info(f"[CKPT] removed old: {old_ckpt}")
-
+                
+            else:
+                # 通常モード: 完全保存
+                final_path = path + ".zip"
+                model.save(final_path)
+            
+            logging.info(f"[CKPT] saved: {final_path} (compressor: {selected_compressor})")
+            if notifier:
+                notifier.send_custom_notification("💾 Checkpoint Saved", f"Saved to {final_path}", color=0x0000ff)
+                
         except Exception as e:
             logging.exception(f"[CKPT] save failed: {e}")
             if notifier:
-                notifier.send_error_notification("Checkpoint Save Error", f"Failed to save {path_base}: {str(e)}")
+                notifier.send_error_notification("Checkpoint Save Error", f"Failed to save {path}: {str(e)}")
 
-    _save_executor.submit(_job)
+    # 非同期実行
+    import concurrent.futures
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(_job)
+    executor.shutdown(wait=False)
 
-class TensorBoardCallback(BaseCallback):
-    """TensorBoard用のコールバック"""
+def _select_checkpoint_compressor(data_size_bytes: int) -> str:
+    """チェックポイント用圧縮方式選択（FeatureCache._select_compressorと共通ロジック）"""
+    try:
+        import zstandard as zstd
+        HAS_ZSTD = True
+    except ImportError:
+        HAS_ZSTD = False
+        
+    try:
+        import lz4.frame
+        HAS_LZ4 = True
+    except ImportError:
+        HAS_LZ4 = False
+    
+    # チェックポイントは基本的にarchival用途
+    if data_size_bytes < 50 * 1024 * 1024:  # < 50MB
+        return "lz4" if HAS_LZ4 else "zlib"
+    else:
+        return "zstd" if HAS_ZSTD else "zlib"
 
-    def __init__(self, eval_freq: int = 1000, verbose: int = 0):
-        """
-        コンストラクタ
+def _compress_data(data: bytes, compressor: str) -> bytes:
+    """データ圧縮"""
+    if compressor == "zstd":
+        try:
+            import zstandard as zstd
+            return zstd.ZstdCompressor(level=3).compress(data)
+        except ImportError:
+            compressor = "zlib"
+    
+    if compressor == "lz4":
+        try:
+            import lz4.frame
+            return lz4.frame.compress(data)
+        except ImportError:
+            compressor = "zlib"
+    
+    # fallback to zlib
+    import zlib
+    return zlib.compress(data, 6)
 
-        Args:
-            eval_freq (int): 評価頻度（ステップ数）
-            verbose (int): 詳細ログのレベル
-        """
-        super().__init__(verbose)
-        self.eval_freq = eval_freq
-
-    def _on_step(self) -> bool:
-        """
-        各ステップで呼び出されるメソッド。環境の統計情報をTensorBoardに記録します。
-
-        Returns:
-            bool: トレーニングを継続する場合はTrue
-        """
-        if self.n_calls % self.eval_freq == 0 and self.model.env:
-            # 環境の統計情報をTensorBoardに記録
-            # VecEnvから get_statistics メソッドを直接取得
-            stats_list = self.model.env.get_attr('get_statistics')
-            if stats_list and callable(stats_list[0]):
-                stats = stats_list[0]()
-                if isinstance(stats, dict):
-                    for key, value in stats.items():
-                        self.logger.record(f'env/{key}', value)
-        return True
-
+def load_checkpoint(model, path, light_mode=False):
+    """チェックポイント読み込み（軽量/通常両対応）"""
+    if light_mode:
+        # 軽量チェックポイントの読み込み
+        import pickle
+        try:
+            import zstandard as zstd
+            HAS_ZSTD = True
+        except ImportError:
+            HAS_ZSTD = False
+            
+        try:
+            import lz4.frame
+            HAS_LZ4 = True
+        except ImportError:
+            HAS_LZ4 = False
+        
+        # 圧縮形式の自動判定
+        if path.endswith('_light.zip'):
+            data = Path(path).read_bytes()
+            
+            # 圧縮形式判定（簡易的）
+            if data.startswith(b'\x28\xb5\x2f\xfd'):  # Zstd magic
+                decompressed = zstd.ZstdDecompressor().decompress(data) if HAS_ZSTD else zlib.decompress(data)
+            elif data.startswith(b'\x04\x22\x4D\x18'):  # LZ4 magic
+                decompressed = lz4.frame.decompress(data) if HAS_LZ4 else zlib.decompress(data)
+            else:
+                decompressed = zlib.decompress(data)
+            
+            checkpoint_data = pickle.loads(decompressed)
+            
+            # モデルにロード
+            model.policy.load_state_dict(checkpoint_data['policy'])
+            if checkpoint_data.get('value_net') and hasattr(model, 'value_net'):
+                model.value_net.load_state_dict(checkpoint_data['value_net'])
+            if checkpoint_data.get('scaler'):
+                model.scaler = checkpoint_data['scaler']
+                
+        else:
+            # 通常チェックポイント
+            model.load(path)
+    else:
+        # 通常チェックポイント
+        model.load(path)
 
 class CheckpointCallback(BaseCallback):
-    """チェックポイント保存用のコールバック"""
+    """チェックポイント保存用コールバック（非同期・世代管理）"""
 
-    def __init__(self, save_freq: int, save_path: str, name_prefix: str = "checkpoint", verbose: int = 0, notifier=None, session_id=None):
-        """
-        コンストラクタ
-
-        Args:
-            save_freq (int): チェックポイントを保存する頻度（ステップ数）
-            save_path (str): チェックポイントを保存するパス
-            name_prefix (str): チェックポイントファイル名のプレフィックス
-            verbose (int): 詳細ログのレベル
-            notifier: 通知用のオプショナルなNotifierオブジェクト
-            session_id: トレーニングセッションのID
-        """
+    def __init__(self, save_freq: int, save_path: str, name_prefix: str = "checkpoint",
+                 verbose: int = 0, notifier=None, session_id=None, light_mode=False):
         super().__init__(verbose)
         self.save_freq = save_freq
         self.save_path = Path(save_path)
@@ -143,6 +183,63 @@ class CheckpointCallback(BaseCallback):
         self.name_prefix = name_prefix
         self.notifier = notifier
         self.session_id = session_id
+        self.light_mode = light_mode
+
+    def _on_step(self) -> bool:
+        """
+        各ステップで呼び出されるメソッド。定期的にモデルのチェックポイントを保存します。
+
+        Returns:
+            bool: トレーニングを継続する場合はTrue
+        """
+        try:
+            if self.n_calls % self.save_freq == 0:
+                checkpoint_path = self.save_path / f"{self.name_prefix}_{self.n_calls}"
+                # 非同期保存
+                save_checkpoint_async(self.model, str(checkpoint_path), self.notifier)
+
+                total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
+                progress_percent = (self.n_calls / total_timesteps) * 100
+                progress_msg = f"Step {self.n_calls:,} / {total_timesteps:,} ({progress_percent:.1f}%)"
+
+                # INFOログ
+                logging.info(progress_msg)
+
+                # Discord通知（10%ごと）
+                if int(progress_percent) % 10 == 0 and self.notifier:
+                    self.notifier.send_custom_notification(
+                        f"📊 Training Progress ({self.session_id})",
+                        progress_msg,
+                        color=0x00ff00
+                    )
+
+                if self.verbose > 0:
+                    print(progress_msg)
+
+                # メモリ効率化: ガーベジコレクション
+                import gc
+                gc.collect()
+
+        except Exception as e:
+            logging.error(f"Error in checkpoint callback: {e}")
+            if self.notifier:
+                self.notifier.send_error_notification("Checkpoint Error", str(e))
+
+        return True
+
+class TensorBoardCallback(BaseCallback):
+    """TensorBoardログ用コールバック"""
+
+    def __init__(self, eval_freq: int = 1000, verbose: int = 0):
+        super().__init__(verbose)
+        self.eval_freq = eval_freq
+
+    def _on_step(self) -> bool:
+        # TensorBoard logging is handled by logger configuration
+        return True
+
+# 非同期チェックポイント保存用
+# (The unreachable code and duplicate imports are removed here.)
 
     def _on_step(self) -> bool:
         """
@@ -210,7 +307,9 @@ class SafetyCallback(BaseCallback):
             bool: トレーニングを継続する場合はTrue
         """
         try:
-            # 環境の統計情報を取得
+            total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
+            progress_percent = (self.n_calls / total_timesteps) * 100
+            progress_msg = f"Step {self.n_calls:,} / {total_timesteps:,} ({progress_percent:.1f}%)"
             if self.model.env:
                 stats_list = self.model.env.get_attr('get_statistics')
                 if stats_list and callable(stats_list[0]):
@@ -223,9 +322,8 @@ class SafetyCallback(BaseCallback):
                             if self.zero_trade_count >= self.max_zero_trades:
                                 logging.warning(f"No trades for {self.max_zero_trades} steps, stopping training")
                                 return False  # 学習停止
-                        else:
-                            self.zero_trade_count = 0
-
+                            else:
+                                self.zero_trade_count = 0
         except Exception as e:
             logging.error(f"Error in safety callback: {e}")
 
@@ -249,17 +347,15 @@ class PPOTrainer:
         apply_cpu_tuning()
         
         self.data_path = Path(data_path)
+        self.data_path = Path(data_path)
         self.config = config or self._get_default_config()
         
         # CPU最適化設定
         self._setup_cpu_optimization()
         
-        self.config = config or self._get_default_config()
-        
         # config をフラット化（training セクションをトップレベルに）
         if 'training' in self.config:
             self.config.update(self.config['training'])
-        
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_dir = Path(checkpoint_dir)
 
@@ -348,7 +444,12 @@ class PPOTrainer:
         # メモリ効率化: FeatureCacheチェック
         memory_config = self.config.get('memory', {})
         if memory_config.get('enable_cache', False):
-            cache = FeatureCache(memory_config.get('cache_dir', 'data/cache'))
+            cache = FeatureCache(
+                memory_config.get('cache_dir', 'data/cache'),
+                memory_config.get('cache_max_mb', 1000),
+                memory_config.get('max_age_days', 7),
+                memory_config.get('compressor', 'zstd')
+            )
             params = {
                 "data_path": str(data_path),
                 "version": "v1",
@@ -356,8 +457,10 @@ class PPOTrainer:
             }
             cached = cache.get(str(data_path), params)
             if cached is not None:
-                logging.info(f"[CACHE] Hit for {data_path}")
                 df = pickle.loads(cached)
+                # メモリ使用量計算
+                cached_size_mb = len(cached) / (1024 * 1024)
+                logging.info(f"[CACHE] Hit ({cached_size_mb:.1f} MB loaded) for {data_path}")
                 # ダウンキャスト適用
                 if memory_config.get('downcast', True):
                     df = downcast_df(df, 
@@ -375,8 +478,7 @@ class PPOTrainer:
 
             if not file_paths:
                 raise FileNotFoundError(f"No files found matching pattern: {data_path}")
-
-            print(f"Found {len(file_paths)} files matching pattern: {data_path}")
+            logging.info(f"Found {len(file_paths)} files matching pattern: {data_path}")
 
             # すべてのファイルを読み込んで結合
             dfs = []
@@ -387,10 +489,11 @@ class PPOTrainer:
                 elif file_path.suffix == '.csv':
                     df = pd.read_csv(file_path)
                 else:
-                    print(f"Skipping unsupported file: {file_path}")
+                    logging.warning(f"Skipping unsupported file: {file_path}")
                     continue
 
                 dfs.append(df)
+                logging.info(f"Loaded {file_path.name}: {len(df)} rows")
                 print(f"Loaded {file_path.name}: {len(df)} rows")
 
             if not dfs:
@@ -414,8 +517,8 @@ class PPOTrainer:
                 df = pd.read_csv(data_path)
             else:
                 raise ValueError(f"Unsupported file format: {data_path.suffix}")
-
-        print(f"Total loaded data: {len(df)} rows, {len(df.columns)} columns")
+        logging.info(f"Total loaded data: {len(df)} rows, {len(df.columns)} columns")
+        logging.info(f"Columns: {list(df.columns)}")
         print(f"Columns: {list(df.columns)}")
 
         # メモリ効率化: ダウンキャスト
@@ -428,14 +531,21 @@ class PPOTrainer:
 
         # メモリ効率化: キャッシュ保存
         if memory_config.get('enable_cache', False):
-            cache = FeatureCache(memory_config.get('cache_dir', 'data/cache'))
+            cache = FeatureCache(
+                memory_config.get('cache_dir', 'data/cache'),
+                memory_config.get('cache_max_mb', 1000)
+            )
             params = {
                 "data_path": str(data_path),
                 "version": "v1",
                 "downcast": memory_config.get('downcast', True)
             }
-            cache.put(str(data_path), params, df)
-            logging.info(f"[CACHE] Saved for {data_path}")
+            # メモリ使用量計算
+            data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+            compressed = pickle.dumps(df, protocol=pickle.HIGHEST_PROTOCOL)
+            compressed_size_mb = len(compressed) / (1024 * 1024)
+            cache.put(str(data_path), params, compressed)
+            logging.info(f"[CACHE] Saved ({data_size_mb:.1f} MB -> {compressed_size_mb:.1f} MB compressed) for {data_path}")
 
         return df
 
@@ -494,7 +604,6 @@ class PPOTrainer:
         logging.getLogger().addHandler(buffer_handler)
         
         logging.info("Starting PPO training...")
-        print("Starting PPO training...")
 
         # モデルの作成
         model = PPO(
@@ -535,7 +644,8 @@ class PPOTrainer:
             name_prefix=f"ppo_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             verbose=1,
             notifier=notifier,
-            session_id=session_id
+            session_id=session_id,
+            light_mode=self.config.get('training', {}).get('checkpoint_light', False)
         )
 
         # 安全策コールバックの設定
@@ -553,7 +663,27 @@ class PPOTrainer:
             # 最終モデルの保存
             model.save(str(self.model_dir / 'final_model'))
             logging.info(f"Model saved to {self.model_dir / 'final_model'}")
-            print(f"Model saved to {self.model_dir / 'final_model'}")
+
+            # トレーニング完了時のキャッシュ統計出力
+            memory_config = self.config.get('memory', {})
+            memory_config = self.config.get('memory', {})
+            if memory_config.get('enable_cache', False):
+                cache = FeatureCache(
+                    memory_config.get('cache_dir', 'data/cache'),
+                    memory_config.get('cache_max_mb', 1000)
+                )
+                stats = cache.get_stats()
+                logging.info(f"[CACHE] Final stats: {stats['hits']} hits, {stats['misses']} misses, "
+                            f"{stats['hit_rate']:.1f}% hit rate, {stats['evictions']} evictions, "
+                            f"{stats['compression_ratio']:.1f}% compression ratio")
+
+                # キャッシュ健全性チェック
+                health = cache.monitor_cache_health()
+                if health['warnings']:
+                    for warning in health['warnings']:
+                        logging.warning(f"[CACHE] {warning}")
+                else:
+                    logging.info(f"[CACHE] Health check passed - {health['size_mb']:.1f}MB used")
 
             # I/O最適化: バッファをフラッシュ
             buffer_handler.flush()
@@ -608,8 +738,7 @@ class PPOTrainer:
                 episode_length += 1
 
             episode_rewards.append(episode_reward)
-            episode_lengths.append(episode_length)
-            print(f"Episode {episode + 1}: Reward = {episode_reward:.2f}, Length = {episode_length}")
+            logging.info(f"Episode {episode + 1}: Reward = {episode_reward:.2f}, Length = {episode_length}")
 
         # 統計の計算
         stats = {
@@ -625,8 +754,7 @@ class PPOTrainer:
         results_path = self.log_dir / 'evaluation_results.json'
         with open(results_path, 'w') as f:
             json.dump(stats, f, indent=2)
-
-        print(f"Evaluation results saved to {results_path}")
+        logging.info(f"Evaluation results saved to {results_path}")
         return stats
 
     def visualize_training(self) -> None:
@@ -678,9 +806,9 @@ class PPOTrainer:
             axes[1, 1].grid(True)
 
             plt.tight_layout()
-            plt.savefig(self.log_dir / 'training_visualization.png', dpi=300, bbox_inches='tight')
             plt.show()
 
+            logging.info(f"Training visualization saved to {self.log_dir / 'training_visualization.png'}")
             print(f"Training visualization saved to {self.log_dir / 'training_visualization.png'}")
 
 
@@ -741,13 +869,13 @@ def optimize_hyperparameters(data_path: str, n_trials: int = 50) -> dict:
     # 最適化の実行
     study.optimize(objective, n_trials=n_trials)
 
-    # 最適なハイパーパラメータの表示
-    print("Best hyperparameters:")
+    logging.info("Best hyperparameters:")
     for key, value in study.best_params.items():
-        print(f"  {key}: {value}")
+        logging.info(f"  {key}: {value}")
 
-    print(f"Best reward: {study.best_value}")
+    logging.info(f"Best reward: {study.best_value}")
 
+    return study.best_params
     return study.best_params
 
 
