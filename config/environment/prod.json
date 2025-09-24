@@ -1,0 +1,11 @@
+{
+  "memory": {
+    "enable_cache": true,
+    "cache_dir": "data/cache",
+    "parquet_compression": "zstd",
+    "downcast": true,
+    "float_dtype": "float32",
+    "int_dtype": "int32",
+    "keep_ckpt": 5
+  }
+}

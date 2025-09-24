@@ -141,13 +141,15 @@ class DiscordNotifier:
                     return False
                     return False
 
-    def start_session(self, session_type: str = "training", config_name: str = "default") -> str:
+    def start_session(self, session_type: str = "training", config_name: str = "default", prefix: str = "") -> str:
         """セッション開始通知"""
         self.session_start_time = datetime.now()
         self.session_id = self.session_start_time.strftime('%Y%m%d-%H%M%S')
 
         icon = "🧪" if self.test_mode else "🚀"
         title = f"{icon} **{session_type.title()} Session Started**"
+        if prefix:
+            title = f"{prefix} {title}"
 
         content = f"{title}\n\n**Session ID:** `{self.session_id}`\n**Config:** `{config_name}`\n**Start Time:** {self.session_start_time.strftime('%Y-%m-%d %H:%M:%S')} JST\n**Session Type:** {session_type.title()}"
 

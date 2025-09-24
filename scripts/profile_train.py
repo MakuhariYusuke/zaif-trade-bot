@@ -20,6 +20,8 @@ def profile_training():
     config = {
         'training': {
             'total_timesteps': 1000,
+            'eval_freq': 500,
+            'n_eval_episodes': 5,
             'batch_size': 32,
             'n_steps': 1024,
             'gamma': 0.99,
@@ -37,11 +39,14 @@ def profile_training():
             'log_dir': './logs/',
             'model_dir': './models/',
             'tensorboard_log': './tensorboard/',
-        }
+        },
+        'log_dir': './logs/',  # ppo_trainer.py が期待する
+        'model_dir': './models/',
+        'tensorboard_log': './tensorboard/',
     }
 
     # データパス（サンプルデータを使用）
-    data_path = 'generate_sample_data.py'  # 存在チェック
+    data_path = str(Path(__file__).parent.parent / 'data' / 'features' / '2025' / '04' / 'sample_04.parquet')
     if not Path(data_path).exists():
         print("Error: Sample data not found. Run generate_sample_data.py first.")
         return

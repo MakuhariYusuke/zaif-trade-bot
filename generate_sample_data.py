@@ -24,6 +24,7 @@ def generate_sample_data(start_date, end_date, filename):
     data = {
         'ts': date_range,
         'price': prices,
+        'close': prices,  # 環境が期待するcloseカラム
         'volume': np.random.exponential(100, n_points),
 
         # 移動平均
@@ -77,6 +78,11 @@ def generate_sample_data(start_date, end_date, filename):
     }
 
     df = pd.DataFrame(data)
+
+    # エピソードIDの追加（1000ステップごとに変更）
+    episode_length = 1000
+    episode_ids = np.repeat(np.arange(n_points // episode_length + 1), episode_length)[:n_points]
+    df['episode_id'] = episode_ids
 
     # NaNをゼロで埋める
     df = df.fillna(0)

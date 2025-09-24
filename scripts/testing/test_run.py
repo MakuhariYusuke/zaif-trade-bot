@@ -37,6 +37,14 @@ def load_config() -> dict:
     else:
         raise FileNotFoundError(f"Test config file not found: {config_path}")
 
+    # 環境設定の読み込み
+    env_config_path = Path('config/environment/dev.json')
+    if env_config_path.exists():
+        with open(env_config_path, 'r') as f:
+            env_config = json.load(f)
+        config.update(env_config)
+        print(f"Loaded environment config from {env_config_path}")
+
     return config
 
 

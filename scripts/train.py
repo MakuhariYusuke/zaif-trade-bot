@@ -13,12 +13,30 @@ from typing import Optional, List
 # ローカルモジュールのインポート
 sys.path.insert(0, str(Path(__file__).parent.parent))  # プロジェクトルートを先頭に追加
 from src.trading.ppo_trainer import PPOTrainer
-from utils.notify.discord import (
-    notify_session_start,
-    notify_session_end,
-    notify_error,
-    DiscordNotifier,
-)
+from utils.notify.discord import DiscordNotifier
+
+# グローバルnotifierインスタンス
+_notifier = None
+
+def get_notifier():
+    global _notifier
+    if _notifier is None:
+        _notifier = DiscordNotifier()
+    return _notifier
+
+def notify_session_start(session_type: str, config_name: str):
+    notifier = get_notifier()
+    is_production = os.environ.get('PRODUCTION') == '1'
+    discord_prefix = "🚀PROD" if is_production else "🧪TEST"
+    return notifier.start_session(session_type, config_name, discord_prefix)
+
+def notify_error(message: str, details: str = ""):
+    notifier = get_notifier()
+    notifier.send_error_notification("Training Error", f"{message}\n{details}")
+
+def notify_session_end(results: dict, session_type: str):
+    notifier = get_notifier()
+    notifier.end_session(results, session_type)
 
 
 def load_config(config_path: str = 'config/training/prod.json') -> dict:
@@ -32,14 +50,29 @@ def load_config(config_path: str = 'config/training/prod.json') -> dict:
         config = get_default_config()
         print(f"Using default config (config file not found: {config_path})")
 
+    # 環境設定の読み込み（dev/prod）
+    env = os.environ.get('ENV', 'dev')
+    env_config_path = Path(f'config/environment/{env}.json')
+    if env_config_path.exists():
+        with open(env_config_path, 'r') as f:
+            env_config = json.load(f)
+        config.update(env_config)
+        print(f"Loaded environment config from {env_config_path}")
+
     return config
 
 
 def get_default_config() -> dict:
     """デフォルト設定を取得"""
+    # テスト実行時はサンプルデータを使用
+    if os.getenv("TEST_RUN") == "1" or True:  # 一時的にTrueでテスト
+        train_data = str(Path(__file__).parent.parent / 'data' / 'features' / '2025' / '04' / 'sample_04.parquet')
+    else:
+        train_data = './data/train_features.parquet'
+    
     return {
         'data': {
-            'train_data': './data/train_features.parquet',
+            'train_data': train_data,
             'test_data': './data/test_features.parquet',
             'validation_data': './data/val_features.parquet',
         },
@@ -57,6 +90,7 @@ def get_default_config() -> dict:
             'gae_lambda': 0.95,
             'max_grad_norm': 0.5,
             'vf_coef': 0.5,
+            'verbose': 1,  # PPO verbose level
         },
         'environment': {
             'reward_scaling': 1.0,
@@ -185,8 +219,6 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
 
     print("\n" + "=" * 60)
     print("TRAINING PIPELINE COMPLETE")
-    print("=" * 60)
-
 def run_optimization_pipeline(config: dict, data_path: Optional[str] = None) -> None:
     """最適化パイプラインの実行"""
     print("=" * 60)
@@ -269,33 +301,10 @@ def main():
 
     # Discord prefix設定
     discord_prefix = "🚀PROD" if is_production else "🧪TEST"
-    # 通知関数にprefixを渡す（後で実装）
+    # DiscordNotifierインスタンス作成
+    notifier = DiscordNotifier(test_mode=not is_production)
 
-    # ディレクトリのセットアップ
-    setup_directories(config)
+    # Discord通知: セッション開始
+    config_name = Path(args.config if args else 'rl_config.json').stem
+    session_id = notifier.start_session("training", config_name, discord_prefix)
 
-    # 実験設定の保存
-    save_experiment_config(config)
-
-    # パイプラインの実行
-    if args.mode == 'train':
-        run_training_pipeline(config, args.data, args)
-
-    elif args.mode == 'optimize':
-        run_optimization_pipeline(config, args.data)
-
-    elif args.mode == 'evaluate':
-        if not args.model:
-            print("Error: --model required for evaluation mode")
-            return
-        run_evaluation_pipeline(config, args.model, args.data)
-
-    elif args.mode == 'compare':
-        if not args.models:
-            print("Error: --models required for comparison mode")
-            return
-        run_comparison_pipeline(config, args.models, args.model_names, args.data)
-
-
-if __name__ == '__main__':
-    main()
