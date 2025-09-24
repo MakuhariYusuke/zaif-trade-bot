@@ -1284,4 +1284,6 @@ python scripts/train.py --feature-set medium --timesteps 100000
 # Extended セットで 1M 学習
 python scripts/train.py --feature-set extended --timesteps 1000000
 ```
+
+詳細は `docs/evaluation.md` を参照してください。
 ```
