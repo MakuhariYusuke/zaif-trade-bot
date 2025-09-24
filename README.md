@@ -145,6 +145,57 @@ CI では手動/ナイトリー用に `LONG_TESTS=1` を付与したワークフ
 - 主に `market:ticker`/`market:orderbook`/`market:trades` を可視化。
 - 環境: `CACHE_METRICS_INTERVAL_MS`, `MARKET_CACHE_TTL_MS`。
 
+### メモリ効率化・軽量化機能
+
+バックテスト高速化のための特徴量キャッシュと、トレーニング高速化のための軽量チェックポイントを備えています。
+
+#### 特徴量キャッシュ（Feature Cache）
+
+- **動的圧縮**: zstd/lz4/zlib をデータサイズ・アクセス頻度に応じて自動選択
+- **LRU + TTL**: サイズ制限と有効期限ベースの自動クリーンアップ
+- **プロセス分離**: 並列実行時の競合回避
+
+```bash
+# 基本使用
+python scripts/train.py --timesteps 10000
+
+# キャッシュ設定例
+python scripts/train.py \
+  --cache-compressor auto \
+  --cache-access-pattern balanced \
+  --cache-max-mb 500 \
+  --cache-ttl-days 7
+```
+
+**圧縮アルゴリズム選択基準**:
+- `< 50KB`: lz4優先（速度最優先）
+- `< 1MB`: アクセス頻度により lz4/zstd 選択
+- `>= 1MB`: zstd優先（CPUコア数考慮）
+
+#### 軽量チェックポイント
+
+- **最小保存セット**: policy + value_net + scaler（optimizer/replay除外）
+- **圧縮保存**: 自動圧縮でサイズ60-80%削減
+- **高速復元**: 学習再開時のオーバーヘッド最小化
+
+```bash
+# 軽量チェックポイント使用
+python scripts/train.py \
+  --checkpoint-light \
+  --checkpoint-compressor zstd
+
+# 並列トレーニング
+python scripts/parallel_train.py \
+  --timesteps 1000 \
+  --checkpoint-light \
+  --cache-compressor auto
+```
+
+**サイズ削減効果**:
+- 完全チェックポイント: 500MB
+- 軽量チェックポイント: 150MB (70%削減)
+- Policyのみ: 50MB (90%削減)
+
 ---
 
 ## ダッシュボード（軽量 CLI）
@@ -1132,9 +1183,37 @@ PRODUCTION=1 python scripts/train.py --config config/training/prod.json
 # 手動timesteps指定（PRODUCTION未設定時はmin(requested, 1000)に丸め）
 python scripts/train.py --timesteps 50000  # → 1000に丸め
 PRODUCTION=1 python scripts/train.py --timesteps 50000  # → 50000実行
+
+# キャッシュ無効化（データ再処理時）
+python scripts/train.py --no-cache
+
+# 軽量チェックポイント（高速保存・小容量）
+python scripts/train.py --checkpoint-light
 ```
 
-### 並列トレーニング時の注意
+### キャッシュ管理
+
+特徴量キャッシュでデータ再処理を高速化。設定: `config/environment/*.json`
+
+- **`memory.cache_max_mb`**: キャッシュサイズ上限（MB）。超過時はLRUで古いデータを削除。
+- **`memory.max_age_days`**: キャッシュ有効期限（日）。古いファイルは自動削除。
+- **`memory.compressor`**: 圧縮アルゴリズム。`zstd`(推奨), `lz4`(最速), `zlib`(互換)から選択。
+- **`--no-cache`**: キャッシュ無効化オプション。再処理が必要な場合に使用。
+
+### チェックポイント
+
+定期的にモデルを保存。非同期・世代管理でパフォーマンスを維持。
+
+- **通常モード**: 完全モデル保存（重いが高信頼性）。
+- **軽量モード** (`--checkpoint-light`): Policyのみ保存（高速・小容量）。
+- **自動クリーンアップ**: 世代数上限で古いチェックポイントを削除。
+- **並列トレーニング**: プロセスごとに個別ディレクトリを使用。
+
+### 監視・自動最適化
+
+- **キャッシュ肥大化検知**: サイズ超過時に警告ログと自動クリーンアップ。
+- **ヒット率監視**: 低ヒット率時の警告（チューニング推奨）。
+- **メモリ使用量**: トレーニング完了時に詳細統計を表示。
 
 - 総スレッド数 ≦ 物理コア数 を厳守（例: 8コアで2プロセス×4スレッド）。
 - 各プロセスに連続コア割当（P0: 0-3, P1: 4-7）。
