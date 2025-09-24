@@ -6,27 +6,28 @@ import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
-import torch
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 import json
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 from torch.utils.tensorboard import SummaryWriter
+import argparse
 import warnings
 warnings.filterwarnings('ignore')
 
 # ローカルモジュールのインポート
-sys.path.append(str(Path(__file__).parent.parent))
+parent_path = str(Path(__file__).parent.parent)
+if parent_path not in sys.path:
+    sys.path.insert(0, parent_path)
 from envs.heavy_trading_env import HeavyTradingEnv
 
 
 class TradingEvaluator:
     """取引モデルの評価クラス"""
 
-    def __init__(self, model_path: str, data_path: str, config: dict = None):
+    def __init__(self, model_path: str, data_path: str, config: Optional[dict] = None):
         self.model_path = Path(model_path)
         self.data_path = Path(data_path)
         self.config = config or self._get_default_config()
@@ -39,14 +40,15 @@ class TradingEvaluator:
 
         # 環境の作成
         self.env = self._create_env()
-
         # 結果保存ディレクトリ
         self.results_dir = Path(self.config['results_dir'])
-        self.results_dir.mkdir(exist_ok=True)
+        self.results_dir.mkdir(parents=True, exist_ok=True)
+        self.results_dir = Path(self.config['results_dir'])
+        self.results_dir.mkdir(parents=True, exist_ok=True)
 
         # TensorBoard設定
         self.tensorboard_log_dir = Path(self.config.get('tensorboard_log', './tensorboard/'))
-        self.tensorboard_log_dir.mkdir(exist_ok=True)
+        self.tensorboard_log_dir.mkdir(parents=True, exist_ok=True)
         self.writer = SummaryWriter(log_dir=str(self.tensorboard_log_dir / 'evaluation'))
 
     def _get_default_config(self) -> dict:
@@ -175,6 +177,9 @@ class TradingEvaluator:
         # 行動統計
         all_episode_actions = [action for episode_actions in all_actions for action in episode_actions]
 
+        episode_lengths = [len(r) for r in all_rewards]
+
+        win_rate = np.mean([1 if r > 0 else 0 for r in all_episode_rewards]) if all_episode_rewards else 0.0
         stats = {
             'reward_stats': {
                 'mean_total_reward': np.mean(all_episode_rewards),
@@ -183,6 +188,7 @@ class TradingEvaluator:
                 'max_total_reward': np.max(all_episode_rewards),
                 'mean_step_reward': np.mean([r for episode in all_rewards for r in episode]),
                 'total_reward_sum': sum(all_episode_rewards),
+                'win_rate': win_rate,
             },
             'pnl_stats': {
                 'mean_total_pnl': np.mean(all_episode_pnls),
@@ -205,13 +211,16 @@ class TradingEvaluator:
                 'min_trades_per_episode': min(len([a for a in actions if a != 0]) for actions in all_actions),
                 'max_trades_per_episode': max(len([a for a in actions if a != 0]) for actions in all_actions),
                 'hold_ratio_penalty': self._calculate_hold_ratio_penalty(all_actions),
-                'profit_factor': self._calculate_profit_factor(all_episode_pnls),
+                'profit_factor': self._calculate_profit_factor(list(map(float, all_episode_pnls))),
             },
             'episode_stats': {
                 'num_episodes': len(all_rewards),
-                'mean_episode_length': np.mean([len(r) for r in all_rewards]),
-                'total_steps': sum(len(r) for r in all_rewards),
-            }
+                'mean_episode_length': np.mean(episode_lengths),
+                'total_steps': sum(episode_lengths),
+            },
+            'episode_lengths': episode_lengths,
+            'episode_rewards': all_episode_rewards,
+            'episode_pnls': all_episode_pnls,
         }
 
         return stats
@@ -245,9 +254,9 @@ class TradingEvaluator:
         print(f"Raw data: {raw_file}")
 
         # TensorBoardに指標を記録
-        self._log_to_tensorboard(stats, timestamp)
+        self._log_to_tensorboard(stats)
 
-    def _log_to_tensorboard(self, stats: Dict, timestamp: str) -> None:
+    def _log_to_tensorboard(self, stats: Dict, timestamp: Optional[str] = None) -> None:
         """TensorBoardに評価指標を記録"""
         try:
             # 報酬統計
@@ -286,9 +295,17 @@ class TradingEvaluator:
     def create_visualizations(self) -> None:
         """評価結果の可視化"""
         print("Creating visualizations...")
-
         # スタイル設定
-        plt.style.use(self.config['plot_style'])
+        import matplotlib
+        mpl_version = matplotlib.__version__
+        plot_style = self.config['plot_style']
+        if plot_style == 'seaborn':
+            # matplotlib 3.6以降は 'seaborn-v0_8' を推奨
+            major, minor = map(int, mpl_version.split('.')[:2])
+            if major > 3 or (major == 3 and minor >= 6):
+                plot_style = 'seaborn-v0_8'
+        plt.style.use(plot_style)
+        sns.set_palette("husky")
         sns.set_palette("husky")
 
         # 評価結果ファイルの読み込み
@@ -485,7 +502,7 @@ class TradingEvaluator:
         plt.savefig(self.results_dir / 'evaluation_summary.png', dpi=300, bbox_inches='tight')
         plt.close()
 
-    def compare_models(self, model_paths: List[str], model_names: List[str] = None) -> None:
+    def compare_models(self, model_paths: List[str], model_names: Optional[List[str]] = None) -> None:
         """複数モデルの比較"""
         if model_names is None:
             model_names = [f'Model_{i+1}' for i in range(len(model_paths))]
@@ -633,14 +650,12 @@ class TradingEvaluator:
         annualized_return = total_return  # 簡易的に総リターンを使用
 
         return float(annualized_return / max_dd)
-
-
-    def _calculate_profit_factor(self, pnls: List[float]) -> float:
+    def _calculate_profit_factor(self, all_episode_pnls: List[float]) -> float:
         """Profit Factorの計算（総利益 / 総損失）"""
-        if not pnls:
+        if not all_episode_pnls:
             return 0.0
 
-        pnls_array = np.array(pnls, dtype=float)
+        pnls_array = np.array(all_episode_pnls, dtype=float)
         total_profit = np.sum(pnls_array[pnls_array > 0])
         total_loss = abs(np.sum(pnls_array[pnls_array < 0]))
 
@@ -655,6 +670,8 @@ class TradingEvaluator:
         penalties = []
 
         for actions in all_actions:
+            if not actions:
+                continue  # 空リストはスキップ
             hold_ratio = actions.count(0) / len(actions)
             hold_ratios.append(hold_ratio)
 
@@ -671,7 +688,6 @@ class TradingEvaluator:
 
 def main():
     """メイン関数"""
-    import argparse
 
     parser = argparse.ArgumentParser(description='Trading RL Model Evaluation and Visualization')
     parser.add_argument('--model', type=str, required=True, help='Path to trained model')
