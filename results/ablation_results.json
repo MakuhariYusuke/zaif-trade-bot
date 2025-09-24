@@ -1,0 +1,94 @@
+{
+  "base_features": [
+    "MFI",
+    "Lags",
+    "VWAP",
+    "Donchian",
+    "KalmanFilter"
+  ],
+  "experimental_features": [
+    "MovingAverages",
+    "GradientSign"
+  ],
+  "ablation_results": {
+    "MFI": {
+      "success": true,
+      "sharpe_impact": 0.0,
+      "is_experimental": false
+    },
+    "Lags": {
+      "success": true,
+      "sharpe_impact": 0.0,
+      "is_experimental": false
+    },
+    "VWAP": {
+      "success": true,
+      "sharpe_impact": 0.0,
+      "is_experimental": false
+    },
+    "Donchian": {
+      "success": true,
+      "sharpe_impact": 0.0,
+      "is_experimental": false
+    },
+    "KalmanFilter": {
+      "success": true,
+      "sharpe_impact": 0.0,
+      "is_experimental": false
+    },
+    "MovingAverages": {
+      "success": true,
+      "columns": [
+        "ema_5",
+        "ema_10",
+        "ema_20",
+        "ema_50",
+        "sma_5",
+        "sma_10",
+        "sma_20",
+        "sma_50"
+      ],
+      "duration_ms": 5.0,
+      "nan_rate": 0.1012,
+      "sharpe_impact": 0.0,
+      "is_experimental": true
+    },
+    "GradientSign": {
+      "success": true,
+      "columns": [
+        "price_gradient_sign"
+      ],
+      "duration_ms": 0.99,
+      "nan_rate": 0.0,
+      "sharpe_impact": 0.0,
+      "is_experimental": true
+    }
+  },
+  "experimental_eval": {
+    "MovingAverages": {
+      "duration_ms": 5.0,
+      "columns": [
+        "ema_5",
+        "ema_10",
+        "ema_20",
+        "ema_50",
+        "sma_5",
+        "sma_10",
+        "sma_20",
+        "sma_50"
+      ],
+      "rows": 100,
+      "nan_rate": 0.1012,
+      "delta_sharpe": 0.0
+    },
+    "GradientSign": {
+      "duration_ms": 0.99,
+      "columns": [
+        "price_gradient_sign"
+      ],
+      "rows": 100,
+      "nan_rate": 0.0,
+      "delta_sharpe": 0.0
+    }
+  }
+}

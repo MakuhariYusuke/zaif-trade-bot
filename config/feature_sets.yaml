@@ -1,0 +1,99 @@
+# Feature Sets Configuration
+# Wave3以降のharmful除外済み結果を反映したセット定義
+
+sets:
+  minimal:
+    # Wave1〜2ランキング上位 + Wave3で有益判定された特徴量
+    - MFI
+    - Lags
+    - VWAP
+    - Donchian
+    - KalmanFilter
+
+  balanced:
+    # Minimal + 基本的なテクニカル指標
+    - MFI
+    - Lags
+    - VWAP
+    - Donchian
+    - KalmanFilter
+    - RSI
+    - RollingMean14
+    - RollingStd14
+    - ATR_simplified
+    - OBV
+    # harmful特徴量（コメントアウト）
+    # - Ichimoku  # harmful: VIF > 10, MI≈0
+    # - RegimeClustering  # harmful: アブレーションでSharpe大幅低下
+
+  extended:
+    # 全特徴量（harmfulも含む）
+    - ROC
+    - RSI
+    - RollingMean14
+    - RollingStd14
+    - RollingMean50
+    - RollingStd50
+    - ZScore
+    - ATR_simplified
+    - Lags
+    - DOW
+    - HourOfDay
+    - OBV
+    - MFI
+    - VWAP
+    - MACD
+    - Bollinger
+    - Stochastic
+    - CCI
+    - ADX
+    - EMACross
+    - TEMA
+    - KAMA
+    - Ichimoku  # harmful
+    - Donchian  # harmful
+    - HeikinAshi
+    - Supertrend
+    - RegimeClustering  # harmful
+    - KalmanFilter  # harmful
+    - HVFeature
+    - ReturnStdDev
+    - PriceVolumeCorr
+    - ReturnMA
+
+  medium:
+    - MFI
+    - Lags
+    - VWAP
+    - Donchian
+    - KalmanFilter
+    - RSI
+    - RollingMean14
+    - RollingStd14
+    - ATR_simplified
+    - OBV
+    - MACD
+    - Bollinger
+    - Stochastic
+    - CCI
+
+  large:
+    - MFI
+    - Lags
+    - VWAP
+    - Donchian
+    - KalmanFilter
+    - RSI
+    - RollingMean14
+    - RollingStd14
+    - ATR_simplified
+    - OBV
+    - MACD
+    - Bollinger
+    - Stochastic
+    - CCI
+    - ADX
+    - HeikinAshi
+    - Supertrend
+    - ReturnStdDev
+    - HVFeature

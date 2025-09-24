@@ -15,77 +15,16 @@ from numba import jit
 from .base import BaseFeature
 
 
-class MACD(BaseFeature):
-    """MACD (Moving Average Convergence Divergence)"""
-
-    def __init__(self):
-        super().__init__("MACD", deps=["ema_12", "ema_26", "ema_9"])
-
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        df_copy = df.copy()
-        df_copy['macd'] = df_copy['ema_12'] - df_copy['ema_26']
-        df_copy['macd_signal'] = df_copy['ema_9']
-        df_copy['macd_hist'] = df_copy['macd'] - df_copy['macd_signal']
-        return df_copy[['macd', 'macd_signal', 'macd_hist']]
+# Moved to momentum/macd.py
 
 
-class Bollinger(BaseFeature):
-    """Bollinger Bands"""
-
-    def __init__(self):
-        super().__init__("Bollinger", deps=["rolling_mean_20", "rolling_std_20"])
-
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        df_copy = df.copy()
-        df_copy['bb_upper'] = df_copy['rolling_mean_20'] + 2 * df_copy['rolling_std_20']
-        df_copy['bb_lower'] = df_copy['rolling_mean_20'] - 2 * df_copy['rolling_std_20']
-        df_copy['bb_middle'] = df_copy['rolling_mean_20']
-        df_copy['bb_width'] = np.where(
-            df_copy['bb_middle'] != 0,
-            (df_copy['bb_upper'] - df_copy['bb_lower']) / df_copy['bb_middle'],
-            0
-        )
-        denominator = df_copy['bb_upper'] - df_copy['bb_lower']
-        df_copy['bb_position'] = np.where(
-            denominator != 0,
-            (df_copy['close'] - df_copy['bb_lower']) / denominator,
-            0.5  # neutral position if width is zero
-        )
-        return df_copy[['bb_upper', 'bb_lower', 'bb_middle', 'bb_width', 'bb_position']]
+# Moved to volatility/bollinger.py
 
 
-class Stochastic(BaseFeature):
-    """Stochastic Oscillator"""
-
-    def __init__(self):
-        super().__init__("Stochastic", deps=["rolling_max_14", "rolling_min_14"])
-
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        df_copy = df.copy()
-        denominator = df_copy['rolling_max_14'] - df_copy['rolling_min_14']
-        df_copy['stoch_k'] = np.where(
-            denominator != 0,
-            100 * (df_copy['close'] - df_copy['rolling_min_14']) / denominator,
-            50  # neutral value when denominator is zero
-        )
-        df_copy['stoch_k'] = df_copy['stoch_k'].fillna(50)  # neutral
-        df_copy['stoch_d'] = df_copy['stoch_k'].rolling(3).mean()
-        return df_copy[['stoch_k', 'stoch_d']]
+# Moved to momentum/stochastic.py
 
 
-class CCI(BaseFeature):
-    """Commodity Channel Index"""
-
-    def __init__(self):
-        super().__init__("CCI", deps=["rolling_mean_20"])
-
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        df_copy = df.copy()
-        # Mean deviation
-        mean_dev = (df_copy['close'] - df_copy['rolling_mean_20']).abs().rolling(20).mean()
-        df_copy['cci'] = (df_copy['close'] - df_copy['rolling_mean_20']) / (0.015 * mean_dev)
-        df_copy['cci'] = df_copy['cci'].fillna(0)
-        return df_copy[['cci']]
+# Moved to momentum/cci.py
 
 
 class ADX(BaseFeature):
