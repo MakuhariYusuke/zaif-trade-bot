@@ -32,7 +32,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def _determine_process_count():
+def determine_process_count():
     """プロセス数を自動決定（物理コア数と空きメモリを考慮）"""
     physical = psutil.cpu_count(logical=False) or 1
     avail_gb = psutil.virtual_memory().available / (1024**3)
@@ -53,6 +53,9 @@ class ParallelTrainingManager:
     """並列学習マネージャー"""
 
     def __init__(self):
+        # 環境設定の読み込み
+        self.env_config = self._load_env_config()
+        
         self.notifier = DiscordNotifier()
         self.processes = []
         self.session_id = None
@@ -61,7 +64,7 @@ class ParallelTrainingManager:
         self.last_log_check = time.time()
         
         # プロセス数を自動決定
-        self.num_processes = _determine_process_count()
+        self.num_processes = determine_process_count()
         os.environ['PARALLEL_PROCESSES'] = str(self.num_processes)
         
         # 利用可能CPUを取得
@@ -83,6 +86,15 @@ class ParallelTrainingManager:
                 'process_index': 1
             }
         ]
+
+    def _load_env_config(self) -> dict:
+        """環境設定を読み込み"""
+        env = os.environ.get('ENV', 'dev')
+        env_config_path = Path(f'config/environment/{env}.json')
+        if env_config_path.exists():
+            with open(env_config_path, 'r') as f:
+                return json.load(f)
+        return {}
 
     def calculate_cpu_affinity(self, process_index: int, total_processes: int, available_cpus: List[int]) -> List[int]:
         """プロセスインデックスに基づいてCPUアフィニティを動的に計算"""
