@@ -35,21 +35,37 @@ from ..utils.perf.cpu_tune import apply_cpu_tuning
 # 非同期チェックポイント保存用
 _save_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 _save_lock = threading.Lock()
+_keep_last = 5  # 保持世代数
 
-def save_checkpoint_async(model, path_base: str):
-    """チェックポイントを非同期で保存（gzip圧縮、重複保存ロック付き）"""
+def save_checkpoint_async(model, path_base: str, notifier=None):
+    """チェックポイントを非同期で保存（原子的・世代管理付き）"""
     def _job():
-        tmp = f"{path_base}.zip"
         try:
+            # tmpに保存
+            tmp_path = f"{path_base}.tmp"
+            final_path = f"{path_base}.zip"
+            
             with _save_lock:
-                model.save(tmp)
-                gz = f"{tmp}.gz"
-                with open(tmp, "rb") as fi, gzip.open(gz, "wb") as fo:
-                    fo.writelines(fi)
-                os.remove(tmp)
-            logging.info(f"[CKPT] saved: {gz}")
+                model.save(tmp_path)
+                # 原子的rename
+                os.replace(tmp_path, final_path)
+            
+            logging.info(f"[CKPT] saved: {final_path}")
+            
+            # 世代管理: 同じprefixの古いファイルを削除
+            dir_path = Path(final_path).parent
+            prefix = Path(final_path).stem.split('_')[0] if '_' in Path(final_path).stem else Path(final_path).stem
+            
+            checkpoints = sorted(dir_path.glob(f"{prefix}_*.zip"), key=lambda x: x.stat().st_mtime, reverse=True)
+            for old_ckpt in checkpoints[_keep_last:]:
+                old_ckpt.unlink()
+                logging.info(f"[CKPT] removed old: {old_ckpt}")
+                
         except Exception as e:
             logging.exception(f"[CKPT] save failed: {e}")
+            if notifier:
+                notifier.send_error_notification("Checkpoint Save Error", f"Failed to save {path_base}: {str(e)}")
+    
     _save_executor.submit(_job)
 
 class TensorBoardCallback(BaseCallback):
@@ -119,7 +135,7 @@ class CheckpointCallback(BaseCallback):
             if self.n_calls % self.save_freq == 0:
                 checkpoint_path = self.save_path / f"{self.name_prefix}_{self.n_calls}"
                 # 非同期保存
-                save_checkpoint_async(self.model, str(checkpoint_path))
+                save_checkpoint_async(self.model, str(checkpoint_path), self.notifier)
                 
                 total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
                 progress_percent = (self.n_calls / total_timesteps) * 100
@@ -232,24 +248,30 @@ class PPOTrainer:
 
     def _setup_cpu_optimization(self) -> None:
         """CPU最適化設定"""
-        # CPUコア数の取得
-        cpu_count = psutil.cpu_count(logical=False)  # 物理コア数
-        if cpu_count is None:
-            cpu_count = os.cpu_count() or 4
+        from ..utils.perf.cpu_tune import auto_config_threads
         
-        # PyTorchスレッド数の設定（コア数÷2）
-        torch_threads = max(1, cpu_count // 2)
-        torch.set_num_threads(torch_threads)
+        # 環境変数から設定取得
+        num_processes = int(os.environ.get("PARALLEL_PROCESSES", "1"))
+        pin_cores_str = os.environ.get("CPU_AFFINITY")
+        pin_to_cores = [int(x) for x in pin_cores_str.split(",")] if pin_cores_str else None
         
-        # 環境変数の設定
-        os.environ['OMP_NUM_THREADS'] = str(torch_threads)
-        os.environ['MKL_NUM_THREADS'] = str(torch_threads)
-        os.environ['OPENBLAS_NUM_THREADS'] = str(torch_threads)
+        # 自動設定決定
+        cpu_config = auto_config_threads(num_processes, pin_to_cores)
         
-        # MKL-DNN有効化
+        # 環境変数設定
+        for key, value in cpu_config.items():
+            if key.startswith(('OMP_', 'MKL_', 'OPENBLAS_', 'NUMEXPR_')):
+                os.environ[key] = str(value)
+        
+        # PyTorch設定
+        torch.set_num_threads(cpu_config['torch_threads'])
         torch.backends.mkldnn.enabled = True
         
-        logging.info(f"CPU optimization: {cpu_count} cores, {torch_threads} threads, MKL-DNN enabled")
+        # ログ出力
+        logging.info(f"CPU: phys={cpu_config['physical_cores']}, log={cpu_config['logical_cores']}, "
+                     f"procs={cpu_config['num_processes']}, pin={cpu_config['pin_to_cores']}, "
+                     f"torch={cpu_config['torch_threads']}, OMP={cpu_config['OMP_NUM_THREADS']}, "
+                     f"MKL={cpu_config['MKL_NUM_THREADS']}, OPENBLAS={cpu_config['OPENBLAS_NUM_THREADS']}")
 
     def _get_default_config(self) -> dict:
         """
