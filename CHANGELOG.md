@@ -1,5 +1,23 @@
 # Changelog
 
+## [X.Y] - 2025-09-24
+
+### Added
+
+- feature_sets.yaml に Minimal / Balanced / Medium / Large / Extended のセットを定義
+- harmful.md を追加し harmful 特徴量の基準と再評価条件を明文化
+- experimental_evaluator.py / ablation_runner.py を追加し experimental 特徴量の定期評価をCIに統合
+
+### Changed
+
+- wave4.py を experimental.py にリネーム、役割を「次期候補モジュール」として整理
+- features.yaml を再編成、harmful 特徴量は registry から除外
+- trend/ volatility/ momentum/ volume/ ディレクトリへ特徴量を分割移動
+
+### Removed
+
+- TypeScript 由来のテスト資産を削除（Python側に完全統一）
+
 ## Unreleased
 
 ### Added
