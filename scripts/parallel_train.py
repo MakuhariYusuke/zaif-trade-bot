@@ -294,6 +294,16 @@ def main():
     """メイン関数"""
     parser = argparse.ArgumentParser(description='Parallel Training Script')
     parser.add_argument('--timesteps', type=int, help='Override total_timesteps from config')
+    parser.add_argument('--no-cache', action='store_true', help='Disable feature caching')
+    parser.add_argument('--checkpoint-light', action='store_true', help='Save only policy in checkpoints (faster, lighter)')
+    parser.add_argument('--cache-compressor', type=str, choices=['auto', 'zstd', 'lz4', 'zlib'], default='auto',
+                       help='Cache compression algorithm (default: auto)')
+    parser.add_argument('--cache-access-pattern', type=str, choices=['frequent', 'balanced', 'archival'], default='balanced',
+                       help='Cache access pattern hint (default: balanced)')
+    parser.add_argument('--cache-max-mb', type=int, help='Maximum cache size in MB')
+    parser.add_argument('--cache-ttl-days', type=int, help='Cache TTL in days')
+    parser.add_argument('--checkpoint-compressor', type=str, choices=['auto', 'zstd', 'lz4', 'zlib'], default='auto',
+                       help='Checkpoint compression algorithm (default: auto)')
     args = parser.parse_args()
     
     # Safety Clamp: PRODUCTION=1でない限り、total_timestepsを1000に強制
@@ -303,17 +313,49 @@ def main():
         logger.warning("[SAFETY] Non-production run: total_timesteps clamped to 1000")
     
     manager = ParallelTrainingManager()
-    if args.timesteps:
-        # config の total_timesteps を上書き
+    if args.timesteps or args.no_cache or args.checkpoint_light or args.cache_compressor != 'auto' or args.cache_max_mb or args.cache_ttl_days or args.checkpoint_compressor != 'auto':
+        # config の設定を上書き
         for config in manager.training_configs:
             config_path = Path(config['config'])
             if config_path.exists():
                 with open(config_path, 'r') as f:
                     cfg = json.load(f)
-                cfg['training']['total_timesteps'] = args.timesteps
+                if args.timesteps:
+                    cfg['training']['total_timesteps'] = args.timesteps
+                    logger.info(f"Updated {config['name']} total_timesteps to {args.timesteps}")
+                if args.no_cache:
+                    if 'memory' not in cfg:
+                        cfg['memory'] = {}
+                    cfg['memory']['enable_cache'] = False
+                    logger.info(f"Disabled cache for {config['name']} via --no-cache option")
+                if args.checkpoint_light:
+                    if 'training' not in cfg:
+                        cfg['training'] = {}
+                    cfg['training']['checkpoint_light'] = True
+                    logger.info(f"Enabled checkpoint light mode for {config['name']} via --checkpoint-light option")
+                
+                # キャッシュ設定
+                if 'memory' not in cfg:
+                    cfg['memory'] = {}
+                if args.cache_compressor != 'auto':
+                    cfg['memory']['compressor'] = args.cache_compressor
+                if args.cache_access_pattern != 'balanced':
+                    cfg['memory']['access_pattern'] = args.cache_access_pattern
+                if args.cache_max_mb:
+                    cfg['memory']['cache_max_mb'] = args.cache_max_mb
+                if args.cache_ttl_days:
+                    cfg['memory']['max_age_days'] = args.cache_ttl_days
+                
+                # チェックポイント設定
+                if 'training' not in cfg:
+                    cfg['training'] = {}
+                if args.checkpoint_compressor != 'auto':
+                    cfg['training']['checkpoint_compressor'] = args.checkpoint_compressor
+                
+                # 並列トレーニング時はプロセスごとのキャッシュディレクトリを使用
+                cfg['memory']['cache_dir'] = f"data/cache/parallel_{config['name']}"
                 with open(config_path, 'w') as f:
                     json.dump(cfg, f, indent=2)
-                logger.info(f"Updated {config['name']} total_timesteps to {args.timesteps}")
     
     manager.run_parallel_training()
 

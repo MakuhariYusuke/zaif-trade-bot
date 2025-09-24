@@ -1,0 +1,9 @@
+feat(memory): add FeatureCache and dtype downcast, Parquet compression
+
+- Introduce FeatureCache (blake2b-keyed, pickle+zlib)
+- Add downcast_df utility (float32/int32 + category)
+- Stream CSV->Parquet converter (zstd)
+- Save minimal checkpoints (policy-only)
+- Wire config.memory flags and logging
+- Add gc.collect() for memory efficiency
+- Update scripts to load environment config
