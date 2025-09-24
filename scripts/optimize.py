@@ -26,7 +26,7 @@ from envs.heavy_trading_env import HeavyTradingEnv
 class OptunaCallback(BaseCallback):
     """Optuna最適化用のコールバック"""
 
-    def __init__(self, trial: optuna.Trial, eval_freq: int = 1000, verbose: int = 0):
+    def __init__(self, trial: optuna.Trial, eval_freq: int = 2000, verbose: int = 0):
         super().__init__(verbose)
         self.trial = trial
         self.eval_freq = eval_freq
@@ -201,8 +201,12 @@ class HyperparameterOptimizer:
 
             while not done:
                 action, _ = model.predict(obs, deterministic=True)
-                # actionはnumpy配列なので、スカラー値に変換する
-                obs, reward, done, _, info = env.step(action.item())
+                # actionがnumpy配列ならスカラー値に変換する
+                if isinstance(action, np.ndarray):
+                    action_to_use = action.item()
+                else:
+                    action_to_use = action
+                obs, reward, done, _, info = env.step(action_to_use)
                 episode_reward += reward
                 episode_pnl += info.get('pnl', 0)
 
@@ -211,7 +215,7 @@ class HyperparameterOptimizer:
 
         # 統計の計算
         stats = {
-            'mean_reward': np.mean(episode_rewards),
+            'sharpe_ratio': np.mean(episode_pnls) / (np.std(episode_pnls) + 1e-6) if np.std(episode_pnls) > 1e-8 else 0.0,
             'std_reward': np.std(episode_rewards),
             'mean_pnl': np.mean(episode_pnls),
             'std_pnl': np.std(episode_pnls),
@@ -369,8 +373,9 @@ class HyperparameterOptimizer:
             progress_bar=True,
         )
 
-        # モデルの保存
-        model_path = self.opt_dir / 'best_model_final.zip'
+        # モデルの保存（タイムスタンプ付きで上書き防止）
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        model_path = self.opt_dir / f'best_model_final_{timestamp}.zip'
         model.save(str(model_path))
 
         print(f"Best model saved to {model_path}")
@@ -438,10 +443,12 @@ def main():
     parser.add_argument('--n-trials', type=int, default=100, help='Number of optimization trials')
     parser.add_argument('--timeout', type=int, default=3600, help='Optimization timeout in seconds')
     parser.add_argument('--metric', type=str, choices=['mean_reward', 'sharpe_ratio', 'total_pnl'],
-                       default='mean_reward', help='Optimization metric')
+                       default='mean_reward', help="Optimization metric (choose from 'mean_reward', 'sharpe_ratio', 'total_pnl'). If an unsupported value is specified, 'mean_reward' will be used as default.")
     parser.add_argument('--opt-dir', type=str, default='./optimization/', help='Directory to save optimization results')
     parser.add_argument('--retrain', action='store_true', help='Retrain best model with full timesteps')
     parser.add_argument('--full-timesteps', type=int, default=200000, help='Full training timesteps')
+    parser.add_argument('--n-eval-episodes', type=int, default=3, help='Number of evaluation episodes per trial')
+    parser.add_argument('--eval-freq', type=int, default=2000, help='Evaluation frequency during training')
 
     args = parser.parse_args()
 
@@ -451,6 +458,8 @@ def main():
         'timeout': args.timeout,
         'optimization_metric': args.metric,
         'opt_dir': args.opt_dir,
+        'n_eval_episodes': args.n_eval_episodes,
+        'eval_freq': args.eval_freq,
     }
 
     # 最適化の実行

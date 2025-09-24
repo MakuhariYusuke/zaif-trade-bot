@@ -35,10 +35,8 @@ def detect_outliers_zscore(data, column, threshold=3):
     # np.ma.filledはMaskedArrayと通常のndarrayの両方を処理できる
     z_scores_unmasked = ma.filled(z_scores_raw, np.nan)
     
-    # NaNを0に変換
-    z_scores_filled = np.nan_to_num(z_scores_unmasked)
-    
-    z_scores_series = pd.Series(np.abs(z_scores_filled), index=series.index)
+    # NaNをそのまま除外（0に変換しない）
+    z_scores_series = pd.Series(np.abs(z_scores_unmasked), index=series.index)
     outliers = data[z_scores_series > threshold]
     return outliers
 
@@ -90,7 +88,8 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
 
     if total_nulls > 0:
         print("欠損値のある列:")
-        for col, count in null_counts[null_counts > 0].items():
+        non_zero_nulls = null_counts[null_counts > 0]
+        for col, count in non_zero_nulls.items():
             null_ratio = count / len(combined_df) * 100
             print(f"{col}: {count}件 ({null_ratio:.2f}%)")
     else:
@@ -169,54 +168,81 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
             # 正規性検定
             if len(data) > 5000:  # サンプルサイズが十分な場合のみ
                 sample_size = min(len(data), 5000)
-                _, p_value = stats.shapiro(data.sample(sample_size))
+                _, p_value = stats.shapiro(data.sample(sample_size, random_state=42))
                 print(f"  正規性検定 p値: {p_value:.6f} ({'正規分布' if p_value > 0.05 else '非正規分布'})")
-    # データの連続性チェック
-    print("\n=== データ連続性チェック ===")
-    if not pd.api.types.is_datetime64_any_dtype(combined_df['ts']):
-        combined_df['ts'] = pd.to_datetime(combined_df['ts'], unit='s')
-    time_diffs = combined_df['ts'].diff().dropna()
 
-    print("時間間隔統計:")
-    print(f"  平均間隔: {time_diffs.mean()}")
-    print(f"  最頻間隔: {time_diffs.mode().iloc[0] if not time_diffs.mode().empty else 'N/A'}")
-    print(f"  最大間隔: {time_diffs.max()}")
-    print(f"  欠損間隔数: {(time_diffs > pd.Timedelta('5min')).sum()}")  # 5分以上の欠損
+    print("\n=== データ連続性チェック ===")
+    # ts列がdatetime型でない場合のみ変換（unit指定はint型のときのみ）
+    if not pd.api.types.is_datetime64_any_dtype(combined_df['ts']):
+        try:
+            # int型ならunit='s'で変換、そうでなければunitなし
+            if pd.api.types.is_integer_dtype(combined_df['ts'].dtype):
+                combined_df['ts'] = pd.to_datetime(combined_df['ts'], unit='s')
+            else:
+                combined_df['ts'] = pd.to_datetime(combined_df['ts'])
+        except Exception as e:
+            print(f"❌ ts列のdatetime変換エラー: {e}")
+            return # 変換に失敗した場合は以降の処理をスキップ
+
+    if pd.api.types.is_datetime64_any_dtype(combined_df['ts']):
+        time_diffs = combined_df['ts'].sort_values().diff()
+        print("タイムスタンプ間隔の統計:")
+        print(time_diffs.describe())
+        print(f"  最頻間隔: {time_diffs.mode().iloc[0] if not time_diffs.mode().empty else 'N/A'}")
+        print(f"  最大間隔: {time_diffs.max()}")
+        print(f"  欠損間隔数 (5分以上): {(time_diffs > pd.Timedelta('5min')).sum()}")
+    else:
+        print("ts列がdatetime型でないため、連続性チェックをスキップします。")
 
     # 特徴量の相関チェック
     print("\n=== 特徴量相関チェック ===")
-    correlation_matrix = combined_df[key_features].corr()
-    print("主要特徴量の相関係数:")
-    print(correlation_matrix.round(3))
+    # 存在するカラムのみで相関を計算
+    available_features = [col for col in key_features if col in combined_df.columns]
+    if available_features:
+        correlation_matrix = combined_df[available_features].corr()
+        print("主要特徴量の相関係数:")
+        print(correlation_matrix.round(3))
 
-    # 高相関のペアを特定
-    high_corr_pairs = []
-    for i in range(len(correlation_matrix.columns)):
-        for j in range(i+1, len(correlation_matrix.columns)):
-            corr = correlation_matrix.iloc[i, j]
-            if isinstance(corr, (int, float)) and abs(corr) > 0.8:
-                high_corr_pairs.append((
-                    correlation_matrix.columns[i],
-                    correlation_matrix.columns[j],
-                    corr
-                ))
+        # 高相関のペアを特定
+        high_corr_pairs = []
+        for i in range(len(correlation_matrix.columns)):
+            for j in range(i+1, len(correlation_matrix.columns)):
+                corr = correlation_matrix.iloc[i, j]
+                if isinstance(corr, (int, float)) and abs(corr) > 0.8:
+                    high_corr_pairs.append((
+                        correlation_matrix.columns[i],
+                        correlation_matrix.columns[j],
+                        corr
+                    ))
 
-    if high_corr_pairs:
-        print("\n高相関の特徴量ペア (相関係数 > 0.8):")
-        for feat1, feat2, corr in high_corr_pairs:
-            print(f"{feat1} - {feat2}: 相関係数 {corr:.3f}")
+        if high_corr_pairs:
+            print("\n高相関の特徴量ペア (相関係数 > 0.8):")
+            for feat1, feat2, corr in high_corr_pairs:
+                print(f"{feat1} - {feat2}: 相関係数 {corr:.3f}")
+        else:
+            print("\n高相関の特徴量ペアなし")
     else:
-        print("\n高相関の特徴量ペアなし")
+        print("主要特徴量がデータに存在しません。")
+
 def main():
     """メイン実行関数"""
     print("🔍 詳細データ品質チェック開始")
-    print("=" * 60)
-
+    
     # コマンドライン引数でmultiplierとconfig_pathを取得
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--multiplier', type=float, default=1.0, help='Outlier threshold multiplier')
-    parser.add_argument('--config_path', type=str, default=None, help='Path to config file (can also use RL_CONFIG_PATH env)')
+    parser = argparse.ArgumentParser(description="詳細データ品質チェックスクリプト")
+    parser.add_argument(
+        '--multiplier',
+        type=float,
+        default=1.0,
+        help='外れ値検出の閾値倍率（例: 1.5にすると閾値が1.5倍になります）。データの分布や異常値の許容度に応じて調整してください。'
+    )
+    parser.add_argument(
+        '--config_path',
+        type=str,
+        default=None,
+        help='設定ファイル（JSON形式）のパスを指定します。未指定の場合は環境変数RL_CONFIG_PATHまたはデフォルトパスが使用されます。'
+    )
     args = parser.parse_args()
 
     try:

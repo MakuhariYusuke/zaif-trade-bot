@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Any, Tuple, Optional
 
+EPSILON = 1e-6  # 小さい値（ゼロ除算防止用）
+
 
 class HeavyTradingEnv(gym.Env):
     """
@@ -98,12 +100,23 @@ class HeavyTradingEnv(gym.Env):
         # PnLの計算
         pnl = self._calculate_pnl()
 
+        # 累積PnLの更新
+        self.total_pnl += pnl
+
         # リスク調整リワードの計算
         reward = self._calculate_reward(pnl, old_position)
 
         # 次のステップへ
         self.current_step += 1
+        
+        # エピソード終了判定
         done = self.current_step >= self.n_steps - 1
+        if not done and self.current_step < self.n_steps:
+            # episode_id が変わったらエピソード終了
+            current_episode = self.df.iloc[self.current_step - 1]['episode_id']
+            next_episode = self.df.iloc[self.current_step]['episode_id']
+            if current_episode != next_episode:
+                done = True
 
         # 次の状態
         if done:
@@ -145,7 +158,7 @@ class HeavyTradingEnv(gym.Env):
 
     def _open_position(self, direction: int) -> None:
         """ポジションオープン"""
-        current_price = self.current_step
+        current_price = self.df.iloc[self.current_step]['close']
         self.position = direction * self.config['max_position_size']
         self.entry_price = current_price
         self.trades_count += 1
@@ -162,7 +175,7 @@ class HeavyTradingEnv(gym.Env):
         if self.position == 0:
             return 0.0
 
-        current_price = self.current_step
+        current_price = self.df.iloc[self.current_step]['close']
         entry_price = self.entry_price
         price_change = current_price - entry_price
 
@@ -187,11 +200,11 @@ class HeavyTradingEnv(gym.Env):
 
         if abs(self.position) > 0 and old_position == 0:  # 新規ポジションの場合
             try:
-                current_price = 1.0  # デフォルト値
+                current_price = self.df.iloc[self.current_step]['close']  # 実際の価格を参照
                 transaction_cost = abs(self.position) * current_price * self.config['transaction_cost']
                 # スプレッドを価格の0.05%として仮定
                 spread_cost = abs(self.position) * current_price * 0.0005
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, KeyError, IndexError):
                 # 価格が取得できない場合はコストを0とする
                 transaction_cost = 0.0
                 spread_cost = 0.0
@@ -308,9 +321,19 @@ class HeavyTradingEnv(gym.Env):
             'total_reward': np.sum(rewards),
             'mean_reward': np.mean(rewards),
             'std_reward': np.std(rewards),
-            'min_reward': np.min(rewards),
+            'sharpe_ratio': np.mean(rewards) / (np.std(rewards) + EPSILON),
             'max_reward': np.max(rewards),
             'total_trades': self.trades_count,
-            'sharpe_ratio': np.mean(rewards) / (np.std(rewards) + 1e-6),
             'win_rate': np.sum(rewards > 0) / len(rewards) if len(rewards) > 0 else 0
         }
+
+    def get_trades_per_1k(self) -> float:
+        """1000ステップあたりの取引回数を取得"""
+        if self.current_step == 0:
+            return 0.0
+        return self.trades_count / (self.current_step / 1000)
+
+    def get_last_step_time(self) -> float:
+        """最後のステップ時間を取得（秒単位）"""
+        # 簡易実装: 固定値
+        return 0.001

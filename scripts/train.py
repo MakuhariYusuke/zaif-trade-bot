@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional, List
 
 # ローカルモジュールのインポート
-sys.path.append(str(Path(__file__).parent.parent))  # プロジェクトルートを追加
+sys.path.insert(0, str(Path(__file__).parent.parent))  # プロジェクトルートを先頭に追加
 from src.trading.ppo_trainer import PPOTrainer
 from utils.notify.discord import (
     notify_session_start,
@@ -116,7 +116,7 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
             f"Non-PRODUCTION run detected. Timesteps {orig} → **1000** に強制変更しました.")
 
     # Discord通知: セッション開始
-    config_name = Path(args.config if args and hasattr(args, 'config') else 'rl_config.json').stem
+    config_name = Path(args.config if args else 'rl_config.json').stem
     session_id = notify_session_start("training", config_name)
 
     # DiscordNotifierインスタンス作成
@@ -176,19 +176,16 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
         # Discord通知: セッション終了（成功）
         # 評価ステップが未実装のため、空のstatsを渡してセッション終了通知を送信
         notify_session_end({}, "training")  # 空のstatsで通知
-        notify_session_end({}, "training")  # 空のstatsで通知
     except Exception as e:
         logging.exception(f"Training pipeline failed: {e}")
         error_msg = f"Training pipeline failed: {str(e)}"
         print(f"Error: {error_msg}")
         notify_error(error_msg, str(e))
         raise
-        raise
 
     print("\n" + "=" * 60)
     print("TRAINING PIPELINE COMPLETE")
     print("=" * 60)
-
 
 def run_optimization_pipeline(config: dict, data_path: Optional[str] = None) -> None:
     """最適化パイプラインの実行"""
