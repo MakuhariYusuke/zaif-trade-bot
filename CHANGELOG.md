@@ -18,33 +18,26 @@
 
 - TypeScript 由来のテスト資産を削除（Python側に完全統一）
 
-## Unreleased
+
+## 2.2.3 - 2025-09-23
 
 ### Added
 
-- **Dynamic Compression**: Auto-selection of zstd/lz4/zlib based on data size and access patterns in FeatureCache.
-- **Process Isolation**: Per-process cache directories to prevent conflicts in parallel training.
-- **Light Checkpoints**: Minimal checkpoint saving (policy+value_net+scaler) with 60-80% size reduction.
-- **Adaptive Cache Management**: TTL-first cleanup followed by LRU eviction, with emergency shrink on memory pressure.
-- **CLI Enhancements**: New options `--cache-compressor`, `--cache-access-pattern`, `--cache-max-mb`, `--cache-ttl-days`, `--checkpoint-compressor` for all training scripts.
-- **Monitoring**: Prometheus-compatible metrics export for cache performance monitoring.
+- **Operational Improvements for Feature Evaluation System**
+  - Externalized evaluation thresholds in `config/evaluation.yaml` for maintainability
+  - Implemented Slack/Discord notification system (`scripts/notifier.py`) for automated alerts
+  - Added re-evaluation list management (`re_evaluate_list.yaml`) to track feature re-evaluation cycles
+  - Updated CI/CD workflow (`.github/workflows/ablation.yml`) with automated notification integration
+  - Enhanced `scripts/generate_weekly_report.py` with configurable notifications and re-evaluation tracking
 
-### Changed
-
-- **FeatureCache**: Enhanced with dynamic compressor selection, process isolation, and adaptive sizing.
-- **Checkpoint Saving**: Support for compressed light checkpoints with atomic save operations.
-- **Configuration**: Updated environment configs with new cache and checkpoint parameters.
+- **Configuration Management**: Centralized evaluation parameters (thresholds, min_samples) in external config file
+- **Notification System**: Added support for Slack and Discord webhook notifications with structured summaries
+- **CI/CD Integration**: Automated notification delivery in GitHub Actions workflows
 
 ### Performance
 
-- **Cache Efficiency**: 45-55% size reduction with zstd compression, improved hit rates with LRU+TTL.
-- **Training Speed**: 60-80% smaller checkpoints enable faster iteration cycles.
-- **Memory Usage**: Adaptive shrinking prevents memory exhaustion in long-running processes.
-
-### Docs
-
-- **README**: Added comprehensive memory optimization section with usage examples and performance benchmarks.
-- **Configuration**: Documented all new CLI options and config parameters.
+- **Operational Efficiency**: Streamlined feature evaluation workflow with automated notifications and tracking
+- **Maintainability**: Externalized configuration reduces hard-coded values and improves deployment flexibility
 
 ## 2.2.2 - 2025-09-20
 
@@ -105,6 +98,7 @@ Patch: 安定化と不要コード整理のみ（後方互換）。
 	- 旧 `src/strategies/*` のエイリアスシムを削除（アプリ層の `@application/strategies/*` を利用）。
 
 ### Migration
+
 - 型は `@contracts`、実装は `@adapters/*` / `@application/*` を利用してください。
 - 例: `import { createServicePositionStore } from '@adapters/position-store'`
 - 例: `import { runBuyStrategy } from '@application/strategies/buy-strategy-app'`

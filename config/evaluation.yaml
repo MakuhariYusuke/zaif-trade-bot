@@ -1,0 +1,4 @@
+thresholds:
+  re_evaluate: 0.05   # mean > 0.05 かつ CI95_low > 0
+  monitor: 0.01       # mean > 0.01
+min_samples: 10000    # delta_sharpe 計算に必要な最低サンプル数

@@ -29,6 +29,23 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def load_evaluation_config() -> dict:
+    """評価設定を読み込み"""
+    config_path = Path("config/evaluation.yaml")
+    if not config_path.exists():
+        # デフォルト値
+        return {
+            'thresholds': {
+                're_evaluate': 0.05,
+                'monitor': 0.01
+            },
+            'min_samples': 10000
+        }
+
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+
 def load_feature_sets(sets_path: Path) -> dict:
     """特徴量セットを読み込み"""
     with open(sets_path, 'r', encoding='utf-8') as f:
@@ -39,7 +56,8 @@ def run_ablation_analysis(
     base_features: List[str],
     experimental_features: Optional[List[str]] = None,
     data_path: Optional[Path] = None,
-    num_runs: int = 5
+    num_runs: int = 5,
+    evaluation_config: Optional[dict] = None
 ) -> Dict:
     """
     アブレーション分析を実行
@@ -76,6 +94,9 @@ def run_ablation_analysis(
             'price': 100 + np.cumsum(np.random.normal(0.001, 0.02, n_samples)),
             'volume': np.random.normal(1000, 100, n_samples)
         })
+
+    # 評価設定からパラメータ取得
+    min_samples = evaluation_config.get('min_samples', 10000) if evaluation_config else 10000
 
     # ベース特徴量でのSharpe ratio計算（シミュレーション）
     base_sharpes = []
@@ -201,6 +222,7 @@ def main():
     try:
         # 設定読み込み
         config = load_config(args.config)
+        evaluation_config = load_evaluation_config()
         feature_sets = load_feature_sets(args.feature_sets)
 
         # 特徴量セット取得
@@ -228,7 +250,8 @@ def main():
             base_features=base_features,
             experimental_features=experimental_features,
             data_path=args.data,
-            num_runs=args.num_runs
+            num_runs=args.num_runs,
+            evaluation_config=evaluation_config
         )
 
         # 結果保存

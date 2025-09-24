@@ -1,22 +1,41 @@
 # Weekly Feature Evaluation Report
 
 ## Summary
-- Total features evaluated: 7
-- Valid results: 0/7
-- Experimental features: 2
-- Re-evaluation candidates: 0
+
+- **Total Features**: 7
+- **Valid Results**: 0
+- **Experimental Features**: 2
+- **Re-evaluate Candidates**: 0
+- **Success Rate**: 0.0%
+
+## Delta Sharpe Distribution
+
+
 
 ## Delta Sharpe Results
 
-| Feature | Mean | Std | CI95 Low | CI95 High | Status | Experimental |
-|---------|------|-----|----------|-----------|--------|--------------|
-| MFI | N/A | N/A | N/A | N/A | Insufficient Data |  |
-| Lags | N/A | N/A | N/A | N/A | Insufficient Data |  |
-| VWAP | N/A | N/A | N/A | N/A | Insufficient Data |  |
-| Donchian | N/A | N/A | N/A | N/A | Insufficient Data |  |
-| KalmanFilter | N/A | N/A | N/A | N/A | Insufficient Data |  |
-| MovingAverages | N/A | N/A | N/A | N/A | Insufficient Data | ✓ |
-| GradientSign | N/A | N/A | N/A | N/A | Insufficient Data | ✓ |
+### Trend Features
+
+| Feature | Mean | Std | CI95 Low | CI95 High | Status | Runs | NaN Rate |
+|---------|------|-----|----------|-----------|--------|------|----------|
+| Lags | N/A | N/A | N/A | N/A | Insufficient Data | 3 | N/A |
+| Donchian | N/A | N/A | N/A | N/A | Insufficient Data | 3 | N/A |
+| KalmanFilter | N/A | N/A | N/A | N/A | Insufficient Data | 3 | N/A |
+| MovingAverages | N/A | N/A | N/A | N/A | Insufficient Data | 3 | 0.0101 |
+
+### Volume Features
+
+| Feature | Mean | Std | CI95 Low | CI95 High | Status | Runs | NaN Rate |
+|---------|------|-----|----------|-----------|--------|------|----------|
+| MFI | N/A | N/A | N/A | N/A | Insufficient Data | 3 | N/A |
+| VWAP | N/A | N/A | N/A | N/A | Insufficient Data | 3 | N/A |
+
+### Experimental Features
+
+| Feature | Mean | Std | CI95 Low | CI95 High | Status | Runs | NaN Rate |
+|---------|------|-----|----------|-----------|--------|------|----------|
+| GradientSign | N/A | N/A | N/A | N/A | Insufficient Data | 3 | 0.0000 |
+
 
 ## Experimental Features
 
