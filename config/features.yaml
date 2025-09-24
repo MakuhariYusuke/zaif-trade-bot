@@ -1,211 +1,226 @@
-# Feature configuration for trading
-# 取引特徴量設定
-
 features:
-  # Wave1: 軽い・即有効
-  ROC:
-    enabled: true
-    wave: 1
-    params:
-      period: 14
-
-  RSI:
-    enabled: true
-    wave: 1
-    params:
-      period: 14
-
-  RollingMean14:
-    enabled: true
-    wave: 1
-    params:
-      window: 14
-
-  RollingStd14:
-    enabled: true
-    wave: 1
-    params:
-      window: 14
-
-  RollingMean50:
-    enabled: true
-    wave: 1
-    params:
-      window: 50
-
-  RollingStd50:
-    enabled: true
-    wave: 1
-    params:
-      window: 50
-
-  ZScore:
-    enabled: true
-    wave: 1
-    params:
-      window: 20
-
-  ATR_simplified:
-    enabled: true
-    wave: 1
-    params:
-      period: 14
-
-  Lags:
-    enabled: true
-    wave: 1
-    params:
-      lags: [1, 2, 3, 4, 5]
-
-  DOW:
-    enabled: true
-    wave: 1
-    params: {}
-
-  HourOfDay:
-    enabled: true
-    wave: 1
-    params: {}
-
-  OBV:
-    enabled: true
-    wave: 1
-    params: {}
-
-  MFI:
-    enabled: true
-    wave: 1
-    params:
-      period: 14
-
-  VWAP:
-    enabled: true
-    wave: 1
-    params: {}
-
-  # Wave2: 中コスト
-  MACD:
-    enabled: true
-    wave: 2
-    params:
-      fast: 12
-      slow: 26
-      signal: 9
-
-  Bollinger:
-    enabled: true
-    wave: 2
-    params:
-      window: 20
-      std: 2
-
-  Stochastic:
-    enabled: true
-    wave: 2
-    params:
-      k_period: 14
-      d_period: 3
-
-  CCI:
-    enabled: true
-    wave: 2
-    params:
-      period: 20
-
   ADX:
     enabled: true
-    wave: 2
     params:
       period: 14
-
-  EMACross:
+    wave: trend
+  ATR_simplified:
     enabled: true
-    wave: 2
-    params:
-      fast: 12
-      slow: 26
-
-  TEMA:
-    enabled: true
-    wave: 2
     params:
       period: 14
-
-  KAMA:
+    wave: volatility
+  Bollinger:
     enabled: true
-    wave: 2
     params:
-      period: 10
-  Ichimoku:
+      std: 2
+      window: 20
+    wave: volatility
+  CCI:
     enabled: true
-    wave: 3
-    harmful: true
     params:
-      tenkan: 9
-      kijun: 26
-      senkou: 52
-
+      period: 20
+    wave: momentum
+  DOW:
+    enabled: true
+    params: {}
+    wave: 1
   Donchian:
     enabled: true
-    wave: 3
     harmful: true
     params:
       period: 20
-
+    wave: trend
+  EMACross:
+    enabled: true
+    params:
+      fast: 12
+      slow: 26
+    wave: trend
+  HVFeature:
+    enabled: true
+    params:
+      period: 20
+    wave: volatility
+  HeikinAshi:
+    enabled: true
+    params: {}
+    wave: trend
+  HourOfDay:
+    enabled: true
+    params: {}
+    wave: 1
+  Ichimoku:
+    enabled: true
+    harmful: true
+    params:
+      kijun: 26
+      senkou: 52
+      tenkan: 9
+    wave: trend
+  KAMA:
+    enabled: true
+    params:
+      period: 10
+    wave: trend
+  KalmanFilter:
+    enabled: true
+    harmful: true
+    params:
+      measurement_noise: 0.1
+      process_noise: 0.01
+    wave: 3
+  Lags:
+    enabled: true
+    params:
+      lags:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    wave: 1
+  MACD:
+    enabled: true
+    params:
+      fast: 12
+      signal: 9
+      slow: 26
+    wave: momentum
+  MFI:
+    enabled: true
+    params:
+      period: 14
+    wave: volume
+  MovingAverages:
+    enabled: true
+    params: {}
+    wave: trend
+  OBV:
+    enabled: true
+    params: {}
+    wave: volume
+  PriceVolumeCorr:
+    enabled: true
+    params:
+      period: 20
+    wave: volume
+  ROC:
+    enabled: true
+    params:
+      period: 14
+    wave: trend
+  RSI:
+    enabled: true
+    params:
+      period: 14
+    wave: momentum
   RegimeClustering:
     enabled: true
-    wave: 3
     harmful: true
     params:
       n_clusters: 3
-
-  KalmanFilter:
-    enabled: true
     wave: 3
-    harmful: true
+  ReturnMA:
+    enabled: true
     params:
-      process_noise: 0.01
-      measurement_noise: 0.1
-
-# Feature sets for different training configurations
+      medium_period: 20
+      short_period: 5
+    wave: volume
+  ReturnStdDev:
+    enabled: true
+    params:
+      period: 20
+    wave: volatility
+  RollingMean14:
+    enabled: true
+    params:
+      window: 14
+    wave: trend
+  RollingMean50:
+    enabled: true
+    params:
+      window: 50
+    wave: trend
+  RollingStd14:
+    enabled: true
+    params:
+      window: 14
+    wave: trend
+  RollingStd50:
+    enabled: true
+    params:
+      window: 50
+    wave: trend
+  Stochastic:
+    enabled: true
+    params:
+      d_period: 3
+      k_period: 14
+    wave: momentum
+  Supertrend:
+    enabled: true
+    params:
+      multiplier: 3.0
+      period: 10
+    wave: trend
+  TEMA:
+    enabled: true
+    params:
+      period: 14
+    wave: trend
+  VWAP:
+    enabled: true
+    params: {}
+    wave: volume
+  ZScore:
+    enabled: true
+    params:
+      window: 20
+    wave: trend
 sets:
-  minimal:
-    - MFI
-    - Lags
-    - VWAP
   balanced:
-    - MFI
-    - Lags
-    - VWAP
-    - RSI
-    - RollingMean14
-    - RollingStd14
-    - ATR_simplified
-    - OBV
+  - MFI
+  - Lags
+  - VWAP
+  - RSI
+  - RollingMean14
+  - RollingStd14
+  - ATR_simplified
+  - OBV
   extended:
-    - ROC
-    - RSI
-    - RollingMean14
-    - RollingStd14
-    - RollingMean50
-    - RollingStd50
-    - ZScore
-    - ATR_simplified
-    - Lags
-    - DOW
-    - HourOfDay
-    - OBV
-    - MFI
-    - VWAP
-    - MACD
-    - Bollinger
-    - Stochastic
-    - CCI
-    - ADX
-    - EMACross
-    - TEMA
-    - KAMA
-    - Ichimoku
-    - Donchian
-    - RegimeClustering
-    - KalmanFilter
+  - ROC
+  - RSI
+  - RollingMean14
+  - RollingStd14
+  - RollingMean50
+  - RollingStd50
+  - ZScore
+  - ATR_simplified
+  - Lags
+  - DOW
+  - HourOfDay
+  - OBV
+  - MFI
+  - VWAP
+  - MACD
+  - Bollinger
+  - Stochastic
+  - CCI
+  - ADX
+  - EMACross
+  - TEMA
+  - KAMA
+  - Ichimoku
+  - Donchian
+  - HeikinAshi
+  - Supertrend
+  - RegimeClustering
+  - KalmanFilter
+  - HVFeature
+  - ReturnStdDev
+  - PriceVolumeCorr
+  - ReturnMA
+  minimal:
+  - MFI
+  - Lags
+  - VWAP

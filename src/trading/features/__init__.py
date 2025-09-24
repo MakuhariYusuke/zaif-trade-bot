@@ -6,14 +6,25 @@ Trading features package.
 from .registry import FeatureManager, get_feature_manager
 from .base import BaseFeature, CommonPreprocessor
 from .wave1 import (
-    ROC, RSI, RollingMean, RollingStd, ZScore, ATRSimplified,
-    Lags, DOW, HourOfDay, OBV, MFI, VWAP
+    ROC, RollingMean, RollingStd, ZScore, Lags, DOW, HourOfDay
 )
-from .wave2 import (
-    MACD, Bollinger, Stochastic, CCI, ADX, EMACross, TEMA, KAMA
-)
+# from .wave2 import (
+#     EMACross, TEMA, KAMA
+# )
 from .wave3 import (
-    Ichimoku, Donchian, RegimeClustering, KalmanFilter
+    RegimeClustering, KalmanFilter
+)
+from .trend import (
+    HeikinAshi, Supertrend, Ichimoku, Donchian, ADX, EMACross, TEMA, KAMA
+)
+from .volatility import (
+    ATRSimplified, Bollinger, HVFeature, ReturnStdDev
+)
+from .momentum import (
+    RSI, MACD, Stochastic, CCI
+)
+from .volume import (
+    OBV, VWAP, PriceVolumeCorr, ReturnMA, MFI
 )
 
 # Wave1特徴量の登録
@@ -31,7 +42,6 @@ def register_wave1_features(manager: FeatureManager):
     manager.register(DOW())
     manager.register(HourOfDay())
     manager.register(OBV())
-    manager.register(MFI(period=14))
     manager.register(VWAP())
 
 # Wave2特徴量の登録
@@ -54,6 +64,7 @@ def register_wave3_features(manager: FeatureManager):
     manager.register(RegimeClustering())
     manager.register(KalmanFilter())
 
+# Wave4特徴量の登録
 # 自動登録
 try:
     manager = get_feature_manager()

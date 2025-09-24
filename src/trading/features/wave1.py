@@ -22,21 +22,7 @@ class ROC(BaseFeature):
         return pd.DataFrame({'ROC': roc.fillna(0)})
 
 
-class RSI(BaseFeature):
-    """Relative Strength Index"""
-
-    def __init__(self, period: int = 14):
-        super().__init__("RSI", deps=["return"])
-        self.period = period
-
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        period = params.get('period', self.period)
-        delta = df['return']
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        rsi = 100 - (100 / (1 + rs))
-        return pd.DataFrame({'RSI': rsi.fillna(50)})
+# Moved to momentum/rsi.py
 
 
 class RollingMean(BaseFeature):
@@ -78,24 +64,7 @@ class ZScore(BaseFeature):
         return pd.DataFrame({f'zscore_{window}': zscore.fillna(0)})
 
 
-class ATRSimplified(BaseFeature):
-    """Simplified Average True Range"""
-
-    def __init__(self, period: int = 14):
-        super().__init__("ATR_simplified", deps=["high", "low", "close"])
-        self.period = period
-
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        period = params.get('period', self.period)
-        tr = np.maximum(
-            df['high'] - df['low'],
-            np.maximum(
-                (df['high'] - df['close'].shift(1)).abs(),
-                (df['low'] - df['close'].shift(1)).abs()
-            )
-        )
-        atr = pd.Series(tr).rolling(period).mean()
-        return pd.DataFrame({'ATR_simplified': atr.fillna(0)})
+# Moved to volatility/atr.py
 
 
 class Lags(BaseFeature):

@@ -1,0 +1,27 @@
+{
+  "MovingAverages": {
+    "duration_ms": 5.0,
+    "columns": [
+      "ema_5",
+      "ema_10",
+      "ema_20",
+      "ema_50",
+      "sma_5",
+      "sma_10",
+      "sma_20",
+      "sma_50"
+    ],
+    "rows": 100,
+    "nan_rate": 0.1012,
+    "delta_sharpe": 0.0
+  },
+  "GradientSign": {
+    "duration_ms": 0.99,
+    "columns": [
+      "price_gradient_sign"
+    ],
+    "rows": 100,
+    "nan_rate": 0.0,
+    "delta_sharpe": 0.0
+  }
+}
