@@ -1,5 +1,43 @@
 # Changelog
 
+## 2.4.0 - 2025-09-26
+
+### Changed
+
+- **Directory Structure Reorganization**: Unified Python codebase under `ztb/` directory
+  - Moved `scripts/` contents to appropriate `ztb/` subdirectories
+  - Created `ztb/experiments/` for experimental scripts and scaling tests
+  - Moved feature tests to `ztb/features/`
+  - Consolidated notification scripts in `ztb/utils/notify/`
+  - Organized tools in `ztb/tools/`
+  - Updated README.md with comprehensive Python/ML layer documentation
+
+### Added
+
+- **ztb/experiments/**: New directory for experimental code including:
+  - `ml_reinforcement_1k.py`: 1k-step reinforcement learning evaluation
+  - Future scaling tests (100k, 1M steps) will be placed here
+- **ztb/utils/notify/notify_1k_test_results.py**: Dedicated test result notification script
+- **ztb/tools/archive_coverage.py**: Coverage data archival utility
+
+### Improved
+
+- **Code Organization**: Clear separation between TypeScript (src/) and Python (ztb/) codebases
+- **Discoverability**: Consistent directory structure improves code navigation
+- **CI/CD Preparation**: Better organization for automated testing and deployment pipelines
+- **Documentation**: Enhanced README with Python/ML architecture overview
+
+### Technical Details
+
+- **File Movements**:
+  - `scripts/test_all_features.py` → `ztb/features/test_all_features.py`
+  - `scripts/ml_reinforcement_1k.py` → `ztb/experiments/ml_reinforcement_1k.py`
+  - `scripts/notify_1k_test_results.py` → `ztb/utils/notify/notify_1k_test_results.py`
+  - `scripts/archive_coverage.py` → `ztb/tools/archive_coverage.py`
+- **Directory Structure**: Maintained logical grouping (features, evaluation, trading, experiments, utils, tests, tools)
+- **Import Paths**: Updated relative imports to maintain functionality after reorganization
+
+
 ## 2.3.0 - 2025-09-24
 
 ### Added

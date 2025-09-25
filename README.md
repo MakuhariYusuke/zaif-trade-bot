@@ -2,24 +2,46 @@
 
 軽量・検証重視の Zaif/Coincheck 向け自動売買ボット。SELL ファースト戦略、モック駆動テスト、堅牢なリトライ/CB/Rate 制御を備え、拡張しやすい土台を提供します。
 
+**Python/ML 拡張**: テクニカル指標フィーチャー評価、品質ゲート、強化学習環境を統合。1kステップから100k/1Mステップ規模の学習まで対応可能なスケーラブルなアーキテクチャを採用しています。
+
 ---
 
 ## すぐ使う（Quick Start）
 
+### TypeScript/Node.js 環境
+
 1) 依存インストール
-```
+```bash
 npm install
 ```
 
 2) 最速検証（モック + ドライラン）
-```
+```bash
 $env:USE_PRIVATE_MOCK="1"; $env:DRY_RUN="1"; npm start
 ```
 
 3) 最小ライブ検証（自己責任・即キャンセル）
-```
+```bash
 npm run live:minimal
 ```
+
+### Python/ML 環境
+
+1) Python依存インストール
+```bash
+pip install -r requirements.txt
+```
+
+2) フィーチャー評価実行
+```bash
+python ztb/features/test_all_features.py
+```
+
+3) 強化学習実験実行
+```bash
+python ztb/experiments/ml_reinforcement_1k.py
+```
+
 ヒント: PowerShell では環境変数の一時設定に `$env:NAME="value"` を使用します。
 
 安全上の注意: 本リポジトリは学習・検証目的の参考実装です。実運用はご自身の責任で、極小サイズから十分に検証してください。
