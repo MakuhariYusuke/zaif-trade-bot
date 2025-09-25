@@ -28,15 +28,28 @@ npm run live:minimal
 
 ## アーキテクチャ概要
 
+### TypeScript/Node.js レイヤー
 - `core/`: 純粋ロジック（I/O・fs・env に非依存）
 - `adapters/`: I/O・外部 API 委譲（FS/HTTP/署名/レート制御等）
 - `application/`: 戦略やユースケースのオーケストレーション（イベント購読/集計）
 - `app/`: メインの定期実行ループ（`npm start`）
 - `tools/`: live/paper/ml/stats の各 CLI
 
+### Python/ML レイヤー (ztb/)
+- `ztb/core/`: コアルーチン（取引実行、市場データ、リスク管理）
+- `ztb/features/`: テクニカル指標フィーチャー（トレンド、ボラティリティ、モメンタム等）
+- `ztb/evaluation/`: 品質評価・プロモーションエンジン・ベンチマーク
+- `ztb/trading/`: 強化学習環境・PPOトレーナー
+- `ztb/ml/`: MLパイプライン・データ変換・エクスポート
+- `ztb/experiments/`: 実験コード（スケーリングテスト、検証スクリプト）
+- `ztb/utils/`: 共通ユーティリティ（通知、キャッシュ、ロギング等）
+- `ztb/tests/`: ユニットテスト・統合テスト
+- `ztb/tools/`: 運用ツール・レポート生成
+
 移行状況メモ
 - 旧 `src/services/*` は削除済みです。新規/既存コードとも `@adapters/*` を使用してください。
 - 型は `src/contracts` に集約し `@contracts` で import できます。
+- Pythonコードは `ztb/` 以下に一元化されています。
 
 ---
 
