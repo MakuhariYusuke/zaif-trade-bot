@@ -19,7 +19,7 @@ describe('tools/ml/feature-importance', () => {
     ];
     fs.writeFileSync(ds, lines.map(o=>JSON.stringify(o)).join('\n')+'\n');
     process.argv = ['node','script','--dataset', ds, '--out-json', path.join(TMP,'fi.json'), '--out-csv', path.join(TMP,'fi.csv')];
-    await import('../../../src/tools/ml/feature-importance');
+    await import('../../../ztb/tools/ml/feature-importance');
     // wait a moment for async stream end writes
     const outJ = path.join(TMP,'fi.json');
     const outC = path.join(TMP,'fi.csv');

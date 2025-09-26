@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { logTradeError, logTradeInfo, logSignal, generateDailyReport } from '../../../src/utils/trade-logger';
+import { logTradeError, logTradeInfo, logSignal, generateDailyReport } from '../../../ztb/utils/trade-logger';
 
 describe('trade-logger JSON mode snapshot', () => {
   let tmpDir: string;

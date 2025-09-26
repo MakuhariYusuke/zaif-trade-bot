@@ -15,7 +15,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # ローカルモジュールのインポート
 from src.trading.ppo_trainer import PPOTrainer
-from utils.notify.discord import notify_session_start, notify_session_end, notify_error, DiscordNotifier
+from ztb.utils import DiscordNotifier, LoggerManager
 
 
 def load_config() -> dict:
@@ -121,7 +121,8 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
 
     # Discord通知: セッション開始
     config_name = 'test_config'
-    session_id = notify_session_start("test", config_name)
+    logger = LoggerManager(experiment_id=f"test_run_{config_name}")
+    logger.log_experiment_start("test_run", config)
 
     # DiscordNotifierインスタンス作成（テストモード）
     notifier = DiscordNotifier(test_mode=True)
@@ -135,7 +136,7 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
         if not Path(data_path).exists():
             error_msg = f"Training data not found: {data_path}"
             print(f"Error: {error_msg}")
-            notify_error(error_msg)
+            logger.log_error(error_msg)
             return
 
         # トレーニング設定の更新
@@ -157,7 +158,7 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
         print(f"CACHE: compressor={cache_config.get('compressor', 'auto')}(level={cache_config.get('compression_level', 3)}), dir={cache_config.get('cache_dir', 'data/cache')}, max={cache_config.get('cache_max_mb', 1000)}MB, ttl={cache_config.get('max_age_days', 7)}d, proc=pid_{os.getpid()}")
         print(f"CKPT: light={ckpt_config.get('checkpoint_light', False)}, compressor={ckpt_config.get('checkpoint_compressor', 'auto')}, keep_last={cache_config.get('keep_ckpt', 5)}, interval=1000")
         
-        model = trainer.train(notifier=notifier, session_id=session_id)
+        model = trainer.train(notifier=notifier)
 
         # 評価の実行
         print("\n" + "=" * 40)
@@ -182,13 +183,12 @@ def run_training_pipeline(config: dict, data_path: Optional[str] = None, args: O
         # print(f"Total Trades: {stats['trading_stats']['total_trades']}")
 
         # Discord通知: セッション終了（成功）
-        notify_session_end({}, "test")  # 空のstatsで通知
+        logger.log_experiment_end({})
     except Exception as e:
         logging.exception(f"Training pipeline failed: {e}")
         error_msg = f"Training pipeline failed: {str(e)}"
         print(f"Error: {error_msg}")
-        notify_error(error_msg, str(e))
-        raise
+        logger.log_error(error_msg, str(e))
         raise
 
     print("\n" + "=" * 60)

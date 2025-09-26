@@ -3,6 +3,7 @@ Quality Gates for feature validation with adaptive thresholds
 """
 from typing import Dict, Any
 import pandas as pd
+from ztb.utils.stats import calculate_skew, calculate_kurtosis, nan_ratio
 
 
 class QualityGates:
@@ -40,7 +41,7 @@ class QualityGates:
         results = {}
 
         # NaN rate
-        nan_rate = feature_data.isna().mean()
+        nan_rate = nan_ratio(feature_data)
         results['nan_rate'] = nan_rate
         results['nan_rate_pass'] = nan_rate <= gates['nan_rate_threshold']
 
@@ -71,7 +72,7 @@ class QualityGates:
 
         # Skewness
         if len(feature_data.dropna()) > 10:
-            skew_val = feature_data.skew()
+            skew_val = calculate_skew(feature_data.dropna())
             if pd.notna(skew_val):
                 try:
                     skew = float(skew_val)  # type: ignore
@@ -89,7 +90,7 @@ class QualityGates:
 
         # Kurtosis
         if len(feature_data.dropna()) > 10:
-            kurtosis_val = feature_data.kurtosis()
+            kurtosis_val = calculate_kurtosis(feature_data.dropna())
             if pd.notna(kurtosis_val):
                 try:
                     kurtosis = float(kurtosis_val)  # type: ignore

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { startSystemMetrics, stopSystemMetrics } from '../../../src/obs/system-metrics';
+import { startSystemMetrics, stopSystemMetrics } from '../../../ztb/obs/system-metrics';
 
 describe('system metrics', () => {
   it('emits SYS metrics lines with expected fields', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BaseStrategy } from '../../../src/core/strategies/base-strategy';
+import { BaseStrategy } from '../../../ztb/core/strategies/base-strategy';
 
 class FakeRisk {
   validateOrder = vi.fn((x:any)=>({ ok:true, value: undefined }));

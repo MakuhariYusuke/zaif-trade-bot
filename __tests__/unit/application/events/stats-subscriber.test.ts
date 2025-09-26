@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../src/application/events/bus';
-import { registerStatsSubscriber } from '../../../../src/application/events/subscribers/stats-subscriber';
-import * as stats from '../../../../src/utils/daily-stats';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../ztb/application/events/bus';
+import { registerStatsSubscriber } from '../../../../ztb/application/events/subscribers/stats-subscriber';
+import * as stats from '../../../../ztb/utils/daily-stats';
 
 describe('stats-subscriber', () => {
 	beforeEach(() => { setEventBus(new InMemoryEventBus()); });

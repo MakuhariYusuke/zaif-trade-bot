@@ -3,10 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-import { onExitFill, submitOrderWithRetry } from '../../../src/core/execution';
-import { savePosition, loadPosition } from '../../../src/core/position-store';
-import { cancelOrder, initMarket } from '../../../src/core/market';
-import type { PrivateApi } from '../../../src/types/private';
+import { onExitFill, submitOrderWithRetry } from '../../../ztb/core/execution';
+import { savePosition, loadPosition } from '../../../ztb/core/position-store';
+import { cancelOrder, initMarket } from '../../../ztb/core/market';
+import type { PrivateApi } from '../../../ztb/types/private';
 
 function tmpDir(prefix: string){
   const d = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
