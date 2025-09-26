@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
-import { runOnceCollect } from '../../../src/tools/metrics-dash';
+import { runOnceCollect } from '../../../ztb/tools/metrics-dash';
 
 function writeLog(entries: any[]) {
   const lines = entries.map(e => JSON.stringify(e)).join('\n');

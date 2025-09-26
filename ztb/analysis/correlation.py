@@ -1,7 +1,6 @@
 """Correlation analysis utilities"""
 import pandas as pd
-from typing import Dict, Any, Optional
-import numpy as np
+from typing import Dict, Optional
 
 def compute_correlations(frames: Dict[str, pd.DataFrame]) -> Dict[str, Optional[pd.DataFrame]]:
     """Compute correlations for successful feature frames.

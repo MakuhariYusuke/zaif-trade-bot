@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeTradeConfig, getOrdersPerDay } from '../../../src/config/trade-config';
+import { normalizeTradeConfig, getOrdersPerDay } from '../../../ztb/config/trade-config';
 
 describe('trade-config mapping', ()=>{
   it('normalizes and maps orders per phase', ()=>{

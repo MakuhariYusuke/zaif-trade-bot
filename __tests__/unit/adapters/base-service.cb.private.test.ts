@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { withRetry } from '../../../src/adapters/base-service';
+import { withRetry } from '../../../ztb/adapters/base-service';
 
 function makeFail(times: number, err: any){
   let n = 0;
@@ -20,7 +20,7 @@ describe('BaseService.withRetry CircuitBreaker (API-PRIVATE)', () => {
 
   it('opens circuit after consecutive failures and blocks', async () => {
     const g: any = global as any;
-    const { CircuitBreaker } = await import('../../../src/application/circuit-breaker');
+    const { CircuitBreaker } = await import('../../../ztb/application/circuit-breaker');
     g.__cb_private = new CircuitBreaker({ windowSize: 5, maxConsecutiveFailures: 1, failureThreshold: 0.1, cooldownMs: 100 });
     const err = Object.assign(new Error('auth failed'), { code: 'AUTH' });
     const fn = makeFail(10, err);
@@ -31,7 +31,7 @@ describe('BaseService.withRetry CircuitBreaker (API-PRIVATE)', () => {
   it('half-open allows trial after cooldown then closes on success', async () => {
     const g: any = global as any;
     // ensure cb exists and configure short cooldown
-    const { CircuitBreaker } = await import('../../../src/application/circuit-breaker');
+    const { CircuitBreaker } = await import('../../../ztb/application/circuit-breaker');
     g.__cb_private = new CircuitBreaker({ windowSize: 5, maxConsecutiveFailures: 1, cooldownMs: 50, halfOpenTrial: 1, latencyThreshold: 999999 });
     const cb = g.__cb_private as InstanceType<typeof CircuitBreaker>;
     cb.recordFailure(); // OPEN

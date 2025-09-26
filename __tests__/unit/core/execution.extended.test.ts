@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { submitOrderWithRetry, computeSlippage, onExitFill, initExecution } from '../../../src/core/execution';
-import { initMarket } from '../../../src/core/market';
-import type { PrivateApi } from '../../../src/types/private';
-import { savePosition, loadPosition } from '../../../src/core/position-store';
+import { submitOrderWithRetry, computeSlippage, onExitFill, initExecution } from '../../../ztb/core/execution';
+import { initMarket } from '../../../ztb/core/market';
+import type { PrivateApi } from '../../../ztb/types/private';
+import { savePosition, loadPosition } from '../../../ztb/core/position-store';
 
 // Helper mock private api with programmable state
 function createMockApi(opts: { fillImmediately?: boolean; partialThenFill?: boolean; neverFill?: boolean }) : PrivateApi {

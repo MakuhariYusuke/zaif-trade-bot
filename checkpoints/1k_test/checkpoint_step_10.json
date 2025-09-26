@@ -1,0 +1,245 @@
+{
+  "step": 10,
+  "timestamp": "2025-09-26T06:37:41.116748",
+  "results": [
+    {
+      "step": 1,
+      "execution_time": 3.3372998237609863,
+      "memory_before": {
+        "rss": 77.453125,
+        "vms": 279.4765625,
+        "percent": 0.48085236100982875
+      },
+      "memory_after": {
+        "rss": 77.64453125,
+        "vms": 279.49609375,
+        "percent": 0.4820406687407891
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\nFetched 366 BTC/JPY price records from CoinGecko\nDate range: 2024-09-26 09:00:00 to 2025-09-26 06:37:12\nLoaded 366 samples of market data\nAdaptive thresholds: {'nan_rate_threshold': 0.8, 'correlation_threshold': 0.05, 'skew_threshold': 3.0, 'kurtosis_threshold': 8.0}\nTesting 29 features: ADX, ATR_simplified, Bollinger, CCI, DOW...\nError computing features with FeatureManager: KAMA.compute() got an unexpected keyword argument 'period'\nFalling back to individual feature computation...\n\nTesting ADX...\n✗ ADX: pending → keep (insufficient criteria)\n\nTesting ATR_simplified...\n✗ ATR_simplified: pending → keep (insufficient criteria)\n\nTesting Bollinger...\n✗ Bollinger: pending → keep (basic criteria not met)\n\nTesting CCI...\n✗ CCI: pending → keep (basic criteria not met)\n\nTesting DOW...\n✗ DOW: pending → keep (insufficient criteria)\n\nTesting EMACross...\n✗ EMACross: pending → keep (insufficient criteria)\n\nTesting HVFeature...\n✗ HVFeature: pending → keep (insufficient criteria)\n\nTesting HeikinAshi...\n✗ HeikinAshi: pending → keep (insufficient criteria)\n\nTesting HourOfDay...\n✗ HourOfDay: pending → keep (insufficient criteria)\n\nTesting KAMA...\n✗ KAMA: pending → keep (insufficient criteria)\n\nTesting Lags...\n✗ Lags: pending → keep (insufficient criteria)\n\nTesting MACD...\n✗ MACD: pending → keep (insufficient criteria)\n\nTesting MFI...\n✗ MFI: pending → keep (insufficient criteria)\n\nTesting MovingAverages...\n✗ MovingAverages: pending → keep (insufficient criteria)\n\nTesting OBV...\n✗ OBV: pending → keep (insufficient criteria)\n\nTesting PriceVolumeCorr...\n✗ PriceVolumeCorr: pending → keep (insufficient criteria)\n\nTesting ROC...\n✗ ROC: pending → keep (insufficient criteria)\n\nTesting RSI...\n✗ RSI: pending → keep (basic criteria not met)\n\nTesting ReturnMA...\n✗ ReturnMA: pending → keep (insufficient criteria)\n\nTesting ReturnStdDev...\n✗ ReturnStdDev: pending → keep (insufficient criteria)\n\nTesting RollingMean14...\n✓ RollingMean14: pending → staging\n✗ RollingMean14: staging → keep (insufficient criteria)\n\nTesting RollingMean50...\n✓ RollingMean50: pending → staging\n✗ RollingMean50: staging → keep (insufficient criteria)\n\nTesting RollingStd14...\n✓ RollingStd14: pending → staging\n✗ RollingStd14: staging → keep (insufficient criteria)\n\nTesting RollingStd50...\n✓ RollingStd50: pending → staging\n✗ RollingStd50: staging → keep (insufficient criteria)\n\nTesting Stochastic...\n✗ Stochastic: pending → keep (insufficient criteria)\n\nTesting Supertrend...\n✗ Supertrend: pending → keep (insufficient criteria)\n\nTesting TEMA...\n✗ TEMA: pending → keep (insufficient criteria)\n\nTesting VWAP...\n✗ VWAP: pending → keep (insufficient criteria)\n\nTesting ZScore...\n✗ ZScore: pending → keep (basic criteria not met)\n\nChecking category requirements...\n✗ trend: 0/1 verified features (INSUFFICIENT)\n✗ oscillator: 0/1 verified features (INSUFFICIENT)\n✗ volume: 0/1 verified features (INSUFFICIENT)\n✗ volatility: 0/1 verified features (INSUFFICIENT)\n✗ wave1: 0/1 verified features (INSUFFICIENT)\n✓ wave3: 0/0 verified features\nSome category requirements not met!\n",
+      "stderr": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py:122: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.\n  df = df.fillna(method='ffill').fillna(method='bfill')\n",
+      "timestamp": "2025-09-26T06:37:14.399275"
+    },
+    {
+      "step": 2,
+      "execution_time": 4.386664152145386,
+      "memory_before": {
+        "rss": 77.66015625,
+        "vms": 279.49609375,
+        "percent": 0.48213767345352054
+      },
+      "memory_after": {
+        "rss": 77.66015625,
+        "vms": 279.49609375,
+        "percent": 0.48213767345352054
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\nFetched 366 BTC/JPY price records from CoinGecko\nDate range: 2024-09-26 09:00:00 to 2025-09-26 06:37:12\nLoaded 366 samples of market data\nAdaptive thresholds: {'nan_rate_threshold': 0.8, 'correlation_threshold': 0.05, 'skew_threshold': 3.0, 'kurtosis_threshold': 8.0}\nTesting 29 features: ADX, ATR_simplified, Bollinger, CCI, DOW...\nError computing features with FeatureManager: KAMA.compute() got an unexpected keyword argument 'period'\nFalling back to individual feature computation...\n\nTesting ADX...\n✗ ADX: pending → keep (insufficient criteria)\n\nTesting ATR_simplified...\n✗ ATR_simplified: pending → keep (insufficient criteria)\n\nTesting Bollinger...\n✗ Bollinger: pending → keep (basic criteria not met)\n\nTesting CCI...\n✗ CCI: pending → keep (basic criteria not met)\n\nTesting DOW...\n✗ DOW: pending → keep (insufficient criteria)\n\nTesting EMACross...\n✗ EMACross: pending → keep (insufficient criteria)\n\nTesting HVFeature...\n✗ HVFeature: pending → keep (insufficient criteria)\n\nTesting HeikinAshi...\n✗ HeikinAshi: pending → keep (insufficient criteria)\n\nTesting HourOfDay...\n✗ HourOfDay: pending → keep (insufficient criteria)\n\nTesting KAMA...\n✗ KAMA: pending → keep (insufficient criteria)\n\nTesting Lags...\n✗ Lags: pending → keep (insufficient criteria)\n\nTesting MACD...\n✗ MACD: pending → keep (insufficient criteria)\n\nTesting MFI...\n✗ MFI: pending → keep (insufficient criteria)\n\nTesting MovingAverages...\n✗ MovingAverages: pending → keep (insufficient criteria)\n\nTesting OBV...\n✗ OBV: pending → keep (insufficient criteria)\n\nTesting PriceVolumeCorr...\n✗ PriceVolumeCorr: pending → keep (insufficient criteria)\n\nTesting ROC...\n✗ ROC: pending → keep (insufficient criteria)\n\nTesting RSI...\n✗ RSI: pending → keep (basic criteria not met)\n\nTesting ReturnMA...\n✗ ReturnMA: pending → keep (insufficient criteria)\n\nTesting ReturnStdDev...\n✗ ReturnStdDev: pending → keep (insufficient criteria)\n\nTesting RollingMean14...\n✓ RollingMean14: pending → staging\n✗ RollingMean14: staging → keep (insufficient criteria)\n\nTesting RollingMean50...\n✓ RollingMean50: pending → staging\n✗ RollingMean50: staging → keep (insufficient criteria)\n\nTesting RollingStd14...\n✓ RollingStd14: pending → staging\n✗ RollingStd14: staging → keep (insufficient criteria)\n\nTesting RollingStd50...\n✓ RollingStd50: pending → staging\n✗ RollingStd50: staging → keep (insufficient criteria)\n\nTesting Stochastic...\n✗ Stochastic: pending → keep (insufficient criteria)\n\nTesting Supertrend...\n✗ Supertrend: pending → keep (insufficient criteria)\n\nTesting TEMA...\n✗ TEMA: pending → keep (insufficient criteria)\n\nTesting VWAP...\n✗ VWAP: pending → keep (insufficient criteria)\n\nTesting ZScore...\n✗ ZScore: pending → keep (basic criteria not met)\n\nChecking category requirements...\n✗ trend: 0/1 verified features (INSUFFICIENT)\n✗ oscillator: 0/1 verified features (INSUFFICIENT)\n✗ volume: 0/1 verified features (INSUFFICIENT)\n✗ volatility: 0/1 verified features (INSUFFICIENT)\n✗ wave1: 0/1 verified features (INSUFFICIENT)\n✓ wave3: 0/0 verified features\nSome category requirements not met!\n",
+      "stderr": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py:122: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.\n  df = df.fillna(method='ffill').fillna(method='bfill')\n",
+      "timestamp": "2025-09-26T06:37:18.786901"
+    },
+    {
+      "step": 3,
+      "execution_time": 3.102642297744751,
+      "memory_before": {
+        "rss": 77.6640625,
+        "vms": 279.49609375,
+        "percent": 0.48216192463170343
+      },
+      "memory_after": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\nFetched 366 BTC/JPY price records from CoinGecko\nDate range: 2024-09-26 09:00:00 to 2025-09-26 06:37:12\nLoaded 366 samples of market data\nAdaptive thresholds: {'nan_rate_threshold': 0.8, 'correlation_threshold': 0.05, 'skew_threshold': 3.0, 'kurtosis_threshold': 8.0}\nTesting 29 features: ADX, ATR_simplified, Bollinger, CCI, DOW...\nError computing features with FeatureManager: KAMA.compute() got an unexpected keyword argument 'period'\nFalling back to individual feature computation...\n\nTesting ADX...\n✗ ADX: pending → keep (insufficient criteria)\n\nTesting ATR_simplified...\n✗ ATR_simplified: pending → keep (insufficient criteria)\n\nTesting Bollinger...\n✗ Bollinger: pending → keep (basic criteria not met)\n\nTesting CCI...\n✗ CCI: pending → keep (basic criteria not met)\n\nTesting DOW...\n✗ DOW: pending → keep (insufficient criteria)\n\nTesting EMACross...\n✗ EMACross: pending → keep (insufficient criteria)\n\nTesting HVFeature...\n✗ HVFeature: pending → keep (insufficient criteria)\n\nTesting HeikinAshi...\n✗ HeikinAshi: pending → keep (insufficient criteria)\n\nTesting HourOfDay...\n✗ HourOfDay: pending → keep (insufficient criteria)\n\nTesting KAMA...\n✗ KAMA: pending → keep (insufficient criteria)\n\nTesting Lags...\n✗ Lags: pending → keep (insufficient criteria)\n\nTesting MACD...\n✗ MACD: pending → keep (insufficient criteria)\n\nTesting MFI...\n✗ MFI: pending → keep (insufficient criteria)\n\nTesting MovingAverages...\n✗ MovingAverages: pending → keep (insufficient criteria)\n\nTesting OBV...\n✗ OBV: pending → keep (insufficient criteria)\n\nTesting PriceVolumeCorr...\n✗ PriceVolumeCorr: pending → keep (insufficient criteria)\n\nTesting ROC...\n✗ ROC: pending → keep (insufficient criteria)\n\nTesting RSI...\n✗ RSI: pending → keep (basic criteria not met)\n\nTesting ReturnMA...\n✗ ReturnMA: pending → keep (insufficient criteria)\n\nTesting ReturnStdDev...\n✗ ReturnStdDev: pending → keep (insufficient criteria)\n\nTesting RollingMean14...\n✓ RollingMean14: pending → staging\n✗ RollingMean14: staging → keep (insufficient criteria)\n\nTesting RollingMean50...\n✓ RollingMean50: pending → staging\n✗ RollingMean50: staging → keep (insufficient criteria)\n\nTesting RollingStd14...\n✓ RollingStd14: pending → staging\n✗ RollingStd14: staging → keep (insufficient criteria)\n\nTesting RollingStd50...\n✓ RollingStd50: pending → staging\n✗ RollingStd50: staging → keep (insufficient criteria)\n\nTesting Stochastic...\n✗ Stochastic: pending → keep (insufficient criteria)\n\nTesting Supertrend...\n✗ Supertrend: pending → keep (insufficient criteria)\n\nTesting TEMA...\n✗ TEMA: pending → keep (insufficient criteria)\n\nTesting VWAP...\n✗ VWAP: pending → keep (insufficient criteria)\n\nTesting ZScore...\n✗ ZScore: pending → keep (basic criteria not met)\n\nChecking category requirements...\n✗ trend: 0/1 verified features (INSUFFICIENT)\n✗ oscillator: 0/1 verified features (INSUFFICIENT)\n✗ volume: 0/1 verified features (INSUFFICIENT)\n✗ volatility: 0/1 verified features (INSUFFICIENT)\n✗ wave1: 0/1 verified features (INSUFFICIENT)\n✓ wave3: 0/0 verified features\nSome category requirements not met!\n",
+      "stderr": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py:122: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.\n  df = df.fillna(method='ffill').fillna(method='bfill')\n",
+      "timestamp": "2025-09-26T06:37:21.890499"
+    },
+    {
+      "step": 4,
+      "execution_time": 3.0567219257354736,
+      "memory_before": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "memory_after": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\nFetched 366 BTC/JPY price records from CoinGecko\nDate range: 2024-09-26 09:00:00 to 2025-09-26 06:37:12\nLoaded 366 samples of market data\nAdaptive thresholds: {'nan_rate_threshold': 0.8, 'correlation_threshold': 0.05, 'skew_threshold': 3.0, 'kurtosis_threshold': 8.0}\nTesting 29 features: ADX, ATR_simplified, Bollinger, CCI, DOW...\nError computing features with FeatureManager: KAMA.compute() got an unexpected keyword argument 'period'\nFalling back to individual feature computation...\n\nTesting ADX...\n✗ ADX: pending → keep (insufficient criteria)\n\nTesting ATR_simplified...\n✗ ATR_simplified: pending → keep (insufficient criteria)\n\nTesting Bollinger...\n✗ Bollinger: pending → keep (basic criteria not met)\n\nTesting CCI...\n✗ CCI: pending → keep (basic criteria not met)\n\nTesting DOW...\n✗ DOW: pending → keep (insufficient criteria)\n\nTesting EMACross...\n✗ EMACross: pending → keep (insufficient criteria)\n\nTesting HVFeature...\n✗ HVFeature: pending → keep (insufficient criteria)\n\nTesting HeikinAshi...\n✗ HeikinAshi: pending → keep (insufficient criteria)\n\nTesting HourOfDay...\n✗ HourOfDay: pending → keep (insufficient criteria)\n\nTesting KAMA...\n✗ KAMA: pending → keep (insufficient criteria)\n\nTesting Lags...\n✗ Lags: pending → keep (insufficient criteria)\n\nTesting MACD...\n✗ MACD: pending → keep (insufficient criteria)\n\nTesting MFI...\n✗ MFI: pending → keep (insufficient criteria)\n\nTesting MovingAverages...\n✗ MovingAverages: pending → keep (insufficient criteria)\n\nTesting OBV...\n✗ OBV: pending → keep (insufficient criteria)\n\nTesting PriceVolumeCorr...\n✗ PriceVolumeCorr: pending → keep (insufficient criteria)\n\nTesting ROC...\n✗ ROC: pending → keep (insufficient criteria)\n\nTesting RSI...\n✗ RSI: pending → keep (basic criteria not met)\n\nTesting ReturnMA...\n✗ ReturnMA: pending → keep (insufficient criteria)\n\nTesting ReturnStdDev...\n✗ ReturnStdDev: pending → keep (insufficient criteria)\n\nTesting RollingMean14...\n✓ RollingMean14: pending → staging\n✗ RollingMean14: staging → keep (insufficient criteria)\n\nTesting RollingMean50...\n✓ RollingMean50: pending → staging\n✗ RollingMean50: staging → keep (insufficient criteria)\n\nTesting RollingStd14...\n✓ RollingStd14: pending → staging\n✗ RollingStd14: staging → keep (insufficient criteria)\n\nTesting RollingStd50...\n✓ RollingStd50: pending → staging\n✗ RollingStd50: staging → keep (insufficient criteria)\n\nTesting Stochastic...\n✗ Stochastic: pending → keep (insufficient criteria)\n\nTesting Supertrend...\n✗ Supertrend: pending → keep (insufficient criteria)\n\nTesting TEMA...\n✗ TEMA: pending → keep (insufficient criteria)\n\nTesting VWAP...\n✗ VWAP: pending → keep (insufficient criteria)\n\nTesting ZScore...\n✗ ZScore: pending → keep (basic criteria not met)\n\nChecking category requirements...\n✗ trend: 0/1 verified features (INSUFFICIENT)\n✗ oscillator: 0/1 verified features (INSUFFICIENT)\n✗ volume: 0/1 verified features (INSUFFICIENT)\n✗ volatility: 0/1 verified features (INSUFFICIENT)\n✗ wave1: 0/1 verified features (INSUFFICIENT)\n✓ wave3: 0/0 verified features\nSome category requirements not met!\n",
+      "stderr": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py:122: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.\n  df = df.fillna(method='ffill').fillna(method='bfill')\n",
+      "timestamp": "2025-09-26T06:37:24.948269"
+    },
+    {
+      "step": 5,
+      "execution_time": 3.149186611175537,
+      "memory_before": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "memory_after": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\nFetched 366 BTC/JPY price records from CoinGecko\nDate range: 2024-09-26 09:00:00 to 2025-09-26 06:37:12\nLoaded 366 samples of market data\nAdaptive thresholds: {'nan_rate_threshold': 0.8, 'correlation_threshold': 0.05, 'skew_threshold': 3.0, 'kurtosis_threshold': 8.0}\nTesting 29 features: ADX, ATR_simplified, Bollinger, CCI, DOW...\nError computing features with FeatureManager: KAMA.compute() got an unexpected keyword argument 'period'\nFalling back to individual feature computation...\n\nTesting ADX...\n✗ ADX: pending → keep (insufficient criteria)\n\nTesting ATR_simplified...\n✗ ATR_simplified: pending → keep (insufficient criteria)\n\nTesting Bollinger...\n✗ Bollinger: pending → keep (basic criteria not met)\n\nTesting CCI...\n✗ CCI: pending → keep (basic criteria not met)\n\nTesting DOW...\n✗ DOW: pending → keep (insufficient criteria)\n\nTesting EMACross...\n✗ EMACross: pending → keep (insufficient criteria)\n\nTesting HVFeature...\n✗ HVFeature: pending → keep (insufficient criteria)\n\nTesting HeikinAshi...\n✗ HeikinAshi: pending → keep (insufficient criteria)\n\nTesting HourOfDay...\n✗ HourOfDay: pending → keep (insufficient criteria)\n\nTesting KAMA...\n✗ KAMA: pending → keep (insufficient criteria)\n\nTesting Lags...\n✗ Lags: pending → keep (insufficient criteria)\n\nTesting MACD...\n✗ MACD: pending → keep (insufficient criteria)\n\nTesting MFI...\n✗ MFI: pending → keep (insufficient criteria)\n\nTesting MovingAverages...\n✗ MovingAverages: pending → keep (insufficient criteria)\n\nTesting OBV...\n✗ OBV: pending → keep (insufficient criteria)\n\nTesting PriceVolumeCorr...\n✗ PriceVolumeCorr: pending → keep (insufficient criteria)\n\nTesting ROC...\n✗ ROC: pending → keep (insufficient criteria)\n\nTesting RSI...\n✗ RSI: pending → keep (basic criteria not met)\n\nTesting ReturnMA...\n✗ ReturnMA: pending → keep (insufficient criteria)\n\nTesting ReturnStdDev...\n✗ ReturnStdDev: pending → keep (insufficient criteria)\n\nTesting RollingMean14...\n✓ RollingMean14: pending → staging\n✗ RollingMean14: staging → keep (insufficient criteria)\n\nTesting RollingMean50...\n✓ RollingMean50: pending → staging\n✗ RollingMean50: staging → keep (insufficient criteria)\n\nTesting RollingStd14...\n✓ RollingStd14: pending → staging\n✗ RollingStd14: staging → keep (insufficient criteria)\n\nTesting RollingStd50...\n✓ RollingStd50: pending → staging\n✗ RollingStd50: staging → keep (insufficient criteria)\n\nTesting Stochastic...\n✗ Stochastic: pending → keep (insufficient criteria)\n\nTesting Supertrend...\n✗ Supertrend: pending → keep (insufficient criteria)\n\nTesting TEMA...\n✗ TEMA: pending → keep (insufficient criteria)\n\nTesting VWAP...\n✗ VWAP: pending → keep (insufficient criteria)\n\nTesting ZScore...\n✗ ZScore: pending → keep (basic criteria not met)\n\nChecking category requirements...\n✗ trend: 0/1 verified features (INSUFFICIENT)\n✗ oscillator: 0/1 verified features (INSUFFICIENT)\n✗ volume: 0/1 verified features (INSUFFICIENT)\n✗ volatility: 0/1 verified features (INSUFFICIENT)\n✗ wave1: 0/1 verified features (INSUFFICIENT)\n✓ wave3: 0/0 verified features\nSome category requirements not met!\n",
+      "stderr": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py:122: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.\n  df = df.fillna(method='ffill').fillna(method='bfill')\n",
+      "timestamp": "2025-09-26T06:37:28.097456"
+    },
+    {
+      "step": 6,
+      "execution_time": 2.622856855392456,
+      "memory_before": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "memory_after": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\n",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 106, in fetch_btc_jpy\n    df = api.get_coin_history(\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 57, in get_coin_history\n    data = self._make_request(endpoint, params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 30, in _make_request\n    response.raise_for_status()\n  File \"C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\requests\\models.py\", line 1026, in raise_for_status\n    raise HTTPError(http_error_msg, response=self)\nrequests.exceptions.HTTPError: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 716, in <module>\n    test_all_features(dataset=args.dataset, bootstrap=args.bootstrap, save_debug=args.save_debug)\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 181, in test_all_features\n    df = load_sample_data(dataset)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 28, in load_sample_data\n    return fetch_btc_jpy(days=365, interval=\"daily\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 133, in fetch_btc_jpy\n    raise ConnectionError(f\"Failed to fetch data from CoinGecko API: {e}\")\nConnectionError: Failed to fetch data from CoinGecko API: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n",
+      "timestamp": "2025-09-26T06:37:30.720313"
+    },
+    {
+      "step": 7,
+      "execution_time": 2.83601713180542,
+      "memory_before": {
+        "rss": 77.66796875,
+        "vms": 279.49609375,
+        "percent": 0.48218617580988626
+      },
+      "memory_after": {
+        "rss": 77.6796875,
+        "vms": 279.49609375,
+        "percent": 0.48225892934443493
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\n",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 106, in fetch_btc_jpy\n    df = api.get_coin_history(\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 57, in get_coin_history\n    data = self._make_request(endpoint, params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 30, in _make_request\n    response.raise_for_status()\n  File \"C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\requests\\models.py\", line 1026, in raise_for_status\n    raise HTTPError(http_error_msg, response=self)\nrequests.exceptions.HTTPError: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 716, in <module>\n    test_all_features(dataset=args.dataset, bootstrap=args.bootstrap, save_debug=args.save_debug)\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 181, in test_all_features\n    df = load_sample_data(dataset)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 28, in load_sample_data\n    return fetch_btc_jpy(days=365, interval=\"daily\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 133, in fetch_btc_jpy\n    raise ConnectionError(f\"Failed to fetch data from CoinGecko API: {e}\")\nConnectionError: Failed to fetch data from CoinGecko API: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n",
+      "timestamp": "2025-09-26T06:37:33.556330"
+    },
+    {
+      "step": 8,
+      "execution_time": 2.519528388977051,
+      "memory_before": {
+        "rss": 77.6796875,
+        "vms": 279.49609375,
+        "percent": 0.48225892934443493
+      },
+      "memory_after": {
+        "rss": 77.6796875,
+        "vms": 279.49609375,
+        "percent": 0.48225892934443493
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\n",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 106, in fetch_btc_jpy\n    df = api.get_coin_history(\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 57, in get_coin_history\n    data = self._make_request(endpoint, params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 30, in _make_request\n    response.raise_for_status()\n  File \"C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\requests\\models.py\", line 1026, in raise_for_status\n    raise HTTPError(http_error_msg, response=self)\nrequests.exceptions.HTTPError: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 716, in <module>\n    test_all_features(dataset=args.dataset, bootstrap=args.bootstrap, save_debug=args.save_debug)\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 181, in test_all_features\n    df = load_sample_data(dataset)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 28, in load_sample_data\n    return fetch_btc_jpy(days=365, interval=\"daily\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 133, in fetch_btc_jpy\n    raise ConnectionError(f\"Failed to fetch data from CoinGecko API: {e}\")\nConnectionError: Failed to fetch data from CoinGecko API: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n",
+      "timestamp": "2025-09-26T06:37:36.076366"
+    },
+    {
+      "step": 9,
+      "execution_time": 2.530003309249878,
+      "memory_before": {
+        "rss": 77.6796875,
+        "vms": 279.49609375,
+        "percent": 0.48225892934443493
+      },
+      "memory_after": {
+        "rss": 77.6796875,
+        "vms": 279.49609375,
+        "percent": 0.48225892934443493
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\n",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 106, in fetch_btc_jpy\n    df = api.get_coin_history(\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 57, in get_coin_history\n    data = self._make_request(endpoint, params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 30, in _make_request\n    response.raise_for_status()\n  File \"C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\requests\\models.py\", line 1026, in raise_for_status\n    raise HTTPError(http_error_msg, response=self)\nrequests.exceptions.HTTPError: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 716, in <module>\n    test_all_features(dataset=args.dataset, bootstrap=args.bootstrap, save_debug=args.save_debug)\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 181, in test_all_features\n    df = load_sample_data(dataset)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 28, in load_sample_data\n    return fetch_btc_jpy(days=365, interval=\"daily\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 133, in fetch_btc_jpy\n    raise ConnectionError(f\"Failed to fetch data from CoinGecko API: {e}\")\nConnectionError: Failed to fetch data from CoinGecko API: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n",
+      "timestamp": "2025-09-26T06:37:38.606877"
+    },
+    {
+      "step": 10,
+      "execution_time": 2.504840135574341,
+      "memory_before": {
+        "rss": 77.6796875,
+        "vms": 279.49609375,
+        "percent": 0.48225892934443493
+      },
+      "memory_after": {
+        "rss": 77.7109375,
+        "vms": 279.5546875,
+        "percent": 0.4824529387698978
+      },
+      "return_code": 1,
+      "stdout": "Testing all features with Quality Gates and Promotion Engine (dataset=coingecko, bootstrap=True)...\n",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 106, in fetch_btc_jpy\n    df = api.get_coin_history(\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 57, in get_coin_history\n    data = self._make_request(endpoint, params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 30, in _make_request\n    response.raise_for_status()\n  File \"C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\requests\\models.py\", line 1026, in raise_for_status\n    raise HTTPError(http_error_msg, response=self)\nrequests.exceptions.HTTPError: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 716, in <module>\n    test_all_features(dataset=args.dataset, bootstrap=args.bootstrap, save_debug=args.save_debug)\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 181, in test_all_features\n    df = load_sample_data(dataset)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\test_all_features.py\", line 28, in load_sample_data\n    return fetch_btc_jpy(days=365, interval=\"daily\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\dev\\zaif-trade-bot\\data\\coin_gecko.py\", line 133, in fetch_btc_jpy\n    raise ConnectionError(f\"Failed to fetch data from CoinGecko API: {e}\")\nConnectionError: Failed to fetch data from CoinGecko API: 429 Client Error: Too Many Requests for url: https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=365&interval=daily\n",
+      "timestamp": "2025-09-26T06:37:41.112763"
+    }
+  ],
+  "statistics": {
+    "harmful_count": 0,
+    "pending_count": 145,
+    "verified_count": 5,
+    "total_steps": 10
+  },
+  "memory_usage": [
+    {
+      "rss": 77.64453125,
+      "vms": 279.49609375,
+      "percent": 0.4820406687407891
+    },
+    {
+      "rss": 77.66015625,
+      "vms": 279.49609375,
+      "percent": 0.48213767345352054
+    },
+    {
+      "rss": 77.66796875,
+      "vms": 279.49609375,
+      "percent": 0.48218617580988626
+    },
+    {
+      "rss": 77.66796875,
+      "vms": 279.49609375,
+      "percent": 0.48218617580988626
+    },
+    {
+      "rss": 77.66796875,
+      "vms": 279.49609375,
+      "percent": 0.48218617580988626
+    },
+    {
+      "rss": 77.66796875,
+      "vms": 279.49609375,
+      "percent": 0.48218617580988626
+    },
+    {
+      "rss": 77.6796875,
+      "vms": 279.49609375,
+      "percent": 0.48225892934443493
+    },
+    {
+      "rss": 77.6796875,
+      "vms": 279.49609375,
+      "percent": 0.48225892934443493
+    },
+    {
+      "rss": 77.6796875,
+      "vms": 279.49609375,
+      "percent": 0.48225892934443493
+    },
+    {
+      "rss": 77.7109375,
+      "vms": 279.5546875,
+      "percent": 0.4824529387698978
+    }
+  ],
+  "monitoring_data": []
+}

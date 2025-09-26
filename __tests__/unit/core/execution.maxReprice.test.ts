@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { submitOrderWithRetry, initExecution } from '../../../src/core/execution';
-import { initMarket } from '../../../src/core/market';
-import type { PrivateApi } from '../../../src/types/private';
+import { submitOrderWithRetry, initExecution } from '../../../ztb/core/execution';
+import { initMarket } from '../../../ztb/core/market';
+import type { PrivateApi } from '../../../ztb/types/private';
 
 function createSlippageMock(): PrivateApi {
   let active: any[] = [];

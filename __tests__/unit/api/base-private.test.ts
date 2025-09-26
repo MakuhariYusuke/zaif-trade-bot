@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { BaseExchangePrivate } from '../../../src/api/base-private';
+import { BaseExchangePrivate } from '../../../ztb/api/base-private';
 
 class TestPriv extends BaseExchangePrivate {
   constructor(public key: string, public secret: string){ super(); }

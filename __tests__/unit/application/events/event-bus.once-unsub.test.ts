@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { InMemoryEventBus } from '../../../../src/application/events/bus';
+import { InMemoryEventBus } from '../../../../ztb/application/events/bus';
 
 interface DummyEvent { type: 'DUMMY'; value: number; }
 

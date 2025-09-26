@@ -1,0 +1,21 @@
+# Feature computation configuration
+# 特徴量計算設定
+
+# Random seed for reproducibility
+# 再現性のためのランダムシード
+seed: 42
+
+# Cache settings
+# キャッシュ設定
+cache_enabled: true
+
+# Memory optimization
+# メモリ最適化
+optimize_dtypes: true
+
+# Intermediate reporting
+# 中間レポート
+intermediate_reporting:
+  enabled: true
+  interval_steps: 10000  # Report every 10k steps
+  report_dir: "reports"

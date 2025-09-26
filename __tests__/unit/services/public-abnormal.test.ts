@@ -1,6 +1,6 @@
 import { describe, it, vi, expect } from 'vitest';
-import * as pub from '../../../src/api/public';
-import { fetchMarketOverview } from '../../../src/adapters/market-service';
+import * as pub from '../../../ztb/api/public';
+import { fetchMarketOverview } from '../../../ztb/adapters/market-service';
 
 describe('public API abnormal cases', () => {
   it('timeout (ETIMEDOUT) is retried then warned/omitted', async () => {

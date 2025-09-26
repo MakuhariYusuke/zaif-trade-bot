@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import BaseService from '../../../src/adapters/base-service';
+import BaseService from '../../../ztb/adapters/base-service';
 
 describe('BaseService', () => {
   beforeEach(() => { vi.useRealTimers(); });

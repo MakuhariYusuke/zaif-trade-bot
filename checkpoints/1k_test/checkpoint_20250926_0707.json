@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-09-26T07:11:53.672855",
+  "test_type": "1k_step_reinforcement_learning",
+  "dataset": "coingecko_btc_jpy",
+  "total_features": 29,
+  "passed_features": 28,
+  "failed_features": 1,
+  "failed_feature_details": {
+    "KAMA": {
+      "reason": "correlation",
+      "corr_short": 0.0,
+      "corr_long": 0.0,
+      "nan_rate": 0.0,
+      "skew": -2.3067431315201414,
+      "kurtosis": 5.56637881666224
+    }
+  },
+  "category_results": {
+    "trend": {
+      "passed": 7,
+      "total": 8
+    },
+    "volatility": {
+      "passed": 6,
+      "total": 6
+    },
+    "momentum": {
+      "passed": 6,
+      "total": 6
+    },
+    "volume": {
+      "passed": 4,
+      "total": 4
+    },
+    "wave1": {
+      "passed": 2,
+      "total": 2
+    },
+    "wave3": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "performance_metrics": {
+    "execution_time_seconds": 7.0,
+    "memory_usage_mb": 16.24,
+    "dataset_size": 366,
+    "steps_simulated": 1000
+  },
+  "quality_gates": {
+    "correlation_threshold": 0.005,
+    "nan_rate_threshold": 0.05,
+    "skew_threshold": 2.0,
+    "kurtosis_threshold": 7.0
+  }
+}

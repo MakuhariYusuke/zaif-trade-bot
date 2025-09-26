@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { getEventBus, setEventBus } from '../../../src/application/events/bus';
+import { getEventBus, setEventBus } from '../../../ztb/application/events/bus';
 
 let runTradeLive: any;
 
@@ -36,7 +36,7 @@ describe('trade-live phase escalation', () => {
 		setEventBus(new (getEventBus().constructor as any)());
 		events = [];
 		getEventBus().subscribe('EVENT/TRADE_PHASE' as any, (ev: any) => { events.push(ev); });
-		const mod = await import('../../../src/tools/trade-live');
+		const mod = await import('../../../ztb/tools/trade-live');
 		runTradeLive = mod.runTradeLive;
 	});
 

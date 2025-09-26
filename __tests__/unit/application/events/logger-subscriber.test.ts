@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../src/application/events/bus';
-import { registerLoggerSubscriber } from '../../../../src/application/events/subscribers/logger-subscriber';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../ztb/application/events/bus';
+import { registerLoggerSubscriber } from '../../../../ztb/application/events/subscribers/logger-subscriber';
 import { setupJsonLogs, captureLogs, expectJsonLog } from '../../../helpers/logging';
 
 describe('logger-subscriber', () => {

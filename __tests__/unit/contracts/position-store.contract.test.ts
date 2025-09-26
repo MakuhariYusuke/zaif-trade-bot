@@ -2,8 +2,8 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import path from 'path';
 import fs from 'fs';
 import { randomUUID } from 'crypto';
-import resetTestState, { registerTempDir } from '../../../src/utils/test-reset';
-import { CorePositionStore } from '../../../src/core/position-store';
+import resetTestState, { registerTempDir } from '../../../ztb/utils/test-reset';
+import { CorePositionStore } from '../../../ztb/core/position-store';
 
 import type { PositionStore, PositionState } from '@contracts';
 
