@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { appendFillPnl, appendSummary, loadDaily, summarizeDaily } from '../../../src/utils/daily-stats';
+import { appendFillPnl, appendSummary, loadDaily, summarizeDaily } from '../../../ztb/utils/daily-stats';
 
 const TMP = path.resolve(process.cwd(), 'tmp-test-stats');
 function today(){ return new Date().toISOString().slice(0,10); }

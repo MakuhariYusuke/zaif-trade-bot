@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { validateOrderPlacement, guardOk } from '../../../src/core/risk/guards';
+import { validateOrderPlacement, guardOk } from '../../../ztb/core/risk/guards';
 
 describe('core/risk/guards.validateOrderPlacement', () => {
   beforeEach(() => {

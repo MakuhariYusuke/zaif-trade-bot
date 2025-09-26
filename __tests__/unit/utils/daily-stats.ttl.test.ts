@@ -14,7 +14,7 @@ describe('daily-stats TTL eviction', () => {
   });
 
   it('evicts stale cache entries and reloads from disk', async () => {
-    const { appendFillPnl, loadDaily } = await import('../../../src/utils/daily-stats');
+    const { appendFillPnl, loadDaily } = await import('../../../ztb/utils/daily-stats');
     const d = '2025-01-01';
     // write once
     appendFillPnl(d, 5, 'btc_jpy');

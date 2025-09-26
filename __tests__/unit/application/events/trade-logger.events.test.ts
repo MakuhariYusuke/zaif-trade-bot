@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../src/application/events/bus';
-import { registerTradeLoggerSubscriber } from '../../../../src/application/events/subscribers/trade-logger-subscriber';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../ztb/application/events/bus';
+import { registerTradeLoggerSubscriber } from '../../../../ztb/application/events/subscribers/trade-logger-subscriber';
 import fs from 'fs';
 import path from 'path';
 

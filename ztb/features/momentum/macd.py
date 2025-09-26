@@ -1,16 +1,39 @@
-import numpy as np
+"""
+MACD (Moving Average Convergence Divergence) implementation.
+MACDの実装
+"""
+
 import pandas as pd
-from ..base import BaseFeature
+from ztb.features.registry import FeatureRegistry
 
-class MACD(BaseFeature):
-    """MACD (Moving Average Convergence Divergence)"""
 
-    def __init__(self):
-        super().__init__("MACD", deps=["ema_12", "ema_26", "ema_9"])
-
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        df_copy = df.copy()
-        df_copy['macd'] = df_copy['ema_12'] - df_copy['ema_26']
-        df_copy['macd_signal'] = df_copy['ema_9']
-        df_copy['macd_hist'] = df_copy['macd'] - df_copy['macd_signal']
-        return df_copy[['macd', 'macd_signal', 'macd_hist']]
+@FeatureRegistry.register("MACD")
+def compute_macd(df: pd.DataFrame, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9) -> pd.Series:
+    """Compute MACD (Moving Average Convergence Divergence) - Optimized version"""
+    # Calculate EMAs efficiently, sharing intermediate results
+    close_series = df['close']
+    
+    # Calculate fast EMA
+    if f'ema_{fast_period}' not in df.columns:
+        ema_fast = close_series.ewm(span=fast_period, adjust=False).mean()
+    else:
+        ema_fast = df[f'ema_{fast_period}']
+    
+    # Calculate slow EMA
+    if f'ema_{slow_period}' not in df.columns:
+        ema_slow = close_series.ewm(span=slow_period, adjust=False).mean()
+    else:
+        ema_slow = df[f'ema_{slow_period}']
+    
+    # MACD line
+    macd = ema_fast - ema_slow
+    
+    # Signal line (EMA of MACD)
+    if f'ema_{signal_period}' not in df.columns:
+        signal = macd.ewm(span=signal_period, adjust=False).mean()
+    else:
+        signal = df[f'ema_{signal_period}']
+    
+    # Return MACD histogram (MACD - Signal) as it's the most useful component
+    macd_hist = macd - signal
+    return macd_hist.fillna(0)

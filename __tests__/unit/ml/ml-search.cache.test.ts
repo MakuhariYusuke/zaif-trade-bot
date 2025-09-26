@@ -30,7 +30,7 @@ describe('tools/ml/ml-search --use-cache avoids regeneration', () => {
     process.env.ML_SEARCH_MODE = 'random';
     process.env.ML_RANDOM_STEPS = '1';
     process.env.PAIR = 'btc_jpy';
-    await import('../../../src/tools/ml/ml-search');
+    await import('../../../ztb/tools/ml/ml-search');
     // artifacts created
   expect(fs.existsSync(path.join(TMP,'ml-search-results.csv'))).toBe(true);
     expect(fs.existsSync(path.join(TMP,'ml-search-top.json'))).toBe(true);

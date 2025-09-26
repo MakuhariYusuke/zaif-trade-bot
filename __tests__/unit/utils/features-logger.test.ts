@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { logFeatureSample } from '../../../src/utils/features-logger';
+import { logFeatureSample } from '../../../ztb/utils/features-logger';
 
 const TMP = path.resolve(process.cwd(), 'tmp-test-features');
 

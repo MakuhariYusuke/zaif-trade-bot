@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as fs from 'fs';
-import { runTradeLive } from '../../../src/tools/trade-live';
-import { loadTradeConfig } from '../../../src/config/trade-config';
+import { runTradeLive } from '../../../ztb/tools/trade-live';
+import { loadTradeConfig } from '../../../ztb/config/trade-config';
 
 function writeTradeConfig(extra: any){
   const base = loadTradeConfig();

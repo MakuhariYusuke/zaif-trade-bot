@@ -21,7 +21,7 @@ describe('features-logger interval flush', () => {
     delete process.env.VITEST_WORKER_ID;
     process.env.FEATURES_FLUSH_INTERVAL_MS = '50';
     process.env.FEATURES_LOG_DIR = root;
-    const mod = await import('../../../src/utils/features-logger');
+    const mod = await import('../../../ztb/utils/features-logger');
     mod.logFeatureSample({ ts: Date.now(), pair, side:'bid', price:1, qty:1 } as any);
     await new Promise(res=>setTimeout(res, 120));
   const jsonlPath = path.join(root, 'features', pair, `features-${date}.jsonl`);

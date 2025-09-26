@@ -16,12 +16,12 @@ describe('utils/price-cache', () => {
   });
 
   it('loadPriceCache returns [] when file missing', async ()=>{
-    const { loadPriceCache } = await import('../../../src/utils/price-cache');
+    const { loadPriceCache } = await import('../../../ztb/utils/price-cache');
     expect(loadPriceCache()).toEqual([]);
   });
 
   it('appendPriceSamples writes and getPriceSeries returns latest first', async ()=>{
-    const mod = await import('../../../src/utils/price-cache');
+    const mod = await import('../../../ztb/utils/price-cache');
     const now = Date.now();
     mod.appendPriceSamples([{ ts: now-2, price: 100 }, { ts: now-1, price: 110 }]);
     const series = mod.getPriceSeries(2);
@@ -29,7 +29,7 @@ describe('utils/price-cache', () => {
   });
 
   it('enforces MAX_ENTRIES by trimming oldest', async ()=>{
-    const mod = await import('../../../src/utils/price-cache');
+    const mod = await import('../../../ztb/utils/price-cache');
     const base = Date.now();
     const samples = Array.from({ length: 20 }, (_,i)=> ({ ts: base - (20-i)*1000, price: 100 + i }));
     mod.appendPriceSamples(samples);

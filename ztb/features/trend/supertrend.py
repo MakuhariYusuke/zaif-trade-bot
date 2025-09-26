@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from numba import jit
-from ..base import ParameterizedFeature
+from ztb.features.base import ParameterizedFeature
 
 class Supertrend(ParameterizedFeature):
     """
@@ -10,10 +10,15 @@ class Supertrend(ParameterizedFeature):
 
     Parameters:
       - period: ATR calculation period (default=10)
-        - multiplier: ATR multiplier for band calculation (default=3.0)
+      - multiplier: ATR multiplier for band calculation (default=3.0)
+
     Output columns:
       - supertrend
       - supertrend_direction (1 for uptrend, -1 for downtrend)
+
+    Note:
+      - The DataFrame must include an ATR column named 'atr_{period}' (e.g., 'atr_10').
+      - You should compute and add the ATR column beforehand, for example using an ATR feature or function.
     """
     def __init__(self, **kwargs):
         super().__init__(
@@ -53,8 +58,9 @@ class Supertrend(ParameterizedFeature):
     @jit(nopython=True)
     def _compute_supertrend(high, low, close, atr, multiplier):
         n = len(close)
-        supertrend = np.full(n, np.nan)
-        direction = np.zeros(n)
+        # Numba's nopython mode does not support np.nan in np.full, so use a sentinel value (e.g., -1.0)
+        supertrend = np.full(n, -1.0)
+        direction = np.zeros(n, dtype=np.float64)
 
         for i in range(n):
             if i == 0:
@@ -74,7 +80,7 @@ class Supertrend(ParameterizedFeature):
             prev_direction = direction[i-1]
 
             # トレンド方向の決定
-            if prev_supertrend == upperband or prev_supertrend == lowerband:
+            if np.isclose(prev_supertrend, upperband) or np.isclose(prev_supertrend, lowerband):
                 if close[i] > upperband:
                     direction[i] = 1
                     supertrend[i] = lowerband

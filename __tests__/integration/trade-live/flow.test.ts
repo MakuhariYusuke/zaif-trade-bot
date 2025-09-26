@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { getEventBus, setEventBus } from '../../../src/application/events/bus';
+import { getEventBus, setEventBus } from '../../../ztb/application/events/bus';
 
 describe('tools/trade-live flow', () => {
   const ROOT = process.cwd();
@@ -22,7 +22,7 @@ describe('tools/trade-live flow', () => {
     const bus = getEventBus();
     bus.subscribe('EVENT/TRADE_PLAN' as any, (ev: any) => { evs.push(ev); });
     bus.subscribe('EVENT/TRADE_PHASE' as any, (ev: any) => { evs.push(ev); });
-    const mod = await import('../../../src/tools/trade-live');
+    const mod = await import('../../../ztb/tools/trade-live');
     const sum1 = await mod.runTradeLive({ dryRun: true });
     expect(sum1?.plannedOrders ?? 0).toBeGreaterThanOrEqual(1);
     expect(evs.find(e => e.type === 'EVENT/TRADE_PLAN')).toBeTruthy();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ok, err } from '../../../src/utils/result';
+import { ok, err } from '../../../ztb/utils/result';
 
 describe('utils/result', () => {
   it('ok returns expected shape', ()=>{

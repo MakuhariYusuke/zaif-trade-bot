@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { InMemoryEventBus } from '../../../../src/application/events/bus';
+import { InMemoryEventBus } from '../../../../ztb/application/events/bus';
 
 // We rely on internal flushMetrics invoked manually via (bus as any).flushMetrics()
 // It logs with category 'EVENT' and message 'metrics'. We capture console.log lines.
