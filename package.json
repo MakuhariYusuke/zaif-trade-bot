@@ -1,6 +1,6 @@
 {
   "name": "zaif-trade-bot",
-  "version": "2.3.0",
+  "version": "2.5.0",
   "main": "dist/index.js",
   "ts-node": {
     "require": [
@@ -57,6 +57,12 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "mypy": "mypy ztb/",
+    "pre-commit": "pre-commit run --all-files",
+    "lint:py": "flake8 ztb/ python/",
+    "type-check:py": "mypy ztb/ python/",
+    "format:py": "black ztb/ python/ && isort ztb/ python/",
     "clean:tmp": "node -e \"const fs=require('fs');const path='.';for(const f of fs.readdirSync(path)){if(f.startsWith('tmp-')||f.startsWith('tmp_test_')){try{fs.rmSync(f,{recursive:true,force:true})}catch{}}}for(const f of fs.readdirSync('.')){if(/^vitest-report.*json$/.test(f)){try{fs.unlinkSync(f)}catch{}}}\"",
     "pretest": "npm run -s clean:tmp"
   },
