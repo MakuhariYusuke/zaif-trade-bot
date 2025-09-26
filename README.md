@@ -4,6 +4,15 @@
 
 **Python/ML 拡張**: テクニカル指標フィーチャー評価、品質ゲート、強化学習環境を統合。1kステップから100k/1Mステップ規模の学習まで対応可能なスケーラブルなアーキテクチャを採用しています。
 
+**最新機能 (v2.5.0)**:
+- 🔄 **Feature Determinism**: 並列処理での再現性保証
+- 📊 **Quality Gates & Drift Monitoring**: データ/モデルドリフト検知とPrometheusメトリクス
+- 📈 **Bridge Replay & Slippage Analysis**: 現実的な取引シミュレーションとスリッページ分析
+- 🔧 **CI/CD Improvements**: pre-commitフックとGitHub Actions統合
+- 📋 **1M Learning Pre-Checklist**: 学習前チェックリストの自動検証
+
+📖 **[運用マニュアル (Runbook)](docs/runbook.md)** - 実験開始・停止、監視、トラブルシューティングの手順
+
 ---
 
 ## すぐ使う（Quick Start）
@@ -72,6 +81,425 @@ python ztb/experiments/ml_reinforcement_1k.py
 - 旧 `src/services/*` は削除済みです。新規/既存コードとも `@adapters/*` を使用してください。
 - 型は `src/contracts` に集約し `@contracts` で import できます。
 - Pythonコードは `ztb/` 以下に一元化されています。
+
+---
+
+## 🛠️ ユーティリティフレームワーク (ztb/utils/)
+
+Python/ML レイヤーの共通ユーティリティを整理。実験・評価・運用で再利用可能なコンポーネントを提供します。
+
+### 1. LoggerManager (logger.py)
+
+**役割**: 統一ロギング・通知・実験追跡。JSONLログ、Discord埋め込み通知、実験ライフサイクル管理、非同期通知キューイング。
+
+**代表的なクラス/関数**:
+
+- `LoggerManager`: 統一ロガー (jsonl + console + Discord + 非同期通知)
+- `start_session()`, `end_session()`: 詳細なセッション管理
+- `send_custom_notification()`: カスタム通知
+- `enqueue_notification()`: 非同期通知キューイング
+- `AsyncNotifier`: 非同期通知クラス (キュー + 集約送信)
+- `@catch_and_notify` デコレータ
+
+**使用例**:
+
+```python
+from ztb.utils import LoggerManager
+
+logger = LoggerManager(experiment_id="exp_001", test_mode=False)
+logger.start_session("training", "config_v1")
+logger.log_experiment_start("My Experiment", {"steps": 1000})
+# ... 実験実行 ...
+logger.log_experiment_end({"reward": 1000, "pnl": 500})
+logger.end_session({"reward_stats": {...}, "trading_stats": {...}})
+```
+
+### 2. Stats Utils (stats.py)
+
+**役割**: データ品質・統計分析。pandasベースの計算関数群。
+
+**代表的な関数**:
+
+- `calculate_skew()`, `calculate_kurtosis()`
+- `calculate_nan_ratio()`, `calculate_correlation()`
+
+**使用例**:
+
+```python
+from ztb.utils import calculate_skew, calculate_nan_ratio
+
+skew = calculate_skew(data)
+nan_ratio = calculate_nan_ratio(data)
+```
+
+### 3. Report Generator (report_generator.py)
+
+**役割**: 実験結果・品質レポートの統一出力。CSV/JSON/Markdown形式、エラーダンプ保存。
+
+**代表的なクラス/関数**:
+
+- `ReportGenerator`: マルチフォーマットレポート生成
+- `generate_csv()`, `generate_json()`, `generate_markdown()`
+
+**使用例**:
+
+```python
+from ztb.utils import ReportGenerator
+
+generator = ReportGenerator()
+generator.generate_csv(results, "report.csv")
+generator.generate_markdown(results, "report.md")
+```
+
+### 4. CI Utils (ci_utils.py)
+
+**役割**: CI実行時のメトリクス収集・通知。システムリソース監視とDiscord通知。
+
+**代表的な関数**:
+
+- `collect_ci_metrics()`: CPU/メモリ/実行時間収集
+- `notify_ci_results()`: Discord通知
+
+**使用例**:
+
+```python
+from ztb.utils import collect_ci_metrics, notify_ci_results
+
+metrics = collect_ci_metrics()
+notify_ci_results(metrics, "discord")
+```
+
+### 5. Checkpoint Manager (checkpoint.py)
+
+**役割**: モデル・実験状態の保存・復元。非同期・圧縮・世代管理。
+
+**代表的なクラス/関数**:
+
+- `CheckpointManager`: 非同期チェックポイント管理
+- `save_async()`, `load()`, `cleanup_old_generations()`
+
+**使用例**:
+
+```python
+from ztb.utils import CheckpointManager
+
+manager = CheckpointManager(base_path="checkpoints", max_generations=5)
+await manager.save_async(model_state, "exp_001")
+```
+
+### 6. Quality Gates & Evaluation
+
+**役割**: データ品質評価。統合された品質チェックとレポート。
+
+**代表的なクラス/関数**:
+
+- `QualityGates`: NaN率/相関/歪度/尖度の評価
+- `ExperimentBase`: 実験実行の標準化
+
+**使用例**:
+
+```python
+from ztb.evaluation.quality_gates import QualityGates
+from ztb.experiments.base import ExperimentBase
+
+gates = QualityGates()
+result = gates.evaluate(feature_data, price_data)
+```
+
+### 7. DataLoader Framework
+
+**役割**: 市場データ取得の統一インターフェース。CoinGecko/Coincheck/Synthetic をサポート。
+
+**代表的なクラス/関数**:
+
+- `CoinGeckoAPI` (coin_gecko.py)
+- Synthetic データ生成 (test_all_features.py 内)
+
+**使用例**:
+
+```python
+from data.coin_gecko import fetch_btc_jpy
+
+df = fetch_btc_jpy(days=365, interval="daily")
+```
+
+### 8. New Utility Modules (v2.4.1)
+
+#### Data Generation Utils (`ztb/utils/data_generation.py`)
+
+**役割**: 合成市場データ生成とサンプルデータ読み込み。実験・テスト用の高品質データ生成。
+
+**代表的な関数**:
+
+- `generate_synthetic_market_data()`: 現実的な潜在因子を持つOHLCVデータ生成
+- `load_sample_data()`: データセット自動選択と読み込み
+
+**使用例**:
+
+```python
+from ztb.utils.data_generation import generate_synthetic_market_data, load_sample_data
+
+# 高品質合成データ生成
+df = generate_synthetic_market_data(n_samples=10000, version="v2")
+
+# 自動データセット読み込み
+train_data = load_sample_data("synthetic-v2")
+test_data = load_sample_data("coingecko")
+```
+
+#### Trading Metrics Utils (`ztb/utils/trading_metrics.py`)
+
+**役割**: 高度な取引パフォーマンス指標計算。Sharpe/Sortino/Calmar比率と統計分析。
+
+**代表的な関数**:
+
+- `sharpe_ratio()`: Sharpe比率計算（年率換算）
+- `sharpe_with_stats()`: Sharpe比率の統計情報
+- `calculate_delta_sharpe()`: 特徴量追加によるSharpe比変化分析
+
+**使用例**:
+
+```python
+from ztb.utils.trading_metrics import sharpe_ratio, sharpe_with_stats
+
+# 単一Sharpe比率
+returns = [0.01, -0.005, 0.02, 0.015]
+sharpe = sharpe_ratio(returns)
+
+# 複数シナリオの統計分析
+sharpe_stats = sharpe_with_stats([1.2, 1.5, 0.8, 1.1])
+print(f"Mean Sharpe: {sharpe_stats['mean']:.2f} ± {sharpe_stats['std']:.2f}")
+```
+
+#### Configuration Loader (`ztb/utils/config_loader.py`)
+
+**役割**: YAML/JSON設定ファイルの標準化読み込み。自動フォーマット検出と検索パス管理。
+
+**代表的な関数**:
+
+- `load_yaml_config()`, `load_json_config()`: フォーマット別読み込み
+- `load_config()`: 自動フォーマット検出
+- `find_config_file()`: 標準パスからの設定ファイル検索
+
+**使用例**:
+
+```python
+from ztb.utils.config_loader import load_config, find_config_file
+
+# 自動フォーマット検出
+config = load_config("config/features.yaml")
+
+# 設定ファイル検索
+config_path = find_config_file("features.yaml")
+if config_path:
+    features_config = load_config(config_path)
+```
+
+#### Feature Testing Utils (`ztb/utils/feature_testing.py`)
+
+**役割**: 特徴量評価ユーティリティ。戦略別シグナル生成とパフォーマンス分析。
+
+**代表的な関数**:
+
+- `generate_feature_signals()`: 特徴量別取引戦略シグナル生成
+- `calculate_trading_metrics()`: 取引メトリクス計算
+- `evaluate_feature_performance()`: 完全な特徴量パフォーマンス評価
+
+**使用例**:
+
+```python
+from ztb.utils.feature_testing import evaluate_feature_performance
+
+# RSI特徴量の評価
+rsi_values = [30, 45, 70, 25, 80]
+price_data = [100, 102, 98, 105, 95]
+
+result = evaluate_feature_performance(rsi_values, price_data, "RSI")
+print(f"Win Rate: {result['metrics']['win_rate']:.2%}")
+print(f"Sharpe Ratio: {result['metrics']['sharpe_ratio']:.2f}")
+```
+
+### 9. Enhanced LoggerManager Integration
+
+**役割**: 実験追跡・非同期通知・セッション管理。AsyncNotifierによる非ブロッキング通知。
+
+**新機能 (v2.4.1)**:
+
+- `AsyncNotifier`: キューイング集約通知（5分間隔）
+- ハートビート監視: メモリ/CPU使用率追跡
+- 詳細セッション結果: 取引統計・パフォーマンス指標
+
+**統合例**:
+
+```python
+from ztb.utils import LoggerManager
+
+# 実験開始
+logger = LoggerManager(experiment_id="large_scale_test", test_mode=False)
+logger.start_session("scaling_test", "100k_steps")
+
+# ハートビート開始（メモリ監視）
+logger._start_heartbeat(interval_minutes=5)
+
+# 実験実行
+for step in range(100000):
+    # ... 実験ロジック ...
+    if step % 10000 == 0:
+        logger.enqueue_notification(f"Progress: {step}/100000 steps completed")
+
+# 詳細結果準備
+session_results = logger._prepare_session_results({
+    'total_steps': 100000,
+    'final_reward': final_reward,
+    'trading_stats': trading_stats,
+    'memory_peak': memory_peak_mb
+})
+
+logger.end_session(session_results)
+```
+
+### 10. Standard Flow for Running 100k Tests
+
+**目的**: 大規模テスト（100k/1Mステップ）の標準化実行フロー。安定性・再現性確保。
+
+#### 前提条件
+
+```bash
+# 環境設定
+pip install -r requirements.txt
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+```
+
+#### 標準実行フロー
+
+1. **設定ファイル準備**
+
+   ```python
+   # config/experiment_config.yaml
+   experiment:
+     name: "large_scale_test"
+     total_steps: 100000
+     dataset: "coingecko"
+     features: "extended"
+     
+   logging:
+     level: "INFO"
+     discord_webhook: "your_webhook_url"
+     enable_async: true
+     
+   monitoring:
+     heartbeat_interval: 300  # 5分
+     memory_threshold: 80.0   # パーセント
+   ```
+
+2. **LoggerManager初期化**
+
+   ```python
+   from ztb.utils import LoggerManager
+
+   logger = LoggerManager(
+       experiment_id="100k_test_run",
+       test_mode=False,
+       notify_discord=True
+   )
+   ```
+
+3. **実験実行クラス**
+
+   ```python
+   from ztb.experiments.base import ExperimentBase
+
+   class LargeScaleExperiment(ExperimentBase):
+       def run(self):
+           # ハートビート開始
+           self._start_heartbeat()
+           
+           results = []
+           for step in range(self.config['total_steps']):
+               # 実験ロジック
+               result = self.run_single_step(step)
+               results.append(result)
+               
+               # 進捗通知（1000ステップごと）
+               if step % 1000 == 0:
+                   progress = (step / self.config['total_steps']) * 100
+                   self.logger_manager.enqueue_notification(
+                       f"Progress: {progress:.1f}% ({step}/{self.config['total_steps']})"
+                   )
+           
+           return self._prepare_session_results({
+               'total_steps': len(results),
+               'avg_reward': sum(r['reward'] for r in results) / len(results),
+               'success_rate': sum(1 for r in results if r['success']) / len(results)
+           })
+   ```
+
+4. **実行スクリプト**
+
+   ```python
+   #!/usr/bin/env python3
+   import sys
+   from pathlib import Path
+
+   # 設定読み込み
+   sys.path.append(str(Path(__file__).parent.parent))
+   from ztb.utils.config_loader import load_config
+   from ztb.experiments.large_scale_experiment import LargeScaleExperiment
+
+   def main():
+       # 設定読み込み
+       config = load_config("config/experiment_config.yaml")
+       
+       # 実験実行
+       experiment = LargeScaleExperiment(config)
+       result = experiment.execute()
+       
+       print(f"Experiment completed: {result.status}")
+       print(f"Total steps: {result.metrics.get('total_steps', 0)}")
+       print(f"Average reward: {result.metrics.get('avg_reward', 0):.4f}")
+
+   if __name__ == "__main__":
+       main()
+   ```
+
+5. **実行コマンド**
+
+   ```bash
+   # 標準実行
+   python ztb/experiments/large_scale_experiment.py
+
+   # バックグラウンド実行（長時間テスト）
+   nohup python ztb/experiments/large_scale_experiment.py > logs/100k_test_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+
+   # モニタリング
+   tail -f logs/100k_test_latest.log
+   ```
+
+#### 監視・デバッグ
+
+- **ログ監視**: `tail -f logs/experiment_*.log`
+- **メトリクス確認**: Discord通知またはログ内のハートビート情報
+- **メモリ監視**: ハートビートログでメモリ使用率追跡
+- **中断・再開**: チェックポイント対応実験では途中再開可能
+
+#### 期待される出力例
+
+```text
+2025-09-26 14:30:00 🚀 Experiment 'large_scale_test' started (ID: 100k_test_run)
+2025-09-26 14:30:00 📊 Progress: 10.0% (10000/100000)
+2025-09-26 14:35:00 💓 Heartbeat: Memory=2.1GB, CPU=45.2%, Steps=15000
+2025-09-26 14:40:00 📊 Progress: 20.0% (20000/100000)
+...
+2025-09-26 16:45:00 ✅ Experiment completed (ID: 100k_test_run)
+Results: total_steps=100000, avg_reward=1.2345, success_rate=78.9%
+```
+
+#### パフォーマンス最適化
+
+- **バッチ処理**: 1000ステップ単位で中間結果保存
+- **メモリ管理**: 大規模データはストリーミング処理
+- **並列化**: 独立した評価はマルチプロセス対応
+- **チェックポイント**: 定期的な状態保存で中断耐性
 
 ---
 
@@ -1110,7 +1538,7 @@ $env:USE_PRIVATE_MOCK="1"; $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"
 - 実行条件: 手動起動（Actionsタブ → Live Minimal Trade → Run workflow）
 - 使用Secrets:
 	- `COINCHECK_KEY` / `COINCHECK_SECRET`（CoincheckのAPIキー）
-	- `SLACK_WEBHOOK_URL`（任意。未設定なら通知スキップ）
+	- `SLACK_WEBHOOK`（任意。未設定なら通知スキップ）
 - 固定パラメータ（必要に応じ変更可）:
 	- `EXCHANGE=coincheck`, `PAIR=xrp_jpy`, `TRADE_FLOW=BUY_ONLY`
 	- `TEST_FLOW_QTY=500`, `TEST_FLOW_RATE=490`, `DRY_RUN=0`, `FEATURES_SOURCE=live`
@@ -1373,10 +1801,10 @@ python scripts/generate_weekly_report.py
 
 ```bash
 # Slack webhook URL
-export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+export SLACK_WEBHOOK="https://hooks.slack.com/services/..."
 
 # Discord webhook URL
-export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+export DISCORD_WEBHOOK="https://discord.com/api/webhooks/..."
 ```
 
 ### 運用フロー
@@ -1412,7 +1840,192 @@ features:
 - 通知機能を使用するには、対応するwebhook URLの環境変数を設定してください
 - 評価閾値は運用状況に応じて`config/evaluation.yaml`で調整可能です
 - CI/CDでの通知はGitHub Secretsでwebhook URLを設定してください
+
+---
+
+## 運用手順書 (Runbook)
+
+### システム概要
+
+Zaif Trade Botは、以下のコンポーネントで構成される自動売買システムです：
+
+- **取引実行**: TypeScript/Node.jsベースのライブ取引エンジン
+- **特徴量エンジニアリング**: PythonベースのML特徴量生成・評価パイプライン
+- **強化学習**: Stable-Baselines3を使用した戦略学習
+- **監視・通知**: PrometheusメトリクスとDiscord/Slack通知
+- **CI/CD**: 自動テスト、型チェック、品質ゲート
+
+### 起動・停止手順
+
+#### 通常起動
+
+```bash
+# 環境変数設定
+$env:ZAIF_API_KEY="your_api_key"
+$env:ZAIF_API_SECRET="your_api_secret"
+$env:DISCORD_WEBHOOK_URL="your_webhook_url"
+
+# 起動
+npm start
 ```
 
- 
+#### テストモード起動
+
+```bash
+$env:TEST_MODE="1"
+$env:DRY_RUN="1"
+npm start
+```
+
+#### 強制停止
+
+```bash
+# プロセス確認
+ps aux | grep "ts-node"
+
+# シグナル送信
+kill -TERM <pid>
+```
+
+### 監視・メトリクス
+
+#### Prometheusメトリクス
+
+システムは以下のメトリクスを公開：
+
+- `ztb_data_fetch_total`: データ取得数
+- `ztb_job_executions_total`: ジョブ実行数
+- `ztb_portfolio_balance`: ポートフォリオ残高
+- `ztb_data_drift_score`: データドリフトスコア
+- `ztb_quality_gates_passed_total`: 品質ゲート通過数
+
+#### 監視コマンド
+
+```bash
+# ヘルスチェック
+npm run health
+
+# 統計表示
+npm run stats:today
+
+# メトリクスダッシュボード
+npm run dash
+```
+
+### トラブルシューティング
+
+#### よくある問題
+
+1. **API接続エラー**
+   ```
+   原因: APIキー設定ミス、ネットワーク問題
+   対処: 環境変数再確認、ネットワーク接続テスト
+   ```
+
+2. **メモリ不足**
+   ```
+   原因: 大規模データ処理
+   対処: バッチサイズ削減、メモリ増設
+   ```
+
+3. **モデル収束失敗**
+   ```
+   原因: 特徴量品質、ハイパーパラメータ
+   対処: 特徴量再評価、設定調整
+   ```
+
+#### ログ確認
+
+```bash
+# アプリケーションログ
+tail -f logs/trade.log
+
+# エラーログ
+grep "ERROR" logs/*.log
+
+# パフォーマンスログ
+grep "PERF" logs/*.log
+```
+
+### バックアップ・リカバリ
+
+#### データバックアップ
+
+```bash
+# 設定ファイル
+cp config/*.json backup/
+
+# モデルファイル
+cp models/checkpoints/*.pkl backup/
+
+# データベース
+cp data/*.parquet backup/
+```
+
+#### リカバリ手順
+
+1. バックアップファイル復元
+2. 環境変数再設定
+3. システム再起動
+4. 整合性チェック実行
+
+### アップデート手順
+
+#### 通常アップデート
+
+```bash
+# コードプル
+git pull origin main
+
+# 依存更新
+npm install
+pip install -r requirements.txt
+
+# テスト実行
+npm run test:unit
+
+# 再起動
+npm start
+```
+
+#### 設定変更時のアップデート
+
+```bash
+# 設定変更
+vim config/trade-config.json
+
+# 設定検証
+npm run test:unit
+
+# 設定反映
+npm start
+```
+
+### 品質ゲート
+
+システムは以下の品質ゲートを実装：
+
+- **ユニットテスト**: 95%以上のカバレッジ
+- **型チェック**: mypyによる静的型チェック
+- **データ整合性**: Parquetスキーマ検証
+- **ドリフト監視**: 特徴量分布の継続監視
+- **パフォーマンス**: レスポンスタイムSLA
+
+### 緊急停止手順
+
+1. **即時停止**: `Ctrl+C` または `kill -TERM`
+2. **ポジション確認**: 残ポジションの手動決済
+3. **ログ保存**: 停止時のログをバックアップ
+4. **原因分析**: エラーログの詳細分析
+5. **再開判断**: 問題解決後の慎重な再開
+
+### 連絡先・サポート
+
+- **技術的問題**: GitHub Issues
+- **運用相談**: Discord/Slack通知
+- **緊急連絡**: 設定済みwebhook経由
+
+---
+
+安全上の最終注意: このシステムは学習・検証目的の参考実装です。実運用は自己責任で、必ず小規模からテストしてください。 
  

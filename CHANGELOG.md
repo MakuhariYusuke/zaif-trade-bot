@@ -1,5 +1,94 @@
 # Changelog
 
+## 2.5.0 - 2025-09-27
+
+### Added
+
+- **Feature Determinism (Task 6)**: Parallel processing seed management for reproducible feature engineering
+  - Enhanced `ztb/features/registry.py` with worker-specific seed management
+  - Created `python/determinism_test.py` for comprehensive determinism validation
+  - Supports both single-process and parallel processing scenarios
+
+- **Quality Gates & Drift Monitoring (Task 7)**: Production-ready monitoring system
+  - New `ztb/utils/drift.py` with DriftMonitor class for data and model drift detection
+  - Integrated Prometheus metrics for drift monitoring in `ztb/monitoring.py`
+  - Added Discord notifications for drift alerts in `ztb/notifications.py`
+  - KL divergence-based statistical drift detection
+
+- **Bridge Replay & Slippage Analysis (Task 8)**: Realistic trading simulation
+  - Created `python/bridge_replay.py` with BridgeReplay class for backtesting
+  - Created `python/slippage.py` with SlippageAnalysis class for execution slippage analysis
+  - Integrated slippage tracking into `ztb/trading/bridge.py`
+  - Order book simulation for accurate slippage modeling
+
+- **CI/CD Improvements (Task 9)**: Enhanced development workflow
+  - Updated `.pre-commit-config.yaml` with pytest hook integration
+  - Modified `.github/workflows/ci.yml` for pre-commit automation
+  - Added Python script execution support in `package.json`
+
+- **Comprehensive Runbook Documentation (Task 10)**: Operational documentation
+  - Created `docs/runbook.md` with detailed operational procedures
+  - Covers experiment management, monitoring, troubleshooting, and emergency procedures
+  - Updated `README.md` with runbook link
+
+- **1M Learning Pre-Checklist CI Template**: Automated pre-training validation
+  - Created `docs/checklist_1M.md` with comprehensive pre-training checklist
+  - Added `tests/test_checklist.py` for automated checklist verification
+  - Created `scripts/run_checklist.sh` for local execution
+  - Added `.github/workflows/checklist.yml` for CI integration
+
+### Improved
+
+- **Production Readiness**: Enhanced system reliability with determinism, monitoring, and quality gates
+- **Scalability**: Support for large-scale training (100k/1M steps) with proper validation
+- **Operational Excellence**: Comprehensive documentation and automated checks
+
+## 2.4.1 - 2025-09-26
+
+### Added
+
+- **New Utility Modules**: Comprehensive utility extraction and consolidation
+  - `ztb/utils/data_generation.py`: Synthetic market data generation with realistic latent factors
+  - `ztb/utils/trading_metrics.py`: Advanced trading performance metrics (Sharpe, Sortino, Calmar ratios)
+  - `ztb/utils/config_loader.py`: Standardized YAML/JSON configuration loading with auto-discovery
+  - `ztb/utils/feature_testing.py`: Feature evaluation utilities with strategy-specific signal generation
+
+- **Enhanced LoggerManager Integration**: Applied AsyncNotifier across experiment scripts
+  - Session management with heartbeat monitoring in `ml_reinforcement_1k.py`
+  - Non-blocking notifications and detailed result analysis
+  - Robust error handling with session cleanup
+
+- **Documentation Updates**: Comprehensive usage examples and standard flows
+  - LoggerManager, ErrorHandler, Stats, ReportGenerator, and CI utilities examples
+  - "Standard flow for running 100k tests" documentation
+  - Enhanced README with practical code examples
+
+### Improved
+
+- **Code Organization**: Extracted reusable utilities from experimental scripts
+  - Removed duplicate `load_sample_data()` and `calculate_feature_metrics()` functions
+  - Consolidated trading metrics under unified interface
+  - Better separation of concerns between business logic and utilities
+
+- **Dead Code Removal**: Cleaned up obsolete and duplicate files
+  - Removed `ml_reinforcement_1k_fixed.py` and empty `ml_reinforcement_1k_new.py`
+  - Eliminated redundant utility functions now centralized in `ztb/utils/`
+
+### Technical Details
+
+- **Utility Extractions**:
+  - Data generation logic from `test_all_features.py` → `ztb/utils/data_generation.py`
+  - Trading metrics from `ztb/trading/metrics.py` → `ztb/utils/trading_metrics.py`
+  - Feature testing logic → `ztb/utils/feature_testing.py`
+  - Configuration loading utilities → `ztb/utils/config_loader.py`
+
+- **LoggerManager Enhancements**:
+  - Applied session management across `base.py`, `ml_reinforcement_1k.py`, `test_all_features.py`
+  - Integrated AsyncNotifier for non-blocking notifications
+  - Added heartbeat monitoring and detailed result preparation
+
+- **Documentation**: Added practical examples and standard operating procedures for large-scale testing
+
 ## 2.4.0 - 2025-09-26
 
 ### Changed
