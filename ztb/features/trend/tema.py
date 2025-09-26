@@ -9,7 +9,7 @@ Output columns:
 """
 
 import pandas as pd
-from ..base import BaseFeature
+from ztb.features.base import BaseFeature
 
 
 class TEMA(BaseFeature):
@@ -26,12 +26,15 @@ class TEMA(BaseFeature):
         df columns must include: ['close'].
         Returns a DataFrame with TEMA values.
         """
+        # Check if 'close' column exists
+        if 'close' not in df.columns:
+            raise ValueError("Input DataFrame must contain a 'close' column for TEMA calculation.")
+
         # Calculate three EMAs
         ema1 = df['close'].ewm(span=self.period, adjust=False).mean()
         ema2 = ema1.ewm(span=self.period, adjust=False).mean()
         ema3 = ema2.ewm(span=self.period, adjust=False).mean()
-
         # TEMA = 3 * EMA1 - 3 * EMA2 + EMA3
         tema = 3 * ema1 - 3 * ema2 + ema3
 
-        return pd.DataFrame({f'tema_{self.period}': tema})
+        return pd.DataFrame({f'tema_{self.period}': tema}, index=df.index)

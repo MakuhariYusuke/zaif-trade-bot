@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcRealizedPnL } from '../../../src/core/market';
+import { calcRealizedPnL } from '../../../ztb/core/market';
 
 describe('core/market', () => {
   it('calcRealizedPnL matches FIFO and sums correctly', ()=>{

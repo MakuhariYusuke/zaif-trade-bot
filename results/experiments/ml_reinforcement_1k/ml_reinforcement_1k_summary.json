@@ -1,0 +1,17 @@
+{
+  "experiment_name": "ml_reinforcement_1k",
+  "timestamp": "2025-09-26T09:59:17.778490",
+  "config": {
+    "dataset": "coingecko",
+    "total_steps": 5000
+  },
+  "metrics": {
+    "total_steps": 5000,
+    "avg_execution_time_per_step": 0.04703333840370178,
+    "avg_memory_usage_mb": 91.71634921875,
+    "harmful_features": 0,
+    "pending_features": 0,
+    "verified_features": 0,
+    "total_features": 0
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { signBody, createNonce, setNonceBase, createFlexibleNonce, getLastNonce } from '../../../src/utils/signer';
+import { signBody, createNonce, setNonceBase, createFlexibleNonce, getLastNonce } from '../../../ztb/utils/signer';
 
 describe('utils/signer', () => {
   it('signBody returns deterministic HMAC', ()=>{

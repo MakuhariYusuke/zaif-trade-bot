@@ -4,7 +4,7 @@ import fs from 'fs';
 
 // Spy logger
 const spies = { warn: vi.fn() };
-vi.mock('../../../src/utils/logger', () => ({
+vi.mock('../../../ztb/utils/logger', () => ({
   logInfo: (..._args: any[]) => {},
   logError: (..._args: any[]) => {},
   logWarn: (...args: any[]) => { spies.warn(...args); },
@@ -24,8 +24,8 @@ const mockApi: any = {
   trade_history: vi.fn(async () => { calls.hist.push(1); return []; }),
   get_info2: vi.fn(async () => { calls.get_info2.push(1); return { success: 1, return: { funds: { jpy: 10000, btc: 0.5 } } }; }),
 };
-vi.mock('../../../src/api/adapters', () => ({ createPrivateApi: () => mockApi }));
-vi.mock('../../../src/api/public', () => ({
+vi.mock('../../../ztb/api/adapters', () => ({ createPrivateApi: () => mockApi }));
+vi.mock('../../../ztb/api/public', () => ({
   getOrderBook: vi.fn(async () => ({ bids: [[2000, 1]], asks: [[2001, 1]] })),
   getTrades: vi.fn(async () => ([{ price: 2000, amount: 0.1, date: Math.floor(Date.now()/1000) }])),
 }));
@@ -56,7 +56,7 @@ describe('live minimal safety clamp (bid, JPY-based)', () => {
   afterEach(()=>{ process.env = { ...envBk }; });
 
   it('logs [SAFETY] amount clamped for bid with JPY clamp', async () => {
-    await import('../../../src/tools/live/test-minimal-live');
+    await import('../../../ztb/tools/live/test-minimal-live');
     await new Promise(r=>setTimeout(r, 15));
     expect(calls.trade.length).toBeGreaterThan(0);
     const msgs = spies.warn.mock.calls.map((c:any[])=> c.join(' '));

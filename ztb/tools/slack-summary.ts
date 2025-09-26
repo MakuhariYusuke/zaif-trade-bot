@@ -73,9 +73,9 @@ async function main(){
     console.log(JSON.stringify(payload));
     return;
   }
-  if (process.env.SLACK_WEBHOOK_URL) {
+  if (process.env.SLACK_WEBHOOK) {
     try {
-      const res = await fetch(process.env.SLACK_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      const res = await fetch(process.env.SLACK_WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
       if (!res.ok) console.error('Slack POST failed', res.status);
     } catch (e:any){ console.error('Slack error', e?.message || String(e)); }
   } else {

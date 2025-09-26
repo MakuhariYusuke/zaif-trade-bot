@@ -1,27 +1,56 @@
+"""
+Bollinger Bands implementation.
+ボリンジャーバンド - ボラティリティ指標
+"""
+
 import numpy as np
 import pandas as pd
-from ..base import BaseFeature
+from ztb.features.registry import FeatureRegistry
 
-class Bollinger(BaseFeature):
-    """Bollinger Bands"""
 
-    def __init__(self):
-        super().__init__("Bollinger", deps=["rolling_mean_20", "rolling_std_20"])
+@FeatureRegistry.register("BB_Upper")
+def compute_bb_upper(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> pd.Series:
+    """Compute Bollinger Band Upper"""
+    mean = df['close'].rolling(period).mean()
+    std = df['close'].rolling(period).std()
+    return mean + std_dev * std
 
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        df_copy = df.copy()
-        df_copy['bb_upper'] = df_copy['rolling_mean_20'] + 2 * df_copy['rolling_std_20']
-        df_copy['bb_lower'] = df_copy['rolling_mean_20'] - 2 * df_copy['rolling_std_20']
-        df_copy['bb_middle'] = df_copy['rolling_mean_20']
-        df_copy['bb_width'] = np.where(
-            df_copy['bb_middle'] != 0,
-            (df_copy['bb_upper'] - df_copy['bb_lower']) / df_copy['bb_middle'],
-            0
-        )
-        denominator = df_copy['bb_upper'] - df_copy['bb_lower']
-        df_copy['bb_position'] = np.where(
-            denominator != 0,
-            (df_copy['close'] - df_copy['bb_lower']) / denominator,
-            0.5  # neutral position if width is zero
-        )
-        return df_copy[['bb_upper', 'bb_lower', 'bb_middle', 'bb_width', 'bb_position']]
+
+@FeatureRegistry.register("BB_Lower")
+def compute_bb_lower(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> pd.Series:
+    """Compute Bollinger Band Lower"""
+    mean = df['close'].rolling(period).mean()
+    std = df['close'].rolling(period).std()
+    return mean - std_dev * std
+
+
+@FeatureRegistry.register("BB_Middle")
+def compute_bb_middle(df: pd.DataFrame, period: int = 20) -> pd.Series:
+    """Compute Bollinger Band Middle (SMA)"""
+    return df['close'].rolling(period).mean()
+
+
+@FeatureRegistry.register("BB_Width")
+def compute_bb_width(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> pd.Series:
+    """Compute Bollinger Band Width - Optimized version"""
+    # Calculate mean and std once, reuse for efficiency
+    close_rolling = df['close'].rolling(period)
+    mean = close_rolling.mean()
+    std = close_rolling.std()
+    
+    # Width = (upper - lower) / mean = (4 * std_dev * std) / mean
+    # Simplified calculation: width = 4 * std_dev * (std / mean)
+    width = 4 * std_dev * (std / mean.replace(0, np.nan))
+    return width.fillna(0)
+
+
+@FeatureRegistry.register("BB_Position")
+def compute_bb_position(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> pd.Series:
+    """Compute Bollinger Band Position (%B)"""
+    mean = df['close'].rolling(period).mean()
+    std = df['close'].rolling(period).std()
+    upper = mean + std_dev * std
+    lower = mean - std_dev * std
+    denominator = upper - lower
+    position = (df['close'] - lower) / denominator
+    return position.where(denominator != 0, 0.5)

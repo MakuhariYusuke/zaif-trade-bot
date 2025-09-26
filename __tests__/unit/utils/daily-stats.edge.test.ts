@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { loadDaily, appendFillPnl } from '../../../src/utils/daily-stats';
+import { loadDaily, appendFillPnl } from '../../../ztb/utils/daily-stats';
 
 const TMP = path.resolve(process.cwd(), 'tmp-test-stats-edge');
 

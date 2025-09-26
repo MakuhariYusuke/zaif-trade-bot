@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, test } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { sleep } from '../../../src/utils/toolkit';
+import { sleep } from '../../../ztb/utils/toolkit';
 
 // Use a unique temp dir to avoid cross-file race with ml-search.cache.test
 const TMP = path.resolve(process.cwd(), 'tmp-test-ml-simulate');

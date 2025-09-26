@@ -11,6 +11,10 @@
 ### Ichimoku (一目均衡表)
 
 **判定時期**: Wave3評価
+**Status**: isolated
+**Reason**: high_multicollinearity, misinterpretation
+**Last Eval**: 2025-09-25
+**Note**: 基準線・転換線のみで評価。雲の厚み・抵抗帯距離・遅行スパン確認が未考慮
 
 **理由**:
 
@@ -23,6 +27,10 @@
 ### RegimeClustering (レジームクラスタリング)
 
 **判定時期**: Wave3評価
+**Status**: isolated
+**Reason**: weak_effect_size, unstable_output
+**Last Eval**: 2025-09-25
+**Note**: クラスタリングの安定性とパフォーマンス問題。代替手法検討要
 
 **理由**:
 
@@ -35,6 +43,10 @@
 ### Donchian
 
 **判定時期**: Wave3評価
+**Status**: isolated
+**Reason**: high_multicollinearity
+**Last Eval**: 2025-09-25
+**Note**: 他トレンド指標との重複。独自性再検証要
 
 **理由**:
 
@@ -43,14 +55,64 @@
 
 **現状**: `harmful: true` で registry から除外
 
-### KalmanFilter
+### ADX (Average Directional Index)
 
 **判定時期**: Wave3評価
+**Status**: isolated
+**Reason**: high_multicollinearity, weak_signal
+**Last Eval**: 2025-09-25
+**Note**: 方向性指数だが、他のトレンド指標との重複が高く、シグナルが弱い
+
+**JSON Metadata**:
+
+```json
+{
+  "feature": "ADX",
+  "category": "trend",
+  "harmful_reasons": ["high_multicollinearity", "weak_signal"],
+  "vif_score": 12.5,
+  "sharpe_impact": -0.08,
+  "correlation_with": ["DOW", "RegimeClustering"],
+  "recommended_action": "consider_directional_components_only"
+}
+```
 
 **理由**:
 
-- 計算コストが高く、実用的でない
-- パラメータチューニングが難しい
+- VIF > 10: 多重共線性の問題
+- アブレーション分析で Sharpe ratio 低下
+- 他のトレンド指標との重複が高い
+
+**現状**: `harmful: true` で registry から除外
+
+### KAMA (Kaufman's Adaptive Moving Average)
+
+**判定時期**: Wave3評価
+**Status**: isolated
+**Reason**: high_computation_cost, unstable_output
+**Last Eval**: 2025-09-25
+**Note**: 適応型移動平均だが、計算コストが高く出力が不安定
+
+**JSON Metadata**:
+
+```json
+{
+  "feature": "KAMA",
+  "category": "trend",
+  "harmful_reasons": ["high_computation_cost", "unstable_output"],
+  "avg_computation_time_ms": 1850.0,
+  "memory_usage_mb": 45.2,
+  "sharpe_impact": -0.05,
+  "stability_score": 0.65,
+  "recommended_action": "optimize_implementation_or_remove"
+}
+```
+
+**理由**:
+
+- 計算コストが非常に高い (平均 1.8秒)
+- パラメータ依存性が高く出力が不安定
+- メモリ使用量が多い
 
 **現状**: `harmful: true` で registry から除外
 

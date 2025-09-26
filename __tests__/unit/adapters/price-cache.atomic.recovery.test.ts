@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { getEventBus, setEventBus } from '../../../src/application/events/bus';
+import { getEventBus, setEventBus } from '../../../ztb/application/events/bus';
 
 describe('adapters/price-cache atomic recovery', () => {
   const ROOT = process.cwd();
@@ -18,7 +18,7 @@ describe('adapters/price-cache atomic recovery', () => {
   });
 
   it('recovers from corrupted JSON and emits single CACHE_ERROR', async () => {
-    const { appendPriceSamples, loadPriceCache, resetPriceCache, getPriceSeries } = await import('../../../src/utils/price-cache');
+    const { appendPriceSamples, loadPriceCache, resetPriceCache, getPriceSeries } = await import('../../../ztb/utils/price-cache');
     // write valid samples, then corrupt the file
     const base = Date.now();
     appendPriceSamples([{ ts: base - 2, price: 100 }, { ts: base - 1, price: 110 }]);

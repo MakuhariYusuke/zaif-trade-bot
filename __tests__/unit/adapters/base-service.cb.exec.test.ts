@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { withRetry } from '../../../src/adapters/base-service';
+import { withRetry } from '../../../ztb/adapters/base-service';
 
 function delay(ms: number){ return new Promise(r => setTimeout(r, ms)); }
 
@@ -11,7 +11,7 @@ describe('BaseService.withRetry CircuitBreaker (EXEC)', () => {
 
   it('blocks immediately when circuit is OPEN', async () => {
     const g: any = global as any;
-    const { CircuitBreaker } = await import('../../../src/application/circuit-breaker');
+    const { CircuitBreaker } = await import('../../../ztb/application/circuit-breaker');
     const cb = new CircuitBreaker({ windowSize: 5, maxConsecutiveFailures: 1, failureThreshold: 0.1, cooldownMs: 1000 });
     // force OPEN with a single failure (per config)
     cb.recordFailure();
@@ -23,7 +23,7 @@ describe('BaseService.withRetry CircuitBreaker (EXEC)', () => {
 
   it('recovers after cooldown and success', async () => {
     const g: any = global as any;
-    const { CircuitBreaker } = await import('../../../src/application/circuit-breaker');
+    const { CircuitBreaker } = await import('../../../ztb/application/circuit-breaker');
     const cb = new CircuitBreaker({ windowSize: 5, maxConsecutiveFailures: 1, cooldownMs: 30, halfOpenTrial: 1, latencyThreshold: 999999 });
     cb.recordFailure(); // OPEN
     g.__cb_exec = cb;

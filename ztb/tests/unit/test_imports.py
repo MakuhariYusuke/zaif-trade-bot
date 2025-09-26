@@ -19,103 +19,32 @@ if str(project_root) not in sys.path:
 class TestImports(unittest.TestCase):
     """Test that all major modules can be imported"""
 
-    def test_core_imports(self):
-        """Test core algorithm imports"""
+    def test_experiments_imports(self):
+        """Test experiments module imports"""
         try:
-            from rl.core.algorithms.train_ppo import PPOTrainer
-            self.assertIsNotNone(PPOTrainer)
-            print("✅ Core algorithms import: OK")
+            from ztb.experiments.base import ExperimentResult
+            from ztb.experiments.ml_reinforcement_1k import MLReinforcement100KExperiment
+            self.assertIsNotNone(ExperimentResult)
+            self.assertIsNotNone(MLReinforcement100KExperiment)
+            print("✅ Experiments imports: OK")
         except ImportError as e:
-            self.fail(f"Core algorithms import failed: {e}")
+            self.fail(f"Experiments import failed: {e}")
 
-    def test_environment_imports(self):
-        """Test environment imports"""
+    def test_utils_imports(self):
+        """Test utils module imports"""
         try:
-            from rl.envs.heavy_trading_env import HeavyTradingEnv
-            self.assertIsNotNone(HeavyTradingEnv)
-            print("✅ Environment import: OK")
+            from ztb.utils.parallel_experiments import run_parallel_experiments
+            self.assertIsNotNone(run_parallel_experiments)
+            print("✅ Utils imports: OK")
         except ImportError as e:
-            self.fail(f"Environment import failed: {e}")
-
-    def test_data_analysis_imports(self):
-        """Test data analysis imports"""
-        try:
-            from rl.data.analysis.data_quality_check import analyze_feature_distributions
-            from rl.data.analysis.outlier_filter import ATROutlierFilter
-            from rl.data.etl.pipeline import ETLPipeline
-            self.assertIsNotNone(analyze_feature_distributions)
-            self.assertIsNotNone(ATROutlierFilter)
-            self.assertIsNotNone(ETLPipeline)
-            print("✅ Data analysis imports: OK")
-        except ImportError as e:
-            self.fail(f"Data analysis import failed: {e}")
-
-    def test_notification_imports(self):
-        """Test notification imports"""
-        try:
-            from rl.notify.discord.discord_notifications import DiscordNotifier
-            self.assertIsNotNone(DiscordNotifier)
-            print("✅ Notification imports: OK")
-        except ImportError as e:
-            self.fail(f"Notification import failed: {e}")
-
-    def test_utility_imports(self):
-        """Test utility imports"""
-        try:
-            from rl.utils.fee_model import FeeModelFactory
-            from rl.utils.resource.process_priority import ProcessPriorityManager
-            self.assertIsNotNone(FeeModelFactory)
-            self.assertIsNotNone(ProcessPriorityManager)
-            print("✅ Utility imports: OK")
-        except ImportError as e:
-            self.fail(f"Utility import failed: {e}")
-
-    def test_template_imports(self):
-        """Test template imports"""
-        try:
-            from rl.templates.base_trainer import BaseTrainer
-            from rl.templates.base_evaluator import BaseEvaluator
-            self.assertIsNotNone(BaseTrainer)
-            self.assertIsNotNone(BaseEvaluator)
-            print("✅ Template imports: OK")
-        except ImportError as e:
-            self.fail(f"Template import failed: {e}")
-
-    def test_script_imports(self):
-        """Test script imports"""
-        try:
-            from rl.scripts.main import load_config
-            from rl.scripts.evaluation.evaluate_model import TradingEvaluator
-            from rl.scripts.training.optimize_params import OptunaCallback
-            self.assertIsNotNone(load_config)
-            # Note: TradingEvaluator and OptunaCallback may not be instantiable without setup
-            print("✅ Script imports: OK")
-        except ImportError as e:
-            self.fail(f"Script import failed: {e}")
-
-    def test_config_imports(self):
-        """Test configuration imports"""
-        try:
-            from rl.config.config_validator import ConfigValidator
-            self.assertIsNotNone(ConfigValidator)
-            print("✅ Config imports: OK")
-        except ImportError as e:
-            self.fail(f"Config import failed: {e}")
+            self.fail(f"Utils import failed: {e}")
 
     def test_all_major_modules_importable(self):
         """Test that all major modules are importable without exceptions"""
         modules_to_test = [
-            'rl.core.algorithms.train_ppo',
-            'rl.envs.heavy_trading_env',
-            'rl.data.analysis.data_quality_check',
-            'rl.data.analysis.outlier_filter',
-            'rl.data.etl.pipeline',
-            'rl.notify.discord.discord_notifications',
-            'rl.utils.fee_model',
-            'rl.utils.resource.process_priority',
-            'rl.templates.base_trainer',
-            'rl.templates.base_evaluator',
-            'rl.config.config_validator',
+            'ztb.experiments.base',
+            'ztb.experiments.ml_reinforcement_1k',
+            'ztb.utils.parallel_experiments',
         ]
 
         failed_imports = []
@@ -136,22 +65,11 @@ class TestImports(unittest.TestCase):
     def test_package_structure(self):
         """Test that package __init__.py files exist"""
         required_init_files = [
-            project_root / 'rl' / '__init__.py',
-            project_root / 'rl' / 'core' / '__init__.py',
-            project_root / 'rl' / 'core' / 'algorithms' / '__init__.py',
-            project_root / 'rl' / 'data' / '__init__.py',
-            project_root / 'rl' / 'data' / 'analysis' / '__init__.py',
-            project_root / 'rl' / 'data' / 'etl' / '__init__.py',
-            project_root / 'rl' / 'notify' / '__init__.py',
-            project_root / 'rl' / 'notify' / 'discord' / '__init__.py',
-            project_root / 'rl' / 'utils' / '__init__.py',
-            project_root / 'rl' / 'utils' / 'resource' / '__init__.py',
-            project_root / 'rl' / 'templates' / '__init__.py',
-            project_root / 'rl' / 'scripts' / '__init__.py',
-            project_root / 'rl' / 'tests' / '__init__.py',
-            project_root / 'rl' / 'tests' / 'unit' / '__init__.py',
-            project_root / 'rl' / 'tests' / 'integration' / '__init__.py',
-            project_root / 'rl' / 'config' / '__init__.py',
+            project_root / 'ztb' / '__init__.py',
+            project_root / 'ztb' / 'experiments' / '__init__.py',
+            project_root / 'ztb' / 'utils' / '__init__.py',
+            project_root / 'ztb' / 'tests' / '__init__.py',
+            project_root / 'ztb' / 'tests' / 'unit' / '__init__.py',
         ]
 
         missing_files = []

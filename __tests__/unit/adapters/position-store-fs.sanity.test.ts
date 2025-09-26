@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { loadPosition, savePosition, removePosition, type StoredPosition } from '../../../src/adapters/position-store-fs';
+import { loadPosition, savePosition, removePosition, type StoredPosition } from '../../../ztb/adapters/position-store-fs';
 
 describe('position-store-fs sanity', () => {
   const DIR = path.resolve(process.cwd(), '.positions-test');

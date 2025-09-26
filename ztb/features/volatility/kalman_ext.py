@@ -6,7 +6,7 @@ Extended Kalman Filter analysis with residuals and autocorrelation
 
 import numpy as np
 import pandas as pd
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, List
 from scipy.stats import pearsonr
 
 
@@ -37,7 +37,7 @@ class SimpleKalmanFilter:
         Returns:
             Tuple of (estimate, error_estimate)
         """
-        if self.posterior_estimate is None:
+        if self.posterior_estimate is None or self.posterior_error_estimate is None:
             # First measurement: initialize without prediction step
             self.posterior_estimate = measurement
             self.posterior_error_estimate = 1.0
@@ -113,11 +113,12 @@ def calculate_kalman_extended(data: pd.DataFrame,
     features['kalman_residual_kurt'] = residual_series.rolling(window=residual_window).kurt()
     
     # Residual percentiles
-    features['kalman_residual_percentile'] = residual_series.rolling(window=residual_window*2).rank(pct=True)
+    features['kalman_residual_percentile'] = residual_series.rolling(window=residual_window*2).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1])
     
     # Normalized residuals
     residual_std = residual_series.rolling(window=residual_window).std()
-    features['kalman_residual_normalized'] = residual_series / residual_std
+    epsilon = 1e-8  # Small value to prevent division by zero
+    features['kalman_residual_normalized'] = residual_series / (residual_std + epsilon)
     
     # Residual autocorrelation
     autocorr_lags = [1, 2, 3, 5, 10]
@@ -128,7 +129,11 @@ def calculate_kalman_extended(data: pd.DataFrame,
                 window_data = residual_series.iloc[i-residual_window:i]
                 if len(window_data) >= lag + 5:  # Minimum data for correlation
                     corr, _ = pearsonr(window_data.iloc[:-lag].values, window_data.iloc[lag:].values)
-                    autocorr_values.append(corr if not np.isnan(corr) else 0.0)
+                    # Fix: Check if corr is valid float and not NaN to avoid type errors
+                    if isinstance(corr, (int, float)) and not pd.isna(corr):
+                        autocorr_values.append(corr)
+                    else:
+                        autocorr_values.append(0.0)
                 else:
                     autocorr_values.append(0.0)
             
@@ -155,12 +160,16 @@ def calculate_kalman_extended(data: pd.DataFrame,
     
     # High residual periods (potential regime changes)
     residual_threshold = np.percentile(np.abs(residuals), 90)
-    features['kalman_high_residual'] = (np.abs(residuals) > residual_threshold).astype(int)
+    features['kalman_high_residual'] = pd.Series((np.abs(residuals) > residual_threshold).astype(int), index=data.index)
     
     # Trend consistency with filter
     price_values = np.asarray(data['close'])
     price_trend = np.sign(np.diff(price_values, prepend=price_values[0]))
     filter_trend = np.sign(np.diff(estimates_array, prepend=estimates_array[0]))
+    # Ensure both arrays are the same length as data
+    min_len = min(len(price_trend), len(filter_trend), len(data))
+    price_trend = price_trend[:min_len]
+    filter_trend = filter_trend[:min_len]
     trend_agreement = (price_trend == filter_trend).astype(int)
     features['kalman_trend_agreement'] = trend_agreement.tolist()
     
@@ -178,7 +187,7 @@ def calculate_kalman_extended(data: pd.DataFrame,
         prediction_5step = pd.Series(estimates_array.tolist(), index=data.index) + trend_5step
         actual_5step = data['close'].shift(-5)
         prediction_error_5step = actual_5step - prediction_5step
-        features['kalman_prediction_error_5step'] = prediction_error_5step
+        features['kalman_prediction_error_5step'] = prediction_error_5step.tolist()
     
     # Volatility-adjusted residuals
     volatility = data['close'].rolling(window=residual_window).std()
@@ -191,8 +200,8 @@ def calculate_kalman_extended(data: pd.DataFrame,
     # Create result DataFrame
     result_df = pd.DataFrame(features, index=data.index)
     
-    # Fill NaN values
-    result_df = result_df.ffill().bfill()
+    # Fill NaN values (forward fill only to avoid masking data issues)
+    result_df = result_df.ffill()
     
     return result_df
 
@@ -250,27 +259,18 @@ def calculate_kalman_signals(extended_features: pd.DataFrame,
     return pd.DataFrame(signals, index=extended_features.index)
 
 
-if __name__ == "__main__":
-    # Test with synthetic data
-    import matplotlib.pyplot as plt
-    
-    # Generate synthetic OHLCV data with regime changes
+def generate_synthetic_data():
+    """Generate synthetic OHLCV data with regime changes."""
     np.random.seed(42)
     dates = pd.date_range('2023-01-01', periods=300, freq='D')
-    
-    # Create price series with changing volatility regimes
     base_price = 100
     trend1 = np.cumsum(np.random.normal(0.001, 0.01, 100))  # Low vol
     trend2 = np.cumsum(np.random.normal(0.002, 0.03, 100))  # High vol
     trend3 = np.cumsum(np.random.normal(-0.001, 0.015, 100))  # Medium vol, down trend
-    
     combined_trend = np.concatenate([trend1, trend2, trend3])
     close_prices = base_price * np.exp(combined_trend)
-    
-    # Generate OHLC from close prices
     high_mult = 1 + np.abs(np.random.normal(0, 0.005, 300))
     low_mult = 1 - np.abs(np.random.normal(0, 0.005, 300))
-    
     data = pd.DataFrame({
         'open': close_prices * np.random.uniform(0.995, 1.005, 300),
         'high': close_prices * high_mult,
@@ -278,43 +278,53 @@ if __name__ == "__main__":
         'close': close_prices,
         'volume': np.random.randint(1000, 10000, 300)
     }, index=dates)
-    
+    return data
+
+def print_feature_info(data, extended_features):
     print("Testing Kalman Extended Features...")
     print(f"Data shape: {data.shape}")
     print(f"Price range: {data['close'].min():.2f} to {data['close'].max():.2f}")
-    
-    # Calculate extended features
-    extended_features = calculate_kalman_extended(data, 
-                                                 process_variance=0.001,
-                                                 measurement_variance=0.1,
-                                                 residual_window=20)
-    
     print(f"\nExtended features shape: {extended_features.shape}")
     print(f"Feature columns ({len(extended_features.columns)}):")
     for i, col in enumerate(extended_features.columns):
         print(f"  {i+1:2d}. {col}")
-    
-    # Calculate signals
-    signals = calculate_kalman_signals(extended_features)
-    
+
+def print_signal_info(signals):
     print(f"\nSignals shape: {signals.shape}")
     print("Signal counts:")
     for col in signals.columns:
         signal_count = signals[col].sum()
         print(f"  {col}: {signal_count} signals")
-    
-    # Basic residual analysis
+
+def print_residual_analysis(extended_features):
     residuals = extended_features['kalman_residual'].dropna()
     print(f"\nResidual analysis:")
     print(f"  Mean: {residuals.mean():.6f}")
     print(f"  Std: {residuals.std():.6f}")
     print(f"  Skewness: {residuals.skew():.4f}")
     print(f"  Kurtosis: {residuals.kurt():.4f}")
-    
-    # Autocorrelation analysis
+
+def print_autocorr_analysis(extended_features):
     if 'kalman_autocorr_lag1' in extended_features.columns:
         autocorr_1 = extended_features['kalman_autocorr_lag1'].dropna()
         print(f"  Lag-1 autocorr mean: {autocorr_1.mean():.4f}")
         print(f"  Lag-1 autocorr std: {autocorr_1.std():.4f}")
-    
+
+def main():
+    data = generate_synthetic_data()
+    extended_features = calculate_kalman_extended(
+        data,
+        process_variance=0.001,
+        measurement_variance=0.1,
+        residual_window=20
+    )
+    print_feature_info(data, extended_features)
+    signals = calculate_kalman_signals(extended_features)
+    print_signal_info(signals)
+    print_residual_analysis(extended_features)
+    print_autocorr_analysis(extended_features)
     print("Kalman extended features test completed successfully!")
+
+
+if __name__ == "__main__":
+    main()

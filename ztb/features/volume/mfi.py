@@ -1,49 +1,33 @@
 """
-MFI (Money Flow Index) feature implementation.
-Volume-based momentum oscillator.
-
-Parameters:
-  - period: MFI calculation period (default=14)
-Output columns:
-  - mfi_{period}
+MFI (Money Flow Index) implementation.
+MFIの実装
 """
 
 import pandas as pd
-from ..base import BaseFeature
+from ztb.features.registry import FeatureRegistry
 
 
-class MFI(BaseFeature):
-    """
-    Money Flow Index - volume-based momentum oscillator.
-    """
+@FeatureRegistry.register("MFI")
+def compute_mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Compute MFI (Money Flow Index)"""
+    # Typical Price
+    typical_price = (df['high'] + df['low'] + df['close']) / 3
 
-    def __init__(self, period: int = 14, **kwargs):
-        super().__init__("MFI", deps=["high", "low", "close", "volume"])
-        self.period = period
+    # Raw Money Flow
+    money_flow = typical_price * df['volume']
 
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        """
-        df columns must include: ['high', 'low', 'close', 'volume'].
-        Returns a DataFrame with MFI values.
-        """
-        # Typical Price
-        typical_price = (df['high'] + df['low'] + df['close']) / 3
+    # Positive and Negative Money Flow
+    price_diff: pd.Series = typical_price.diff()
+    positive_flow = money_flow.where(price_diff > 0, 0.0)
+    negative_flow = money_flow.where(price_diff < 0, 0.0)
 
-        # Raw Money Flow
-        money_flow = typical_price * df['volume']
+    # Money Flow Ratio
+    pos_mf_sum = positive_flow.rolling(period).sum()
+    neg_mf_sum = negative_flow.rolling(period).sum()
 
-        # Positive and Negative Money Flow
-        price_diff = typical_price.diff()
-        positive_flow = money_flow.where(price_diff > 0, 0.0)
-        negative_flow = money_flow.where(price_diff < 0, 0.0)
+    money_flow_ratio = pos_mf_sum / neg_mf_sum.replace(0, 1e-8)  # Avoid division by zero
 
-        # Money Flow Ratio
-        pos_mf_sum = positive_flow.rolling(self.period).sum()
-        neg_mf_sum = negative_flow.rolling(self.period).sum()
+    # MFI calculation
+    mfi = 100 - (100 / (1 + money_flow_ratio))
 
-        money_flow_ratio = pos_mf_sum / (neg_mf_sum + 1e-8)  # Avoid division by zero
-
-        # MFI calculation
-        mfi = 100 - (100 / (1 + money_flow_ratio))
-
-        return pd.DataFrame({f'mfi_{self.period}': mfi.fillna(50)})
+    return mfi.fillna(50)

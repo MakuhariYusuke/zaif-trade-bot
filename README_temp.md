@@ -1075,7 +1075,7 @@ $env:USE_PRIVATE_MOCK="1"; $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"
 - 実行条件: 手動起動（Actionsタブ → Live Minimal Trade → Run workflow）
 - 使用Secrets:
 	- `COINCHECK_KEY` / `COINCHECK_SECRET`（CoincheckのAPIキー）
-	- `SLACK_WEBHOOK_URL`（任意。未設定なら通知スキップ）
+	- `SLACK_WEBHOOK`（任意。未設定なら通知スキップ）
 - 固定パラメータ（必要に応じ変更可）:
 	- `EXCHANGE=coincheck`, `PAIR=xrp_jpy`, `TRADE_FLOW=BUY_ONLY`
 	- `TEST_FLOW_QTY=500`, `TEST_FLOW_RATE=490`, `DRY_RUN=0`, `FEATURES_SOURCE=live`

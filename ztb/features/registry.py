@@ -1,103 +1,127 @@
 """
-Feature registry and manager for trading features.
-特徴量レジストリとマネージャー
+Feature registry for trading features.
+特徴量レジストリ
 """
 
-import yaml
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Set, Union
+from typing import Callable, Dict, List, Optional, Any
 import pandas as pd
-import networkx as nx
-from .base import Feature, ComputableFeature, CommonPreprocessor
+import numpy as np
+import random
+import os
 
 
-class FeatureManager:
-    """特徴量マネージャー"""
+class FeatureRegistry:
+    """全特徴量関数を一元管理するレジストリ"""
 
-    def __init__(self, config_path: str):
-        self.config_path = Path(config_path)
-        self.features: Dict[str, Union[Feature, ComputableFeature]] = {}
-        self.config: Dict[str, Any] = {}
-        self._load_config()
+    _registry: Dict[str, Callable[[pd.DataFrame], pd.Series]] = {}  # type: Dict[str, Callable[[pd.DataFrame], pd.Series]]
+    _cache_enabled: bool = True
+    _parallel_enabled: bool = True
+    _initialized: bool = False
+    _config: Dict[str, Any] = {}
+    _base_seed: int = 42
 
-    def _load_config(self):
-        """features.yaml を読み込み"""
-        if not self.config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {self.config_path}")
+    @classmethod
+    def initialize(cls, seed: Optional[int] = None, cache_enabled: Optional[bool] = None, parallel_enabled: Optional[bool] = None):
+        """Initialize the registry with seed, cache and parallel settings"""
+        if cls._initialized:
+            return
 
-        with open(self.config_path, 'r', encoding='utf-8') as f:
-            self.config = yaml.safe_load(f) or {}
+        # Set seed from parameter or default
+        final_seed = seed if seed is not None else 42
 
-    def register(self, feature: Union[Feature, ComputableFeature]):
-        """特徴量を登録"""
-        self.features[feature.name] = feature
+        # Fix seeds for reproducibility
+        np.random.seed(final_seed)
+        random.seed(final_seed)
+        os.environ['PYTHONHASHSEED'] = str(final_seed)
 
-    def get_enabled_features(self, wave: Optional[int] = None) -> List[str]:
-        """有効な特徴量を取得"""
-        enabled = []
-        for name, config in self.config.get('features', {}).items():
-            if config.get('enabled', False) and not config.get('harmful', False):
-                if wave is None or config.get('wave', 1) == wave:
-                    enabled.append(name)
-        return enabled
-
-    def compute_features(self, df: pd.DataFrame, wave: Optional[int] = None) -> pd.DataFrame:
-        """特徴量を計算（DAGで依存解決）"""
-        # 共通前処理
-        df = CommonPreprocessor.preprocess(df)
-
-        # 有効な特徴量を取得
-        if wave is None:
-            # wave=Noneの場合、configのenabledに基づく
-            enabled_features = [name for name, config in self.config.get('features', {}).items() if config.get('enabled', False)]
-        else:
-            enabled_features = self.get_enabled_features(wave)
-        if not enabled_features:
-            return df
-
-        # DAG構築
-        dag = nx.DiGraph()
-        for name in enabled_features:
-            if name not in self.features:
-                continue
-            feature = self.features[name]
-            dag.add_node(name)
-            for dep in feature.deps:
-                dag.add_edge(dep, name)
-
-        # トポロジカルソートで計算順序決定
+        # Set PyTorch seed if available
         try:
-            order = list(nx.topological_sort(dag))
-        except nx.NetworkXError:
-            raise ValueError("Circular dependency detected in features")
+            import torch
+            torch.manual_seed(final_seed)
+            torch.cuda.manual_seed_all(final_seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+        except ImportError:
+            pass  # PyTorch not available
 
-        # 計算実行
-        computed: Set[str] = set()
-        for name in order:
-            if name in self.features:
-                feature = self.features[name]
-                # 依存がすべて計算済みかチェック
-                if all(dep in computed or dep in df.columns for dep in feature.deps):
-                    params = self.config.get('features', {}).get(name, {}).get('params', {})
-                    new_df = feature.compute(df, **params)
-                    df = pd.concat([df, new_df], axis=1)
-                    computed.add(name)
+        # Set BLAS thread limits for optimal parallel performance
+        os.environ['OPENBLAS_NUM_THREADS'] = '1'
+        os.environ['MKL_NUM_THREADS'] = '1'
+        os.environ['NUMEXPR_NUM_THREADS'] = '1'
+        os.environ['OMP_NUM_THREADS'] = '1'
 
-        return df
+        # Store base seed for parallel processing
+        cls._base_seed = final_seed
 
-    def get_feature_info(self, name: str) -> Optional[Dict[str, Any]]:
-        """特徴量情報を取得"""
-        return self.config.get('features', {}).get(name)
+        # Set cache enabled from parameter or default
+        if cache_enabled is not None:
+            cls._cache_enabled = cache_enabled
+        else:
+            cls._cache_enabled = True
 
+        # Set parallel enabled from parameter or default
+        if parallel_enabled is not None:
+            cls._parallel_enabled = parallel_enabled
+        else:
+            cls._parallel_enabled = True
 
-# グローバルマネージャーインスタンス
-_manager: Optional[FeatureManager] = None
+        cls._initialized = True
 
-DEFAULT_FEATURE_CONFIG_PATH: str = "config/features.yaml"
+    @classmethod
+    def reset_for_testing(cls):
+        """Reset registry state for testing purposes"""
+        cls._initialized = False
+        cls._registry.clear()
+        cls._config.clear()
 
-def get_feature_manager(config_path: str = DEFAULT_FEATURE_CONFIG_PATH) -> FeatureManager:
-    """グローバル特徴量マネージャーを取得"""
-    global _manager
-    if _manager is None:
-        _manager = FeatureManager(config_path)
-    return _manager
+    @classmethod
+    def set_worker_seed(cls, worker_id: int):
+        """Set deterministic seed for parallel worker processes"""
+        if not cls._initialized:
+            raise RuntimeError("FeatureRegistry must be initialized before setting worker seed")
+
+        worker_seed = cls._base_seed + worker_id
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
+
+        # Set PyTorch seed if available
+        try:
+            import torch
+            torch.manual_seed(worker_seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed(worker_seed)
+        except ImportError:
+            pass  # PyTorch not available
+
+    @classmethod
+    def get_config(cls) -> Dict[str, Any]:
+        """Get current configuration"""
+        from copy import deepcopy
+        return deepcopy(cls._config)
+
+    @classmethod
+    def register(cls, name: str):
+        def decorator(func: Callable[[pd.DataFrame], pd.Series]):
+            cls._registry[name] = func
+            return func
+        return decorator
+
+    @classmethod
+    def get(cls, name: str) -> Callable[[pd.DataFrame], pd.Series]:
+        if name not in cls._registry:
+            raise KeyError(f"Feature '{name}' is not registered in the FeatureRegistry.")
+        return cls._registry[name]
+
+    @classmethod
+    def list(cls) -> List[str]:
+        return list(cls._registry.keys())
+
+    @classmethod
+    def is_cache_enabled(cls) -> bool:
+        """Check if caching is enabled"""
+        return cls._cache_enabled
+
+    @classmethod
+    def is_parallel_enabled(cls) -> bool:
+        """Check if parallel processing is enabled"""
+        return cls._parallel_enabled

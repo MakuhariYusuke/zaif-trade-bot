@@ -7,6 +7,7 @@ Robust implementation of trading performance metrics
 import numpy as np
 import pandas as pd
 from typing import Union, Optional, TypedDict
+from ztb.utils.trading_metrics import sharpe_ratio as _sharpe_ratio
 
 
 class MetricsResult(TypedDict):
@@ -23,6 +24,7 @@ class MetricsResult(TypedDict):
     num_periods: int
 
 
+
 def sharpe_ratio(returns: Union[pd.Series, np.ndarray], 
                 rf: float = 0.0, 
                 period_per_year: int = 252) -> float:
@@ -37,28 +39,7 @@ def sharpe_ratio(returns: Union[pd.Series, np.ndarray],
     Returns:
         Sharpe ratio
     """
-    returns = np.asarray(returns)
-    
-    if len(returns) == 0:
-        return 0.0
-    
-    # Remove NaN values
-    returns = returns[~np.isnan(returns)]
-    
-    if len(returns) == 0:
-        return 0.0
-    
-    # Calculate excess returns
-    excess_returns = returns - (rf / period_per_year)
-    
-    # Calculate Sharpe ratio
-    mean_return = np.mean(excess_returns)
-    std_return = np.std(excess_returns, ddof=1)
-    
-    if std_return == 0 or np.isnan(std_return):
-        return 0.0
-    
-    return float((mean_return / std_return) * np.sqrt(period_per_year))
+    return _sharpe_ratio(np.asarray(returns), rf, period_per_year)
 
 
 def sortino_ratio(returns: Union[pd.Series, np.ndarray], 

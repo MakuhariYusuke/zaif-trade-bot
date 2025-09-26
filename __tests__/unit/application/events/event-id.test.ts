@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../src/application/events/bus';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../../../ztb/application/events/bus';
 
 describe('event bus assigns eventId', () => {
 	beforeEach(() => setEventBus(new InMemoryEventBus()));

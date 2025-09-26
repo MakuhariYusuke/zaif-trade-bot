@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { appendFillPnl, incBuyEntry, incSellEntry, loadDaily } from '../../../src/utils/daily-stats';
+import { appendFillPnl, incBuyEntry, incSellEntry, loadDaily } from '../../../ztb/utils/daily-stats';
 
 const TMP = path.resolve(process.cwd(), 'tmp-test-stats-core');
 

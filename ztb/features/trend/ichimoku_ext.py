@@ -6,7 +6,7 @@ Extended Ichimoku features with cloud thickness, price-cloud distance, and laggi
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Any
+from typing import Dict
 
 
 def calculate_ichimoku_extended(df: pd.DataFrame, 
@@ -103,17 +103,25 @@ def calculate_ichimoku_extended(df: pd.DataFrame,
     ) / 3
     
     # Handle NaN values - forward fill for the first few rows where calculations aren't possible
-    result = result.fillna(method='bfill', limit=max(tenkan_period, kijun_period, senkou_span_b_period))
+    result = result.bfill(limit=max(tenkan_period, kijun_period, senkou_span_b_period))
     
-    # Fill remaining NaN with 0 (for edge cases)
-    result = result.fillna(0)
+    # Fill remaining NaN with method='ffill' (forward fill), or leave as NaN for analysis
+    # result = result.fillna(0)
+    result = result.ffill()
     
     return result
 
-
 def ichimoku_feature_summary() -> Dict[str, str]:
     """
-    Return a summary of all Ichimoku extended features for documentation
+    Returns a dictionary summarizing each extended Ichimoku feature.
+
+    The returned dictionary maps feature column names to their descriptions,
+    providing an overview of the meaning and intended usage of each feature.
+    This is useful for documentation, feature selection, and understanding
+    the output of `calculate_ichimoku_extended`.
+
+    Returns:
+        Dict[str, str]: A mapping from feature names to their descriptions.
     """
     return {
         'ichimoku_tenkan': 'Tenkan-sen (Conversion Line) - short-term trend',
@@ -148,9 +156,8 @@ if __name__ == "__main__":
     })
     
     # Ensure high >= close >= low
-    for i in range(n):
-        test_data.loc[i, 'high'] = max(test_data.loc[i, 'high'], test_data.loc[i, 'close'])
-        test_data.loc[i, 'low'] = min(test_data.loc[i, 'low'], test_data.loc[i, 'close'])
+    test_data['high'] = np.maximum(test_data['high'], test_data['close'])
+    test_data['low'] = np.minimum(test_data['low'], test_data['close'])
     
     # Calculate features
     features = calculate_ichimoku_extended(test_data)

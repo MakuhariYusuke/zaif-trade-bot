@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { loadPosition, updateOnFill, removePosition } from '../../../src/core/position-store';
+import { loadPosition, updateOnFill, removePosition } from '../../../ztb/core/position-store';
 
 describe('core/position-store', ()=>{
   const TMP = path.resolve(process.cwd(), '.positions-test');

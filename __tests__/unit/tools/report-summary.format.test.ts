@@ -25,7 +25,7 @@ describe('report-summary formatted fields', () => {
     (fs.existsSync as any) = ((p: string) => { const fp = path.isAbsolute(p) ? p : path.join(TMP, p); return existsSyncOrig(fp); }) as any;
     process.argv = ['node','script','--source','live'];
     vi.resetModules();
-    await import('../../../src/tools/report-summary');
+    await import('../../../ztb/tools/report-summary');
     const outPath = path.join(TMP,'report-summary-live.json');
     await new Promise(res => setTimeout(res, 30));
     const out = JSON.parse(fs.readFileSync(outPath,'utf8'));

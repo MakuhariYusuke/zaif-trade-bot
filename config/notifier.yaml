@@ -1,0 +1,22 @@
+notifications:
+  enabled: true
+  channels:
+    - type: slack
+      webhook_url: ${SLACK_WEBHOOK}
+      channel: "#feature-promotion"
+    - type: discord
+      webhook_url: ${DISCORD_WEBHOOK}
+      username: "Feature Promotion Bot"
+  events:
+    promotion_success:
+      enabled: true
+      message_template: "✅ Feature '{feature}' promoted: {from_status} → {to_status} (Score: {score:.2f})"
+    criterion_failure:
+      enabled: true
+      message_template: "🚨 Feature '{feature}' failed promotion criteria"
+    harmful_detected:
+      enabled: true
+      message_template: "⚠️ Feature '{feature}' detected as harmful: {reason}"
+  retry:
+    max_attempts: 3
+    backoff_seconds: 5

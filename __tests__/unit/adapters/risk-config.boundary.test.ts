@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadRiskConfig, getQtyDecimals, getQtyEpsilon } from '../../../src/adapters/risk-config';
+import { loadRiskConfig, getQtyDecimals, getQtyEpsilon } from '../../../ztb/adapters/risk-config';
 
 describe('risk-config boundary', () => {
   const origEnv = { ...process.env };

@@ -81,7 +81,7 @@ jobs:
     - name: Send Slack Notification
       run: python scripts/generate_weekly_report.py --notify slack
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
     - name: Upload summary report
       uses: actions/upload-artifact@v3

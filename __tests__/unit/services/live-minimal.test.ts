@@ -3,12 +3,12 @@ import path from 'path';
 import fs from 'fs';
 
 // Mocks
-vi.mock('../../../src/api/adapters', () => ({ createPrivateApi: () => mockApi }));
-vi.mock('../../../src/api/public', () => ({
+vi.mock('../../../ztb/api/adapters', () => ({ createPrivateApi: () => mockApi }));
+vi.mock('../../../ztb/api/public', () => ({
     getOrderBook: vi.fn(async () => ({ bids: [[999, 1]], asks: [[1001, 1]] })),
     getTrades: vi.fn(async () => ([{ price: 1000, amount: 0.1, date: Math.floor(Date.now() / 1000) }])),
 }));
-vi.mock('../../../src/utils/daily-stats', () => ({
+vi.mock('../../../ztb/utils/daily-stats', () => ({
     incBuyEntry: vi.fn(),
     incSellEntry: vi.fn(),
 }));
@@ -49,7 +49,7 @@ describe('tools/live/test-minimal-live', () => {
 
     it('SELL_ONLY limit order gets cancelled (unfilled) and cancel is called', async () => {
         // start tool
-        await import('../../../src/tools/live/test-minimal-live');
+        await import('../../../ztb/tools/live/test-minimal-live');
         // Wait for features JSONL file to exist (max 2s)
         const base = path.resolve(process.env.FEATURES_LOG_DIR as string);
         const dir = path.join(base, 'features', 'live', 'zaif_eth_jpy');

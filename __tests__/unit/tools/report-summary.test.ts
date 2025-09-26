@@ -27,7 +27,7 @@ describe('tools/report-summary', () => {
   (fs.statSync as any) = ((p: string) => { const fp = path.isAbsolute(p) ? p : path.join(TMP, p); return statSyncOrig(fp); }) as any;
     process.argv = ['node', 'script', '--source', 'paper'];
   vi.resetModules();
-    await import('../../../src/tools/report-summary');
+    await import('../../../ztb/tools/report-summary');
     // wait for file using fs.watch
     const outPath = path.join(TMP,'report-summary-paper.json');
     // Wait briefly to ensure file write completes
@@ -52,7 +52,7 @@ describe('tools/report-summary', () => {
   (fs.statSync as any) = ((p: string) => { const fp = path.isAbsolute(p) ? p : path.join(TMP, p); return statSyncOrig(fp); }) as any;
     process.argv = ['node', 'script', '--source', 'live'];
   vi.resetModules();
-    await import('../../../src/tools/report-summary');
+    await import('../../../ztb/tools/report-summary');
     const outPath = path.join(TMP,'report-summary-live.json');
     // Wait briefly to ensure file write completes
     await new Promise(res => setTimeout(res, 50));

@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { BaseExchangePublic } from '../../../src/api/base-public';
+import { BaseExchangePublic } from '../../../ztb/api/base-public';
 
 class TestPub extends BaseExchangePublic {
   async getTicker(pair: string){ return { pair, t: 1 }; }

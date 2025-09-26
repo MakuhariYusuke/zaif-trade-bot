@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setupJsonLogs, captureLogs, expectJsonLog, advanceFakeTime } from '../../helpers/logging';
 
-vi.mock('../../../src/adapters/market-service', () => ({
+vi.mock('../../../ztb/adapters/market-service', () => ({
   listActiveOrders: vi.fn(async () => ({ '123': { amount: 0.1 } })),
   fetchTradeHistory: vi.fn(async () => ([])),
   cancelOrder: vi.fn(async () => ({ result: true })),
@@ -12,7 +12,7 @@ describe('adapters/execution-service pollFillState slow polling WARN', () => {
 
   it('emits EXEC WARN when polling exceeds 30s', async () => {
     const logs = captureLogs();
-    const { pollFillState } = await import('../../../src/adapters/execution-service');
+    const { pollFillState } = await import('../../../ztb/adapters/execution-service');
     const pair = 'btc_jpy';
 
     const p = { side: 'bid' as const, intendedPrice: 100, amount: 0.1, orderId: 123, submittedAt: Date.now(), originalAmount: 0.1, requestId: 'r' };

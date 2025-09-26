@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { logFeatureSample, stopFeaturesLoggerTimers } from '../../../src/utils/features-logger';
-import { InMemoryEventBus, setEventBus, getEventBus } from '../../../src/application/events/bus';
-import { logger } from '../../../src/utils/logger';
+import { logFeatureSample, stopFeaturesLoggerTimers } from '../../../ztb/utils/features-logger';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../../ztb/application/events/bus';
+import { logger } from '../../../ztb/utils/logger';
 
 // Minimal stub for price series provider
 process.env.TEST_MODE = '1';

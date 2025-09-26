@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { calculateSma, calculateRsi, positionSizeFromBalance, evaluateExitConditions, getRiskConfig, Position } from '../../../src/core/risk';
+import { calculateSma, calculateRsi, positionSizeFromBalance, evaluateExitConditions, getRiskConfig, Position } from '../../../ztb/core/risk';
 
 describe('core/risk', ()=>{
   beforeEach(()=>{ process.env = { ...process.env, RISK_POSITION_PCT: '0.1' }; });

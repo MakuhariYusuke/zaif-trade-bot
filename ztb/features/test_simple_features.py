@@ -8,15 +8,14 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List
-import yaml
 
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features.base import CommonPreprocessor
-from ztb.features.momentum import RSI
-from ztb.features.wave1 import ROC, OBV, ZScore
+from ztb.features import FeatureRegistry
 from ztb.evaluation.promotion import YamlPromotionEngine
+from ztb.utils.stats import calculate_skew, calculate_kurtosis, nan_ratio
 
 
 class QualityGates:
@@ -35,7 +34,7 @@ class QualityGates:
         results = {}
 
         # NaN rate
-        nan_rate = feature_data.isna().mean()
+        nan_rate = nan_ratio(feature_data)
         results['nan_rate'] = nan_rate
         results['nan_rate_pass'] = nan_rate <= self.gates['nan_rate_threshold']
 
@@ -51,7 +50,7 @@ class QualityGates:
 
         # Skewness
         if len(feature_data.dropna()) > 10:
-            skew_val = feature_data.skew()
+            skew_val = calculate_skew(feature_data.dropna())
             if pd.notna(skew_val):
                 try:
                     skew = float(skew_val)
@@ -69,7 +68,7 @@ class QualityGates:
 
         # Kurtosis
         if len(feature_data.dropna()) > 10:
-            kurtosis_val = feature_data.kurtosis()
+            kurtosis_val = calculate_kurtosis(feature_data.dropna())
             if pd.notna(kurtosis_val):
                 try:
                     kurtosis = float(kurtosis_val)
@@ -256,10 +255,10 @@ def test_simple_features():
 
     # Define features to test
     features = [
-        ('RSI', RSI()),
-        ('ROC', ROC()),
-        ('OBV', OBV()),
-        ('ZScore', ZScore())
+        ('RSI', FeatureRegistry.get('RSI')),
+        ('ROC', FeatureRegistry.get('ROC')),
+        ('OBV', FeatureRegistry.get('OBV')),
+        ('ZScore', FeatureRegistry.get('ZScore'))
     ]
 
     results = []
@@ -272,8 +271,7 @@ def test_simple_features():
             processed_df = preprocessor.preprocess(df.copy())
 
             # Compute feature
-            feature_result = feature_class.compute(processed_df)
-            feature_series = feature_result.iloc[:, 0]  # Get first column
+            feature_series = feature_class(processed_df)
 
             # For OBV, artificially add NaN to make it harmful (as per expected output)
             if feature_name == 'OBV':

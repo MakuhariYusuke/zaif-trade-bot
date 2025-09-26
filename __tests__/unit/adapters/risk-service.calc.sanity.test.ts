@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { calculateSma, calculateRsi, evaluateExitConditions } from '../../../src/core/risk';
+import { calculateSma, calculateRsi, evaluateExitConditions } from '../../../ztb/core/risk';
 
 describe('risk-service calc sanity', () => {
   beforeEach(() => {

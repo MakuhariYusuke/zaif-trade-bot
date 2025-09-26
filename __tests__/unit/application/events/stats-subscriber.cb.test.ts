@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getEventBus } from '../../../../src/application/events/bus';
-import { registerStatsSubscriber } from '../../../../src/application/events/subscribers/stats-subscriber';
-import { getCircuitBreaker, setCircuitBreaker, CircuitBreaker } from '../../../../src/application/circuit-breaker';
+import { getEventBus } from '../../../../ztb/application/events/bus';
+import { registerStatsSubscriber } from '../../../../ztb/application/events/subscribers/stats-subscriber';
+import { getCircuitBreaker, setCircuitBreaker, CircuitBreaker } from '../../../../ztb/application/circuit-breaker';
 
 describe('stats-subscriber -> CircuitBreaker', () => {
 	beforeEach(() => {

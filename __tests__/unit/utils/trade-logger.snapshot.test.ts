@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { logSignal, logExecution, logTradeError, logTradeInfo, generateDailyReport } from '../../../src/utils/trade-logger';
-import { InMemoryEventBus, setEventBus, getEventBus } from '../../../src/application/events/bus';
-import { registerTradeLoggerSubscriber } from '../../../src/application/events/subscribers/trade-logger-subscriber';
-import { setLoggerContext, clearLoggerContext, logInfo, logWarn, logError } from '../../../src/utils/logger';
+import { logSignal, logExecution, logTradeError, logTradeInfo, generateDailyReport } from '../../../ztb/utils/trade-logger';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../../ztb/application/events/bus';
+import { registerTradeLoggerSubscriber } from '../../../ztb/application/events/subscribers/trade-logger-subscriber';
+import { setLoggerContext, clearLoggerContext, logInfo, logWarn, logError } from '../../../ztb/utils/logger';
 
 describe('trade-logger snapshots', () => {
   let tmpDir: string;

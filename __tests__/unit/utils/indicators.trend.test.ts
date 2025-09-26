@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { macd, dmiAdx, bollinger, ichimoku, atr, supertrend } from '../../../src/utils/indicators';
+import { macd, dmiAdx, bollinger, ichimoku, atr, supertrend } from '../../../ztb/utils/indicators';
 
 describe('trend indicators', () => {
   const close = Array.from({ length: 120 }, (_, i) => 100 + Math.sin(i / 8) * 3 + i * 0.05);

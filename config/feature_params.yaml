@@ -1,0 +1,45 @@
+# Feature parameter configurations for auto-generation
+# This file defines parameter ranges for automatic feature generation
+
+# Global settings
+max_combinations: 100  # Maximum parameter combinations per feature type
+
+ema:
+  periods: [5, 8, 12, 20, 25, 30, 40, 50]
+
+kama:
+  fast_periods: [5, 10]
+  slow_periods: [20, 30]
+  efficiency_periods: [10, 20, 30, 50]
+
+ichimoku:
+  # Standard Ichimoku parameters (tenkan, kijun, senkou_span_b)
+  periods: [9, 26, 52]
+
+# Future extensions can be added here
+# donchian:
+#   periods: [10, 20, 30]
+
+# kalman:
+#   process_variance: [0.01, 0.05, 0.1]
+#   measurement_variance: [0.05, 0.1, 0.2]
+
+parameter_validation:
+  min_period: 2
+  max_period: 200
+  forbidden_combinations:
+    - { feature: "ema_cross", fast: ">=slow" }
+    - { feature: "kama", fast: ">=slow" }
+
+quality_gates:
+  max_nan_rate_threshold: 0.8
+  min_abs_correlation_threshold: 0.05
+
+ci:
+  category_requirements:
+    trend: 2
+    oscillator: 1
+    volume: 1
+    channel: 1
+  perf_regression_tolerance_ratio: 0.5   # = ±50%
+  bench_history_path: "reports/performance/feature_bench_history.json"

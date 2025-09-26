@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runOnceCollect } from '../../../src/tools/metrics-dash';
+import { runOnceCollect } from '../../../ztb/tools/metrics-dash';
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -5,7 +5,7 @@ import fs from 'fs';
 const incs: Record<string, number> = {
   trailArmed: 0, trailExit: 0, trailStop: 0, rsiExit: 0, buyEntry: 0, buyExit: 0, sellEntry: 0, buyExits: 0
 };
-vi.mock('../../../src/utils/daily-stats', () => ({
+vi.mock('../../../ztb/utils/daily-stats', () => ({
   incTrailStop: () => { incs.trailStop++; },
   incTrailExit: () => { incs.trailExit++; },
   incRsiExit: () => { incs.rsiExit++; },
@@ -43,7 +43,7 @@ describe('strategies counters', () => {
     };
   process.env.RSI_PERIOD = '5';
   process.env.BUY_RSI_OVERSOLD = '100'; // RSI 条件を満たすよう閾値を高く
-    const { runBuyStrategy } = await import('../../../src/core/strategies/buy-strategy');
+    const { runBuyStrategy } = await import('../../../ztb/core/strategies/buy-strategy');
     await runBuyStrategy(ctx);
   expect(incs.buyEntry).toBeGreaterThan(0);
   expect(incs.trailStop >= 0 && incs.trailExit >= 0).toBe(true);
@@ -62,7 +62,7 @@ describe('strategies counters', () => {
       pair: 'btc_jpy',
     };
     process.env.SELL_RSI_OVERBOUGHT = '0'; // force RSI exit condition true
-    const { runSellStrategy } = await import('../../../src/core/strategies/sell-strategy');
+    const { runSellStrategy } = await import('../../../ztb/core/strategies/sell-strategy');
   process.env.MIN_HOLD_SEC = '0';
   await runSellStrategy(ctx);
   expect(incs.sellEntry).toBeGreaterThanOrEqual(0);
@@ -90,8 +90,8 @@ describe('strategies counters', () => {
   process.env.SELL_RSI_OVERBOUGHT = '0';
   process.env.BUY_RSI_OVERSOLD = '100';
     process.env.MIN_HOLD_SEC = '0';
-    const { runSellStrategy } = await import('../../../src/core/strategies/sell-strategy');
-    const { runBuyStrategy } = await import('../../../src/core/strategies/buy-strategy');
+    const { runSellStrategy } = await import('../../../ztb/core/strategies/sell-strategy');
+    const { runBuyStrategy } = await import('../../../ztb/core/strategies/buy-strategy');
     await runSellStrategy(baseCtx);
     await runBuyStrategy(baseCtx);
     // fire again with slight time shift to allow trail management updates

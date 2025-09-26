@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { loadPosition, savePosition, updateOnFill, removePosition } from '../../../src/core/position-store';
-import type { StoredPosition } from '../../../src/adapters/position-store-fs';
+import { loadPosition, savePosition, updateOnFill, removePosition } from '../../../ztb/core/position-store';
+import type { StoredPosition } from '../../../ztb/adapters/position-store-fs';
 
 /**
  * Recovery scenarios for core/position-store

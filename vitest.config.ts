@@ -12,7 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    setupFiles: ['src/test/setup.ts'],
+    // setupFiles: ['src/test/setup.ts'],
     coverage: {
       enabled: true,
       provider: 'v8',

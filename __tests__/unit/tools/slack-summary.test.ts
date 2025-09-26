@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSlackSummary } from '../../../src/tools/slack-summary';
+import { buildSlackSummary } from '../../../ztb/tools/slack-summary';
 
 describe('slack-summary build', () => {
   it('includes coverage, commit sha, phase counts when available', () => {

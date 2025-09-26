@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateExitConditions, Position } from '../../../src/core/risk';
+import { evaluateExitConditions, Position } from '../../../ztb/core/risk';
 
 describe('max hold guard (core)', () => {
   it('emits TIME_LIMIT when hold exceeds MAX_HOLD_SEC', () => {

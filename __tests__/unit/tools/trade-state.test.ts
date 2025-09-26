@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_STATE, applyPhaseProgress, DEFAULT_RULES } from '../../../src/config/trade-state';
+import { DEFAULT_STATE, applyPhaseProgress, DEFAULT_RULES } from '../../../ztb/config/trade-state';
 
 describe('trade-state promotion', () => {
   it('promotes 1->2 after consecutive days', () => {

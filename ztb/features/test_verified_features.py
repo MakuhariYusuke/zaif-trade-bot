@@ -9,14 +9,21 @@ import time
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Tuple
 import yaml
 
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from ztb.features.registry import FeatureManager
+from ztb.features import FeatureRegistry
 from ztb.features.base import CommonPreprocessor
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Type
+    FeatureRegistryType = Type[FeatureRegistry]
+else:
+    FeatureRegistryType = FeatureRegistry
 
 def get_feature_category(feature_name: str) -> str:
     """Determine feature category from feature name"""
@@ -138,7 +145,7 @@ def check_performance_regression(verified_features: List[str], current_benchmark
     
     return regressed_features
 
-def test_basic_execution(verified_features: List[str], sample_data: pd.DataFrame, manager: FeatureManager) -> List[str]:
+def test_basic_execution(verified_features: List[str], sample_data: pd.DataFrame, registry: FeatureRegistryType) -> List[str]:
     """Test that all verified features can compute successfully"""
     print(f"Testing {len(verified_features)} verified features (basic execution)...")
     
@@ -146,13 +153,13 @@ def test_basic_execution(verified_features: List[str], sample_data: pd.DataFrame
     
     for feature_name in verified_features:
         try:
-            if feature_name not in manager.features:
+            if feature_name not in registry.list():
                 print(f"Feature {feature_name} not found in registry")
                 failed_features.append(feature_name)
                 continue
 
-            feature = manager.features[feature_name]
-            result = feature.compute(sample_data)
+            feature = registry.get(feature_name)
+            result = feature(sample_data)
 
             if not isinstance(result, pd.DataFrame):
                 print(f"Feature {feature_name} did not return DataFrame")
@@ -172,7 +179,7 @@ def test_basic_execution(verified_features: List[str], sample_data: pd.DataFrame
     
     return failed_features
 
-def test_parameter_sensitivity(verified_features: List[str], sample_data: pd.DataFrame, manager: FeatureManager) -> List[str]:
+def test_parameter_sensitivity(verified_features: List[str], sample_data: pd.DataFrame, registry: FeatureRegistryType) -> List[str]:
     """Test parameter sensitivity - features should behave consistently with different parameters"""
     print("Testing parameter sensitivity...")
     
@@ -187,12 +194,12 @@ def test_parameter_sensitivity(verified_features: List[str], sample_data: pd.Dat
         
         for feature_name in verified_features:
             try:
-                if feature_name not in manager.features:
+                if feature_name not in registry.list():
                     continue
                     
-                feature = manager.features[feature_name]
-                result1 = feature.compute(sample_data)
-                result2 = feature.compute(scaled_data)
+                feature = registry.get(feature_name)
+                result1 = feature(sample_data)
+                result2 = feature(scaled_data)
                 
                 # Check if results have same structure
                 if not result1.columns.equals(result2.columns):
@@ -213,7 +220,7 @@ def test_parameter_sensitivity(verified_features: List[str], sample_data: pd.Dat
     
     return list(set(failed_features))  # Remove duplicates
 
-def test_edge_cases(verified_features: List[str], manager: FeatureManager) -> List[str]:
+def test_edge_cases(verified_features: List[str], registry: FeatureRegistryType) -> List[str]:
     """Test edge cases: NaN data, extreme values, short periods"""
     print("Testing edge cases...")
     
@@ -261,11 +268,11 @@ def test_edge_cases(verified_features: List[str], manager: FeatureManager) -> Li
         
         for feature_name in verified_features:
             try:
-                if feature_name not in manager.features:
+                if feature_name not in registry.list():
                     continue
                     
-                feature = manager.features[feature_name]
-                result = feature.compute(test_data)
+                feature = registry.get(feature_name)
+                result = feature(test_data)
                 
                 # Should not crash and should return DataFrame
                 if not isinstance(result, pd.DataFrame):
@@ -284,7 +291,7 @@ def test_edge_cases(verified_features: List[str], manager: FeatureManager) -> Li
     
     return list(set(failed_features))
 
-def test_performance_regression(verified_features: List[str], sample_data: pd.DataFrame, manager: FeatureManager, 
+def test_performance_regression(verified_features: List[str], sample_data: pd.DataFrame, registry: FeatureRegistryType, 
                               config_path: str = "config/feature_params.yaml") -> Tuple[List[str], Dict[str, float]]:
     """Test performance regression - ensure features don't run extremely slow"""
     print("Testing performance regression...")
@@ -300,13 +307,13 @@ def test_performance_regression(verified_features: List[str], sample_data: pd.Da
     
     for feature_name in verified_features:
         try:
-            if feature_name not in manager.features:
+            if feature_name not in registry.list():
                 continue
                 
-            feature = manager.features[feature_name]
+            feature = registry.get(feature_name)
             
             start_time = time.time()
-            result = feature.compute(sample_data)
+            result = feature(sample_data)
             end_time = time.time()
             
             execution_time = end_time - start_time
@@ -355,34 +362,25 @@ def test_verified_features():
     # Preprocess data
     sample_data = CommonPreprocessor.preprocess(sample_data)
 
-    # Load feature manager
-    manager = FeatureManager("config/features.yaml")
-
-    # Register all features manually
-    from ztb.features import (
-        register_wave1_features, register_wave2_features, register_wave3_features
-    )
-    register_wave1_features(manager)
-    register_wave2_features(manager)
-    register_wave3_features(manager)
+    # Get feature registry (features auto-registered via imports)
 
     # Run all test suites
     all_failed_features = []
     
     # 1. Basic execution test
-    failed_basic = test_basic_execution(verified_features, sample_data, manager)
+    failed_basic = test_basic_execution(verified_features, sample_data, FeatureRegistry)
     all_failed_features.extend(failed_basic)
     
     # 2. Parameter sensitivity test
-    failed_sensitivity = test_parameter_sensitivity(verified_features, sample_data, manager)
+    failed_sensitivity = test_parameter_sensitivity(verified_features, sample_data, FeatureRegistry)
     all_failed_features.extend(failed_sensitivity)
     
     # 3. Edge cases test
-    failed_edge = test_edge_cases(verified_features, manager)
+    failed_edge = test_edge_cases(verified_features, FeatureRegistry)
     all_failed_features.extend(failed_edge)
     
     # 4. Performance regression test
-    failed_performance, benchmarks = test_performance_regression(verified_features, sample_data, manager)
+    failed_performance, benchmarks = test_performance_regression(verified_features, sample_data, FeatureRegistry)
     all_failed_features.extend(failed_performance)
     
     # 5. Category requirements check

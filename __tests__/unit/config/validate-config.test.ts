@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { validateConfig } from '../../../src/config/validate-config';
-import { TradeConfig } from '../../../src/config/trade-config';
+import { validateConfig } from '../../../ztb/config/validate-config';
+import { TradeConfig } from '../../../ztb/config/trade-config';
 
 function baseCfg(): TradeConfig {
   return {

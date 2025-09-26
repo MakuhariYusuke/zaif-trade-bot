@@ -8,16 +8,18 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List
-import yaml
 
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features.base import CommonPreprocessor
-from ztb.features.registry import FeatureManager
+from ztb.features import FeatureRegistry
 from ztb.evaluation.promotion import YamlPromotionEngine, AdaptiveThresholdManager
 from ztb.evaluation.status import CoverageValidator
 from ztb.evaluation.quality_gates import QualityGates
+from ztb.utils.data_generation import load_sample_data
+from ztb.utils.feature_testing import evaluate_feature_performance
+from ztb.utils.logger import LoggerManager
 
 # Import feature classes that exist
 ADX = EMACross = HeikinAshi = KAMA = Supertrend = TEMA = None
@@ -38,174 +40,26 @@ except ImportError as e:
     pass
 
 
-def load_sample_data(dataset: str = "synthetic") -> pd.DataFrame:
-    """Load sample market data for testing"""
-
-    if dataset == "coingecko":
-        from data.coin_gecko import fetch_btc_jpy
-        return fetch_btc_jpy(days=365, interval="daily")
-
-    # Generate synthetic data
-    np.random.seed(42)
-    n_samples = 10000
-
-    if dataset == "synthetic-v2":
-        # Improved synthetic data with latent factors for realistic correlations
-        t = np.linspace(0, 100, n_samples)
-        
-        # Latent factors that features can correlate with
-        cycle = 0.1 * np.sin(2 * np.pi * t / 50)  # Cyclical component
-        momentum = 0.05 * np.cumsum(np.random.normal(0, 0.01, n_samples))  # Momentum
-        volatility = 0.02 * np.abs(np.random.normal(0, 0.01, n_samples))  # Volatility factor
-        
-        # Price influenced by latent factors
-        trend = 0.01 * t
-        latent_influence = 0.3 * cycle + 0.2 * momentum + 0.1 * volatility
-        noise = np.random.normal(0, 0.003, n_samples)
-        price = 100 * np.exp(trend + latent_influence + noise)
-    else:
-        # Original synthetic data
-        t = np.linspace(0, 100, n_samples)
-        trend = 0.02 * t  # Stronger trend
-        noise = np.random.normal(0, 0.005, n_samples)  # Less noise
-        price = 100 * np.exp(trend + noise)
-
-    # Generate volume data
-    volume = np.random.lognormal(12, 0.5, n_samples)  # Higher volume
-
-    # Create OHLCV data
-    df = pd.DataFrame({
-        'open': price * (1 + np.random.normal(0, 0.002, n_samples)),
-        'high': price * (1 + np.random.normal(0, 0.005, n_samples)),
-        'low': price * (1 - np.random.normal(0, 0.005, n_samples)),
-        'close': price,
-        'volume': volume
-    })
-
-    # Ensure high >= max(open, close), low <= min(open, close)
-    df['high'] = df[['open', 'close', 'high']].max(axis=1)
-    df['low'] = df[['open', 'close', 'low']].min(axis=1)
-
-    return df
-
-
-def calculate_feature_metrics(feature_data: pd.Series, price_data: pd.Series, feature_name: str) -> Dict[str, Any]:
-    """Calculate basic trading metrics for feature evaluation"""
-    # Use feature-specific strategies or default strategy
-    if feature_name == 'RSI':
-        # RSI strategy: buy when RSI < 30, sell when RSI > 70
-        signals = pd.Series(0, index=feature_data.index)
-        signals[feature_data < 30] = 1  # Buy signal
-        signals[feature_data > 70] = -1  # Sell signal
-    elif feature_name == 'ROC':
-        # ROC strategy: buy when ROC > 5, sell when ROC < -5
-        signals = pd.Series(0, index=feature_data.index)
-        signals[feature_data > 5] = 1
-        signals[feature_data < -5] = -1
-    elif feature_name == 'OBV':
-        # OBV strategy: buy when OBV increasing, sell when decreasing
-        obv_change = feature_data.diff()
-        signals = pd.Series(0, index=feature_data.index)
-        signals[obv_change > 0] = 1
-        signals[obv_change < 0] = -1
-    elif feature_name == 'ZScore':
-        # ZScore strategy: buy when ZScore < -1, sell when ZScore > 1 (mean reversion)
-        signals = pd.Series(0, index=feature_data.index)
-        signals[feature_data < -1] = 1
-        signals[feature_data > 1] = -1
-    elif 'MACD' in feature_name:
-        # MACD strategy: buy when MACD > signal, sell when MACD < signal
-        signals = pd.Series(0, index=feature_data.index)
-        signals[feature_data > 0] = 1  # Simplified: assume signal is 0
-        signals[feature_data < 0] = -1
-    elif 'Stochastic' in feature_name:
-        # Stochastic strategy: buy when %K < 20, sell when %K > 80
-        signals = pd.Series(0, index=feature_data.index)
-        signals[feature_data < 20] = 1
-        signals[feature_data > 80] = -1
-    elif 'CCI' in feature_name:
-        # CCI strategy: buy when CCI < -100, sell when CCI > 100
-        signals = pd.Series(0, index=feature_data.index)
-        signals[feature_data < -100] = 1
-        signals[feature_data > 100] = -1
-    elif 'Bollinger' in feature_name:
-        # Bollinger strategy: buy when price < lower band, sell when price > upper band
-        signals = pd.Series(0, index=feature_data.index)
-        signals[feature_data < -1] = 1  # Simplified band position
-        signals[feature_data > 1] = -1
-    else:
-        # Default strategy: buy when feature > 0, sell when feature < 0
-        signals = (feature_data > 0).astype(int) - (feature_data < 0).astype(int)
-
-    returns = price_data.pct_change().shift(-1)  # Next period returns
-
-    # Calculate metrics
-    valid_idx = signals.notna() & returns.notna() & (signals != 0)
-    if valid_idx.sum() == 0:
-        return {
-            'win_rate': 0.0,
-            'max_drawdown': 0.0,
-            'sharpe_ratio': 0.0,
-            'sortino_ratio': 0.0,
-            'calmar_ratio': 0.0,
-            'sample_count': 0
-        }
-
-    strategy_returns = signals[valid_idx] * returns[valid_idx]
-    cumulative = (1 + strategy_returns).cumprod()
-
-    # Win rate
-    win_rate = (strategy_returns > 0).mean()
-
-    # Max drawdown
-    peak = cumulative.expanding().max()
-    drawdown = (cumulative - peak) / peak
-    max_drawdown = drawdown.min()
-
-    # Sharpe ratio
-    if strategy_returns.std() > 0:
-        sharpe_ratio = strategy_returns.mean() / strategy_returns.std() * np.sqrt(252)
-    else:
-        sharpe_ratio = 0.0
-
-    # Sortino ratio
-    downside_returns = strategy_returns[strategy_returns < 0]
-    if len(downside_returns) > 0 and downside_returns.std() > 0:
-        sortino_ratio = strategy_returns.mean() / downside_returns.std() * np.sqrt(252)
-    else:
-        sortino_ratio = 0.0
-
-    # Calmar ratio
-    if abs(max_drawdown) > 0:
-        calmar_ratio = strategy_returns.mean() * 252 / abs(max_drawdown)
-    else:
-        calmar_ratio = 0.0
-
-    return {
-        'win_rate': win_rate,
-        'max_drawdown': max_drawdown,
-        'sharpe_ratio': sharpe_ratio,
-        'sortino_ratio': sortino_ratio,
-        'calmar_ratio': calmar_ratio,
-        'sample_count': int(valid_idx.sum())
-    }
-
-
 def test_all_features(dataset: str = "synthetic", bootstrap: bool = False, save_debug: bool = False):
     """Test all features with Quality Gates and Promotion Engine"""
-    print(f"Testing all features with Quality Gates and Promotion Engine (dataset={dataset}, bootstrap={bootstrap})...")
+    logger = LoggerManager(experiment_id=f"test_all_features_{dataset}", test_mode=False)
+
+    # セッション開始
+    logger.start_session("feature_testing", f"dataset_{dataset}")
+    logger.log_experiment_start("Feature Testing", {"dataset": dataset, "bootstrap": bootstrap})
+
+    logger.info(f"Testing all features with Quality Gates and Promotion Engine (dataset={dataset}, bootstrap={bootstrap})...")
 
     # Load sample data
     df = load_sample_data(dataset)
     print(f"Loaded {len(df)} samples of market data")
+    logger.enqueue_notification(f"Loaded {len(df)} samples of market data")
 
     # Initialize components
-    feature_manager = FeatureManager("config/features.yaml")
-
     # Register wave1 features
-    from ztb.features import register_wave1_features, register_wave2_features
-    register_wave1_features(feature_manager)
-    register_wave2_features(feature_manager)
+    # from ztb.features import register_wave1_features, register_wave2_features
+    # register_wave1_features(feature_manager)
+    # register_wave2_features(feature_manager)
 
     # Initialize adaptive threshold manager
     adaptive_manager = AdaptiveThresholdManager(".")
@@ -293,18 +147,21 @@ def test_all_features(dataset: str = "synthetic", bootstrap: bool = False, save_
         from ztb.evaluation.promotion import PromotionNotifier
         engine.notifier = PromotionNotifier({})
 
-    # Get all enabled features
-    all_features = feature_manager.get_enabled_features()
+    # Get all enabled features using FeatureRegistry
+    all_features = FeatureRegistry.list()
     print(f"Testing {len(all_features)} features: {', '.join(all_features[:5])}...")
 
-    # Compute all features at once using FeatureManager
-    try:
-        computed_df = feature_manager.compute_features(df.copy())
-        print(f"Successfully computed {len(computed_df.columns)} features")
-    except Exception as e:
-        print(f"Error computing features with FeatureManager: {e}")
-        print("Falling back to individual feature computation...")
-        computed_df = df.copy()
+    # Compute all features using FeatureRegistry
+    computed_df = df.copy()
+    for feature_name in all_features:
+        try:
+            feature_func = FeatureRegistry.get(feature_name)
+            computed_df[feature_name] = feature_func(df)
+        except Exception as e:
+            print(f"Error computing {feature_name}: {e}")
+            computed_df[feature_name] = pd.Series(index=df.index, dtype=float)
+
+    print(f"Successfully computed {len(computed_df.columns) - len(df.columns)} features")
 
     results = []
     verified_count = {'trend': 0, 'oscillator': 0, 'volume': 0, 'volatility': 0, 'wave1': 0, 'wave3': 0}
@@ -352,7 +209,8 @@ def test_all_features(dataset: str = "synthetic", bootstrap: bool = False, save_
                 continue
 
             # Calculate trading metrics
-            metrics = calculate_feature_metrics(feature_series, processed_df['close'], feature_name)
+            feature_result = evaluate_feature_performance(feature_series, processed_df['close'], feature_name)
+            metrics = feature_result['metrics']
 
             # Determine current status based on category
             current_status = "pending"  # Start from pending
@@ -511,7 +369,7 @@ def test_all_features(dataset: str = "synthetic", bootstrap: bool = False, save_
         json.dump(coverage_data, f, indent=2, ensure_ascii=False)
 
     # Check category requirements
-    check_category_requirements(verified_count)
+    check_category_requirements(verified_count, logger)
 
     print("\nAll features testing completed!")
 
@@ -743,7 +601,7 @@ def update_coverage_json(results: List[Dict[str, Any]], dataset: str = "syntheti
     print("Coverage.json updated with promotion/discard results")
 
 
-def check_category_requirements(verified_count: Dict[str, int]):
+def check_category_requirements(verified_count: Dict[str, int], logger: LoggerManager):
     """Check if category requirements are met"""
     print("\nChecking category requirements...")
 
@@ -767,10 +625,21 @@ def check_category_requirements(verified_count: Dict[str, int]):
 
     if all_met:
         print("All category requirements met!")
+        logger.log_experiment_end({"status": "success", "categories_met": all_met})
     else:
         print("Some category requirements not met!")
+        logger.log_experiment_end({"status": "partial", "categories_met": all_met})
         # Don't exit in test mode - continue to save debug report
         # sys.exit(1)
+
+    # セッション終了
+    session_results = {
+        'status': 'success' if 'all_met' in locals() and all_met else 'partial',
+        'categories_met': all_met if 'all_met' in locals() else False,
+        'verified_count': verified_count if 'verified_count' in locals() else {},
+        'total_features': len(FeatureRegistry.list())
+    }
+    logger.end_session(session_results)
 
 
 if __name__ == "__main__":

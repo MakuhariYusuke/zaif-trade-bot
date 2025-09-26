@@ -8,8 +8,7 @@
 
 ### 基本計算式
 
-```
-python
+```python
 sharpe_ratio = (mean_return / std_return) * sqrt(252)
 ```
 

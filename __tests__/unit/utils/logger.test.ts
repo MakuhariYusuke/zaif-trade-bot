@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { logTrace, logDebug, logInfo, logWarn, logError, logFatal } from '../../../src/utils/logger';
+import { logTrace, logDebug, logInfo, logWarn, logError, logFatal } from '../../../ztb/utils/logger';
 
 type LogLevel = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 

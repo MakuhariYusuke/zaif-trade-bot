@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { heikinAshiSeries, vortexSeries, aroonSeries, tsiSeries, mfiSeries, obvSeries, keltnerSeries, donchianSeries, choppinessSeries } from '../../../src/utils/indicators';
+import { heikinAshiSeries, vortexSeries, aroonSeries, tsiSeries, mfiSeries, obvSeries, keltnerSeries, donchianSeries, choppinessSeries } from '../../../ztb/utils/indicators';
 
 function genOHLC(n: number, start = 100, step = 1){
   const open: number[] = []; const high: number[] = []; const low: number[] = []; const close: number[] = []; const volume: number[] = [];

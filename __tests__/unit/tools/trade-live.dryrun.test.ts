@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runTradeLive } from '../../../src/tools/trade-live';
+import { runTradeLive } from '../../../ztb/tools/trade-live';
 
 describe('trade-live dry-run', () => {
   it('emits plan and returns summary', async () => {

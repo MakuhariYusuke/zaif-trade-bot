@@ -1,0 +1,33 @@
+{
+  "verified": [
+    "RSI",
+    "ROC",
+    "ZScore"
+  ],
+  "pending": [],
+  "failed": [
+    {
+      "name": "OBV",
+      "reason": "harmful: NaN rate=0.82",
+      "quality_results": {
+        "nan_rate": 0.8221,
+        "nan_rate_pass": "False",
+        "correlation": 0.9346699536718199,
+        "correlation_pass": "True",
+        "skew": 0.1211298111926065,
+        "skew_pass": true,
+        "kurtosis": -1.1616402990087331,
+        "kurtosis_pass": true,
+        "overall_pass": false
+      }
+    }
+  ],
+  "unverified": [],
+  "metadata": {
+    "last_updated": "2025-09-26T17:49:17.741797",
+    "total_verified": 3,
+    "total_pending": 0,
+    "total_failed": 1,
+    "total_unverified": 0
+  }
+}

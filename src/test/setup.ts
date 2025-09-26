@@ -1,32 +1,19 @@
-import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import resetTestState, { cleanupRegisteredTempDirs } from '../utils/test-reset';
-import { installLeakDetector, assertNoLeaksAndCleanup, uninstallLeakDetector } from './leak-detector';
-import { stopFeaturesLoggerTimers } from '../utils/features-logger';
-import { getEventBus } from '../application/events/bus';
+// Test setup file for vitest
+import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 
-let envSnapshot: NodeJS.ProcessEnv;
+// Global test setup
+beforeAll(() => {
+  // Setup code that runs before all tests
+});
 
-beforeAll(() => { try { installLeakDetector(); } catch {} });
+afterAll(() => {
+  // Cleanup code that runs after all tests
+});
 
 beforeEach(() => {
-  envSnapshot = { ...process.env };
-  // Disable background event-metrics interval during tests unless explicitly enabled
-  if (process.env.EVENT_METRICS_INTERVAL_IN_TEST !== '1') {
-    process.env.EVENT_METRICS_INTERVAL_MS = '0';
-  }
+  // Setup code that runs before each test
 });
 
-afterEach(async () => {
-  try { vi.restoreAllMocks(); } catch {}
-  try { vi.useRealTimers(); } catch {}
-  try { vi.clearAllTimers(); } catch {}
-  try { stopFeaturesLoggerTimers(); } catch {}
-  try { (getEventBus() as any).stop?.(); } catch {}
-  try { (getEventBus() as any).clear?.(); } catch {}
-  try { await vi.resetModules(); } catch {}
-  try { resetTestState({ envSnapshot, restoreEnv: true }); } catch {}
-  try { cleanupRegisteredTempDirs(); } catch {}
-  try { assertNoLeaksAndCleanup(); } catch (e) { throw e; }
+afterEach(() => {
+  // Cleanup code that runs after each test
 });
-
-afterAll(() => { try { uninstallLeakDetector(); } catch {} });

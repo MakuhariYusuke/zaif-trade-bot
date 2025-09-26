@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { InMemoryEventBus } from '../../../../src/application/events/bus';
+import { InMemoryEventBus } from '../../../../ztb/application/events/bus';
 
 describe('event bus slowRatio metric', () => {
   beforeEach(()=>{

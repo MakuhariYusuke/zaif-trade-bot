@@ -1,5 +1,5 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-import * as mod from '../../../src/api/public/coincheck';
+import * as mod from '../../../ztb/api/public/coincheck';
 
 vi.mock('axios', () => {
   return {

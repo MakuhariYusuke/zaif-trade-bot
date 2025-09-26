@@ -1,17 +1,23 @@
-import numpy as np
+"""
+CCI (Commodity Channel Index) implementation.
+CCIの実装
+"""
+
 import pandas as pd
-from ..base import BaseFeature
+from ztb.features.registry import FeatureRegistry
+from ztb.features.utils.rolling import rolling_mean
 
-class CCI(BaseFeature):
-    """Commodity Channel Index"""
 
-    def __init__(self):
-        super().__init__("CCI", deps=["rolling_mean_20"])
+@FeatureRegistry.register("CCI")
+def compute_cci(df: pd.DataFrame, period: int = 20) -> pd.Series:
+    """Compute CCI (Commodity Channel Index)"""
+    # Calculate rolling mean if not present
+    if f'rolling_mean_{period}' not in df.columns:
+        rolling_mean_val = rolling_mean(df['close'], period)
+    else:
+        rolling_mean_val = df[f'rolling_mean_{period}']
 
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
-        df_copy = df.copy()
-        # Mean deviation
-        mean_dev = (df_copy['close'] - df_copy['rolling_mean_20']).abs().rolling(20).mean()
-        df_copy['cci'] = (df_copy['close'] - df_copy['rolling_mean_20']) / (0.015 * mean_dev)
-        df_copy['cci'] = df_copy['cci'].fillna(0)
-        return df_copy[['cci']]
+    # Mean deviation
+    mean_dev = (df['close'] - rolling_mean_val).abs().rolling(period).mean()
+    cci = (df['close'] - rolling_mean_val) / (0.015 * mean_dev)
+    return cci.fillna(0)

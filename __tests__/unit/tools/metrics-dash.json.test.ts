@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { runOnceCollect } from '../../../src/tools/metrics-dash';
+import { runOnceCollect } from '../../../ztb/tools/metrics-dash';
 
 const ROOT = process.cwd();
 const TMP = path.join(ROOT, 'tmp-test-dash-qXjivF');
