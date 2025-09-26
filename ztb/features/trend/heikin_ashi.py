@@ -19,8 +19,27 @@ class HeikinAshi(BaseFeature):
 
     def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
         """
-        df columns must include: ['open', 'high', 'low', 'close'].
-        Returns a DataFrame with Heikin-Ashi OHLC.
+        Args:
+            df (pd.DataFrame): Input DataFrame. Must include columns:
+                - 'open' (float): Open price
+                - 'high' (float): High price
+                - 'low' (float): Low price
+                - 'close' (float): Close price
+
+        Example:
+            pd.DataFrame({
+                'open': [100.0, 101.0, ...],
+                'high': [102.0, 103.0, ...],
+                'low': [99.0, 100.5, ...],
+                'close': [101.5, 102.0, ...]
+            })
+
+        Returns:
+            pd.DataFrame: DataFrame with Heikin-Ashi OHLC columns:
+                - ha_open
+                - ha_high
+                - ha_low
+                - ha_close
         """
         ha_df = pd.DataFrame(index=df.index)
 
@@ -37,8 +56,16 @@ class HeikinAshi(BaseFeature):
             ha_df["ha_open"] = ha_open
         else:
             ha_open = np.empty(0)
-        ha_df["ha_open"] = ha_open
-        ha_df["ha_high"] = np.maximum(df["high"].values, np.maximum(ha_df["ha_open"].values, ha_df["ha_close"].values))
-        ha_df["ha_low"] = np.minimum(df["low"].values, np.minimum(ha_df["ha_open"].values, ha_df["ha_close"].values))
+            ha_df["ha_open"] = ha_open
+        ha_df["ha_high"] = np.maximum.reduce([
+            df["high"].to_numpy(),
+            ha_df["ha_open"].to_numpy(),
+            ha_df["ha_close"].to_numpy()
+        ])
+        ha_df["ha_low"] = np.minimum.reduce([
+            df["low"].to_numpy(),
+            ha_df["ha_open"].to_numpy(),
+            ha_df["ha_close"].to_numpy()
+        ])
 
         return ha_df

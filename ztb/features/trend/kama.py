@@ -9,7 +9,7 @@ Output columns:
 import numpy as np
 import pandas as pd
 from numba import jit
-from ..base import MovingAverageFeature, ComputableFeature
+from ztb.features.base import MovingAverageFeature, ComputableFeature
 
 
 class KAMA(MovingAverageFeature, ComputableFeature):
@@ -20,7 +20,6 @@ class KAMA(MovingAverageFeature, ComputableFeature):
 
     def __init__(self, **kwargs):
         super().__init__("KAMA", deps=["close"])
-        self._required_calculations = set()  # Internal calculation only
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -45,11 +44,14 @@ class KAMA(MovingAverageFeature, ComputableFeature):
         # Need at least 10 periods for initial calculation
         for i in range(10, n):
             # Efficiency Ratio: |close[i] - close[i-10]| / sum(|close[j] - close[j-1]| for j in i-9 to i)
+            # Efficiency Ratio (ER) の計算:
+            #   - change: 直近10期間の価格変化量 = abs(close[i] - close[i-10])
+            #   - volatility: 直近10期間の価格変動合計 = sum(abs(close[j] - close[j-1]) for j in i-9 to i)
+            #   - ER = change / volatility (volatilityが0の場合は0)
             change = abs(close[i] - close[i-10])
             volatility = 0.0
             for j in range(i-9, i+1):
                 volatility += abs(close[j] - close[j-1])
-
             er = change / volatility if volatility != 0 else 0
 
             # Smoothing constant: ER * (fast SC - slow SC) + slow SC

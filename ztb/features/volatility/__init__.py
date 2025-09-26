@@ -1,11 +1,2 @@
-from .atr import ATRSimplified
-from .bollinger import Bollinger
-from .hv import HVFeature
-from .return_std import ReturnStdDev
-
-__all__ = [
-    "ATRSimplified",
-    "Bollinger",
-    "HVFeature",
-    "ReturnStdDev",
-]
+# Import all volatility features to register them
+from . import atr, bollinger, hv, return_std, zscore

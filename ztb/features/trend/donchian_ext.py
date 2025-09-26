@@ -6,14 +6,13 @@ Extended Donchian Channel analysis with breakout distance and channel width
 
 import numpy as np
 import pandas as pd
-from typing import Optional, Dict, Any
 
 
 def calculate_donchian_extended(data: pd.DataFrame,
                               periods: int = 20,
                               include_basic: bool = True) -> pd.DataFrame:
     """
-    Calculate extended Donchian Channel features
+    Calculate extended Donchian Channel features.
     
     Args:
         data: DataFrame with OHLCV data
@@ -21,7 +20,10 @@ def calculate_donchian_extended(data: pd.DataFrame,
         include_basic: Whether to include basic upper/lower lines
         
     Returns:
-        DataFrame with extended Donchian features
+        DataFrame with extended Donchian features.
+        NaN values are intentionally left as-is for initial periods and cases where calculation is not possible.
+        This preserves the indicator's meaning and avoids introducing bias from imputation.
+        If you need to fill NaN values, do so explicitly for specific columns as needed.
     """
     if len(data) < periods:
         return pd.DataFrame(index=data.index)
@@ -48,7 +50,9 @@ def calculate_donchian_extended(data: pd.DataFrame,
     features['donchian_width_pct'] = channel_width / data['close']
     
     # Channel width percentile (relative to historical width)
-    width_percentile = channel_width.rolling(window=periods*2).rank(pct=True)
+    # Reduce window size for performance, or compute percentile less frequently
+    reduced_window = max(periods, 30)  # Use a smaller window, e.g., max(periods, 30)
+    width_percentile = channel_width.rolling(window=reduced_window).rank(pct=True)
     features['donchian_width_percentile'] = width_percentile
     
     # Price position within channel
@@ -63,14 +67,10 @@ def calculate_donchian_extended(data: pd.DataFrame,
     # Breakout signals
     features['donchian_upper_breakout'] = (data['close'] > upper_channel.shift(1)).astype(int)
     features['donchian_lower_breakout'] = (data['close'] < lower_channel.shift(1)).astype(int)
-    
-    # Breakout strength (how far beyond the channel)
-    breakout_strength_upper = np.where(data['close'] > upper_channel.shift(1),
-                                     (data['close'] - upper_channel.shift(1)) / upper_channel.shift(1),
-                                     0)
-    breakout_strength_lower = np.where(data['close'] < lower_channel.shift(1),
-                                     (lower_channel.shift(1) - data['close']) / lower_channel.shift(1),
-                                     0)
+    breakout_strength_upper = ((data['close'] - upper_channel.shift(1)) / upper_channel.shift(1)).where(
+        data['close'] > upper_channel.shift(1), 0)
+    breakout_strength_lower = ((lower_channel.shift(1) - data['close']) / lower_channel.shift(1)).where(
+        data['close'] < lower_channel.shift(1), 0)
     
     features['donchian_breakout_strength_upper'] = breakout_strength_upper
     features['donchian_breakout_strength_lower'] = breakout_strength_lower
@@ -108,9 +108,10 @@ def calculate_donchian_extended(data: pd.DataFrame,
     # Volatility-adjusted features
     volatility = data['close'].rolling(window=periods).std()
     features['donchian_width_vol_adj'] = channel_width / volatility
-    features['donchian_breakout_vol_adj'] = features['donchian_breakout_strength'] / volatility
-    
-    # Multi-timeframe channel position
+    volatility = data['close'].rolling(window=periods).std()
+    volatility_safe = volatility.replace(0, 1e-6)
+    features['donchian_width_vol_adj'] = channel_width / volatility_safe
+    features['donchian_breakout_vol_adj'] = features['donchian_breakout_strength'] / volatility_safe
     # Short-term position within long-term channel
     if len(data) >= periods * 2:
         long_upper = data['high'].rolling(window=periods*2).max()
@@ -124,8 +125,9 @@ def calculate_donchian_extended(data: pd.DataFrame,
     # Create result DataFrame
     result_df = pd.DataFrame(features, index=data.index)
     
-    # Fill NaN values with forward fill then backward fill
-    result_df = result_df.ffill().bfill()
+    # Leave NaN values as-is to preserve indicator meaning (especially for initial periods)
+    # If you want to fill only specific columns, do so explicitly, e.g.:
+    # result_df['donchian_price_position'] = result_df['donchian_price_position'].ffill().bfill()
     
     return result_df
 

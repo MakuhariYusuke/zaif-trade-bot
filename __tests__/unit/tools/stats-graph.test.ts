@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import '../../../src/tools/stats/stats-graph';
+import '../../../ztb/tools/stats/stats-graph';
 
 function today(){ return new Date().toISOString().slice(0,10); }
 

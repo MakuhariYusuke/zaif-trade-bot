@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { clampAmountForSafety, computeExposureRatio, getExposureWarnPct, readFeatureCsvRows, getFeaturesRoot, clampByExposureCap, getExposureHardCap, getMaxHoldSec } from '../../../src/utils/toolkit';
+import { clampAmountForSafety, computeExposureRatio, getExposureWarnPct, readFeatureCsvRows, getFeaturesRoot, clampByExposureCap, getExposureHardCap, getMaxHoldSec } from '../../../ztb/utils/toolkit';
 
 describe('utils/toolkit', () => {
   const envBk = { ...process.env };

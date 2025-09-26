@@ -4,7 +4,7 @@ describe('services/market-service private nonce retry', () => {
     beforeEach(() => { vi.resetModules(); });
 
     it('retries on invalid nonce then succeeds', async () => {
-    const mod = await import('../../../src/adapters/market-service');
+    const mod = await import('../../../ztb/adapters/market-service');
         const trade = vi.fn()
             .mockRejectedValueOnce(Object.assign(new Error('invalid nonce'), { error: 'invalid nonce' }))
             .mockResolvedValueOnce({ return: { order_id: 'OK1' } });
@@ -16,7 +16,7 @@ describe('services/market-service private nonce retry', () => {
     });
 
     it('throws on Unauthorized error', async () => {
-    const mod = await import('../../../src/adapters/market-service');
+    const mod = await import('../../../ztb/adapters/market-service');
         const trade = vi.fn().mockRejectedValue(Object.assign(new Error('Unauthorized'), { error: 'Unauthorized' }));
         const priv: any = { trade };
         mod.init(priv);

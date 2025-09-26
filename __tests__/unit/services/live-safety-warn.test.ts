@@ -3,7 +3,7 @@ import path from 'path';
 
 // Spy logger
 const spies = { warn: vi.fn() };
-vi.mock('../../../src/utils/logger', () => ({
+vi.mock('../../../ztb/utils/logger', () => ({
   logInfo: (..._args: any[]) => {},
   logError: (..._args: any[]) => {},
   logWarn: (...args: any[]) => { spies.warn(...args); },
@@ -23,8 +23,8 @@ const mockApi: MockApi = {
   trade_history: vi.fn(async () => { calls.hist.push(1); return []; }),
   get_info2: vi.fn(async () => { calls.get_info2.push(1); return { success: 1, return: { funds: { jpy: 100000, eth: 10 } } }; }),
 };
-vi.mock('../../../src/api/adapters', () => ({ createPrivateApi: () => mockApi }));
-vi.mock('../../../src/api/public', () => ({
+vi.mock('../../../ztb/api/adapters', () => ({ createPrivateApi: () => mockApi }));
+vi.mock('../../../ztb/api/public', () => ({
   getOrderBook: vi.fn(async () => ({ bids: [[999, 1]], asks: [[1001, 1]] })),
   getTrades: vi.fn(async () => ([{ price: 1000, amount: 0.1, date: Math.floor(Date.now()/1000) }])),
 }));
@@ -53,7 +53,7 @@ describe('live minimal safety warn', () => {
   afterEach(()=>{ process.env = { ...envBk }; });
 
   it('emits WARN when exposure exceeds threshold (after clamp still >5%)', async () => {
-    await import('../../../src/tools/live/test-minimal-live');
+    await import('../../../ztb/tools/live/test-minimal-live');
     // Wait until trade and cancel have been called, or timeout after 1s
     await new Promise((resolve, reject) => {
       const start = Date.now();

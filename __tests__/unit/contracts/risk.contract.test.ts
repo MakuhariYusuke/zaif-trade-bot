@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import { CoreRiskManager } from '../../../src/core/risk';
+import { CoreRiskManager } from '../../../ztb/core/risk';
 import type { RiskManager } from '@contracts';
 
 function cases(): [string, () => RiskManager][] { return [['core', () => new CoreRiskManager()]]; }

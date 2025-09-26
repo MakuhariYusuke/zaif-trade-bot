@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import path from 'path';
 import fs from 'fs';
-import { appendSummary, summarizeDaily } from '../../../src/utils/daily-stats';
-import { logFeatureSample } from '../../../src/utils/features-logger';
+import { appendSummary, summarizeDaily } from '../../../ztb/utils/daily-stats';
+import { logFeatureSample } from '../../../ztb/utils/features-logger';
 
 describe('utils: daily-stats summarizeDaily and features-logger error handling', () => {
   const TMP = path.resolve(process.cwd(), '.tmp-utils-stats');

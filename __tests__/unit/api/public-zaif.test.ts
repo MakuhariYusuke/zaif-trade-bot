@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import * as mod from '../../../src/api/public/zaif';
+import * as mod from '../../../ztb/api/public/zaif';
 
 vi.mock('axios', () => ({
   default: {

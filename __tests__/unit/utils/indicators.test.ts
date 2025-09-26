@@ -23,7 +23,7 @@ import {
     kama,
     psarStep,
     fibPosition,
-} from '../../../src/utils/indicators';
+} from '../../../ztb/utils/indicators';
 
 describe('utils/indicators', () => {
     // --- Moving Averages ---
