@@ -2,7 +2,8 @@
 Feature status and reason enums for consistent validation.
 """
 from enum import Enum
-from typing import Dict, Any, Optional, List, Union
+from ztb.utils.core.stats import count_features_by_category
+from typing import Dict, Any, Optional, List, Union, cast, Tuple
 from pathlib import Path
 import json
 from datetime import datetime
@@ -113,13 +114,13 @@ class CoverageValidator:
                 CoverageValidator._merge_coverage_data(merged_coverage, year_data, file_path)
 
         # Update totals
-        current_state = merged_coverage["current_state"]
-        merged_coverage["metadata"]["total_verified"] = len(current_state["verified"])
-        merged_coverage["metadata"]["total_staging"] = len(current_state["staging"])
-        merged_coverage["metadata"]["total_pending"] = len(current_state["pending"])
-        merged_coverage["metadata"]["total_pending_due_to_gate_fail"] = len(current_state["pending_due_to_gate_fail"])
-        merged_coverage["metadata"]["total_failed"] = len(current_state["failed"])
-        merged_coverage["metadata"]["total_unverified"] = len(current_state["unverified"])
+        current_state = cast(Dict[str, List[str]], merged_coverage["current_state"])
+        merged_coverage["metadata"]["total_verified"] = len(current_state["verified"])  # type: ignore
+        merged_coverage["metadata"]["total_staging"] = len(current_state["staging"])  # type: ignore
+        merged_coverage["metadata"]["total_pending"] = len(current_state["pending"])  # type: ignore
+        merged_coverage["metadata"]["total_pending_due_to_gate_fail"] = len(current_state["pending_due_to_gate_fail"])  # type: ignore
+        merged_coverage["metadata"]["total_failed"] = len(current_state["failed"])  # type: ignore
+        merged_coverage["metadata"]["total_unverified"] = len(current_state["unverified"])  # type: ignore
 
         return merged_coverage
 
@@ -131,8 +132,8 @@ class CoverageValidator:
             target["events"].extend(source["events"])
 
         # Handle current state merging
-        source_current = source.get("current_state", source)  # Backward compatibility
-        target_current = target["current_state"]
+        source_current = cast(Dict[str, Union[List[str], List[Dict[str, Any]]]], source.get("current_state", source))  # Backward compatibility
+        target_current = cast(Dict[str, Union[List[str], List[Dict[str, Any]]]], target["current_state"])
 
         # Status priority: VERIFIED > STAGING > PENDING > UNVERIFIED > FAILED
         status_priority = {
@@ -145,7 +146,7 @@ class CoverageValidator:
         }
         
         # Track existing features by name
-        existing_features = {}
+        existing_features: Dict[str, Tuple[FeatureStatus, Optional[Dict[str, Any]]]] = {}
         for status in FeatureStatus:
             status_key = status.value
             if status_key in target_current:
@@ -302,7 +303,7 @@ class CoverageValidator:
         archive_file = Path(archive_dir) / f"coverage_{current_year}.json"
 
         # Load existing archive or create new
-        archive_data = {"events": [], "metadata": {"year": current_year}}
+        archive_data: Dict[str, Any] = {"events": [], "metadata": {"year": current_year}}
 
         if archive_file.exists():
             try:
@@ -329,14 +330,22 @@ class CoverageValidator:
         coverage_data["events"] = recent_events
 
     @staticmethod
-    def _remove_feature_from_status(target_current: Dict[str, Any], feature_name: str, status: FeatureStatus) -> None:
+    def _remove_feature_from_status(target_current: Dict[str, Union[List[str], List[Dict[str, Any]]]], 
+                                   feature_name: str, status: FeatureStatus) -> None:
         """Remove a feature from a specific status section"""
         status_key = status.value
+        if status_key not in target_current:
+            return
+            
         if status == FeatureStatus.VERIFIED:
-            if feature_name in target_current[status_key]:
-                target_current[status_key].remove(feature_name)
+            # VERIFIED is list of strings
+            status_list = cast(List[str], target_current[status_key])
+            if feature_name in status_list:
+                status_list.remove(feature_name)
         else:
-            target_current[status_key] = [item for item in target_current[status_key] if item["name"] != feature_name]
+            # Other statuses are list of dicts with "name" key
+            status_list = cast(List[Dict[str, Any]], target_current[status_key])
+            status_list[:] = [item for item in status_list if item.get("name") != feature_name]
 
     @staticmethod
     def validate_coverage_structure(coverage_data: Dict[str, Any]) -> List[str]:
@@ -478,14 +487,14 @@ class CoverageValidator:
             
             # Validate minimum series length requirement
             if "min_series_length" in rules:
-                min_length = rules["min_series_length"]
+                min_length = rules["min_series_length"]  # type: ignore
                 # Note: Actual series length validation would require data access
                 # This is a placeholder for future implementation
                 pass
             
             # Validate maximum skew tolerance
             if "max_skew_tolerance" in rules:
-                max_skew = rules["max_skew_tolerance"]
+                max_skew = rules["max_skew_tolerance"]  # type: ignore
                 # Note: Actual skew validation would require statistical analysis
                 # This is a placeholder for future implementation
                 pass
@@ -602,7 +611,7 @@ class StatusTransitionManager:
                 else:
                     for item in items:
                         if item.get("name") == feature_name:
-                            current_status = status
+                            current_status = status  # type: ignore
                             current_item = item
                             break
 
@@ -619,8 +628,8 @@ class StatusTransitionManager:
         # Remove from current status
         if current_status == FeatureStatus.VERIFIED:
             coverage_data[current_status.value].remove(feature_name)
-        else:
-            coverage_data[current_status.value].remove(current_item)
+        elif current_item is not None:
+            coverage_data[current_status.value].remove(current_item)  # type: ignore
 
         # Add to new status
         new_status_key = new_status.value
@@ -673,7 +682,7 @@ def validate_coverage_comprehensive(coverage_data: Dict[str, Any]) -> tuple[bool
             errors.append(f"Insufficient total verified features: {total_verified}/{min_total}")
 
     # Category-based validation
-    category_counts = _count_features_by_category(verified_features)
+    category_counts = count_features_by_category(verified_features)
 
     category_reqs = {
         "trend_features_min": "trend",
@@ -690,40 +699,6 @@ def validate_coverage_comprehensive(coverage_data: Dict[str, Any]) -> tuple[bool
                 errors.append(f"Insufficient {category} features: {actual_count}/{min_count}")
 
     return len(errors) == 0, errors
-
-
-def _count_features_by_category(feature_names: List[str]) -> Dict[str, int]:
-    """Count features by category"""
-    category_counts = {}
-
-    for feature_name in feature_names:
-        category = _get_feature_category(feature_name)
-        category_counts[category] = category_counts.get(category, 0) + 1
-
-    return category_counts
-
-
-def _get_feature_category(feature_name: str) -> str:
-    """Determine feature category from feature name"""
-    name_lower = feature_name.lower()
-
-    # Trend indicators
-    if any(keyword in name_lower for keyword in ['ema', 'sma', 'wma', 'kama', 'tema', 'dema', 'ichimoku', 'trend']):
-        return 'trend'
-
-    # Oscillators
-    if any(keyword in name_lower for keyword in ['rsi', 'stoch', 'macd', 'cci', 'williams', 'oscillator']):
-        return 'oscillator'
-
-    # Volume indicators
-    if any(keyword in name_lower for keyword in ['volume', 'obv', 'vwap', 'vpt']):
-        return 'volume'
-
-    # Channel indicators
-    if any(keyword in name_lower for keyword in ['bollinger', 'donchian', 'channel', 'envelope']):
-        return 'channel'
-
-    return 'other'
 
 
 def validate_status_reason(status: FeatureStatus, reason: Optional[FeatureReason]) -> bool:

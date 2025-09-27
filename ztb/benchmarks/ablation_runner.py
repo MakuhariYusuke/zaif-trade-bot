@@ -19,8 +19,7 @@ import yaml
 # プロジェクトルートをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ztb.features.experimental_evaluator import evaluate_experimental_features
-from ztb.trading.metrics import sharpe_ratio, sharpe_with_stats, calculate_delta_sharpe, validate_ablation_results
+from ztb.utils.metrics.trading_metrics import sharpe_ratio, sharpe_with_stats, calculate_delta_sharpe, validate_ablation_results
 
 
 def load_config(config_path: Path) -> dict:

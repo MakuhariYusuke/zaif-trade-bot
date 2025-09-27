@@ -4,7 +4,7 @@ Fee model abstraction for trading costs
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, List, Union, cast
 import logging
 from pathlib import Path
 import json
@@ -67,7 +67,7 @@ class FixedFeeModel(FeeModel):
 class TieredFeeModel(FeeModel):
     """Tiered fee model with volume-based rates"""
 
-    def __init__(self, tiers: Optional[Dict[str, list]] = None):
+    def __init__(self, tiers: Optional[Dict[str, List[Any]]] = None):
         """
         Initialize tiered fee model
 
@@ -118,8 +118,8 @@ class TieredFeeModel(FeeModel):
         # For now, return the base rate.
         # In a real implementation, this would track volume.
         if trade_type.lower() == 'sell':
-            return self.sell_tiers[0][1]
-        return self.buy_tiers[0][1]
+            return cast(float, self.sell_tiers[0][1])
+        return cast(float, self.buy_tiers[0][1])
 
 class ExchangeFeeModel(FeeModel):
     """Exchange-specific fee model"""
@@ -141,7 +141,7 @@ class ExchangeFeeModel(FeeModel):
         self.exchange_fees = exchange_fees
         self.current_exchange = 'binance'  # Default
 
-    def set_exchange(self, exchange: str):
+    def set_exchange(self, exchange: str) -> None:
         """Set current exchange"""
         if exchange in self.exchange_fees:
             self.current_exchange = exchange

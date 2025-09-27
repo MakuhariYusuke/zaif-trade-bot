@@ -22,7 +22,7 @@ from pathlib import Path
 class ReportGenerator:
     """Unified report generator"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def generate_csv(self, results: List[Dict[str, Any]], file_path: str) -> None:
@@ -33,7 +33,7 @@ class ReportGenerator:
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
         # Get all unique keys
-        all_keys = set()
+        all_keys: set[str] = set()
         for result in results:
             all_keys.update(result.keys())
 
@@ -58,7 +58,7 @@ class ReportGenerator:
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
         # Get all unique keys
-        all_keys = set()
+        all_keys: set[str] = set()
         for result in results:
             all_keys.update(result.keys())
 

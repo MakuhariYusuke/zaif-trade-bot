@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features import FeatureRegistry
 from ztb.features.utils.rolling import optimize_dataframe_dtypes, generate_intermediate_report
-from ztb.utils.data_generation import generate_synthetic_market_data
+from ztb.utils.data.data_generation import generate_synthetic_market_data
 
 
 def compute_features_batch(df: pd.DataFrame, feature_names: Optional[List[str]] = None,
@@ -87,7 +87,7 @@ def compute_features_batch(df: pd.DataFrame, feature_names: Optional[List[str]] 
     return features_df
 
 
-def run_100k_experiment():
+def run_100k_experiment() -> pd.DataFrame:
     """Run 100k sample experiment with cache disabled"""
     print("🚀 Running 100k Feature Computation Experiment")
     print("=" * 50)

@@ -15,9 +15,9 @@ import shutil
 from unittest.mock import patch, MagicMock
 
 # Import modules to test
-from core.algorithms.train_ppo import PPOTrainer
-from data.etl.pipeline import ETLPipeline
-from scripts.main import run_training_pipeline
+from ztb.trading.ppo_trainer import PPOTrainer
+from ztb.data.data_loader import DataLoader
+# from scripts.main import run_training_pipeline
 
 
 class TestEndToEnd:

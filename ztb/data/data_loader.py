@@ -1,7 +1,6 @@
 # データ品質詳細チェックスクリプト
 # 外れ値検出と詳細な分布分析
 
-import sys
 import os
 import pandas as pd
 import numpy as np
@@ -14,7 +13,7 @@ from typing import Union
 # プロジェクトルートをパスに追加
 # sys.path.append(str(Path(__file__).parent.parent.parent))
 
-def detect_outliers_iqr(data, column):
+def detect_outliers_iqr(data: pd.DataFrame, column: str) -> tuple[pd.DataFrame, float, float]:
     """IQR法による外れ値検出"""
     Q1 = data[column].quantile(0.25)
     Q3 = data[column].quantile(0.75)
@@ -25,7 +24,7 @@ def detect_outliers_iqr(data, column):
     outliers = data[(data[column] < lower_bound) | (data[column] > upper_bound)]
     return outliers, lower_bound, upper_bound
 
-def detect_outliers_zscore(data, column, threshold=3):
+def detect_outliers_zscore(data: pd.DataFrame, column: str, threshold: float = 3) -> pd.DataFrame:
     """Z-score法による外れ値検出"""
     series = data[column]
     # stats.zscoreはMaskedArrayを返すことがあるため、通常のnumpy配列に変換
@@ -40,6 +39,14 @@ def detect_outliers_zscore(data, column, threshold=3):
     outliers = data[z_scores_series > threshold]
     return outliers
 
+def get_project_root() -> Path:
+    """プロジェクトルートのパスを取得"""
+    return Path(__file__).parent.parent.parent
+
+def project_path(*parts: str) -> Path:
+    """プロジェクトルートからの相対パスを組み立てる"""
+    return get_project_root().joinpath(*parts)
+
 def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[str, Path, None] = None):
     """特徴量分布の詳細分析"""
     print("=== 詳細データ品質チェック ===")
@@ -47,7 +54,7 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
     # 設定ファイル読み込み
     env_config_path = os.environ.get("RL_CONFIG_PATH")
     if config_path is None:
-        config_path = env_config_path or Path(__file__).parent.parent.parent / "config/rl_config.json"
+        config_path = env_config_path or project_path("config", "rl_config.json")
     
     config_path = Path(config_path)
     if config_path.exists():
@@ -60,9 +67,9 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
     outlier_threshold = base_threshold * multiplier
     print(f"外れ値閾値: ±{outlier_threshold * 100}% (multiplier: {multiplier})")
     data_paths = [
-        Path(__file__).parent.parent.parent / "data/features/2025/04/sample_04.parquet",
-        Path(__file__).parent.parent.parent / "data/features/2025/05/sample_05.parquet",
-        Path(__file__).parent.parent.parent / "data/features/2025/06/sample_06.parquet",
+        project_path("data", "features", "2025", "04", "sample_04.parquet"),
+        project_path("data", "features", "2025", "05", "sample_05.parquet"),
+        project_path("data", "features", "2025", "06", "sample_06.parquet"),
     ]
 
     all_data = []
@@ -168,7 +175,7 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
             # 正規性検定
             if len(data) > 5000:  # サンプルサイズが十分な場合のみ
                 sample_size = min(len(data), 5000)
-                _, p_value = stats.shapiro(data.sample(sample_size, random_state=42))
+                _, p_value = stats.shapiro(data.sample(sample_size, random_state=42, replace=False))
                 print(f"  正規性検定 p値: {p_value:.6f} ({'正規分布' if p_value > 0.05 else '非正規分布'})")
 
     print("\n=== データ連続性チェック ===")
@@ -176,7 +183,7 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
     if not pd.api.types.is_datetime64_any_dtype(combined_df['ts']):
         try:
             # int型ならunit='s'で変換、そうでなければunitなし
-            if pd.api.types.is_integer_dtype(combined_df['ts'].dtype):
+            if pd.api.types.is_integer_dtype(combined_df['ts']):
                 combined_df['ts'] = pd.to_datetime(combined_df['ts'], unit='s')
             else:
                 combined_df['ts'] = pd.to_datetime(combined_df['ts'])
@@ -254,6 +261,13 @@ def main():
         print(f"\n❌ エラー発生: {e}")
         import traceback
         traceback.print_exc()
+        # エラーログをファイルに記録
+        with open("data_quality_error.log", "a", encoding="utf-8") as log_file:
+            log_file.write(f"エラー: {e}\n")
+            traceback.print_exc(file=log_file)
+        # エラーコードで終了
+        import sys
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

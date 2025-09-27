@@ -11,8 +11,8 @@ import time
 import logging
 from typing import Optional, List
 from pathlib import Path
-import pyarrow as pa
-import pyarrow.parquet as pq
+import pyarrow as pa  # type: ignore
+import pyarrow.parquet as pq  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +45,15 @@ def fetch_binance_klines(
         DataFrame with OHLCV data
     """
     url = f"{BASE_URL}/klines"
-    params = {
+    params: dict[str, str | int] = {
         "symbol": symbol,
         "interval": interval,
         "limit": limit
     }
 
-    if start_time:
+    if start_time is not None:
         params["startTime"] = start_time
-    if end_time:
+    if end_time is not None:
         params["endTime"] = end_time
 
     backoff_time = 1.0
@@ -85,13 +85,13 @@ def fetch_binance_klines(
             df = df[['open', 'high', 'low', 'close', 'volume']]
 
             # Normalize Kline boundaries (1-minute intervals should be at :00 seconds)
-            df = df[df.index.second == 0]
+            df = df[df.index.second == 0]  # type: ignore
 
             logger.info(f"Fetched {len(df)} klines from Binance (UTC, normalized boundaries)")
             return df
 
         except requests.exceptions.HTTPError as e:
-            if response.status_code == 429:  # Rate limit exceeded
+            if e.response.status_code == 429:  # Rate limit exceeded
                 if attempt < max_retries:
                     logger.warning(f"Rate limit hit, backing off for {backoff_time}s")
                     time.sleep(backoff_time)
@@ -196,7 +196,7 @@ def interpolate_missing_data(df: pd.DataFrame, max_gap_minutes: int = 5, remove_
         # Find gaps longer than 1 hour
         missing_mask = df_reindexed.isnull().any(axis=1)
         gap_groups = missing_mask.groupby((missing_mask != missing_mask.shift()).cumsum())
-        long_gaps = gap_groups.sum() > 60  # 60 minutes = 1 hour
+        long_gaps = gap_groups.sum() > 60  # type: ignore
 
         if long_gaps.any():
             long_gap_indices = []
@@ -238,11 +238,11 @@ def save_parquet_chunked(df: pd.DataFrame, path: str, chunk: str = 'M', compress
     for period, group_df in df.groupby(pd.Grouper(freq=chunk.replace('M', 'ME'))):
         # Create filename with period
         if chunk == 'M':
-            filename = f"{period.year}-{period.month:02d}.parquet"
+            filename = f"{period.year}-{period.month:02d}.parquet"  # type: ignore
         elif chunk == 'W':
-            filename = f"{period.year}-W{period.week:02d}.parquet"
+            filename = f"{period.year}-W{period.week:02d}.parquet"  # type: ignore
         else:
-            filename = f"{period.strftime('%Y%m%d')}.parquet"
+            filename = f"{period.strftime('%Y%m%d')}.parquet"  # type: ignore
 
         file_path = base_path / filename
 
@@ -285,4 +285,4 @@ def load_parquet_pattern(path: str, columns: Optional[List[str]] = None) -> pd.D
     combined_df = combined_df.sort_index()
 
     logger.info(f"Loaded {len(combined_df)} rows from {len(files)} files")
-    return combined_df
+    return combined_df  # type: ignore

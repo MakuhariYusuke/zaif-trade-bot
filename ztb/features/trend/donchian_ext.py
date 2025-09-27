@@ -202,7 +202,6 @@ def calculate_donchian_signals(extended_features: pd.DataFrame,
 
 if __name__ == "__main__":
     # Test with synthetic data
-    import matplotlib.pyplot as plt
     
     # Generate synthetic OHLCV data
     np.random.seed(42)

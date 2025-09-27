@@ -8,12 +8,10 @@ import os
 import sys
 import time
 import json
-import psutil
 import subprocess
-import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Local module imports
@@ -23,7 +21,7 @@ current_dir = Path(__file__).parent.parent
 project_root = current_dir.parent  # Go up one more level to project root
 sys.path.insert(0, str(project_root))
 from ztb.utils import LoggerManager
-from ztb.utils.parallel_experiments import ParallelExperimentRunner, ResourceMonitor
+from ztb.utils.parallel_experiments import ResourceMonitor
 
 
 class ParallelRLExperimentRunner:
@@ -274,7 +272,7 @@ class ParallelRLExperimentRunner:
                 'log_file': str(log_file)
             }
 
-    def _extract_metrics_from_log(self, log_file):
+    def _extract_metrics_from_log(self, log_file: Path) -> Dict[str, Any]:
         """Extract metrics from experiment log file"""
         metrics = {}
 

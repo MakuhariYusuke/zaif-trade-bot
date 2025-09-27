@@ -7,8 +7,12 @@ Checks for missing data, duplicates, and repairs automatically.
 import pandas as pd
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from typing import List, Dict, Any
+from datetime import datetime
+
+from ztb.notifications import DiscordNotifier
+from ztb.data.binance_data import load_parquet_pattern, save_parquet_chunked
+from datetime import datetime
 
 from ztb.notifications import DiscordNotifier
 
@@ -209,14 +213,14 @@ class ParquetIntegrityChecker:
 
             success_msg = f"Data integrity repair completed. Backup saved to {backup_dir}"
             logger.info(success_msg)
-            self.notifier.notify(success_msg, level="success")
+            self.notifier.send_notification("Data Integrity Check", success_msg, "success")
 
             return True
 
         except Exception as e:
             error_msg = f"Data integrity repair failed: {e}"
             logger.error(error_msg)
-            self.notifier.notify(error_msg, level="error")
+            self.notifier.send_notification("Data Integrity Repair", error_msg, "error")
             return False
 
     def run_integrity_check(self, auto_repair: bool = True) -> Dict[str, Any]:
@@ -248,12 +252,12 @@ class ParquetIntegrityChecker:
 
         # Notify results
         if report["is_integrity_ok"]:
-            self.notifier.notify("Data integrity check passed", level="success", data={
+            self.notifier.send_notification("Data Integrity Check", "Data integrity check passed", "success", fields={
                 "total_records": report.get("total_records", 0),
                 "duplicate_records": report.get("duplicate_records", 0)
             })
         else:
-            self.notifier.notify("Data integrity issues found", level="warning", data={
+            self.notifier.send_notification("Data Integrity Check", "Data integrity issues found", "warning", fields={
                 "gaps_count": len(report.get("gaps", [])),
                 "duplicates": report.get("duplicate_records", 0)
             })

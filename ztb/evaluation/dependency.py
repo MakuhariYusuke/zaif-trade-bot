@@ -15,23 +15,23 @@ from datetime import datetime
 class DependencyGraph:
     """Directed Acyclic Graph for feature dependencies"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.graph: Dict[str, Set[str]] = defaultdict(set)  # feature -> dependencies
         self.reverse_graph: Dict[str, Set[str]] = defaultdict(set)  # feature -> dependents
         self.failed_features: Set[str] = set()
         self.blocked_features: Set[str] = set()
 
-    def add_dependency(self, feature: str, dependency: str):
+    def add_dependency(self, feature: str, dependency: str) -> None:
         """Add a dependency relationship: feature depends on dependency"""
         self.graph[feature].add(dependency)
         self.reverse_graph[dependency].add(feature)
 
-    def add_feature_dependencies(self, feature: str, dependencies: List[str]):
+    def add_feature_dependencies(self, feature: str, dependencies: List[str]) -> None:
         """Add multiple dependencies for a feature"""
         for dep in dependencies:
             self.add_dependency(feature, dep)
 
-    def remove_feature(self, feature: str):
+    def remove_feature(self, feature: str) -> None:
         """Remove a feature and all its relationships"""
         # Remove from dependencies
         if feature in self.graph:
@@ -88,7 +88,7 @@ class DependencyGraph:
             raise ValueError("Dependency graph contains cycles")
 
         # Kahn's algorithm
-        in_degree = defaultdict(int)
+        in_degree: Dict[str, int] = defaultdict(int)
         for node in self.graph:
             for dep in self.graph[node]:
                 in_degree[dep] += 1
@@ -113,7 +113,7 @@ class DependencyGraph:
 
         return result
 
-    def mark_feature_failed(self, feature: str):
+    def mark_feature_failed(self, feature: str) -> None:
         """Mark a feature as failed and propagate blocking to dependents"""
         if feature not in self.failed_features:
             self.failed_features.add(feature)
@@ -121,7 +121,7 @@ class DependencyGraph:
             # Recursively block all dependents
             self._propagate_blocking(feature)
 
-    def _propagate_blocking(self, feature: str):
+    def _propagate_blocking(self, feature: str) -> None:
         """Recursively propagate blocking to all dependents"""
         for dependent in self.reverse_graph.get(feature, set()):
             if dependent not in self.blocked_features:
@@ -138,7 +138,7 @@ class DependencyGraph:
         chain = []
         visited = set()
 
-        def traverse(node: str):
+        def traverse(node: str) -> None:
             if node in visited:
                 return
             visited.add(node)
@@ -154,7 +154,7 @@ class DependencyGraph:
         blocked = []
         visited = set()
 
-        def collect_blocked(node: str):
+        def collect_blocked(node: str) -> None:
             if node in visited:
                 return
             visited.add(node)
@@ -207,21 +207,21 @@ class DependencyGraph:
 class FeatureDependencyManager:
     """Manager for feature dependencies and evaluation orchestration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.graph = DependencyGraph()
         self.feature_categories: Dict[str, str] = {}  # feature -> category
 
-    def register_feature(self, name: str, dependencies: List[str], category: str = "other"):
+    def register_feature(self, name: str, dependencies: List[str], category: str = "other") -> None:
         """Register a feature with its dependencies"""
         self.graph.add_feature_dependencies(name, dependencies)
         self.feature_categories[name] = category
 
-    def unregister_feature(self, name: str):
+    def unregister_feature(self, name: str) -> None:
         """Unregister a feature"""
         self.graph.remove_feature(name)
         self.feature_categories.pop(name, None)
 
-    def mark_evaluation_result(self, feature: str, success: bool, error_details: Optional[Dict[str, Any]] = None):
+    def mark_evaluation_result(self, feature: str, success: bool, error_details: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """Mark the result of feature evaluation"""
         if not success:
             self.graph.mark_feature_failed(feature)

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from typing import Any
 from ..base import BaseFeature
 
 class HeikinAshi(BaseFeature):
@@ -14,10 +15,10 @@ class HeikinAshi(BaseFeature):
       - ha_close
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, **kwargs: Any):
+        super().__init__(name="HeikinAshi", deps=["open", "high", "low", "close"])
 
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
+    def compute(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
         """
         Args:
             df (pd.DataFrame): Input DataFrame. Must include columns:

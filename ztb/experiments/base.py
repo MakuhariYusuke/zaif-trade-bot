@@ -159,6 +159,10 @@ class ExperimentBase(ABC):
             if result is not None:  # チェックを簡略化
                 result.execution_time_seconds = (self.end_time - self.start_time).total_seconds()
                 self.logger_manager.end_session(result.to_dict())
+            
+            # Shutdown checkpoint manager
+            if hasattr(self, 'checkpoint_manager'):
+                self.checkpoint_manager.shutdown()
 
         # resultがNoneでないことを確認
         if result is None:
