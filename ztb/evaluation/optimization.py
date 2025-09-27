@@ -7,10 +7,10 @@ including KAMA, ADX, and Kalman filters.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, cast, Optional, Union
 import time
 from functools import lru_cache
-import numba as nb
+import numba as nb  # type: ignore
 
 
 def optimize_kama(prices: pd.Series,
@@ -30,7 +30,7 @@ def optimize_kama(prices: pd.Series,
         KAMA values
     """
     @nb.jit(nopython=True)
-    def _calculate_kama_numba(price_array, fast_period, slow_period, efficiency_ratio_period):
+    def _calculate_kama_numba(price_array, fast_period, slow_period, efficiency_ratio_period):  # type: ignore
         n = len(price_array)
         kama = np.full(n, np.nan)
 
@@ -65,7 +65,7 @@ def optimize_kama(prices: pd.Series,
         return kama
 
     price_array = prices.values
-    kama_values = _calculate_kama_numba(price_array, fast_period, slow_period, efficiency_ratio_period)
+    kama_values = cast(np.ndarray, _calculate_kama_numba(price_array, fast_period, slow_period, efficiency_ratio_period))
 
     return pd.Series(kama_values, index=prices.index, name='KAMA')
 
@@ -87,7 +87,7 @@ def optimize_adx(high: pd.Series,
         DataFrame with ADX, +DI, -DI
     """
     @nb.jit(nopython=True)
-    def _calculate_adx_numba(high_array, low_array, close_array, period):
+    def _calculate_adx_numba(high_array, low_array, close_array, period):  # type: ignore
         n = len(high_array)
         adx = np.full(n, np.nan)
         plus_di = np.full(n, np.nan)
@@ -177,7 +177,7 @@ def optimize_kalman_filter(prices: pd.Series,
         Smoothed price series
     """
     @nb.jit(nopython=True)
-    def _kalman_filter_numba(price_array, process_noise, measurement_noise):
+    def _kalman_filter_numba(price_array, process_noise, measurement_noise):  # type: ignore
         n = len(price_array)
         filtered = np.full(n, np.nan)
 
@@ -209,13 +209,13 @@ def optimize_kalman_filter(prices: pd.Series,
         return filtered
 
     price_array = prices.values
-    filtered_values = _kalman_filter_numba(price_array, process_noise, measurement_noise)
+    filtered_values = cast(np.ndarray, _kalman_filter_numba(price_array, process_noise, measurement_noise))
 
     return pd.Series(filtered_values, index=prices.index, name='Kalman_Filter')
 
 
 @lru_cache(maxsize=128)
-def cached_computation(func: Callable, *args, **kwargs) -> Any:
+def cached_computation(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """
     Cache expensive computations
 
@@ -259,8 +259,8 @@ def vectorized_rolling_computation(data: pd.Series,
         return data.rolling(window=window, min_periods=1).apply(func, raw=True)
 
 
-def benchmark_feature_computation(feature_func: Callable,
-                                *args,
+def benchmark_feature_computation(feature_func: Callable[..., Any],
+                                *args: Any,
                                 n_runs: int = 5) -> Dict[str, float | int]:
     """
     Benchmark feature computation performance
@@ -312,7 +312,7 @@ def optimize_feature_pipeline(features_config: Dict[str, Any],
     slow_features = ['KAMA', 'ADX', 'KalmanFilter']
 
     for feature_name, config in features_config.items():
-        result = None  # 未バインド警告回避のため初期化
+        result: Optional[Union[pd.Series, pd.DataFrame]] = None  # 未バインド警告回避のため初期化
 
         if feature_name in slow_features:
             # Use optimized versions
