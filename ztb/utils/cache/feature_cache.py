@@ -6,7 +6,7 @@ Feature cache for backtesting optimization.
 from __future__ import annotations
 import hashlib, json, pickle, zlib, logging, threading, time, os
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union, Literal
+from typing import Any, Callable, Dict, Optional, Union, Literal, cast
 
 try:
     import zstandard as zstd
@@ -43,7 +43,7 @@ class FeatureCache:
         self._setup_compressor()
 
         # 統計情報
-        self.stats = {
+        self.stats: Dict[str, Union[int, float]] = {
             'hits': 0,
             'misses': 0,
             'evictions': 0,
@@ -75,7 +75,7 @@ class FeatureCache:
             else:
                 return "zstd" if HAS_ZSTD else "zlib"
 
-    def _setup_compressor(self):
+    def _setup_compressor(self) -> None:
         """圧縮方式の設定"""
         selected = self._select_compressor(1024 * 1024, self.access_pattern)  # 1MB基準で初期選択
         
@@ -98,7 +98,7 @@ class FeatureCache:
         payload = json.dumps({"data": data_path, "params": params}, sort_keys=True).encode()
         return hashlib.blake2b(payload, digest_size=20).hexdigest()
 
-    def _enforce_size_limit(self):
+    def _enforce_size_limit(self) -> None:
         """Phase1: max_age_days → Phase2: LRU の順でサイズ制限適用"""
         if self.cache_max_mb <= 0 and self.max_age_days <= 0:
             return
@@ -115,7 +115,7 @@ class FeatureCache:
             if self.dynamic_sizing:
                 self._adaptive_size_limit()
 
-    def _cleanup_expired_files(self):
+    def _cleanup_expired_files(self) -> None:
         """期限切れファイルの削除（max_age_days）"""
         if self.max_age_days <= 0:
             return
@@ -138,7 +138,7 @@ class FeatureCache:
         except Exception as e:
             logging.warning(f"[CACHE] Error in cleanup: {e}")
 
-    def _evict_lru_files(self):
+    def _evict_lru_files(self) -> None:
         """LRU方式でのファイル削除"""
         try:
             import os
@@ -173,7 +173,7 @@ class FeatureCache:
         except Exception as e:
             logging.warning(f"[CACHE] Error in LRU eviction: {e}")
 
-    def _adaptive_size_limit(self):
+    def _adaptive_size_limit(self) -> None:
         """適応縮退（オプション機能）"""
         try:
             import psutil
@@ -229,9 +229,9 @@ class FeatureCache:
         """キャッシュ統計情報を取得"""
         with self._lock:
             total_requests = self.stats['hits'] + self.stats['misses']
-            hit_rate = (self.stats['hits'] / total_requests * 100) if total_requests > 0 else 0
+            hit_rate = cast(float, (self.stats['hits'] / total_requests * 100) if total_requests > 0 else 0)
 
-            compression_ratio = 0
+            compression_ratio: float = 0
             if self.stats['total_original_size'] > 0:
                 compression_ratio = (1 - self.stats['total_compressed_size'] / self.stats['total_original_size']) * 100
 

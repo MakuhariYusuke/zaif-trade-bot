@@ -10,11 +10,11 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import sys
-from typing import List, Dict, Any
+from typing import List, Dict
 from sklearn.feature_selection import mutual_info_regression
 from sklearn.linear_model import LinearRegression
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -23,7 +23,7 @@ project_root = str(Path(__file__).parent.parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from ztb.features import get_feature_manager
+from ztb.features.registry import FeatureRegistry
 
 
 def generate_synthetic_data(n_rows: int = 10000) -> pd.DataFrame:
