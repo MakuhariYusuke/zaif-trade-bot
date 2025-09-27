@@ -3,9 +3,9 @@ CoinGecko API data fetcher for cryptocurrency price data.
 """
 import requests
 import pandas as pd
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import hashlib
 from pathlib import Path
@@ -17,6 +17,7 @@ class CoinGeckoAPI:
     BASE_URL = "https://api.coingecko.com/api/v3"
 
     def __init__(self, cache_dir: str = "data/cache"):
+        super().__init__()
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'zaif-trade-bot/1.0'
@@ -60,7 +61,7 @@ class CoinGeckoAPI:
             print(f"Cache load error: {e}")
             return None
 
-    def _save_to_cache(self, cache_key: str, df: pd.DataFrame):
+    def _save_to_cache(self, cache_key: str, df: pd.DataFrame) -> None:
         """Save data to cache"""
         try:
             cache_file = self.cache_dir / f"{cache_key}.json"
@@ -89,7 +90,7 @@ class CoinGeckoAPI:
         response = self.session.get(url, params=params)
         response.raise_for_status()
 
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     def get_coin_history(self, coin_id: str = "bitcoin", vs_currency: str = "jpy",
                         days: int = 90, interval: str = "daily") -> pd.DataFrame:
