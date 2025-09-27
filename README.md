@@ -4,7 +4,7 @@
 
 **Python/ML 拡張**: テクニカル指標フィーチャー評価、品質ゲート、強化学習環境を統合。1kステップから100k/1Mステップ規模の学習まで対応可能なスケーラブルなアーキテクチャを採用しています。
 
-**最新機能 (v2.5.0)**:
+**最新機能 (v2.5.1)**:
 - 🔄 **Feature Determinism**: 並列処理での再現性保証
 - 📊 **Quality Gates & Drift Monitoring**: データ/モデルドリフト検知とPrometheusメトリクス
 - 📈 **Bridge Replay & Slippage Analysis**: 現実的な取引シミュレーションとスリッページ分析

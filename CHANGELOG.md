@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.5.1 - 2025-09-28
+
+### Fixed
+
+- **Type Safety Improvements**: Comprehensive mypy error reduction from 28 to 9 errors across 14 files
+  - Fixed type annotations in feature modules, evaluation scripts, and utility classes
+  - Added proper type hints for function parameters and return values
+  - Resolved import-untyped issues for external libraries
+  - Improved type safety in RL experiments and data processing
+
 ## 2.5.0 - 2025-09-27
 
 ### Added
