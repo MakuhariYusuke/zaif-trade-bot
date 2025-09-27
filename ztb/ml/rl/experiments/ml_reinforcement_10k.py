@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-100k step reinforcement learning experiment execution script
+10k step reinforcement learning experiment execution script
 ExperimentBase class-based feature evaluation experiment with strategy support
 """
 
@@ -9,17 +9,15 @@ import sys
 import time
 import json
 import psutil
-import subprocess
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Union, Optional
+from typing import Dict, List, Any, Union
 
 # Local module imports
-current_dir = Path(__file__).parent.parent
-project_root = current_dir.parent  # Go up one more level to project root
+project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
-from ztb.experiments.base import ScalingExperiment, ExperimentResult
+from ztb.experiments.base import ScalingExperiment
 from ztb.utils.error_handler import catch_and_notify
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.parallel_experiments import ResourceMonitor
@@ -28,7 +26,6 @@ from ztb.utils import LoggerManager
 
 # Type definitions for better type safety
 from dataclasses import dataclass
-from typing import Dict, Any, List
 
 @dataclass
 class StepResult:
@@ -50,47 +47,40 @@ class CheckpointData:
 MetricsData = Dict[str, Union[int, float, str, List[float], List[int], Dict[str, Any]]]
 
 
-class MLReinforcement100KExperiment(ScalingExperiment):
-    """100k step reinforcement learning experiment class with strategy support"""
+class MLReinforcement10KExperiment(ScalingExperiment):
+    """10k step reinforcement learning experiment class with strategy support"""
 
     def __init__(self, config: Dict[str, Any]):
         self.strategy = config.get('strategy', 'generalization')
-        experiment_name = config.get('name', f"ml_reinforcement_100k_{self.strategy}")
-        total_steps = config.get('total_steps', 100000)  # Use config value instead of hardcoded
+        self.experiment_name = config.get('name', f"ml_reinforcement_10k_{self.strategy}")
+        total_steps = config.get('total_steps', 10000)  # 10k steps for testing
         
-        # 動的チェックポイント間隔設定
-        if total_steps >= 100000:
-            # 100k以上は間隔を広げる
-            checkpoint_interval = 5000  # 5kステップごと
-        else:
-            checkpoint_interval = 1000  # 通常は1kステップごと
+        # Dynamic checkpoint interval setting
+        checkpoint_interval = 1000  # 1k steps for 10k experiment
         
         config['checkpoint_interval'] = checkpoint_interval
         
         super().__init__(config, total_steps=total_steps)  # type: ignore
         self.dataset = config.get('dataset', 'coingecko')
-        self.current_step = 0  # 現在のステップを追跡
+        self.current_step = 0  # Track current step
 
-        # 100k実験用のLoggerManager再初期化（通知粒度調整）
+        # LoggerManager for 10k experiment
         self.logger_manager = LoggerManager(
             experiment_id=self.experiment_name,
-            experiment_type="100k"
+            experiment_type="10k"
         )
 
-        # AsyncNotifierにメトリクスコールバックを設定
+        # Set metrics callback for AsyncNotifier
         if self.logger_manager.async_notifier:
             self.logger_manager.async_notifier.set_metrics_callback(self._get_current_metrics)
 
-        # CheckpointManager設定の最適化
-        self.checkpoint_manager.max_queue_size = 5  # キューサイズ削減
-        self.checkpoint_manager.compress = "lz4" if HAS_LZ4 else "zstd"  # 高速圧縮
-        
-        # ライトモード有効化（100k実験のみ）
-        if total_steps >= 100000:
-            self.checkpoint_light = True
+        # CheckpointManager settings with differential checkpoints
+        self.checkpoint_manager.max_queue_size = 5
+        self.checkpoint_manager.compress = "lz4" if HAS_LZ4 else "zstd"
+        self.checkpoint_manager.differential = True  # Enable differential checkpoints
 
-        # ResourceMonitor初期化（メモリリーク監視用）
-        self.resource_monitor = ResourceMonitor(log_interval_seconds=300)  # 5分間隔
+        # ResourceMonitor for memory leak monitoring
+        self.resource_monitor = ResourceMonitor(log_interval_seconds=60)  # 1 minute interval
 
         # Strategy-specific parameters
         self._setup_strategy_params()
@@ -147,7 +137,7 @@ class MLReinforcement100KExperiment(ScalingExperiment):
             return step_result
 
         except Exception as e:
-            self.logger.error(f"Error in step {step_num}: {e}")
+            self.logger_manager.logger.error(f"Error in step {step_num}: {e}")
             return StepResult(step=step_num, reward=0.0, done=True, info={'error': str(e)})
 
     def get_checkpoint_data(self) -> CheckpointData:
@@ -250,7 +240,7 @@ class MLReinforcement100KExperiment(ScalingExperiment):
         if self.strategy == 'generalization':
             # Conservative approach - more stable but slower
             execution_time = random.uniform(0.05, 0.2)  # 0.05-0.2 seconds
-            success_rate = random.uniform(0.7, 0.9)   # 70-90% success
+            success_rate = random.uniform(0.7, 0.9)   # 70-90% success rate
         elif self.strategy == 'aggressive':
             # Aggressive approach - faster but more variable
             execution_time = random.uniform(0.02, 0.15)  # 0.02-0.15 seconds
@@ -336,160 +326,16 @@ class MLReinforcement100KExperiment(ScalingExperiment):
             'percent': process.memory_percent()
         }
 
-    def _parse_evaluation_results(self, stdout: str, step: int):
-        """Extract statistics from evaluation results"""
-        lines = stdout.split('\n')
-
-        for line in lines:
-            if '✗' in line and 'harmful' in line.lower():
-                self.harmful_count += 1
-            elif 'pending' in line.lower():
-                self.pending_count += 1
-            elif '✓' in line and 'verified' in line.lower():
-                self.verified_count += 1
-
-    def _generate_metrics(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Generate final metrics"""
-        total_steps = len(results)
-        avg_execution_time = sum(r['execution_time'] for r in results) / total_steps if total_steps > 0 else 0
-        avg_memory_usage = sum(r['memory_after']['rss'] for r in results) / total_steps if total_steps > 0 else 0
-
-        # Reward statistics
-        rewards = [r['reward'] for r in results if 'reward' in r]
-        avg_reward = sum(rewards) / len(rewards) if rewards else 0
-        reward_std = (sum((r - avg_reward) ** 2 for r in rewards) / len(rewards)) ** 0.5 if rewards else 0
-
-        # PnL statistics
-        pnls = [r['pnl'] for r in results if 'pnl' in r]
-        avg_pnl = sum(pnls) / len(pnls) if pnls else 0
-        pnl_std = (sum((p - avg_pnl) ** 2 for p in pnls) / len(pnls)) ** 0.5 if pnls else 0
-        max_drawdown = min(pnls) if pnls else 0
-
-        # Sharpe ratio (simplified)
-        sharpe_ratio = avg_pnl / pnl_std if pnl_std > 0 else 0
-
-        return {
-            'total_steps': total_steps,
-            'avg_execution_time_per_step': avg_execution_time,
-            'avg_memory_usage_mb': avg_memory_usage,
-            'harmful_features': self.harmful_count,
-            'pending_features': self.pending_count,
-            'verified_features': self.verified_count,
-            'total_features': self.harmful_count + self.pending_count + self.verified_count,
-            'strategy': self.strategy,
-            'avg_reward': avg_reward,
-            'reward_std': reward_std,
-            'avg_pnl': avg_pnl,
-            'pnl_std': pnl_std,
-            'max_drawdown': max_drawdown,
-            'sharpe_ratio': sharpe_ratio,
-            'exploration_rate': self.exploration_rate,
-            'learning_rate': self.learning_rate,
-            'risk_multiplier': self.risk_multiplier
-        }
-
-    def _save_artifacts(self, results: List[Dict[str, Any]]) -> Dict[str, str]:
-        """Save artifacts"""
-        artifacts = {}
-
-        # Save detailed results as JSON
-        results_file = self.results_dir / f"{self.experiment_name}_detailed_results.json"
-        with open(results_file, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
-        artifacts['detailed_results'] = str(results_file)
-
-        # Save statistics summary
-        summary_file = self.results_dir / f"{self.experiment_name}_summary.json"
-        summary = {
-            'experiment_name': self.experiment_name,
-            'timestamp': datetime.now().isoformat(),
-            'config': self.config,
-            'metrics': self._generate_metrics(results)
-        }
-        with open(summary_file, 'w', encoding='utf-8') as f:
-            json.dump(summary, f, indent=2, ensure_ascii=False)
-        artifacts['summary'] = str(summary_file)
-
-        return artifacts
-
-    def _start_heartbeat(self) -> None:
-        """定期的なハートビート通知を開始"""
-        import threading
-
-        def heartbeat_worker():
-            step = 0
-            while step < self.total_steps:
-                time.sleep(300)  # 5分ごと
-                if hasattr(self, 'current_step'):
-                    step = self.current_step
-                    # メモリ使用量を直接取得
-                    mem_bytes = psutil.Process().memory_info().rss
-                    mem_gb = mem_bytes / 1024 / 1024 / 1024
-                    steps_per_sec = step / max(1, time.time() - time.time())  # 簡易計算
-                    self.logger_manager.log_heartbeat(step, mem_gb, steps_per_sec)
-                    self.logger_manager.enqueue_notification(f"Step {step}/{self.total_steps} completed")
-
-        # バックグラウンドでハートビートを開始
-        threading.Thread(target=heartbeat_worker, daemon=True).start()
-
-    def _prepare_session_results(self, result: ExperimentResult) -> Dict[str, Any]:
-        """セッション終了通知用の詳細な結果データを準備"""
-        # 実験結果から統計データを抽出
-        metrics = result.metrics
-
-        # 取引統計の計算
-        total_trades_raw = metrics.get('total_trades', 0)
-        winning_trades_raw = metrics.get('winning_trades', 0)
-
-        total_trades: int = total_trades_raw if isinstance(total_trades_raw, int) else 0
-        winning_trades: int = winning_trades_raw if isinstance(winning_trades_raw, int) else 0
-        win_rate_percent = (winning_trades / total_trades * 100) if total_trades > 0 else 0
-
-        # 報酬統計
-        reward_stats = {
-            'mean_total_reward': metrics.get('mean_reward', 0),
-            'std_total_reward': metrics.get('std_reward', 0),
-            'max_reward': metrics.get('max_reward', 0),
-            'min_reward': metrics.get('min_reward', 0)
-        }
-
-        # PnL統計
-        pnl_stats = {
-            'mean_total_pnl': metrics.get('mean_pnl', 0),
-            'max_drawdown': metrics.get('max_drawdown', 0),
-            'sharpe_ratio': metrics.get('sharpe_ratio', 0)
-        }
-
-        # 取引統計
-        trading_stats = {
-            'total_trades': total_trades,
-            'winning_trades': winning_trades,
-            'win_rate_percent': win_rate_percent,
-            'profit_factor': metrics.get('profit_factor', 0),
-            'mean_trades_per_episode': metrics.get('mean_trades_per_episode', 0),
-            'buy_ratio': metrics.get('buy_ratio', 0.5),
-            'sell_ratio': metrics.get('sell_ratio', 0.5)
-        }
-
-        return {
-            'reward_stats': reward_stats,
-            'pnl_stats': pnl_stats,
-            'trading_stats': trading_stats,
-            'execution_time_seconds': result.execution_time_seconds,
-            'status': result.status,
-            'total_steps': self.total_steps
-        }
-
-
+# エラー発生時に通知を行うデコレータ（例外をキャッチして通知サービスへ送信）
 @catch_and_notify
 def main():
     """Main function"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="100k step reinforcement learning experiment with strategy support")
+    parser = argparse.ArgumentParser(description="10k step reinforcement learning experiment with strategy support")
     parser.add_argument("--strategy", choices=['generalization', 'aggressive'], default="generalization",
                        help="Trading strategy (default: generalization)")
-    parser.add_argument("--steps", type=int, default=100000, help="Total steps (default: 100000)")
+    parser.add_argument("--steps", type=int, default=10000, help="Total steps (default: 10000)")
     parser.add_argument("--name", help="Experiment name override")
     parser.add_argument("--dataset", default="coingecko", help="Dataset (default: coingecko)")
 
@@ -498,16 +344,16 @@ def main():
     config = {
         'strategy': args.strategy,
         'total_steps': args.steps,
-        'name': args.name or f"run100k_{args.strategy}",
+        'name': args.name or f"run10k_{args.strategy}",
         'dataset': args.dataset
     }
 
-    experiment = MLReinforcement100KExperiment(config)
+    experiment = MLReinforcement10KExperiment(config)
     result = experiment.execute()
 
     # 実験完了通知
     logger = experiment.logger_manager
-    logger.enqueue_notification(f"Experiment completed. Results saved to {experiment.results_dir}")
+    logger.enqueue_notification(f"10k Experiment completed. Results saved to {experiment.results_dir}")
     logger.enqueue_notification(f"Status: {result.status}")
     logger.enqueue_notification(f"Strategy: {args.strategy}")
     logger.enqueue_notification(f"Metrics: {result.metrics}")

@@ -117,7 +117,7 @@ class ExperimentalWeeklyReporter:
                         feature_name
                     )
                     
-                    if result['status'] == 'success':
+                    if result.get('status') == 'success':
                         # Calculate derived metrics
                         stability_score = self._calculate_stability_score(result)
                         recommendation, reason_code = self._generate_recommendation(result)
@@ -125,9 +125,9 @@ class ExperimentalWeeklyReporter:
                         metrics = ExperimentalFeatureMetrics(
                             feature_name=feature_name,
                             module_name=module_name,
-                            nan_rate=result['nan_rate'],
+                            nan_rate=result.get('nan_rate', 0.0),
                             delta_sharpe=result.get('best_delta_sharpe', 0.0),
-                            computation_time_ms=result['computation_time_ms'],
+                            computation_time_ms=result.get('computation_time_ms', 0.0),
                             stability_score=stability_score,
                             recommendation=recommendation,
                             reason_code=reason_code
@@ -136,7 +136,7 @@ class ExperimentalWeeklyReporter:
                         all_metrics.append(metrics)
                         print(f"    ✅ {feature_name}: {recommendation} (Δ Sharpe: {metrics.delta_sharpe:.3f})")
                     else:
-                        print(f"    ❌ {feature_name}: {result['status']}")
+                        print(f"    ❌ {feature_name}: {result.get('status', 'unknown')}")
             
             except Exception as e:
                 print(f"  🚫 Error evaluating {module_name}: {e}")

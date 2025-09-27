@@ -1,15 +1,17 @@
 """
 Quality Gates for feature validation with adaptive thresholds
 """
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import pandas as pd
-from ztb.utils.stats import calculate_skew, calculate_kurtosis, nan_ratio
+from ztb.utils.core.stats import calculate_skew, calculate_kurtosis, nan_ratio
+from ztb.utils.thresholds import AdaptiveThresholdManager
 
 
 class QualityGates:
     """Quality Gates for feature validation with adaptive thresholds"""
 
-    def __init__(self, adaptive_manager=None):
+    def __init__(self, adaptive_manager: Optional[AdaptiveThresholdManager] = None):
+        super().__init__()
         self.adaptive_manager = adaptive_manager
         self.base_gates = {
             'nan_rate_threshold': 0.8,
@@ -76,10 +78,10 @@ class QualityGates:
             if pd.notna(skew_val):
                 try:
                     skew = float(skew_val)  # type: ignore
-                    results['skew'] = skew
-                    results['skew_pass'] = abs(skew) <= gates['skew_threshold']
+                    results['skew'] = skew  # type: ignore
+                    results['skew_pass'] = abs(skew) <= gates['skew_threshold']  # type: ignore
                 except (ValueError, TypeError):
-                    results['skew'] = None
+                    results['skew'] = None  # type: ignore
                     results['skew_pass'] = False
             else:
                 results['skew'] = None

@@ -14,7 +14,7 @@ Usage:
 
 import pandas as pd
 import numpy as np
-from typing import Union, Tuple
+from typing import Union, cast, List, Dict
 
 
 def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
@@ -28,7 +28,7 @@ def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
         return skews.mean()
     else:
         # For Series
-        return float(data.skew())
+        return cast(float, data.skew())
 
 
 def calculate_kurtosis(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
@@ -42,7 +42,7 @@ def calculate_kurtosis(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int
         return kurts.mean()
     else:
         # For Series
-        return float(data.kurtosis())
+        return cast(float, data.kurtosis())
 
 
 def nan_ratio(data: Union[pd.Series, pd.DataFrame]) -> float:
@@ -61,3 +61,37 @@ def nan_ratio(data: Union[pd.Series, pd.DataFrame]) -> float:
 def correlation(a: pd.Series, b: pd.Series) -> float:
     """Calculate Pearson correlation between two series"""
     return a.corr(b)
+
+
+def count_features_by_category(feature_names: List[str]) -> Dict[str, int]:
+    """Count features by category"""
+    category_counts: Dict[str, int] = {}
+
+    for feature_name in feature_names:
+        category = get_feature_category(feature_name)
+        category_counts[category] = category_counts.get(category, 0) + 1
+
+    return category_counts
+
+
+def get_feature_category(feature_name: str) -> str:
+    """Determine feature category from feature name"""
+    name_lower = feature_name.lower()
+
+    # Trend indicators
+    if any(keyword in name_lower for keyword in ['ema', 'sma', 'wma', 'kama', 'tema', 'dema', 'ichimoku', 'trend']):
+        return 'trend'
+
+    # Oscillators
+    if any(keyword in name_lower for keyword in ['rsi', 'stoch', 'macd', 'cci', 'williams', 'oscillator']):
+        return 'oscillator'
+
+    # Volume indicators
+    if any(keyword in name_lower for keyword in ['volume', 'obv', 'vwap', 'vpt']):
+        return 'volume'
+
+    # Channel indicators
+    if any(keyword in name_lower for keyword in ['bollinger', 'donchian', 'channel', 'envelope']):
+        return 'channel'
+
+    return 'other'
