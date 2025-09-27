@@ -5,7 +5,7 @@ Drift monitoring for data and model quality.
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, cast
 from scipy.stats import entropy, skew, kurtosis
 import json
 import os
@@ -37,7 +37,7 @@ class DriftMonitor:
         """Load baseline statistics from file"""
         if self.baseline_path.exists():
             with open(self.baseline_path, 'r') as f:
-                return json.load(f)
+                return cast(Dict[str, Any], json.load(f))
         else:
             # Create default baseline if file doesn't exist
             return {
@@ -46,13 +46,13 @@ class DriftMonitor:
                 "created_at": datetime.now().isoformat()
             }
 
-    def _save_baseline_stats(self):
+    def _save_baseline_stats(self) -> None:
         """Save current baseline statistics"""
         self.baseline_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.baseline_path, 'w') as f:
             json.dump(self.baseline_stats, f, indent=2, default=str)
 
-    def update_baseline(self, features_df: pd.DataFrame, pnl_series: Optional[pd.Series] = None):
+    def update_baseline(self, features_df: pd.DataFrame, pnl_series: Optional[pd.Series] = None) -> None:
         """Update baseline statistics with current data"""
         print("Updating baseline statistics...")
 
@@ -88,7 +88,7 @@ class DriftMonitor:
     def _compute_histogram(self, series: pd.Series, bins: int = 20) -> List[float]:
         """Compute histogram bin edges for distribution comparison"""
         hist, bin_edges = np.histogram(series.dropna(), bins=bins, density=True)
-        return bin_edges.tolist()
+        return cast(List[float], bin_edges.tolist())
 
     def _kl_divergence(self, p: np.ndarray, q: np.ndarray, epsilon: float = 1e-10) -> float:
         """Compute KL divergence between two distributions"""
@@ -215,8 +215,8 @@ class DriftMonitor:
         }
 
         # Overall quality gate pass rate
-        gate_results = list(results["quality_gates"].values())
-        results["quality_gate_pass_rate"] = sum(gate_results) / len(gate_results) if gate_results else 0.0
+        gate_results = list(cast(Dict[str, bool], results["quality_gates"]).values())
+        results["quality_gate_pass_rate"] = sum(gate_results) / len(gate_results) if gate_results else 0.0  # type: ignore
 
         # Store in history
         self.drift_history.append(results)
@@ -238,7 +238,7 @@ class DriftMonitor:
             completeness_scores.append(non_null_ratio)
 
         avg_completeness = np.mean(completeness_scores) if completeness_scores else 0.0
-        return avg_completeness >= threshold
+        return cast(bool, avg_completeness >= threshold)
 
     def _check_feature_validity(self, df: pd.DataFrame) -> bool:
         """Check if features contain valid values (no inf, nan in critical places)"""
@@ -260,7 +260,7 @@ class DriftMonitor:
 
         # Check for extreme values
         max_pnl = pnl.abs().max()
-        return max_pnl <= max_reasonable_pnl
+        return cast(bool, max_pnl <= max_reasonable_pnl)
 
     def get_drift_summary(self) -> Dict[str, Any]:
         """Get summary of recent drift history"""
