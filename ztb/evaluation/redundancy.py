@@ -8,7 +8,7 @@ using correlation clustering and other redundancy metrics.
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Any
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import AgglomerativeClustering  # type: ignore[import-untyped]
 
 
 def calculate_feature_correlations(feature_df: pd.DataFrame) -> pd.DataFrame:
@@ -72,7 +72,7 @@ def find_highly_correlated_features(corr_matrix: pd.DataFrame,
             correlated_pairs.append((feature1, feature2, correlation))
         # それ以外は無視（想定外フォーマット対策）
 
-    return correlated_pairs
+    return correlated_pairs  # type: ignore[return-value]
 
 
 def cluster_features_by_correlation(feature_df: pd.DataFrame,
@@ -110,7 +110,7 @@ def cluster_features_by_correlation(feature_df: pd.DataFrame,
         cluster_labels = clustering.fit_predict(distance_matrix)
 
         # Group features by cluster
-        clusters = {}
+        clusters: Dict[int, List[str]] = {}
         for feature, cluster_id in zip(corr_matrix.columns, cluster_labels):
             if cluster_id not in clusters:
                 clusters[cluster_id] = []
@@ -150,7 +150,7 @@ def select_representative_features_from_clusters(clusters: Dict[int, List[str]],
         if method == 'correlation':
             # Select feature with highest absolute correlation to target
             best_feature = None
-            best_corr = 0
+            best_corr: float = 0.0
 
             for feature in features:
                 if feature in feature_df.columns:
@@ -167,7 +167,7 @@ def select_representative_features_from_clusters(clusters: Dict[int, List[str]],
         elif method == 'variance':
             # Select feature with highest variance
             best_feature = None
-            best_variance = 0
+            best_variance: float = 0.0
 
             for feature in features:
                 if feature in feature_df.columns:

@@ -216,7 +216,7 @@ class DriftMonitor:
 
         # Overall quality gate pass rate
         gate_results = list(cast(Dict[str, bool], results["quality_gates"]).values())
-        results["quality_gate_pass_rate"] = sum(gate_results) / len(gate_results) if gate_results else 0.0  # type: ignore
+        results["quality_gate_pass_rate"] = cast(Any, sum(gate_results) / len(gate_results) if gate_results else 0.0)
 
         # Store in history
         self.drift_history.append(results)
@@ -238,9 +238,9 @@ class DriftMonitor:
             completeness_scores.append(non_null_ratio)
 
         avg_completeness = np.mean(completeness_scores) if completeness_scores else 0.0
-        return cast(bool, avg_completeness >= threshold)
+        return bool(avg_completeness >= threshold)
 
-    def _check_feature_validity(self, df: pd.DataFrame) -> bool:
+    def _check_feature_validity(self, df: pd.DataFrame) -> bool:  # type: ignore[no-any-return]
         """Check if features contain valid values (no inf, nan in critical places)"""
         for col in df.columns:
             if df[col].dtype in ['float64', 'int64']:
@@ -260,7 +260,7 @@ class DriftMonitor:
 
         # Check for extreme values
         max_pnl = pnl.abs().max()
-        return cast(bool, max_pnl <= max_reasonable_pnl)
+        return max_pnl <= max_reasonable_pnl
 
     def get_drift_summary(self) -> Dict[str, Any]:
         """Get summary of recent drift history"""

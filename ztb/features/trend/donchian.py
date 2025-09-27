@@ -1,25 +1,25 @@
 import numpy as np
 import pandas as pd
-from numba import jit
+from numba import jit  # type: ignore[import-untyped]
 from ..base import BaseFeature
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from numpy.typing import NDArray
 
 class Donchian(BaseFeature):
     """Donchian Channel with normalized position and relative width"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Donchian", deps=["high", "low", "close", "ATR_simplified"])
 
     @staticmethod
-    @jit(nopython=True)
+    @jit(nopython=True)  # type: ignore[misc]
     def _compute_donchian(
         high: NDArray[np.float64],
         low: NDArray[np.float64],
         close: NDArray[np.float64],
         atr: NDArray[np.float64],
         period: int = 20
-    ):
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
         n = len(high)
         upper = np.zeros(n)
         lower = np.zeros(n)
