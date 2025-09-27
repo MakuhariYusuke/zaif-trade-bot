@@ -7,8 +7,8 @@ including rolling forward validation and multiple testing correction.
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import TimeSeriesSplit
-from statsmodels.stats.multitest import fdrcorrection
+from sklearn.model_selection import TimeSeriesSplit  # type: ignore
+from statsmodels.stats.multitest import fdrcorrection  # type: ignore
 from typing import Dict, List, Any, Tuple
 from ztb.metrics.metrics import calculate_all_metrics
 
@@ -94,7 +94,7 @@ def aggregate_cv_results(cv_results: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 def apply_multiple_testing_correction(p_values: List[float],
                                     method: str = 'fdr_bh',
-                                    alpha: float = 0.1) -> Tuple[np.ndarray, np.ndarray]:
+                                    alpha: float = 0.1) -> Tuple[np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]]]:
     """
     Apply multiple testing correction to p-values.
 
