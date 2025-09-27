@@ -6,7 +6,7 @@ Robust implementation of trading performance metrics
 
 import numpy as np
 import pandas as pd
-from typing import Union, Optional, TypedDict, cast
+from typing import Union, TypedDict
 from ztb.utils.metrics.trading_metrics import sharpe_ratio as _sharpe_ratio
 
 
@@ -86,7 +86,7 @@ def sortino_ratio(returns: Union[pd.Series, np.ndarray],
         return 0.0
     
     mean_return = np.mean(excess_returns)
-    return cast(float, (mean_return / downside_std) * np.sqrt(period_per_year))
+    return (mean_return / downside_std) * np.sqrt(period_per_year)
 
 
 def max_drawdown(equity_curve: Union[pd.Series, np.ndarray]) -> float:
