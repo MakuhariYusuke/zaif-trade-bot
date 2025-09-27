@@ -18,6 +18,7 @@ import time
 import argparse
 from pathlib import Path
 from typing import Dict, Any, Optional, List
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -57,8 +58,8 @@ def run_correlation_analysis() -> Optional[Dict[str, Any]]:
     results = evaluator.evaluate_experimental_features(ohlc_data)
     
     # Collect frames from successful results
-    frames = {}
-    for feature_name, result in results.items():
+    frames: Dict[str, pd.DataFrame] = {}
+    for _, result in results.items():
         if result.get('status') == 'success':
             # Note: In a real implementation, we would need to recompute the feature
             # to get the DataFrame. For now, skip frame collection.
@@ -68,27 +69,21 @@ def run_correlation_analysis() -> Optional[Dict[str, Any]]:
         print("  No frames collected for correlation analysis")
         return None
 
-    results = compute_correlations(frames)
-
-    if not frames:
-        print("  No frames collected for correlation analysis")
-        return None
-
-    results = compute_correlations(frames)
+    correlation_results = compute_correlations(frames)
 
     # Save results
     reports_dir = PROJECT_ROOT / "python" / "reports"
     reports_dir.mkdir(exist_ok=True)
 
-    if results['pearson'] is not None:
-        results['pearson'].to_csv(reports_dir / "correlation_pearson.csv")
+    if correlation_results['pearson'] is not None:
+        correlation_results['pearson'].to_csv(reports_dir / "correlation_pearson.csv")
         print(f" Pearson correlation saved to {reports_dir / 'correlation_pearson.csv'}")
 
-    if results['spearman'] is not None:
-        results['spearman'].to_csv(reports_dir / "correlation_spearman.csv")
+    if correlation_results['spearman'] is not None:
+        correlation_results['spearman'].to_csv(reports_dir / "correlation_spearman.csv")
         print(f" Spearman correlation saved to {reports_dir / 'correlation_spearman.csv'}")
 
-    return results
+    return correlation_results
 
 def run_lag_correlation_analysis() -> Optional[List[Dict[str, Any]]]:
     """Run lag correlation analysis."""
@@ -104,8 +99,8 @@ def run_lag_correlation_analysis() -> Optional[List[Dict[str, Any]]]:
     results = evaluator.evaluate_experimental_features(ohlc_data)
     
     # Collect frames from successful results
-    frames = {}
-    for feature_name, result in results.items():
+    frames: Dict[str, pd.DataFrame] = {}
+    for _, result in results.items():
         if result.get('status') == 'success':
             # Note: In a real implementation, we would need to recompute the feature
             # to get the DataFrame. For now, skip frame collection.
@@ -115,13 +110,13 @@ def run_lag_correlation_analysis() -> Optional[List[Dict[str, Any]]]:
         print("  No frames collected for lag correlation analysis")
         return None
 
-    results = compute_lag_correlations(frames)
+    lag_results = compute_lag_correlations(frames)
 
     if not frames:
         print("  No frames collected for lag correlation analysis")
         return None
 
-    results = compute_lag_correlations(frames)
+    lag_results = compute_lag_correlations(frames)
 
     # Save results
     reports_dir = PROJECT_ROOT / "python" / "reports"
@@ -129,10 +124,10 @@ def run_lag_correlation_analysis() -> Optional[List[Dict[str, Any]]]:
 
     import json
     with open(reports_dir / "lag_correlations.json", 'w') as f:
-        json.dump(results, f, indent=2, default=str)
+        json.dump(lag_results, f, indent=2, default=str)
 
     print(f" Lag correlations saved to {reports_dir / 'lag_correlations.json'}")
-    return results
+    return lag_results
 
 def run_benchmark() -> Dict[str, Any]:
     """Run benchmark generation."""
