@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from numba import jit
+from numba import jit  # type: ignore[import-untyped]
+from typing import Any
 from ztb.features.base import ParameterizedFeature
 
 class Supertrend(ParameterizedFeature):
@@ -20,14 +21,14 @@ class Supertrend(ParameterizedFeature):
       - The DataFrame must include an ATR column named 'atr_{period}' (e.g., 'atr_10').
       - You should compute and add the ATR column beforehand, for example using an ATR feature or function.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         super().__init__(
             "Supertrend",
             deps=["high", "low", "close"],
             default_params={"period": 10, "multiplier": 3.0}
         )
 
-    def _compute_with_params(self, df: pd.DataFrame, **params) -> pd.DataFrame:
+    def _compute_with_params(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
         """
         df columns must include: ['high', 'low', 'close'] and ATR column.
         Returns a DataFrame with Supertrend values.
@@ -56,7 +57,7 @@ class Supertrend(ParameterizedFeature):
 
     @staticmethod
     @jit(nopython=True)
-    def _compute_supertrend(high, low, close, atr, multiplier):
+    def _compute_supertrend(high, low, close, atr, multiplier):  # type: ignore[no-untyped-def]
         n = len(close)
         # Numba's nopython mode does not support np.nan in np.full, so use a sentinel value (e.g., -1.0)
         supertrend = np.full(n, -1.0)

@@ -7,11 +7,10 @@ Permutation importance for features using fixed policy
 import argparse
 import numpy as np
 import pandas as pd
-import torch
 from pathlib import Path
 from datetime import datetime
 import sys
-from typing import List, Dict, Any
+from typing import List, Dict
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
