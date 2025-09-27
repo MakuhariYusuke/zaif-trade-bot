@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
 from ztb.evaluation.status import FeatureStatus, FeatureReason, validate_status_reason
-from ztb.features.registry import FeatureManager
+from ztb.features.registry import FeatureRegistry
 from .test_autogen import BaseFeatureTest
 
 
@@ -118,31 +118,30 @@ class TestFeatureValidation(BaseFeatureTest):
 
     def test_verified_features_compute_successfully(self, coverage_data, sample_ohlc_data):
         """Test that all verified features compute successfully"""
-        from ztb.features.registry import FeatureManager
-        from ztb.features import register_wave1_features, register_wave2_features, register_wave3_features
+        from ztb.features.registry import FeatureRegistry
 
         verified_features = coverage_data.get("verified", [])
         if not verified_features:
             pytest.skip("No verified features to test")
 
         # Create feature manager and register features
-        manager = FeatureManager("config/features.yaml")
-        register_wave1_features(manager)
-        register_wave2_features(manager)
-        register_wave3_features(manager)
+        # manager = FeatureRegistry()
+        # register_wave1_features(manager)
+        # register_wave2_features(manager)
+        # register_wave3_features(manager)
 
         failed_features = []
         for feature_name in verified_features:
             try:
-                if feature_name not in manager.features:
+                if feature_name not in FeatureRegistry.list():
                     failed_features.append(f"{feature_name} (not in registry)")
                     continue
 
-                feature = manager.features[feature_name]
-                result = feature.compute(sample_ohlc_data)
+                feature = FeatureRegistry.get(feature_name)
+                result = feature(sample_ohlc_data)
 
-                if not isinstance(result, pd.DataFrame):
-                    failed_features.append(f"{feature_name} (not DataFrame)")
+                if not isinstance(result, pd.Series):
+                    failed_features.append(f"{feature_name} (not Series)")
                     continue
 
                 if result.empty:

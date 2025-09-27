@@ -6,11 +6,9 @@ and maintaining evaluation history with latest/best result tracking.
 """
 
 import json
-import os
-import pandas as pd
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, cast
 from dataclasses import dataclass, asdict, field
 import gzip
 import numpy as np
@@ -30,7 +28,7 @@ class EvaluationRecord:
     cv_results: Dict[str, Any] = field(default_factory=dict)
     feature_correlations: Dict[str, float] = field(default_factory=dict)
     feature_performances: Dict[str, Any] = field(default_factory=dict)
-    best_delta_sharpe: float = 0.0
+    best_delta_sharpe: Optional[float] = None
     best_feature_name: str = ""
     avg_correlation: float = 0.0
     error: Optional[str] = None
@@ -167,7 +165,7 @@ class EvaluationLogger:
         latest_results = self._load_json_file(self.latest_file)
 
         if feature_name:
-            return latest_results.get(feature_name, {})
+            return cast(Dict[str, Any], latest_results.get(feature_name, {}))
 
         return latest_results
 
@@ -184,7 +182,7 @@ class EvaluationLogger:
         best_results = self._load_json_file(self.best_file)
 
         if feature_name:
-            return best_results.get(feature_name, {})
+            return cast(Dict[str, Any], best_results.get(feature_name, {}))
 
         return best_results
 
@@ -247,10 +245,10 @@ class EvaluationLogger:
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                return cast(Dict[str, Any], json.load(f))
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
-            return {}
+            return cast(Dict[str, Any], {})
 
     def _save_json_file(self, file_path: Path, data: Dict[str, Any]) -> None:
         """Save JSON file safely"""

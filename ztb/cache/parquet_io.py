@@ -9,7 +9,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, cast
 import psutil
 import os
 
@@ -20,17 +20,19 @@ def load_config(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
         raise FileNotFoundError(f"Config file not found: {config_path}")
     
     with open(config_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+        return cast(Dict[str, Any], yaml.safe_load(f))
 
 
-def load_features_config(features_config_path: Path = Path("config/features.yaml")) -> Dict[str, Any]:
+def load_features_config(features_config_path: Optional[Path] = None) -> Dict[str, Any]:
     """Load features configuration for dependency analysis"""
+    if features_config_path is None:
+        features_config_path = Path("configs/features.yaml")
     if not features_config_path.exists():
         print(f"Features config not found: {features_config_path}")
         return {}
     
     with open(features_config_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+        return cast(Dict[str, Any], yaml.safe_load(f))
 
 
 def analyze_column_dependencies(features_config: Dict[str, Any], 
@@ -88,7 +90,6 @@ def analyze_column_dependencies(features_config: Dict[str, Any],
                 required_columns.update(['open', 'high', 'low', 'close'])
             elif any(keyword in feature_name.lower() for keyword in ['kalman']):
                 required_columns.update(['close'])
-    
     # Convert to list and sort for consistency
     return required_columns
 
@@ -120,7 +121,7 @@ def smart_column_detection(parquet_path: Path,
             
             return columns_to_read
         else:
-            return available_columns
+            return cast(List[str], available_columns)
             
     except Exception as e:
         print(f"Error reading parquet metadata: {e}")
@@ -157,7 +158,10 @@ def read_parquet(path: Path, config: Optional[Dict] = None, columns: Optional[Li
         config = load_config()
     
     limits = config.get('limits', {})
-    peak_memory_limit = limits.get('peak_memory_mb', 1200) * 1024 * 1024  # MB to bytes
+    peak_memory_mb = limits.get('peak_memory_mb', 1200)
+    if peak_memory_mb is None:
+        peak_memory_mb = 1200
+    peak_memory_limit = int(peak_memory_mb) * 1024 * 1024  # MB to bytes
     
     # Monitor memory before read
     process = psutil.Process(os.getpid())
@@ -189,7 +193,7 @@ def read_parquet(path: Path, config: Optional[Dict] = None, columns: Optional[Li
 def read_parquet_with_features(path: Path, 
                               config: Optional[Dict] = None,
                               target_features: Optional[List[str]] = None,
-                              features_config_path: Path = Path("config/features.yaml")) -> pd.DataFrame:
+                              features_config_path: Optional[Path] = None) -> pd.DataFrame:
     """
     Read Parquet with automatic column selection based on feature dependencies
     
@@ -208,20 +212,29 @@ def read_parquet_with_features(path: Path,
     # Load features configuration
     features_config = load_features_config(features_config_path)
     
-    # Analyze column dependencies
-    required_columns = analyze_column_dependencies(features_config, target_features)
+    # Determine required columns based on target features
+    if target_features:
+        required_columns = set()
+        for feature in target_features:
+            if feature in features_config:
+                deps = features_config[feature].get('dependencies', [])
+                required_columns.update(deps)
+        required_columns = cast(List[str], list(required_columns))
+    else:
+        required_columns = None
     
     # Smart column detection
-    columns_to_read = smart_column_detection(path, required_columns)
-    
+    all_columns = smart_column_detection(path, None)
+    columns_to_read = [col for col in all_columns if col in required_columns] if required_columns else all_columns
+
     if columns_to_read:
-        original_column_count = len(smart_column_detection(path, None))
+        original_column_count = len(all_columns)
         optimized_column_count = len(columns_to_read)
-        reduction_pct = (1 - optimized_column_count / original_column_count) * 100
-        
+        reduction_pct = (1 - optimized_column_count / original_column_count) * 100 if original_column_count else 0
+
         print(f"Column optimization: {original_column_count} → {optimized_column_count} ({reduction_pct:.1f}% reduction)")
         print(f"Reading columns: {columns_to_read}")
-    
+
     # Use optimized read_parquet with specific columns
     return read_parquet(path, config, columns_to_read)
 
@@ -234,12 +247,13 @@ def convert_to_parquet(input_path: Path, output_path: Path, compression: Optiona
         df = pd.read_json(input_path)
     else:
         raise ValueError(f"Unsupported input format: {input_path.suffix}")
-    
     config = load_config()
     if compression:
+        config.setdefault('parquet', {})
         config['parquet']['compression'] = compression
     
     write_parquet(df, output_path, config)
+    print(f"Converted {input_path} to {output_path}")
     print(f"Converted {input_path} to {output_path}")
 
 
