@@ -107,7 +107,7 @@ class MLReinforcement100KJob(ScalingExperiment):
         self.reward_history: List[float] = []
         self.pnl_history: List[float] = []
 
-    def _setup_strategy_params(self):
+    def _setup_strategy_params(self) -> None:
         """Setup strategy-specific parameters"""
         if self.strategy == 'generalization':
             self.exploration_rate = 0.3
@@ -336,7 +336,7 @@ class MLReinforcement100KJob(ScalingExperiment):
             'percent': process.memory_percent()
         }
 
-    def _parse_evaluation_results(self, stdout: str, step: int):
+    def _parse_evaluation_results(self, stdout: str, step: int) -> None:
         """Extract statistics from evaluation results"""
         lines = stdout.split('\n')
 
@@ -488,7 +488,7 @@ class MLReinforcement100KJob(ScalingExperiment):
 
 
 @catch_and_notify
-def main():
+def main() -> None:
     """Main function"""
     import argparse
 
@@ -556,7 +556,7 @@ def main():
         experiment = MLReinforcement100KJob(config)
         return experiment.execute()
     
-def aggregate_results(results: List[ExperimentResult], output_dir: Path):
+def aggregate_results(results: List[ExperimentResult], output_dir: Path) -> Dict[str, Any]:
     """Aggregate results from all jobs"""
     # Filter only successful results (status == "success")
     successful = [r for r in results if hasattr(r, "status") and r.status == "success"]
@@ -577,9 +577,8 @@ def aggregate_results(results: List[ExperimentResult], output_dir: Path):
     # Save aggregated results
     with open(output_dir / "aggregated_results.json", 'w') as f:
         json.dump(aggregated, f, indent=2, default=str)
-    # Save aggregated results
-    with open(output_dir / "aggregated_results.json", 'w') as f:
-        json.dump(aggregated, f, indent=2, default=str)
+    
+    return aggregated
 
 
 if __name__ == "__main__":

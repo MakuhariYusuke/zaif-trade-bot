@@ -14,7 +14,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, cast
 import sqlite3
 from dataclasses import dataclass
 
@@ -61,7 +61,7 @@ class ExperimentalWeeklyReporter:
         self.db_path = self.output_dir / "experimental_history.db"
         self._init_db()
     
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize SQLite database for historical tracking"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
@@ -118,9 +118,12 @@ class ExperimentalWeeklyReporter:
                     )
                     
                     if result.get('status') == 'success':
+                        # Ensure result is treated as dict
+                        result_dict = cast(Dict[str, Any], result)
+                        
                         # Calculate derived metrics
-                        stability_score = self._calculate_stability_score(result)
-                        recommendation, reason_code = self._generate_recommendation(result)
+                        stability_score = self._calculate_stability_score(result_dict)
+                        recommendation, reason_code = self._generate_recommendation(result_dict)
                         
                         metrics = ExperimentalFeatureMetrics(
                             feature_name=feature_name,
@@ -210,7 +213,7 @@ class ExperimentalWeeklyReporter:
         else:
             return "🟡 TUNE", "needs_tuning"
     
-    def store_metrics(self, metrics: List[ExperimentalFeatureMetrics], report_date: str):
+    def store_metrics(self, metrics: List[ExperimentalFeatureMetrics], report_date: str) -> None:
         """Store metrics in historical database"""
         with sqlite3.connect(self.db_path) as conn:
             for metric in metrics:
@@ -226,7 +229,7 @@ class ExperimentalWeeklyReporter:
                 ))
             conn.commit()
     
-    def get_historical_trends(self, feature_name: str, weeks: int = 4) -> List[Dict]:
+    def get_historical_trends(self, feature_name: str, weeks: int = 4) -> List[Dict[str, Any]]:
         """Get historical performance trends for a feature"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("""
@@ -296,7 +299,7 @@ class ExperimentalWeeklyReporter:
             'areas_of_concern': [m for m in metrics if "🔴" in m.recommendation or m.nan_rate > 0.2]
         }
     
-    def _generate_recommendations(self, metrics: List[ExperimentalFeatureMetrics]) -> List[Dict[str, str]]:
+    def _generate_recommendations(self, metrics: List[ExperimentalFeatureMetrics]) -> List[Dict[str, Any]]:
         """Generate actionable recommendations"""
         recommendations = []
         
@@ -367,7 +370,7 @@ class ExperimentalWeeklyReporter:
     
     def _generate_module_breakdown(self, metrics: List[ExperimentalFeatureMetrics]) -> Dict[str, Any]:
         """Generate module-specific breakdown"""
-        modules = {}
+        modules: Dict[str, Dict[str, Any]] = {}
         
         for metric in metrics:
             module = metric.module_name
@@ -460,7 +463,7 @@ class ExperimentalWeeklyReporter:
             return output_file
         return None  # Fallback, though raise should prevent this
     
-    def _export_markdown_report(self, report: Dict[str, Any], output_file: Path):
+    def _export_markdown_report(self, report: Dict[str, Any], output_file: Path) -> None:
         """Export report as Markdown"""
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(f"# Experimental Features Weekly Report\n")
@@ -500,7 +503,7 @@ class ExperimentalWeeklyReporter:
                 f.write(f" {metric['computation_time_ms']} | {metric['recommendation']} |\n")
 
 
-def main():
+def main() -> None:
     """Main execution function"""
     reporter = ExperimentalWeeklyReporter()
     

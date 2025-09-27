@@ -18,7 +18,7 @@ current_dir = Path(__file__).parent.parent
 project_root = current_dir.parent  # Go up one more level to project root
 sys.path.insert(0, str(project_root))
 from ztb.experiments.base import ExperimentBase, ExperimentResult, ExperimentConfig, ExperimentMetrics
-from ztb.utils.error_handler import catch_and_notify
+# from ztb.utils.error_handler import catch_and_notify  # Module not found
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.parallel_experiments import ResourceMonitor
 
@@ -60,7 +60,7 @@ class MLReinforcement250k(ExperimentBase):
 
         # 250kステップ設定
         self.total_steps = 250000
-        self.checkpoint_freq = {
+        self.checkpoint_freq: Dict[str, Union[List[int], int]] = {
             'light': [1000, 5000],  # 1k, 5k steps
             'full': 10000,          # 10k steps
             'archive': 50000        # 50k steps
@@ -77,15 +77,17 @@ class MLReinforcement250k(ExperimentBase):
     def should_checkpoint(self, step: int, checkpoint_type: str) -> bool:
         """指定ステップでチェックポイント保存が必要か判定"""
         if checkpoint_type == 'light':
-            freqs = self.checkpoint_freq['light']
+            freqs = cast(List[int], self.checkpoint_freq['light'])
             if step in freqs:
                 return True
             if step > max(freqs):
                 return (step - max(freqs)) % freqs[1] == 0
         elif checkpoint_type == 'full':
-            return step % self.checkpoint_freq['full'] == 0
+            freq = cast(int, self.checkpoint_freq['full'])
+            return step % freq == 0
         elif checkpoint_type == 'archive':
-            return step % self.checkpoint_freq['archive'] == 0
+            freq = cast(int, self.checkpoint_freq['archive'])
+            return step % freq == 0
         return False
 
     def should_report(self, step: int, report_type: str) -> bool:
@@ -96,7 +98,6 @@ class MLReinforcement250k(ExperimentBase):
             return step % self.report_freq['metrics'] == 0
         return False
 
-    @catch_and_notify
     def run(self) -> ExperimentResult:
         """
         250kステップ強化学習実験実行
@@ -205,7 +206,7 @@ class MLReinforcement250k(ExperimentBase):
                 error_message=str(e)
             )
 
-    def _initialize_experiment(self):
+    def _initialize_experiment(self) -> None:
         """実験初期化"""
         # シード設定
         from ztb.features.registry import FeatureRegistry
@@ -215,7 +216,7 @@ class MLReinforcement250k(ExperimentBase):
         self.resource_monitor = ResourceMonitor()
         self.resource_monitor.log_resources(self.experiment_name)
 
-    def _save_checkpoint(self, step: int, cp_type: str, data: Dict[str, Any]):
+    def _save_checkpoint(self, step: int, cp_type: str, data: Dict[str, Any]) -> None:
         """チェックポイント保存"""
         from ztb.utils.checkpoint import HierarchicalCheckpointManager
 
@@ -230,7 +231,7 @@ class MLReinforcement250k(ExperimentBase):
 
         self.logger.info(f"Saved {cp_type} checkpoint at step {step}")
 
-    def _report_metrics(self, step: int, metrics: Dict[str, Any]):
+    def _report_metrics(self, step: int, metrics: Dict[str, Any]) -> None:
         """メトリクスレポート"""
         from ztb.monitoring import get_exporter
 
@@ -300,7 +301,7 @@ class MLReinforcement250k(ExperimentBase):
         }
 
 
-def main():
+def main() -> None:
     """メイン実行関数"""
     # 設定
     config = {
@@ -315,19 +316,19 @@ def main():
 
     # 結果出力
     print(f"Experiment completed: {result.status}")
-    print(f"Execution time: {result.execution_time:.2f}s")
+    print(f"Execution time: {result.execution_time_seconds:.2f}s")
     print(f"Metrics: {json.dumps(result.metrics, indent=2)}")
 
     # チェックポイント統計出力
     if result.status == "completed":
-        cp_summary = result.metrics.get('checkpoint_summary', {})
+        cp_summary = cast(Dict[str, Any], result.metrics.get('checkpoint_summary', {}))
         print("\nCheckpoint Summary:")
         print(f"  Light: {cp_summary.get('counts', {}).get('light', 0)} files")
         print(f"  Full: {cp_summary.get('counts', {}).get('full', 0)} files")
         print(f"  Archive: {cp_summary.get('counts', {}).get('archive', 0)} files")
         print(f"  Total size: {cp_summary.get('total_size_mb', 0):.1f} MB")
         print(f"Log file size: {result.metrics.get('log_file_size', 0):.1f} MB")
-        print(f"Memory peak: {result.metrics.get('memory_peak', {}).get('rss_mb', 0):.1f} MB")
+        print(f"Memory peak: {cast(Dict[str, Any], result.metrics.get('memory_peak', {})).get('rss_mb', 0):.1f} MB")
 
 
 if __name__ == "__main__":
