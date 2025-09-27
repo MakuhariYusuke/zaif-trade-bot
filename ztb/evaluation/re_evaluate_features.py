@@ -10,7 +10,7 @@ import yaml
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, TypedDict, List, Union
+from typing import Dict, Any, Optional, Tuple, TypedDict, List, Union, cast, Callable
 import re
 import importlib
 import inspect
@@ -111,7 +111,7 @@ def evaluate_feature_class(feature_class: Any, ohlc_data: pd.DataFrame,
         feature_instance = feature_class()
         
         # Apply SmartPreprocessor for required calculations
-        req = getattr(feature_instance, "required_calculations", set())
+        req: set[str] = getattr(feature_instance, "required_calculations", set())
         if req:
             smart_prep = SmartPreprocessor(req)
             ohlc_data = smart_prep.preprocess(ohlc_data)
@@ -290,7 +290,7 @@ class ComprehensiveFeatureReEvaluator:
         
         # Set cache to re-evaluation mode for shorter TTL
         try:
-            from cache.sqlite_cache import SQLiteCache
+            from cache.sqlite_cache import SQLiteCache  # type: ignore
             cache = SQLiteCache()
             cache.set_task_mode("re_evaluation")
             print("Cache optimized for re-evaluation tasks (TTL: 10 minutes)")
@@ -332,7 +332,7 @@ class ComprehensiveFeatureReEvaluator:
         """Load features configuration"""
         if os.path.exists(self.config_path):
             with open(self.config_path, 'r', encoding='utf-8') as f:
-                return yaml.safe_load(f)
+                return cast(Dict[str, Any], yaml.safe_load(f))
         else:
             print(f"Config file not found: {self.config_path}")
             return {}
@@ -379,7 +379,7 @@ class ComprehensiveFeatureReEvaluator:
             if self.price_data_path.endswith('.parquet'):
                 # Optimized Parquet loading - only essential columns
                 try:
-                    import pyarrow.parquet as pq
+                    import pyarrow.parquet as pq  # type: ignore
                     parquet_file = pq.ParquetFile(self.price_data_path)
                     available_columns = set(parquet_file.schema.names)
                     
@@ -539,8 +539,8 @@ class ComprehensiveFeatureReEvaluator:
         if not evaluation_result:
             return "⚪", "insufficient_data", "Insufficient data for evaluation"
         
-        composite = evaluation_result.get('composite_result', {})
-        best_individual = evaluation_result.get('best_individual_features', [])
+        composite = cast(Dict[str, Any], evaluation_result.get('composite_result', {}))
+        best_individual = cast(List[List[Any]], evaluation_result.get('best_individual_features', []))
         
         # Check composite performance first
         if composite:
@@ -578,7 +578,7 @@ class ComprehensiveFeatureReEvaluator:
             print(f"No evaluator found for {feature_name}")
             return {}
         
-        evaluator = self.harmful_evaluators[feature_name]
+        evaluator = cast(Callable[..., Any], self.harmful_evaluators[feature_name])
         
         try:
             # Calculate extended features
@@ -1095,7 +1095,7 @@ class ComprehensiveFeatureReEvaluator:
         return "\n".join(report)
 
 
-def main():
+def main() -> None:
     """Main execution function"""
     print("Starting comprehensive feature evaluation...")
     

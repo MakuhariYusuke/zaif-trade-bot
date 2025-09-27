@@ -14,14 +14,14 @@ from typing import Dict, List, Any, Union, cast
 
 import psutil
 import random
-import joblib
+import joblib  # type: ignore[import-untyped]
 
 # Local module imports
 current_dir = Path(__file__).parent.parent
 project_root = current_dir.parent  # Go up one more level to project root
 sys.path.insert(0, str(project_root))
 from ztb.experiments.base import ScalingExperiment, ExperimentResult
-from ztb.utils.error_handler import catch_and_notify
+from ztb.utils.error_handler import catch_and_notify  # type: ignore[import-not-found]
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.parallel_experiments import ResourceMonitor
 from ztb.utils import LoggerManager
@@ -420,7 +420,7 @@ class MLReinforcement100KJob(ScalingExperiment):
         """定期的なハートビート通知を開始"""
         import threading
 
-        def heartbeat_worker():
+        def heartbeat_worker() -> None:
             step = 0
             start_time = time.time()
             while step < self.total_steps:
@@ -487,7 +487,7 @@ class MLReinforcement100KJob(ScalingExperiment):
         }
 
 
-@catch_and_notify
+@catch_and_notify  # type: ignore[misc]
 def main() -> None:
     """Main function"""
     import argparse
@@ -565,14 +565,14 @@ def aggregate_results(results: List[ExperimentResult], output_dir: Path) -> Dict
         aggregated = {
             'total_jobs': len(results),
             'successful_jobs': len(successful),
-            'total_steps': sum(r.metrics.get('total_steps', 0) for r in successful),
-            'avg_reward': sum(r.metrics.get('avg_reward', 0) for r in successful) / len(successful),
-            'avg_total_pnl': sum(r.metrics.get('total_pnl', 0) for r in successful) / len(successful),
+            'total_steps': sum(cast(float, r.metrics.get('total_steps', 0)) for r in successful),
+            'avg_reward': sum(cast(float, r.metrics.get('avg_reward', 0)) for r in successful) / len(successful),
+            'avg_total_pnl': sum(cast(float, r.metrics.get('total_pnl', 0)) for r in successful) / len(successful),
             'best_sharpe_ratio': max(cast(float, r.metrics.get('sharpe_ratio', 0)) for r in successful),
             'best_portfolio': max(cast(float, r.metrics.get('final_portfolio_value', 0)) for r in successful)
         }
     else:
-        aggregated = {'error': 'No successful experiments'}
+        aggregated = {'error': 'No successful experiments'}  # type: ignore[dict-item]
 
     # Save aggregated results
     with open(output_dir / "aggregated_results.json", 'w') as f:

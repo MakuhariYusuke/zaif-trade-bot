@@ -6,7 +6,7 @@ to ensure consistent evaluation across all features.
 """
 
 import pandas as pd
-from typing import Optional, cast, Set, Dict
+from typing import Optional, cast, Set, Dict, List
 
 
 def align_series(
@@ -43,9 +43,7 @@ def align_series(
         # 文字列等を datetime へ
         df.index = pd.to_datetime(df.index)
     # ここで型を確実化
-    if not isinstance(df.index, pd.DatetimeIndex):
-        raise TypeError("Index could not be converted to DatetimeIndex")
-    dt_index = cast(pd.DatetimeIndex, df.index)
+    dt_index = df.index
 
     # Timezone handling (安全アクセス)
     if dt_index.tz is None:
@@ -75,7 +73,7 @@ def align_series(
 
 def prepare_ohlc_data(
     df: pd.DataFrame,
-    required_columns: Optional[list] = None
+    required_columns: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
     Prepare OHLC data with standard validation and preprocessing.

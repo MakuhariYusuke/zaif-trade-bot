@@ -7,11 +7,10 @@ Permutation importance for features using fixed policy
 import argparse
 import numpy as np
 import pandas as pd
-import torch
 from pathlib import Path
 from datetime import datetime
 import sys
-from typing import List, Dict, Any
+from typing import List, Dict, Any, cast, Callable
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -22,7 +21,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from ztb.trading.environment import HeavyTradingEnv
-from ztb.features import get_feature_manager
+from ztb.features import get_feature_manager  # type: ignore  # type: ignore[attr-defined]
 
 
 def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
@@ -55,41 +54,44 @@ def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
     return df
 
 
-def evaluate_policy(model, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, float]:
+def evaluate_policy(model: PPO, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, float]:
     """ポリシーを評価"""
-    def make_env():
-        env = HeavyTradingEnv(df)
-        env = Monitor(env)
+    def make_env() -> Monitor[Any, Any]:
+        trading_env = HeavyTradingEnv(df)
+        env = Monitor(trading_env)
         return env
 
-    env = DummyVecEnv([make_env])
+    env: DummyVecEnv = DummyVecEnv([make_env])
 
-    episode_rewards = []
-    episode_lengths = []
-    total_trades = []
-    win_rates = []
-    profit_factors = []
+    episode_rewards: List[float] = []
+    episode_lengths: List[int] = []
+    total_trades: List[int] = []
+    win_rates: List[float] = []
+    profit_factors: List[float] = []
 
     for _ in range(n_episodes):
         obs, _ = env.reset()
+        obs = cast(Any, obs)
         done = False
-        episode_reward = 0
+        episode_reward: float = 0.0
         episode_length = 0
         trades = 0
-        wins = 0
-        pnl = 0
 
         while not done:
             action, _ = model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)
+            obs = cast(Any, obs)
+            done = cast(bool, done)
+            info = cast(Any, info)
+            reward = cast(float, reward)
 
             episode_reward += reward
             episode_length += 1
 
             if 'trades' in info[0]:
-                trades = info[0]['trades']
+                trades = int(info[0]['trades'])
             if 'pnl' in info[0]:
-                pnl = info[0]['pnl']
+                pnl = cast(float, info[0]['pnl'])
 
         episode_rewards.append(episode_reward)
         episode_lengths.append(episode_length)
@@ -102,15 +104,16 @@ def evaluate_policy(model, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, 
     env.close()
 
     rewards = np.array(episode_rewards)
-    mean_reward = np.mean(rewards)
-    win_rate = np.mean(win_rates)
-    profit_factor = np.mean(profit_factors)
-    trades_per_episode = np.mean(total_trades)
+    mean_reward: float = cast(float, np.mean(rewards))
+    win_rate: float = cast(float, np.mean(win_rates))
+    profit_factor: float = cast(float, np.mean(profit_factors))
+    trades_per_episode: float = cast(float, np.mean(total_trades))
 
+    sharpe_like: float
     if len(rewards) > 1:
-        sharpe_like = mean_reward / np.std(rewards) if np.std(rewards) > 0 else 0
+        sharpe_like = cast(float, mean_reward / np.std(rewards) if np.std(rewards) > 0 else 0)
     else:
-        sharpe_like = 0
+        sharpe_like = 0.0
 
     return {
         'mean_reward': float(mean_reward),
@@ -121,7 +124,7 @@ def evaluate_policy(model, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, 
     }
 
 
-def permutation_importance(model, df: pd.DataFrame, feature_cols: List[str], n_episodes: int = 10) -> pd.DataFrame:
+def permutation_importance(model: PPO, df: pd.DataFrame, feature_cols: List[str], n_episodes: int = 10) -> pd.DataFrame:
     """Permutation importance計算"""
     # ベースライン評価
     baseline = evaluate_policy(model, df, n_episodes)
@@ -154,7 +157,7 @@ def permutation_importance(model, df: pd.DataFrame, feature_cols: List[str], n_e
     return pd.DataFrame(results)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Permutation importance analysis')
     parser.add_argument('--checkpoint', type=str, required=True, help='Model checkpoint path')
     parser.add_argument('--waves', type=str, default='1,2,3', help='Comma-separated waves')

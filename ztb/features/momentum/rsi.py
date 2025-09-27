@@ -17,7 +17,7 @@ def compute_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series[float]:
 
     cache_key = f"rsi_{feature_cache.generate_dataframe_hash(df, ['close'], {'period': period})}"
 
-    def compute():
+    def compute() -> pd.Series:
         return _compute_rsi_numpy(df, period)
 
     return feature_cache.get_or_compute(cache_key, compute)
@@ -47,4 +47,4 @@ def _compute_rsi_numpy(df: pd.DataFrame, period: int = 14) -> pd.Series[float]:
     rs = gain_avg / loss_avg.replace(0, np.inf)  # Avoid division by zero
     rsi = 100 - (100 / (1 + rs))
 
-    return rsi.fillna(50)  # type: ignore
+    return rsi.fillna(50)
