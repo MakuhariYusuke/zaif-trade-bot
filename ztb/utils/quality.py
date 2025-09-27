@@ -67,9 +67,9 @@ class QualityGates:
                                          results['corr_long'] >= gates['correlation_threshold'])
             results['correlation'] = max(results['corr_short'], results['corr_long'])  # For backward compatibility
         else:
-            results['corr_long'] = None
-            results['corr_short'] = None
-            results['correlation'] = None
+            results['corr_long'] = None  # type: ignore[assignment]
+            results['corr_short'] = None  # type: ignore[assignment]
+            results['correlation'] = None  # type: ignore[assignment]
             results['correlation_pass'] = False
 
         # Skewness
@@ -77,9 +77,9 @@ class QualityGates:
             skew_val = calculate_skew(feature_data.dropna())
             if pd.notna(skew_val):
                 try:
-                    skew = float(skew_val)  # type: ignore
-                    results['skew'] = skew  # type: ignore
-                    results['skew_pass'] = abs(skew) <= gates['skew_threshold']  # type: ignore
+                    skew = float(skew_val)
+                    results['skew'] = skew
+                    results['skew_pass'] = abs(skew) <= gates['skew_threshold']
                 except (ValueError, TypeError):
                     results['skew'] = None  # type: ignore
                     results['skew_pass'] = False
@@ -95,7 +95,7 @@ class QualityGates:
             kurtosis_val = calculate_kurtosis(feature_data.dropna())
             if pd.notna(kurtosis_val):
                 try:
-                    kurtosis = float(kurtosis_val)  # type: ignore
+                    kurtosis = float(kurtosis_val)
                     results['kurtosis'] = kurtosis
                     results['kurtosis_pass'] = abs(kurtosis) <= gates['kurtosis_threshold']
                 except (ValueError, TypeError):

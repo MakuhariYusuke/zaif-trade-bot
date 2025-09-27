@@ -151,10 +151,10 @@ class CoverageValidator:
             status_key = status.value
             if status_key in target_current:
                 if status == FeatureStatus.VERIFIED:
-                    for name in target_current[status_key]:
+                    for name in cast(List[str], target_current[status_key]):
                         existing_features[name] = (status, None)
                 else:
-                    for item in target_current[status_key]:
+                    for item in cast(List[Dict[str, Any]], target_current[status_key]):
                         existing_features[item["name"]] = (status, item)
         
         # Merge status sections with conflict resolution
@@ -163,41 +163,40 @@ class CoverageValidator:
             if status_key in source_current:
                 if status == FeatureStatus.VERIFIED:
                     # Verified is list of feature names
-                    for name in source_current[status_key]:
+                    for name in cast(List[str], source_current[status_key]):
                         if name in existing_features:
                             existing_status, _ = existing_features[name]
                             if status_priority[status] > status_priority[existing_status]:
                                 # Remove from old status and add to new
                                 CoverageValidator._remove_feature_from_status(target_current, name, existing_status)
-                                target_current[status_key].append(name)
+                                cast(List[str], target_current[status_key]).append(name)
                         else:
-                            target_current[status_key].append(name)
+                            cast(List[str], target_current[status_key]).append(name)
                 elif status == FeatureStatus.STAGING:
                     # STAGING status: Similar to PENDING but for staging evaluation
-                    for item in source_current[status_key]:
+                    for item in cast(List[Dict[str, Any]], source_current[status_key]):
                         name = item["name"]
                         if name in existing_features:
                             existing_status, _ = existing_features[name]
                             if status_priority[status] > status_priority[existing_status]:
                                 # Remove from old status and add to new
                                 CoverageValidator._remove_feature_from_status(target_current, name, existing_status)
-                                target_current[status_key].append(item)
+                                cast(List[Dict[str, Any]], target_current[status_key]).append(item)
                         else:
-                            target_current[status_key].append(item)
+                            cast(List[Dict[str, Any]], target_current[status_key]).append(item)
                 elif status == FeatureStatus.FAILED:
                     # FAILED status: Only add if feature doesn't exist in higher priority statuses
                     # FAILED should not override VERIFIED, STAGING, PENDING, or UNVERIFIED
-                    for item in source_current[status_key]:
+                    for item in cast(List[Dict[str, Any]], source_current[status_key]):
                         name = item["name"]
                         if name not in existing_features:
                             # New failed feature - add it
-                            target_current[status_key].append(item)
+                            cast(List[Dict[str, Any]], target_current[status_key]).append(item)
                         else:
                             # Feature exists - check if it's already FAILED, and merge dependency info
-                            existing_status, existing_index = existing_features[name]
-                            if existing_status == FeatureStatus.FAILED:
+                            existing_status, existing_item = existing_features[name]
+                            if existing_status == FeatureStatus.FAILED and existing_item is not None:
                                 # Merge dependency information
-                                existing_item = target_current[status_key][existing_index]
                                 if "dependency_chain" in item and "dependency_chain" not in existing_item:
                                     existing_item["dependency_chain"] = item["dependency_chain"]
                                 if "blocked_children" in item and "blocked_children" not in existing_item:
@@ -208,16 +207,16 @@ class CoverageValidator:
                             # If feature exists in higher priority status, skip (don't override)
                 else:
                     # PENDING and UNVERIFIED: normal priority-based merging
-                    for item in source_current[status_key]:
+                    for item in cast(List[Dict[str, Any]], source_current[status_key]):
                         name = item["name"]
                         if name in existing_features:
                             existing_status, _ = existing_features[name]
                             if status_priority[status] > status_priority[existing_status]:
                                 # Remove from old status and add to new
                                 CoverageValidator._remove_feature_from_status(target_current, name, existing_status)
-                                target_current[status_key].append(item)
+                                cast(List[Dict[str, Any]], target_current[status_key]).append(item)
                         else:
-                            target_current[status_key].append(item)
+                            cast(List[Dict[str, Any]], target_current[status_key]).append(item)
 
         # Update metadata
         target["metadata"]["source_files"].append(source_file)
@@ -339,13 +338,13 @@ class CoverageValidator:
             
         if status == FeatureStatus.VERIFIED:
             # VERIFIED is list of strings
-            status_list = cast(List[str], target_current[status_key])
+            status_list: List[str] = target_current[status_key]  # type: ignore
             if feature_name in status_list:
                 status_list.remove(feature_name)
         else:
             # Other statuses are list of dicts with "name" key
-            status_list = cast(List[Dict[str, Any]], target_current[status_key])
-            status_list[:] = [item for item in status_list if item.get("name") != feature_name]
+            status_list: List[Dict[str, Any]] = target_current[status_key]  # type: ignore
+            status_list[:] = [item for item in status_list if item.get("name") != feature_name]  # type: ignore
 
     @staticmethod
     def validate_coverage_structure(coverage_data: Dict[str, Any]) -> List[str]:
@@ -487,14 +486,14 @@ class CoverageValidator:
             
             # Validate minimum series length requirement
             if "min_series_length" in rules:
-                min_length = rules["min_series_length"]  # type: ignore
+                _ = rules["min_series_length"]
                 # Note: Actual series length validation would require data access
                 # This is a placeholder for future implementation
                 pass
             
             # Validate maximum skew tolerance
             if "max_skew_tolerance" in rules:
-                max_skew = rules["max_skew_tolerance"]  # type: ignore
+                _ = rules["max_skew_tolerance"]
                 # Note: Actual skew validation would require statistical analysis
                 # This is a placeholder for future implementation
                 pass
@@ -628,8 +627,8 @@ class StatusTransitionManager:
         # Remove from current status
         if current_status == FeatureStatus.VERIFIED:
             coverage_data[current_status.value].remove(feature_name)
-        elif current_item is not None:
-            coverage_data[current_status.value].remove(current_item)  # type: ignore
+        elif current_item is not None:  # type: ignore[unreachable]
+            coverage_data[current_status.value].remove(current_item)
 
         # Add to new status
         new_status_key = new_status.value

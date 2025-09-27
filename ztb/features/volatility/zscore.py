@@ -17,7 +17,7 @@ def compute_zscore(df: pd.DataFrame, window: int = 20) -> pd.Series[float]:
 
     cache_key = f"zscore_{feature_cache.generate_dataframe_hash(df, ['close'], {'window': window})}"
 
-    def compute():
+    def compute() -> pd.Series:
         return _compute_zscore_numpy(df, window)
 
     return feature_cache.get_or_compute(cache_key, compute)
@@ -38,4 +38,4 @@ def _compute_zscore_numpy(df: pd.DataFrame, window: int = 20) -> pd.Series[float
     std = std.replace(0, 1e-8)
     zscore = (returns - mean) / std
 
-    return zscore.fillna(0)  # type: ignore
+    return zscore.fillna(0)

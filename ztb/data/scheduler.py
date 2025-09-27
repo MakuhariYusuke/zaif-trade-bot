@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import time
 
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.schedulers.blocking import BlockingScheduler  # type: ignore[import-untyped]
+from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
 
 from ztb.notifications import DiscordNotifier
 from ztb.data.binance_data import fetch_historical_klines, interpolate_missing_data, save_parquet_chunked
@@ -31,7 +31,7 @@ class DataAcquisitionScheduler:
         self.scheduler = BlockingScheduler()
         self.notifier = DiscordNotifier()
 
-    def _fetch_daily_data(self):
+    def _fetch_daily_data(self) -> None:
         """
         Fetch yesterday's data from Binance.
         Called daily at midnight.
@@ -78,7 +78,7 @@ class DataAcquisitionScheduler:
             logger.error(error_msg)
             self.notifier.send_notification("Data Save Error", error_msg, "error")
 
-    def schedule_daily_fetch(self, hour: int = 0, minute: int = 0):
+    def schedule_daily_fetch(self, hour: int = 0, minute: int = 0) -> None:
         """
         Schedule daily data fetching.
 
@@ -97,18 +97,18 @@ class DataAcquisitionScheduler:
         )
         logger.info(f"Scheduled daily data fetch at {hour:02d}:{minute:02d}")
 
-    def start(self):
+    def start(self) -> None:
         """Start the scheduler"""
         logger.info("Starting data acquisition scheduler")
         self.notifier.send_notification("Scheduler", "Data acquisition scheduler started", "info")
         self.scheduler.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the scheduler"""
         logger.info("Stopping data acquisition scheduler")
         self.scheduler.shutdown()
         self.notifier.send_notification("Scheduler", "Data acquisition scheduler stopped", "info")
 
-    def run_once(self):
+    def run_once(self) -> None:
         """Run data fetch once for testing"""
         self._fetch_daily_data()
