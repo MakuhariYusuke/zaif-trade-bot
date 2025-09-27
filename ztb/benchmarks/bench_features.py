@@ -179,7 +179,7 @@ def main():
         results.append({
             'feature': feature,
             'ms_real': real_result['ms_real'],
-            'ms_synth': synth_result['ms_real'],
+            'ms_synth': synth_result['ms_synth'],
             'peak_MB_real': real_result['peak_MB'],
             'peak_MB_synth': synth_result['peak_MB']
         })
@@ -192,7 +192,7 @@ def main():
     results.append({
         'feature': f'Wave{"_".join(map(str, waves))}_bundle',
         'ms_real': real_bundle['ms_real'],
-        'ms_synth': synth_bundle['ms_real'],
+        'ms_synth': synth_bundle['ms_synth'],
         'peak_MB_real': real_bundle['peak_MB'],
         'peak_MB_synth': synth_bundle['peak_MB']
     })
