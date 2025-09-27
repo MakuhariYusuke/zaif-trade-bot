@@ -52,7 +52,7 @@ def auto_config_threads(num_processes: int, pin_to_cores: Optional[List[int]] = 
 
     return config
 
-def apply_cpu_tuning():
+def apply_cpu_tuning() -> None:
     """
     CPU最適化設定を自動適用
     物理コア数・並列プロセス数に応じてtorch/OMP/MKL/OPENBLAS/NUMEXPRのスレッド数を設定

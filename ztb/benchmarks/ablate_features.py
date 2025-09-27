@@ -10,22 +10,18 @@ import numpy as np
 import pandas as pd
 import torch
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List
 from datetime import datetime
 import sys
+import logging
+
+# ロギング設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 # プロジェクトルートをパスに追加
-project_root = str(Path(__file__).parent.parent)
+project_root = Path(__file__).parent.parent.as_posix()
 if project_root not in sys.path:
     sys.path.append(project_root)
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.callbacks import BaseCallback
-
-from ztb.trading.environment import HeavyTradingEnv
-from ztb.features import get_feature_manager
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
@@ -47,13 +43,16 @@ class MetricsCallback(BaseCallback):
         self.current_episode_length = 0
 
     def _on_step(self) -> bool:
-        self.current_episode_reward += self.locals['rewards'][0]
+        if len(self.locals['rewards']) > 0:
+            self.current_episode_reward += self.locals['rewards'][0]
         self.current_episode_length += 1
-
+        # If using multiple environments, consider: if all(self.locals['dones'])
+        # This code assumes a single environment.
         if self.locals['dones'][0]:
             self.episode_rewards.append(self.current_episode_reward)
             self.episode_lengths.append(self.current_episode_length)
             self.current_episode_reward = 0
+            self.current_episode_length = 0
             self.current_episode_length = 0
 
         return True
@@ -81,10 +80,10 @@ class MetricsCallback(BaseCallback):
         else:
             sharpe_like = 0
 
-        # trades_per_1k: 環境から取得
+        # trades_per_1k: 環境から取得（複数環境時は平均を取る）
         trades_per_1k_values = self.training_env.env_method('get_trades_per_1k')
-        if trades_per_1k_values and isinstance(trades_per_1k_values[0], (int, float)):
-            trades_per_1k = trades_per_1k_values[0]
+        if trades_per_1k_values and all(isinstance(v, (int, float)) for v in trades_per_1k_values):
+            trades_per_1k = float(np.mean(trades_per_1k_values))
         else:
             trades_per_1k = 0.0
 
@@ -133,8 +132,8 @@ def create_env_with_features(df: pd.DataFrame, enabled_features: List[str]) -> H
     # 特徴量計算 (wave=Noneで全て計算)
     df_with_features = manager.compute_features(df, wave=None)
 
-    print(f"Enabled features: {enabled_features}")
-    print(f"Features in df: {len(df_with_features.columns)} columns")
+    logging.info(f"Enabled features: {enabled_features}")
+    logging.info(f"Features in df: {len(df_with_features.columns)} columns")
 
     # 環境作成
     env = HeavyTradingEnv(df_with_features)
@@ -246,19 +245,19 @@ def main():
 
     # マネージャー初期化
     manager = get_feature_manager()
-
-    # データ生成
+    # シード
+    seeds = [int(s.strip()) for s in args.seeds.split(',')]
     df = generate_synthetic_data(args.data_rows)
 
     # シード
-    seeds = [int(s) for s in args.seeds.split(',')]
+    seeds = [int(s.strip()) for s in args.seeds.split(',') if s.strip()]
 
     # 特徴量セット
     if args.features == 'wave3':
         # Wave3のみをアブレーション（harmfulフラグを無視）
         all_features = ['Ichimoku', 'Donchian', 'RegimeClustering', 'KalmanFilter']
     else:
-        waves = [int(w) for w in args.waves.split(',')]
+        waves = [int(w.strip()) for w in args.waves.split(',') if w.strip()]
         all_features = []
         for wave in waves:
             all_features.extend(manager.get_enabled_features(wave))
@@ -275,10 +274,10 @@ def main():
 
     results = []
 
-    print(f"Running ablation analysis with {len(seeds)} seeds, {args.timesteps} timesteps each...")
+    logging.info(f"Running ablation analysis with {len(seeds)} seeds, {args.timesteps} timesteps each...")
 
     # ベースライン（全特徴量ON）
-    print("Baseline (all features)...")
+    logging.info("Baseline (all features)...")
     baseline_metrics = {}
     for seed in seeds:
         metrics = run_training(seed, args.timesteps, all_features, df)
@@ -308,7 +307,7 @@ def main():
 
     # Leave-One-Outアブレーション
     for ablated_feature in all_features:
-        print(f"Ablating {ablated_feature}...")
+        logging.info(f"Ablating {ablated_feature}...")
         ablated_features = [f for f in all_features if f != ablated_feature]
 
         ablation_metrics = {}
@@ -339,6 +338,7 @@ def main():
         })
 
     # CSV出力
+    # float_format の指定例: float_format="%.3f" で小数点以下3桁にフォーマット
     df_results = pd.DataFrame(results)
     df_results.to_csv(output_file, index=False, float_format=f'%.{args.float_precision}f')
 
@@ -347,12 +347,12 @@ def main():
         baseline_json = output_dir / f'baseline_{date_str}.json'
         with open(baseline_json, 'w') as f:
             json.dump(baseline_metrics, f, indent=2)
-
-    print(f"Results saved to {output_file}")
-    print("\nTop 5 most impactful features (by delta_sharpe_like):")
-    ablation_results = df_results[df_results['feature'] != 'baseline'].sort_values('delta_sharpe_like')
+    logging.info(f"Results saved to {output_file}")
+    logging.info("\nTop 5 most impactful features (by delta_sharpe_like):")
+    ablation_results = df_results[df_results['feature'] != 'baseline'].sort_values('delta_sharpe_like', ascending=False)
     for _, row in ablation_results.head(5).iterrows():
-        print(f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}")
+        logging.info(f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}")
+        logging.info(f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}")
 
 
 if __name__ == '__main__':

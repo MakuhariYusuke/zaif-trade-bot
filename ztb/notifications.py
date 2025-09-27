@@ -81,7 +81,7 @@ class DiscordNotifier:
             logger.error(f"Failed to send Discord notification: {e}")
             return False
 
-    def notify_data_pipeline_status(self, status: str, details: Dict[str, Any]):
+    def notify_data_pipeline_status(self, status: str, details: Dict[str, Any]) -> None:
         """Notify about data pipeline status"""
         title = f"📊 Data Pipeline {status.title()}"
         message = f"Data acquisition and integrity check completed"

@@ -7,7 +7,7 @@ Robust implementation of trading performance metrics
 import numpy as np
 import pandas as pd
 from typing import Union, Optional, TypedDict
-from ztb.utils.trading_metrics import sharpe_ratio as _sharpe_ratio
+from ztb.utils.metrics.trading_metrics import sharpe_ratio as _sharpe_ratio
 
 
 class MetricsResult(TypedDict):

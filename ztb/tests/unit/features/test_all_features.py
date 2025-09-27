@@ -14,25 +14,26 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features.base import CommonPreprocessor
 from ztb.features import FeatureRegistry
-from ztb.evaluation.promotion import YamlPromotionEngine, AdaptiveThresholdManager
+from ztb.evaluation.promotion import YamlPromotionEngine
+from ztb.utils.thresholds import AdaptiveThresholdManager
 from ztb.evaluation.status import CoverageValidator
-from ztb.evaluation.quality_gates import QualityGates
-from ztb.utils.data_generation import load_sample_data
+from ztb.utils.quality import QualityGates
+from ztb.utils.data.data_generation import load_sample_data
 from ztb.utils.feature_testing import evaluate_feature_performance
-from ztb.utils.logger import LoggerManager
+from ztb.utils.core.logger import LoggerManager
 
 # Import feature classes that exist
-ADX = EMACross = HeikinAshi = KAMA = Supertrend = TEMA = None
-RSI = ROC = OBV = ZScore = None
+adx = ema_cross = heikin_ashi = kama = supertrend = tema = None
+rsi = roc = obv = zscore = None
 
 try:
-    from ztb.features.trend.adx import ADX
-    from ztb.features.trend.emacross import EMACross
-    from ztb.features.trend.heikin_ashi import HeikinAshi
-    from ztb.features.trend.kama import KAMA
-    from ztb.features.trend.supertrend import Supertrend
-    from ztb.features.trend.tema import TEMA
-    from scripts.test_simple_features import RSI, ROC, OBV, ZScore
+    from ztb.features.trend.adx import ADX as adx
+    from ztb.features.trend.emacross import EMACross as ema_cross
+    from ztb.features.trend.heikin_ashi import HeikinAshi as heikin_ashi
+    from ztb.features.trend.kama import KAMA as kama
+    from ztb.features.trend.supertrend import Supertrend as supertrend
+    from ztb.features.trend.tema import TEMA as tema
+    from ztb.test_simple_features import RSI as rsi, ROC as roc, OBV as obv, ZScore as zscore
     print("Feature imports successful")
 except ImportError as e:
     print(f"Feature import error: {e}")
@@ -448,46 +449,41 @@ def create_feature_instance(feature_name: str, df: pd.DataFrame) -> pd.Series:
     """Create and compute feature instance dynamically"""
     try:
         # Try to use actual feature classes
-        if feature_name == 'ADX' and ADX is not None:
-            feature = ADX(period=14)
+        if feature_name == 'ADX' and adx is not None:
+            result = adx(df, period=14)
+            return result
+        elif feature_name == 'EMACross' and ema_cross is not None:
+            feature = ema_cross()
             result = feature.compute(df)
             return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'EMACross' and EMACross is not None:
-            feature = EMACross(fast=12, slow=26)
+        elif feature_name == 'HeikinAshi' and heikin_ashi is not None:
+            feature = heikin_ashi()
             result = feature.compute(df)
             return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'HeikinAshi' and HeikinAshi is not None:
-            feature = HeikinAshi()
+        elif feature_name == 'KAMA' and kama is not None:
+            feature = kama()
             result = feature.compute(df)
             return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'KAMA' and KAMA is not None:
-            feature = KAMA(period=10)
+        elif feature_name == 'Supertrend' and supertrend is not None:
+            feature = supertrend()
             result = feature.compute(df)
             return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'Supertrend' and Supertrend is not None:
-            feature = Supertrend(period=10, multiplier=3.0)
+        elif feature_name == 'TEMA' and tema is not None:
+            feature = tema()
             result = feature.compute(df)
             return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'TEMA' and TEMA is not None:
-            feature = TEMA(period=14)
-            result = feature.compute(df)
-            return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'RSI' and RSI is not None:
-            feature = RSI(period=14)
-            result = feature.compute(df)
-            return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'ROC' and ROC is not None:
-            feature = ROC(period=10)
-            result = feature.compute(df)
-            return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'OBV' and OBV is not None:
-            feature = OBV()
-            result = feature.compute(df)
-            return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
-        elif feature_name == 'ZScore' and ZScore is not None:
-            feature = ZScore(period=20)
-            result = feature.compute(df)
-            return result.iloc[:, 0] if isinstance(result, pd.DataFrame) else result
+        elif feature_name == 'RSI' and rsi is not None:
+            result = rsi(df, period=14)
+            return result
+        elif feature_name == 'ROC' and roc is not None:
+            result = roc(df, period=10)
+            return result
+        elif feature_name == 'OBV' and obv is not None:
+            result = obv(df)
+            return result
+        elif feature_name == 'ZScore' and zscore is not None:
+            result = zscore(df, period=20)
+            return result
     except Exception as e:
         print(f"Error creating feature {feature_name}: {e}")
         # Fall back to mock data

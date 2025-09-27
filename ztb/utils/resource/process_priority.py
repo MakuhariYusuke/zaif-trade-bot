@@ -42,7 +42,8 @@ class ProcessPriorityManager:
         """Load configuration"""
         if self.config_path.exists():
             with open(self.config_path, 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+                return config  # type: ignore
         return {}
 
     def set_process_priority(self, model_type: str) -> Tuple[str, int]:
@@ -79,7 +80,7 @@ class ProcessPriorityManager:
 
         return priority, nice_value
 
-    def _set_nice_value(self, nice_value: int):
+    def _set_nice_value(self, nice_value: int) -> None:
         """Set process nice value"""
         try:
             if hasattr(os, 'nice'):
@@ -95,7 +96,7 @@ class ProcessPriorityManager:
         except OSError as e:
             logger.error(f"Nice value setting error: {e}")
 
-    def _set_cpu_affinity(self, model_type: str):
+    def _set_cpu_affinity(self, model_type: str) -> None:
         """Set CPU affinity for the process"""
         try:
             if hasattr(os, 'sched_setaffinity'):
@@ -118,14 +119,14 @@ class ProcessPriorityManager:
         except OSError as e:
             logger.error(f"CPU affinity setting error: {e}")
 
-    def reset_priority(self):
+    def reset_priority(self) -> None:
         """Reset process priority to default"""
         try:
             if hasattr(os, 'nice'):
-                current_nice = os.nice(0)  # type: ignore
+                current_nice = os.nice(0)
                 if current_nice != 0:
                     try:
-                        os.nice(-current_nice)  # type: ignore  # Reset to 0
+                        os.nice(-current_nice)  # type: ignore
                         logger.info("Process priority reset to default")
                     except PermissionError:
                         logger.warning("Insufficient permissions to decrease nice value (increase priority). Run as root/administrator if needed.")
