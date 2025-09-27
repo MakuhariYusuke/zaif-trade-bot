@@ -13,7 +13,6 @@ import sys
 from typing import List, Dict
 from sklearn.feature_selection import mutual_info_regression  # type: ignore[import-untyped]
 from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
-from statsmodels.stats.outliers_influence import variance_inflation_factor  # type: ignore[import-untyped]
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -23,7 +22,6 @@ project_root = str(Path(__file__).parent.parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from ztb.features.registry import FeatureRegistry
 from ztb.features import get_feature_manager
 
 
