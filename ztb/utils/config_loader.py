@@ -9,7 +9,7 @@ import yaml
 import json
 from pathlib import Path
 from typing import Optional, List
-from typing import Dict, Any, Union, Optional
+from typing import Dict, Any, Union, Optional, cast
 
 
 def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -31,7 +31,7 @@ def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
     with open(file_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+        return cast(Dict[str, Any], yaml.safe_load(f))
 
 
 def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -53,7 +53,7 @@ def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
     with open(file_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:

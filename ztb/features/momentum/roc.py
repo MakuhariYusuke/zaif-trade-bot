@@ -13,12 +13,12 @@ def compute_roc(df: pd.DataFrame, period: int = 10) -> pd.Series[float]:
     """Compute ROC (Rate of Change)"""
     if not FeatureRegistry.is_cache_enabled():
         roc = ((df['close'] - df['close'].shift(period)) / df['close'].shift(period)) * 100
-        return roc.fillna(0)  # type: ignore
+        return roc.fillna(0)
 
     cache_key = f"roc_{feature_cache.generate_dataframe_hash(df, ['close'], {'period': period})}"
 
-    def compute():
+    def compute() -> pd.Series:
         roc = ((df['close'] - df['close'].shift(period)) / df['close'].shift(period)) * 100
-        return roc.fillna(0)  # type: ignore
+        return roc.fillna(0)
 
-    return feature_cache.get_or_compute(cache_key, compute)  # type: ignore
+    return feature_cache.get_or_compute(cache_key, compute)
