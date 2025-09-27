@@ -95,7 +95,14 @@ class PrometheusExporter:
             ['alert_type', 'severity']
         )
 
-    def start_server(self):
+        # System metrics
+        self.system_errors_total = Counter(
+            'ztb_system_errors_total',
+            'Total number of system errors',
+            ['component']
+        )
+
+    def start_server(self) -> None:
         """Start Prometheus metrics server"""
         try:
             start_http_server(self.port)
@@ -104,59 +111,59 @@ class PrometheusExporter:
             logger.error(f"Failed to start Prometheus server: {e}")
 
     # Data pipeline metrics
-    def record_data_fetch(self, status: str, duration: float, source: str = "binance"):
+    def record_data_fetch(self, status: str, duration: float, source: str = "binance") -> None:
         """Record data fetch operation"""
         self.data_fetch_total.labels(status=status).inc()
         self.data_fetch_duration.labels(source=source).observe(duration)
 
-    def record_integrity_check(self, result: str):
+    def record_integrity_check(self, result: str) -> None:
         """Record data integrity check result"""
         self.data_integrity_checks.labels(result=result).inc()
 
     # Job execution metrics
-    def record_job_start(self):
+    def record_job_start(self) -> None:
         """Record job start"""
         self.active_jobs.inc()
 
-    def record_job_completion(self, status: str, duration: float):
+    def record_job_completion(self, status: str, duration: float) -> None:
         """Record job completion"""
         self.active_jobs.dec()
         self.job_executions_total.labels(status=status).inc()
         self.job_execution_duration.observe(duration)
 
     # Trading metrics
-    def record_order(self, side: str, status: str):
+    def record_order(self, side: str, status: str) -> None:
         """Record trading order"""
         self.trading_orders_total.labels(side=side, status=status).inc()
 
-    def update_portfolio_metrics(self, balance: float, pnl: float, drawdown: float):
+    def update_portfolio_metrics(self, balance: float, pnl: float, drawdown: float) -> None:
         """Update portfolio metrics"""
         self.portfolio_balance.set(balance)
         self.portfolio_pnl.set(pnl)
         self.risk_drawdown.set(drawdown)
 
     # System metrics
-    def record_error(self, component: str):
+    def record_error(self, component: str) -> None:
         """Record system error"""
         self.system_errors_total.labels(component=component).inc()
 
     # Quality gates and drift monitoring
-    def record_data_drift(self, feature_type: str, drift_score: float):
+    def record_data_drift(self, feature_type: str, drift_score: float) -> None:
         """Record data drift detection score"""
         self.data_drift_score.labels(feature_type=feature_type).set(drift_score)
 
-    def record_model_performance_drift(self, metric_type: str, drift_value: float):
+    def record_model_performance_drift(self, metric_type: str, drift_value: float) -> None:
         """Record model performance drift"""
         self.model_performance_drift.labels(metric_type=metric_type).set(drift_value)
 
-    def record_quality_gate_result(self, gate_type: str, passed: bool, reason: str = ""):
+    def record_quality_gate_result(self, gate_type: str, passed: bool, reason: str = "") -> None:
         """Record quality gate result"""
         if passed:
             self.quality_gates_passed.labels(gate_type=gate_type).inc()
         else:
             self.quality_gates_failed.labels(gate_type=gate_type, reason=reason).inc()
 
-    def trigger_alert(self, alert_type: str, severity: str, message: str = ""):
+    def trigger_alert(self, alert_type: str, severity: str, message: str = "") -> None:
         """Trigger an alert"""
         self.alerts_triggered.labels(alert_type=alert_type, severity=severity).inc()
         logger.warning(f"Alert triggered: {alert_type} ({severity}) - {message}")
@@ -181,15 +188,15 @@ class ResourceMonitor:
     def __init__(self, disk_threshold_gb: float = 10.0, mem_threshold_gb: float = 1.0):
         self.disk_threshold_gb = disk_threshold_gb
         self.mem_threshold_gb = mem_threshold_gb
-        self.last_disk_alert = 0
-        self.last_mem_alert = 0
+        self.last_disk_alert = 0.0
+        self.last_mem_alert = 0.0
         self.alert_cooldown = 300  # 5 minutes
 
         # Prometheus metrics
         self.disk_free_gb = Gauge('ztb_disk_free_gb', 'Free disk space in GB')
         self.mem_free_gb = Gauge('ztb_mem_free_gb', 'Free memory in GB')
 
-    def check_resources(self):
+    def check_resources(self) -> None:
         """Check disk and memory resources and send alerts if thresholds exceeded"""
         try:
             import psutil
@@ -219,7 +226,7 @@ class ResourceMonitor:
                 self._send_mem_alert(free_mem_gb)
                 self.last_mem_alert = current_time
 
-    def _send_disk_alert(self, free_gb: float):
+    def _send_disk_alert(self, free_gb: float) -> None:
         """Send disk space alert"""
         message = f"⚠️ Low disk space: {free_gb:.1f}GB remaining (threshold: {self.disk_threshold_gb}GB)"
         logger.warning(message)
@@ -234,7 +241,7 @@ class ResourceMonitor:
         except ImportError:
             pass
 
-    def _send_mem_alert(self, free_gb: float):
+    def _send_mem_alert(self, free_gb: float) -> None:
         """Send memory alert"""
         message = f"⚠️ Low memory: {free_gb:.1f}GB remaining (threshold: {self.mem_threshold_gb}GB)"
         logger.warning(message)
