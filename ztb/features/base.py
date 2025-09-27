@@ -23,7 +23,7 @@ class Feature(Protocol[T]):
         """Dependencies (common preprocessing etc)"""
         ...
 
-    def compute(self, df: pd.DataFrame, **params) -> T:
+    def compute(self, df: pd.DataFrame, **params: Any) -> T:
         """Compute feature with generic return type"""
         ...
 
@@ -85,14 +85,14 @@ class ParameterizedFeature(BaseFeature):
         super().__init__(name, deps)
         self.default_params = default_params or {}
 
-    def compute(self, df: pd.DataFrame, **params) -> pd.DataFrame:
+    def compute(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
         """Compute with parameter override support"""
         # Merge default params with provided params
         merged_params = {**self.default_params, **params}
         return self._compute_with_params(df, **merged_params)
 
     @abstractmethod
-    def _compute_with_params(self, df: pd.DataFrame, **params) -> pd.DataFrame:
+    def _compute_with_params(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
         """Actual computation with parameters"""
         pass
 

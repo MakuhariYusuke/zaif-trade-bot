@@ -15,7 +15,7 @@ import sqlite3
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
-import pyarrow.parquet as pq
+import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
 
 class DataLoader:
@@ -38,7 +38,7 @@ class DataLoader:
             raise FileNotFoundError(f"JSON file not found: {file_path}")
 
         with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore[no-any-return]
 
     @staticmethod
     def load_sqlite(db_path: Union[str, Path], query: str) -> pd.DataFrame:
@@ -51,13 +51,13 @@ class DataLoader:
             return pd.read_sql_query(query, conn)
 
     @staticmethod
-    def load_csv(file_path: Union[str, Path], **kwargs) -> pd.DataFrame:
+    def load_csv(file_path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
         """Load data from CSV file."""
         file_path = Path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"CSV file not found: {file_path}")
 
-        return pd.read_csv(file_path, **kwargs)
+        return pd.read_csv(file_path, **kwargs)  # type: ignore[no-any-return]
 
     @staticmethod
     def save_parquet(df: pd.DataFrame, file_path: Union[str, Path]) -> None:

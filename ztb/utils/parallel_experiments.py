@@ -15,7 +15,7 @@ import gc
 import signal
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, cast
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -80,7 +80,7 @@ class ParallelExperimentRunner:
                 self.resource_limits['gpu_memory_percent'] = 90.0
         return self._gpu_available
 
-    def _load_shared_data(self):
+    def _load_shared_data(self) -> None:
         """Load shared data cache"""
         if self.config.shared_data_cache:
             cache_path = Path(self.config.shared_data_cache)
@@ -90,7 +90,7 @@ class ParallelExperimentRunner:
                     self.shared_data = pickle.load(f)
                 self.shared_logger.logger.info(f"Loaded shared data cache: {len(self.shared_data)} items")
 
-    def _save_shared_data(self):
+    def _save_shared_data(self) -> None:
         """Save shared data cache"""
         if self.config.shared_data_cache:
             import pickle
@@ -232,7 +232,7 @@ class ParallelExperimentRunner:
         
         return results
 
-    def _force_checkpoint_save(self, active_processes: Dict[int, Dict[str, Any]]):
+    def _force_checkpoint_save(self, active_processes: Dict[int, Dict[str, Any]]) -> None:
         """実行中の実験にチェックポイント保存を強制"""
         try:
             for pid, experiment_info in active_processes.items():
@@ -386,7 +386,7 @@ class ParallelExperimentRunner:
             # Run experiment
             result = experiment.execute()
 
-            return result
+            return cast(ExperimentResult, result)
 
         except Exception as e:
             # Return error result（効率化: エラーハンドリング改善）
@@ -434,7 +434,7 @@ class ResourceMonitor:
         self.memory_leak_threshold_percent = 50.0
         self.object_leak_threshold = 10000
 
-    def log_resources(self, experiment_name: str = ""):
+    def log_resources(self, experiment_name: str = "") -> None:
         """Log current resource usage"""
         current_time = time.time()
         if current_time - self.last_log_time < self.log_interval:

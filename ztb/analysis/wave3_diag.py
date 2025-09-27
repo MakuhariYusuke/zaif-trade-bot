@@ -11,9 +11,9 @@ from pathlib import Path
 from datetime import datetime
 import sys
 from typing import List, Dict
-from sklearn.feature_selection import mutual_info_regression
-from sklearn.linear_model import LinearRegression
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.feature_selection import mutual_info_regression  # type: ignore[import-untyped]
+from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
+from statsmodels.stats.outliers_influence import variance_inflation_factor  # type: ignore[import-untyped]
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -24,6 +24,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from ztb.features.registry import FeatureRegistry
+from ztb.features import get_feature_manager
 
 
 def generate_synthetic_data(n_rows: int = 10000) -> pd.DataFrame:
@@ -164,7 +165,7 @@ def check_leaks(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(leak_checks)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Wave3 diagnostic analysis')
     parser.add_argument('--waves', type=str, default='1,2,3', help='Comma-separated waves')
     parser.add_argument('--horizons', type=str, default='1,3,6', help='Comma-separated horizons')

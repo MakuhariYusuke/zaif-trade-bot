@@ -6,7 +6,7 @@ Extended Kalman Filter analysis with residuals and autocorrelation
 
 import numpy as np
 import pandas as pd
-from typing import Tuple, List
+from typing import Tuple, List, cast
 from scipy.stats import pearsonr
 
 
@@ -20,12 +20,12 @@ class SimpleKalmanFilter:
         self.measurement_variance = measurement_variance
         self.reset()
     
-    def reset(self):
+    def reset(self) -> None:
         """Reset filter state"""
         self.posterior_estimate = None
         self.posterior_error_estimate = None
-        self.estimates = []
-        self.error_estimates = []
+        self.estimates: List[float] = []
+        self.error_estimates: List[float] = []
     
     def update(self, measurement: float) -> Tuple[float, float]:
         """
@@ -43,18 +43,18 @@ class SimpleKalmanFilter:
             self.posterior_error_estimate = 1.0
         else:
             # Prediction step
-            prior_estimate = self.posterior_estimate
-            prior_error_estimate = self.posterior_error_estimate + self.process_variance
+            prior_estimate = cast(float, self.posterior_estimate)
+            prior_error_estimate = cast(float, self.posterior_error_estimate) + self.process_variance
             
             # Update step
             kalman_gain = prior_error_estimate / (prior_error_estimate + self.measurement_variance)
             self.posterior_estimate = prior_estimate + kalman_gain * (measurement - prior_estimate)
             self.posterior_error_estimate = (1 - kalman_gain) * prior_error_estimate
         
-        self.estimates.append(self.posterior_estimate)
-        self.error_estimates.append(self.posterior_error_estimate)
+        self.estimates.append(cast(float, self.posterior_estimate))
+        self.error_estimates.append(cast(float, self.posterior_error_estimate))
         
-        return self.posterior_estimate, self.posterior_error_estimate
+        return cast(float, self.posterior_estimate), cast(float, self.posterior_error_estimate)
 
 
 def calculate_kalman_extended(data: pd.DataFrame,
@@ -259,7 +259,7 @@ def calculate_kalman_signals(extended_features: pd.DataFrame,
     return pd.DataFrame(signals, index=extended_features.index)
 
 
-def generate_synthetic_data():
+def generate_synthetic_data() -> pd.DataFrame:
     """Generate synthetic OHLCV data with regime changes."""
     np.random.seed(42)
     dates = pd.date_range('2023-01-01', periods=300, freq='D')
@@ -280,7 +280,7 @@ def generate_synthetic_data():
     }, index=dates)
     return data
 
-def print_feature_info(data, extended_features):
+def print_feature_info(data: pd.DataFrame, extended_features: pd.DataFrame) -> None:
     print("Testing Kalman Extended Features...")
     print(f"Data shape: {data.shape}")
     print(f"Price range: {data['close'].min():.2f} to {data['close'].max():.2f}")
@@ -289,14 +289,14 @@ def print_feature_info(data, extended_features):
     for i, col in enumerate(extended_features.columns):
         print(f"  {i+1:2d}. {col}")
 
-def print_signal_info(signals):
+def print_signal_info(signals: pd.DataFrame) -> None:
     print(f"\nSignals shape: {signals.shape}")
     print("Signal counts:")
     for col in signals.columns:
         signal_count = signals[col].sum()
         print(f"  {col}: {signal_count} signals")
 
-def print_residual_analysis(extended_features):
+def print_residual_analysis(extended_features: pd.DataFrame) -> None:
     residuals = extended_features['kalman_residual'].dropna()
     print(f"\nResidual analysis:")
     print(f"  Mean: {residuals.mean():.6f}")
@@ -304,13 +304,13 @@ def print_residual_analysis(extended_features):
     print(f"  Skewness: {residuals.skew():.4f}")
     print(f"  Kurtosis: {residuals.kurt():.4f}")
 
-def print_autocorr_analysis(extended_features):
+def print_autocorr_analysis(extended_features: pd.DataFrame) -> None:
     if 'kalman_autocorr_lag1' in extended_features.columns:
         autocorr_1 = extended_features['kalman_autocorr_lag1'].dropna()
         print(f"  Lag-1 autocorr mean: {autocorr_1.mean():.4f}")
         print(f"  Lag-1 autocorr std: {autocorr_1.std():.4f}")
 
-def main():
+def main() -> None:
     data = generate_synthetic_data()
     extended_features = calculate_kalman_extended(
         data,

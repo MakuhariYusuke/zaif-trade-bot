@@ -4,7 +4,7 @@ metrics.py
 """
 
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any, cast
 import pandas as pd
 
 
@@ -100,8 +100,8 @@ def calculate_delta_sharpe(
     base_stats = sharpe_with_stats(base_sharpes)
     with_stats = sharpe_with_stats(with_feature_sharpes)
 
-    delta_mean = with_stats["mean"] - base_stats["mean"]
-    delta_std = np.sqrt(with_stats["std"]**2 + base_stats["std"]**2)  # 誤差伝播
+    delta_mean = cast(float, with_stats["mean"]) - cast(float, base_stats["mean"])
+    delta_std = np.sqrt(cast(float, with_stats["std"])**2 + cast(float, base_stats["std"])**2)  # 誤差伝播
 
     # 95%信頼区間（簡易計算）
     delta_ci95_low = delta_mean - 1.96 * delta_std
@@ -114,7 +114,7 @@ def calculate_delta_sharpe(
     }
 
 
-def validate_ablation_results(results: Dict) -> bool:
+def validate_ablation_results(results: Dict[str, Any]) -> bool:
     """
     アブレーション結果の妥当性を検証
 

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 import json
-from typing import Dict, List, Optional, TypedDict, Any
+from typing import Dict, List, Optional, TypedDict, Any, cast
 from torch.utils.tensorboard import SummaryWriter
 import argparse
 import warnings
@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 parent_path = str(Path(__file__).parent.parent)
 if parent_path not in sys.path:
     sys.path.insert(0, parent_path)
-from envs.heavy_trading_env import HeavyTradingEnv
+from ztb.trading.environment import HeavyTradingEnv
 
 
 class EvaluationResult(TypedDict, total=False):
@@ -151,7 +151,8 @@ class TradingEvaluator:
         step_count = 0
         while not done and step_count < self.config['max_steps_per_episode']:
             # 行動の予測
-            action, _ = self.model.predict(obs, deterministic=self.config['deterministic'])
+            action_value, _ = self.model.predict(obs, deterministic=self.config['deterministic'])
+            action = cast(int, action_value.item())
 
             # 環境ステップ
             next_obs, reward, done, truncated, info = self.env.step(action)
@@ -238,7 +239,7 @@ class TradingEvaluator:
         }
 
         # Calculate data quality score
-        stats['data_quality_score'] = self._calculate_data_quality_score(stats)
+        stats['data_quality_score'] = cast(Any, self._calculate_data_quality_score(stats))
 
         return stats
 
@@ -290,7 +291,7 @@ class TradingEvaluator:
         weights = [0.15, 0.2, 0.15, 0.1, 0.15, 0.1, 0.1, 0.05]  # Weights for each component
         quality_score = sum(w * s for w, s in zip(weights, score_components))
 
-        return round(quality_score, 3)
+        return cast(float, round(quality_score, 3))
 
     def _calculate_outlier_rate(self, stats: Dict) -> float:
         """Calculate outlier rate using IQR method"""
@@ -339,7 +340,7 @@ class TradingEvaluator:
             # Higher score for more normal-like distributions
             quality_score = 1.0 - (skew_penalty * 0.6 + kurtosis_penalty * 0.4)
 
-            return max(0.0, quality_score)
+            return cast(float, max(0.0, quality_score))
         except Exception:
             return 0.5
 
@@ -366,7 +367,7 @@ class TradingEvaluator:
             else:
                 stability_score = max(0.0, 1.0 - std_trend * 50)  # Penalize increasing std
 
-            return stability_score
+            return cast(float, stability_score)
         except Exception:
             return 0.5
 
@@ -866,7 +867,7 @@ class TradingEvaluator:
         return max_duration
 
 
-def main():
+def main() -> None:
     """メイン関数"""
 
     parser = argparse.ArgumentParser(description='Trading RL Model Evaluation and Visualization')
