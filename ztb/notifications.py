@@ -87,7 +87,7 @@ class DiscordNotifier:
         message = f"Data acquisition and integrity check completed"
         self.send_notification(title, message, "success" if status == "success" else "error", details)
 
-    def notify_job_completion(self, job_id: str, success: bool, metrics: Dict[str, Any]):
+    def notify_job_completion(self, job_id: str, success: bool, metrics: Dict[str, Any]) -> None:
         """Notify about job completion"""
         status = "✅ Success" if success else "❌ Failed"
         title = f"🔬 ML Job {status}"
@@ -95,13 +95,13 @@ class DiscordNotifier:
         color = "success" if success else "error"
         self.send_notification(title, message, color, metrics)
 
-    def notify_risk_alert(self, alert_type: str, details: Dict[str, Any]):
+    def notify_risk_alert(self, alert_type: str, details: Dict[str, Any]) -> None:
         """Notify about risk management alerts"""
         title = f"⚠️ Risk Alert: {alert_type}"
         message = "Risk management threshold exceeded"
         self.send_notification(title, message, "warning", details)
 
-    def notify_trading_signal(self, symbol: str, signal: str, confidence: float):
+    def notify_trading_signal(self, symbol: str, signal: str, confidence: float) -> None:
         """Notify about trading signals"""
         title = f"📈 Trading Signal: {symbol}"
         message = f"Signal: {signal.upper()} (Confidence: {confidence:.2%})"
@@ -109,7 +109,7 @@ class DiscordNotifier:
         fields = {"Symbol": symbol, "Signal": signal, "Confidence": f"{confidence:.2%}"}
         self.send_notification(title, message, color, fields)
 
-    def notify_drift_alert(self, drift_type: str, severity: str, details: Dict[str, Any]):
+    def notify_drift_alert(self, drift_type: str, severity: str, details: Dict[str, Any]) -> None:
         """Notify about data or model drift detection"""
         title = f"🔄 Drift Alert: {drift_type.title()}"
         message = f"Drift detected with severity: {severity.upper()}"
@@ -125,7 +125,7 @@ class DiscordNotifier:
 
         self.send_notification(title, message, color, details)
 
-    def notify_quality_gate_failure(self, gate_type: str, reason: str, details: Dict[str, Any]):
+    def notify_quality_gate_failure(self, gate_type: str, reason: str, details: Dict[str, Any]) -> None:
         """Notify about quality gate failures"""
         title = f"🚫 Quality Gate Failed: {gate_type}"
         message = f"Reason: {reason}"
