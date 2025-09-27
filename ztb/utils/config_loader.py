@@ -8,8 +8,8 @@ configuration files in YAML and JSON formats.
 import yaml
 import json
 from pathlib import Path
+from typing import Optional, List
 from typing import Dict, Any, Union, Optional
-import os
 
 
 def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -82,7 +82,7 @@ def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
 
 def find_config_file(
     config_name: str,
-    search_paths: Optional[list] = None
+    search_paths: Optional[List[Path]] = None
 ) -> Optional[Path]:
     """
     Find configuration file in standard locations.
