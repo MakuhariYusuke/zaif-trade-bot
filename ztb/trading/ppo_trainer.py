@@ -9,15 +9,17 @@ from pathlib import Path
 import torch
 import pickle
 import zlib
-from typing import Optional
+from typing import Optional, Any, Dict, Union, cast
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.base_class import BaseAlgorithm
 import optuna
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
+from optuna import Trial
 import matplotlib.pyplot as plt
 from datetime import datetime
 import json
@@ -31,9 +33,9 @@ from ..utils.perf.cpu_tune import apply_cpu_tuning
 from ..utils.cache.feature_cache import FeatureCache
 from ..utils.memory.dtypes import downcast_df
 
-def save_checkpoint_async(model, path, notifier=None, light_mode=False, compressor="auto"):
+def save_checkpoint_async(model: BaseAlgorithm, path: str, notifier: Optional[Any] = None, light_mode: bool = False, compressor: str = "auto") -> None:
     """非同期チェックポイント保存（圧縮対応）"""
-    def _job():
+    def _job() -> None:
         try:
             # 圧縮方式の選択
             if compressor == "auto":
@@ -47,7 +49,7 @@ def save_checkpoint_async(model, path, notifier=None, light_mode=False, compress
                 # 軽量モード: policy + value_net + scaler の最小保存セット
                 checkpoint_data = {
                     'policy': model.policy.state_dict(),
-                    'value_net': model.value_net.state_dict() if hasattr(model, 'value_net') else None,
+                    'value_net': model.value_net.state_dict() if hasattr(model, 'value_net') else None,  # type: ignore
                     'scaler': getattr(model, 'scaler', None)
                 }
                 
@@ -86,21 +88,21 @@ def _select_checkpoint_compressor(data_size_bytes: int) -> str:
     """チェックポイント用圧縮方式選択（FeatureCache._select_compressorと共通ロジック）"""
     try:
         import zstandard as zstd
-        HAS_ZSTD = True
+        has_zstd = True
     except ImportError:
-        HAS_ZSTD = False
+        has_zstd = False
         
     try:
         import lz4.frame
-        HAS_LZ4 = True
+        has_lz4 = True
     except ImportError:
-        HAS_LZ4 = False
+        has_lz4 = False
     
     # チェックポイントは基本的にarchival用途
     if data_size_bytes < 50 * 1024 * 1024:  # < 50MB
-        return "lz4" if HAS_LZ4 else "zlib"
+        return "lz4" if has_lz4 else "zlib"
     else:
-        return "zstd" if HAS_ZSTD else "zlib"
+        return "zstd" if has_zstd else "zlib"
 
 def _compress_data(data: bytes, compressor: str) -> bytes:
     """データ圧縮"""
@@ -114,7 +116,7 @@ def _compress_data(data: bytes, compressor: str) -> bytes:
     if compressor == "lz4":
         try:
             import lz4.frame
-            return lz4.frame.compress(data)
+            return lz4.frame.compress(data)  # type: ignore
         except ImportError:
             compressor = "zlib"
     
@@ -122,22 +124,22 @@ def _compress_data(data: bytes, compressor: str) -> bytes:
     import zlib
     return zlib.compress(data, 6)
 
-def load_checkpoint(model, path, light_mode=False):
+def load_checkpoint(model: BaseAlgorithm, path: str, light_mode: bool = False) -> None:
     """チェックポイント読み込み（軽量/通常両対応）"""
     if light_mode:
         # 軽量チェックポイントの読み込み
         import pickle
         try:
             import zstandard as zstd
-            HAS_ZSTD = True
+            has_zstd = True
         except ImportError:
-            HAS_ZSTD = False
+            has_zstd = False
             
         try:
             import lz4.frame
-            HAS_LZ4 = True
+            has_lz4 = True
         except ImportError:
-            HAS_LZ4 = False
+            has_lz4 = False
         
         # 圧縮形式の自動判定
         if path.endswith('_light.zip'):
@@ -145,9 +147,9 @@ def load_checkpoint(model, path, light_mode=False):
             
             # 圧縮形式判定（簡易的）
             if data.startswith(b'\x28\xb5\x2f\xfd'):  # Zstd magic
-                decompressed = zstd.ZstdDecompressor().decompress(data) if HAS_ZSTD else zlib.decompress(data)
+                decompressed = zstd.ZstdDecompressor().decompress(data) if has_zstd else zlib.decompress(data)
             elif data.startswith(b'\x04\x22\x4D\x18'):  # LZ4 magic
-                decompressed = lz4.frame.decompress(data) if HAS_LZ4 else zlib.decompress(data)
+                decompressed = lz4.frame.decompress(data) if has_lz4 else zlib.decompress(data)
             else:
                 decompressed = zlib.decompress(data)
             
@@ -156,9 +158,9 @@ def load_checkpoint(model, path, light_mode=False):
             # モデルにロード
             model.policy.load_state_dict(checkpoint_data['policy'])
             if checkpoint_data.get('value_net') and hasattr(model, 'value_net'):
-                model.value_net.load_state_dict(checkpoint_data['value_net'])
+                model.value_net.load_state_dict(checkpoint_data['value_net'])  # type: ignore
             if checkpoint_data.get('scaler'):
-                model.scaler = checkpoint_data['scaler']
+                model.scaler = checkpoint_data['scaler']  # type: ignore
                 
         else:
             # 通常チェックポイント
@@ -167,11 +169,23 @@ def load_checkpoint(model, path, light_mode=False):
         # 通常チェックポイント
         model.load(path)
 
+class TensorBoardCallback(BaseCallback):
+    """TensorBoardログ用コールバック"""
+
+    def __init__(self, eval_freq: int = 1000, verbose: int = 0):
+        super().__init__(verbose)
+        self.eval_freq = eval_freq
+
+    def _on_step(self) -> bool:
+        # TensorBoard logging is handled by logger configuration
+        return True
+
+
 class CheckpointCallback(BaseCallback):
     """チェックポイント保存用コールバック（非同期・世代管理）"""
 
     def __init__(self, save_freq: int, save_path: str, name_prefix: str = "checkpoint",
-                 verbose: int = 0, notifier=None, session_id=None, light_mode=False):
+                 verbose: int = 0, notifier: Optional[Any] = None, session_id: Optional[str] = None, light_mode: bool = False) -> None:
         super().__init__(verbose)
         self.save_freq = save_freq
         self.save_path = Path(save_path)
@@ -193,66 +207,10 @@ class CheckpointCallback(BaseCallback):
                 checkpoint_path = self.save_path / f"{self.name_prefix}_{self.n_calls}"
                 # 非同期保存
                 save_checkpoint_async(self.model, str(checkpoint_path), self.notifier)
-
-                total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
-                progress_percent = (self.n_calls / total_timesteps) * 100
-                progress_msg = f"Step {self.n_calls:,} / {total_timesteps:,} ({progress_percent:.1f}%)"
-
-                # INFOログ
-                logging.info(progress_msg)
-
-                # Discord通知（10%ごと）
-                if int(progress_percent) % 10 == 0 and self.notifier:
-                    self.notifier.send_custom_notification(
-                        f"📊 Training Progress ({self.session_id})",
-                        progress_msg,
-                        color=0x00ff00
-                    )
-
-                if self.verbose > 0:
-                    print(progress_msg)
-
-                # メモリ効率化: ガーベジコレクション
-                import gc
-                gc.collect()
-
-        except Exception as e:
-            logging.error(f"Error in checkpoint callback: {e}")
-            if self.notifier:
-                self.notifier.send_error_notification("Checkpoint Error", str(e))
-
-        return True
-
-class TensorBoardCallback(BaseCallback):
-    """TensorBoardログ用コールバック"""
-
-    def __init__(self, eval_freq: int = 1000, verbose: int = 0):
-        super().__init__(verbose)
-        self.eval_freq = eval_freq
-
-    def _on_step(self) -> bool:
-        # TensorBoard logging is handled by logger configuration
-        return True
-
-# 非同期チェックポイント保存用
-# (The unreachable code and duplicate imports are removed here.)
-
-    def _on_step(self) -> bool:
-        """
-        各ステップで呼び出されるメソッド。定期的にモデルのチェックポイントを保存します。
-
-        Returns:
-            bool: トレーニングを継続する場合はTrue
-        """
-        try:
-            if self.n_calls % self.save_freq == 0:
-                checkpoint_path = self.save_path / f"{self.name_prefix}_{self.n_calls}"
-                # 非同期保存
-                save_checkpoint_async(self.model, str(checkpoint_path), self.notifier)
                 
                 total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
                 progress_percent = (self.n_calls / total_timesteps) * 100
-                progress_msg = f"Step {self.n_calls:,} / {self.n_calls:,} ({progress_percent:.1f}%)"
+                progress_msg = f"Step {self.n_calls:,} / {total_timesteps:,} ({progress_percent:.1f}%)"
 
                 # INFOログ
                 logging.info(progress_msg)
@@ -283,7 +241,7 @@ class TensorBoardCallback(BaseCallback):
 class SafetyCallback(BaseCallback):
     """安全策コールバック - トレード数が0のまま学習を停止"""
 
-    def __init__(self, max_zero_trades=10000, verbose=0):
+    def __init__(self, max_zero_trades: int = 10000, verbose: int = 0) -> None:
         """
         コンストラクタ
 
@@ -329,7 +287,13 @@ class SafetyCallback(BaseCallback):
 class PPOTrainer:
     """PPOトレーニングマネージャー"""
 
-    def __init__(self, data_path: str, config: Optional[dict] = None, checkpoint_interval: int = 10000, checkpoint_dir: str = 'models/checkpoints'):
+    def __init__(
+            self, 
+            data_path: str, 
+            config: Optional[Dict[str, Any]] = None, 
+            checkpoint_interval: int = 10000, 
+            checkpoint_dir: str = 'models/checkpoints'
+        ) -> None:
         """
         コンストラクタ
 
@@ -387,7 +351,7 @@ class PPOTrainer:
         
         # PyTorch設定
         torch.set_num_threads(cpu_config['torch_threads'])
-        torch.backends.mkldnn.enabled = True
+        torch.backends.mkldnn.enabled = True  # type: ignore
         
         # ログ出力
         logging.info(f"CPU: phys={cpu_config['physical_cores']}, log={cpu_config['logical_cores']}, "
@@ -395,7 +359,7 @@ class PPOTrainer:
                      f"torch={cpu_config['torch_threads']}, OMP={cpu_config['OMP_NUM_THREADS']}, "
                      f"MKL={cpu_config['MKL_NUM_THREADS']}, OPENBLAS={cpu_config['OPENBLAS_NUM_THREADS']}")
 
-    def _get_default_config(self) -> dict:
+    def _get_default_config(self) -> Dict[str, Any]:
         """
         デフォルトのPPOトレーニング設定を返します。
 
@@ -462,7 +426,7 @@ class PPOTrainer:
                     df = downcast_df(df, 
                                    float_dtype=memory_config.get('float_dtype', 'float32'),
                                    int_dtype=memory_config.get('int_dtype', 'int32'))
-                return df
+                return cast(pd.DataFrame, df)
             else:
                 logging.info(f"[CACHE] Miss for {data_path}")
 
@@ -478,8 +442,8 @@ class PPOTrainer:
 
             # すべてのファイルを読み込んで結合
             dfs = []
-            for file_path in file_paths:
-                file_path = Path(file_path)
+            for file_path_str in file_paths:
+                file_path = Path(file_path_str)
                 if file_path.suffix == '.parquet':
                     df = pd.read_parquet(file_path)
                 elif file_path.suffix == '.csv':
@@ -545,7 +509,7 @@ class PPOTrainer:
 
         return df
 
-    def _create_env(self):
+    def _create_env(self) -> Any:
         """
         トレーニング用のHeavyTradingEnv環境を作成し、Monitorでラップします。
         設定ファイルから取引手数料を読み込みます。
@@ -554,15 +518,14 @@ class PPOTrainer:
             Monitor: モニターでラップされた環境オブジェクト
         """
         # rl_config.jsonから手数料設定を読み込み
-        # rl_config.jsonから手数料設定を読み込み
-        config_path = os.environ.get("RL_CONFIG_PATH")
+        config_path: Optional[str] = os.environ.get("RL_CONFIG_PATH")
         if config_path is None:
             # プロジェクトルートの絶対パスをデフォルトに
             config_path = str(Path(__file__).parent.parent.parent.parent / "rl_config.json")
-        config_path = Path(config_path)
+        config_path_obj = Path(config_path)
         transaction_cost = 0.001  # デフォルト
-        if config_path.exists():
-            with open(config_path, 'r') as f:
+        if config_path_obj.exists():
+            with open(config_path_obj, 'r') as f:
                 rl_config = json.load(f)
             fee_config = rl_config.get('fee_model', {})
             transaction_cost = fee_config.get('default_fee_rate', 0.001)
@@ -573,12 +536,12 @@ class PPOTrainer:
             'risk_free_rate': 0.0,
         }
 
-        env = HeavyTradingEnv(self.df, env_config)
+        env: Union[HeavyTradingEnv, Monitor[HeavyTradingEnv, Any]] = HeavyTradingEnv(self.df, env_config)
         env = Monitor(env, str(self.log_dir / 'monitor.csv'))
 
         return env
 
-    def train(self, notifier=None, session_id=None) -> PPO:
+    def train(self, notifier: Optional[Any] = None, session_id: Optional[str] = None) -> PPO:
         """
         設定に基づいてPPOモデルをトレーニングします。
 
@@ -694,7 +657,7 @@ class PPOTrainer:
                 notifier.send_error_notification("Training Failed", f"Session {session_id}: {str(e)}")
             raise
 
-    def evaluate(self, model_path: Optional[str] = None, n_episodes: int = 10) -> dict:
+    def evaluate(self, model_path: Optional[str] = None, n_episodes: int = 10) -> Dict[str, Any]:
         """
         指定されたモデルを評価し、統計情報を返します。
 
@@ -716,7 +679,7 @@ class PPOTrainer:
 
         # 評価の実行
         episode_rewards = []
-        episode_lengths = []
+        episode_lengths: list[int] = []
 
         for episode in range(n_episodes):
             obs = eval_env.reset()
@@ -728,7 +691,7 @@ class PPOTrainer:
                 # obsがタプルの場合、最初の要素（観測データ）を使用
                 predict_obs = obs[0] if isinstance(obs, tuple) else obs
                 action, _ = model.predict(predict_obs, deterministic=True)
-                obs, reward, done_vec, info = eval_env.step(action)
+                obs, reward, done_vec, _ = eval_env.step(action)
                 done = done_vec[0]
                 episode_reward += reward[0]
                 episode_length += 1
@@ -808,14 +771,14 @@ class PPOTrainer:
             print(f"Training visualization saved to {self.log_dir / 'training_visualization.png'}")
 
 
-def optimize_hyperparameters(data_path: str, n_trials: int = 50) -> dict:
+def optimize_hyperparameters(data_path: str, n_trials: int = 50) -> Dict[str, Any]:
     """
     Optunaによるハイパーパラメータ最適化
     :param data_path: トレーニングデータのパス
     :param n_trials: 試行回数  
     """
 
-    def objective(trial):
+    def objective(trial: Trial) -> float:
         """
         Optunaの目的関数。指定されたハイパーパラメータでモデルを評価します。
 
@@ -848,12 +811,12 @@ def optimize_hyperparameters(data_path: str, n_trials: int = 50) -> dict:
 
         # トレーナーの作成とトレーニング
         trainer = PPOTrainer(data_path, config)
-        model = trainer.train()
+        _ = trainer.train()
 
         # 評価
         eval_stats = trainer.evaluate(n_episodes=5)
 
-        return eval_stats['mean_reward']
+        return cast(float, eval_stats['mean_reward'])
 
     # Optunaスタディの作成
     study = optuna.create_study(
@@ -872,10 +835,9 @@ def optimize_hyperparameters(data_path: str, n_trials: int = 50) -> dict:
     logging.info(f"Best reward: {study.best_value}")
 
     return study.best_params
-    return study.best_params
 
 
-def main():
+def main() -> None:
     """
     メイン関数
     コマンドライン引数でモードを指定して実行
@@ -904,14 +866,14 @@ def main():
         trainer.config.update(best_params)
         trainer.config['total_timesteps'] = 200000  # 本番トレーニング
         # 本番トレーニングを実施
-        model = trainer.train()
+        _ = trainer.train()
         trainer.evaluate(n_episodes=args.n_episodes)
     elif args.mode == 'optimize':
         best_params = optimize_hyperparameters(args.data, args.n_trials)
         # 最適パラメータでの最終トレーニング
         trainer.config.update(best_params)
         trainer.config['total_timesteps'] = 200000  # 本番トレーニング
-        model = trainer.train()
+        _ = trainer.train()
 
     elif args.mode == 'visualize':
         trainer.visualize_training()
