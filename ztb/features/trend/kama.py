@@ -8,7 +8,9 @@ Output columns:
 
 import numpy as np
 import pandas as pd
-from numba import jit
+from typing import Any
+from numba import jit  # type: ignore
+from numpy.typing import NDArray
 from ztb.features.base import MovingAverageFeature, ComputableFeature
 
 
@@ -18,7 +20,7 @@ class KAMA(MovingAverageFeature, ComputableFeature):
     Adjusts smoothing based on market efficiency ratio.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__("KAMA", deps=["close"])
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -26,14 +28,14 @@ class KAMA(MovingAverageFeature, ComputableFeature):
         df columns must include: ['close'].
         Returns a DataFrame with KAMA values.
         """
-        close = df['close'].to_numpy()
+        close = df['close'].astype(float).to_numpy()
         kama = self._calculate_kama(close)
 
         return pd.DataFrame({'kama': kama})
 
     @staticmethod
-    @jit(nopython=True)
-    def _calculate_kama(close: np.ndarray) -> np.ndarray:
+    @jit(nopython=True)  # type: ignore
+    def _calculate_kama(close: NDArray[np.float64]) -> NDArray[np.float64]:
         """
         Calculate KAMA using numba for performance.
         """

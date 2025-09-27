@@ -5,7 +5,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, cast
 
 EPSILON = 1e-6  # 小さい値（ゼロ除算防止用）
 
@@ -60,8 +60,8 @@ class HeavyTradingEnv(gym.Env):
         self.trades_count = 0
 
         # 報酬計算用の履歴
-        self.reward_history = []
-        self.position_history = []
+        self.reward_history: list[float] = []
+        self.position_history: list[int] = []
 
     def _preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """データの前処理"""
@@ -200,7 +200,7 @@ class HeavyTradingEnv(gym.Env):
 
         if abs(self.position) > 0 and old_position == 0:  # 新規ポジションの場合
             try:
-                current_price = self.df.iloc[self.current_step]['close']  # 実際の価格を参照
+                current_price = cast(float, self.df.iloc[self.current_step]['close'])  # 実際の価格を参照
                 transaction_cost = abs(self.position) * current_price * self.config['transaction_cost']
                 # スプレッドを価格の0.05%として仮定
                 spread_cost = abs(self.position) * current_price * 0.0005
@@ -225,7 +225,7 @@ class HeavyTradingEnv(gym.Env):
         # リワードスケーリング
         reward *= self.config['reward_scaling']
 
-        return reward
+        return cast(float, reward)
 
     def _calculate_drawdown_penalty(self) -> float:
         """ドローダウンペナルティの計算（50%超えの場合）"""

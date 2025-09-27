@@ -10,7 +10,7 @@ from pathlib import Path
 # プロジェクトルートをパスに追加
 sys.path.append(str(Path(__file__).parent.parent))
 
-from envs.heavy_trading_env import HeavyTradingEnv
+from ztb.trading.environment import HeavyTradingEnv
 
 def test_pnl_calculation():
     """PnL計算ロジックの検証"""

@@ -6,16 +6,13 @@ against configurable criteria to determine status advancement.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, cast
 from pathlib import Path
 import yaml
 from enum import Enum
 import json
-from datetime import datetime
 import numpy as np
-from .status import CoverageValidator
 import requests
-import os
 import time
 
 
@@ -48,6 +45,9 @@ class Criterion(ABC):
 
 class NumericCriterion(Criterion):
     """Numeric comparison criterion (sharpe_ratio, win_rate, etc.)"""
+
+    def __init__(self, name: str, operator: str, value: float, weight: float):
+        super().__init__(name, operator, value, weight)
 
     def evaluate(self, feature_results: Dict[str, Any]) -> Tuple[bool, float]:
         actual_value = feature_results.get(self.name)
@@ -89,6 +89,9 @@ class NumericCriterion(Criterion):
 class RatioCriterion(Criterion):
     """Ratio-based criterion (sortino_ratio, calmar_ratio, etc.)"""
 
+    def __init__(self, name: str, operator: str, value: float, weight: float):
+        super().__init__(name, operator, value, weight)
+
     def evaluate(self, feature_results: Dict[str, Any]) -> Tuple[bool, float]:
         actual_value = feature_results.get(self.name)
         if actual_value is None:
@@ -122,6 +125,9 @@ class RatioCriterion(Criterion):
 class DurationCriterion(Criterion):
     """Duration-based criterion (max_drawdown_duration_days, etc.)"""
 
+    def __init__(self, name: str, operator: str, value: float, weight: float):
+        super().__init__(name, operator, value, weight)
+
     def evaluate(self, feature_results: Dict[str, Any]) -> Tuple[bool, float]:
         actual_value = feature_results.get(self.name)
         if actual_value is None:
@@ -154,6 +160,9 @@ class DurationCriterion(Criterion):
 
 class DistributionCriterion(Criterion):
     """Distribution quality criterion (skew, kurtosis, etc.)"""
+
+    def __init__(self, name: str, operator: str, value: float, weight: float):
+        super().__init__(name, operator, value, weight)
 
     def evaluate(self, feature_results: Dict[str, Any]) -> Tuple[bool, float]:
         actual_value = feature_results.get(self.name)
@@ -217,7 +226,7 @@ class YamlPromotionEngine(PromotionEngine):
     def __init__(self, config_path: str = "config/promotion_criteria.yaml"):
         self.config_path = Path(config_path)
         self.config = self._load_config()
-        self.criteria_cache = {}  # Cache compiled criteria
+        self.criteria_cache: Dict[str, Any] = {}  # Cache compiled criteria
         self.notifier = PromotionNotifier(self.config.get('notifications', {}))
 
     def _load_config(self) -> Dict[str, Any]:
@@ -226,19 +235,20 @@ class YamlPromotionEngine(PromotionEngine):
             raise FileNotFoundError(f"Promotion criteria config not found: {self.config_path}")
 
         with open(self.config_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+            config = yaml.safe_load(f)
+            return cast(Dict[str, Any], config)
 
     def _get_category_config(self, category: Optional[str]) -> Dict[str, Any]:
         """Get configuration for a specific category"""
         if category and category in self.config.get('categories', {}):
-            return self.config['categories'][category]
-        return self.config.get('default', {})
+            return cast(Dict[str, Any], self.config['categories'][category])
+        return cast(Dict[str, Any], self.config.get('default', {}))
 
     def _compile_criteria(self, category_config: Dict[str, Any]) -> Tuple[List[Criterion], List[Criterion]]:
         """Compile criteria and hard requirements from configuration"""
         cache_key = json.dumps(category_config, sort_keys=True)
         if cache_key in self.criteria_cache:
-            return self.criteria_cache[cache_key]
+            return cast(Tuple[List[Criterion], List[Criterion]], self.criteria_cache[cache_key])
 
         criteria = []
         hard_requirements = []
@@ -277,7 +287,7 @@ class YamlPromotionEngine(PromotionEngine):
     def _optimize_required_score(self, category: str, historical_results: List[Dict[str, Any]]) -> float:
         """Optimize required score based on historical promotion success patterns"""
         if not historical_results:
-            return self.config.get('categories', {}).get(category, {}).get('required_score', 0.7)
+            return cast(float, self.config.get('categories', {}).get(category, {}).get('required_score', 0.7))
 
         # Analyze successful vs failed promotions
         successful_scores = []
@@ -290,11 +300,12 @@ class YamlPromotionEngine(PromotionEngine):
                 failed_scores.append(result.get('achieved_score', 0))
 
         if not successful_scores:
-            return self.config.get('categories', {}).get(category, {}).get('required_score', 0.7)
+            return cast(float, self.config.get('categories', {}).get(category, {}).get('required_score', 0.7))
 
         # Find optimal threshold using percentile analysis
         # Use 25th percentile of successful scores as minimum threshold
-        optimal_threshold = float(np.percentile(successful_scores, 25))
+        percentile_result = np.percentile(successful_scores, 25)
+        optimal_threshold: float = cast(float, percentile_result)
 
         # Ensure threshold is reasonable (between 0.5 and 0.9)
         optimal_threshold = max(0.5, min(0.9, optimal_threshold))
@@ -602,129 +613,17 @@ class PromotionNotifier:
                     print(f"Failed to send {channel_name} webhook after {max_attempts} attempts: {e}")
 
 
-class AdaptiveThresholdManager:
-    """Manages adaptive thresholds based on historical market data"""
-
-    def __init__(self, historical_data_path: str):
-        self.historical_data_path = Path(historical_data_path)
-        self.thresholds_cache = {}
-        self._load_historical_data()
-
-    def _load_historical_data(self) -> None:
-        """Load historical evaluation results"""
-        if not self.historical_data_path.exists():
-            return
-
-        # Load historical coverage data
-        coverage_data = CoverageValidator.load_coverage_files(str(self.historical_data_path))
-
-        # Extract successful feature metrics
-        successful_features = {}
-        for event in coverage_data.get("events", []):
-            if event.get("type") == "feature_promoted" and event.get("to_status") == "verified":
-                feature = event.get("feature")
-                if "details" in event and "criterion_details" in event["details"]:
-                    successful_features[feature] = event["details"]
-
-        self.historical_successes = successful_features
-
-    def get_adaptive_threshold(self, metric_name: str, percentile: float = 20.0) -> float:
-        """Get adaptive threshold based on historical successful features"""
-        if metric_name not in self.thresholds_cache:
-            if not self.historical_successes:
-                # Fallback to default values
-                defaults = {
-                    "sharpe_ratio": 0.3,
-                    "max_drawdown": -0.2,
-                    "win_rate": 0.5
-                }
-                self.thresholds_cache[metric_name] = defaults.get(metric_name, 0.0)
-            else:
-                # Calculate percentile from successful features
-                values = []
-                for feature_data in self.historical_successes.values():
-                    for criterion in feature_data.get("criterion_details", []):
-                        if criterion.get("name") == metric_name and criterion.get("passed"):
-                            values.append(criterion.get("actual", 0))
-
-                if values:
-                    threshold = float(np.percentile(values, percentile))
-                    self.thresholds_cache[metric_name] = threshold
-                else:
-                    self.thresholds_cache[metric_name] = 0.0
-
-        return self.thresholds_cache[metric_name]
-
-    def get_adaptive_gates(self) -> Dict[str, float]:
-        """Get adaptive quality gates based on historical data"""
-        gates = {
-            'nan_rate_threshold': 0.8,
-            'correlation_threshold': 0.05,
-            'skew_threshold': 3.0,
-            'kurtosis_threshold': 8.0
-        }
-
-        # Try to adapt based on historical harmful features
-        # Analyze failed features to adjust thresholds
-        failed_features = {}
-        coverage_data = CoverageValidator.load_coverage_files(str(self.historical_data_path))
-        for event in coverage_data.get("events", []):
-            # Exclude synthetic data events from learning
-            if event.get("details", {}).get("dataset") == "synthetic":
-                continue
-            if event.get("type") == "feature_tested" and event.get("to_status") == "discarded":
-                feature = event.get("feature")
-                if "details" in event and "quality_results" in event["details"]:
-                    failed_features[feature] = event["details"]["quality_results"]
-
-        # Require minimum events for adaptation
-        if len(failed_features) < 10:
-            return gates  # Return default if insufficient data
-
-        if failed_features:
-            # Adjust thresholds based on failed features
-            nan_rates = [f.get('nan_rate', 0) for f in failed_features.values() if f.get('nan_rate', 0) > 0]
-            if nan_rates:
-                # Set threshold slightly above the maximum failed NaN rate
-                gates['nan_rate_threshold'] = min(0.9, max(nan_rates) + 0.05)
-
-            correlations = [f.get('correlation', 0) for f in failed_features.values() if f.get('correlation') is not None]
-            if correlations:
-                # Set threshold slightly above the maximum failed correlation
-                gates['correlation_threshold'] = min(0.1, max(correlations) + 0.01)
-
-            skews = [abs(f.get('skew', 0)) for f in failed_features.values() if f.get('skew') is not None]
-            if skews:
-                # Set threshold slightly above the maximum failed skew, with bounds
-                adaptive_skew = max(skews) + 0.5
-                gates['skew_threshold'] = max(1.5, min(5.0, adaptive_skew))
-
-            kurtoses = [abs(f.get('kurtosis', 0)) for f in failed_features.values() if f.get('kurtosis') is not None]
-            if kurtoses:
-                # Set threshold slightly above the maximum failed kurtosis, with bounds
-                adaptive_kurtosis = max(kurtoses) + 1.0
-                gates['kurtosis_threshold'] = max(3.0, min(12.0, adaptive_kurtosis))
-
-        return gates
-
-    def update_thresholds(self, new_evaluation_results: Dict[str, Any]) -> None:
-        """Update thresholds with new evaluation results"""
-        # This would be called after each evaluation cycle
-        # Implementation depends on how we want to update the adaptive thresholds
-        pass
-
-
 class CriterionPluginManager:
     """Manages pluggable criterion implementations"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.criterion_types = {
             'numeric': NumericCriterion,
             'ratio': RatioCriterion,
             'duration': DurationCriterion,
             'distribution': DistributionCriterion
         }
-        self.custom_criterion_types = {}
+        self.custom_criterion_types: Dict[str, type] = {}
 
     def register_criterion_type(self, name: str, criterion_class: type) -> None:
         """Register a custom criterion type"""
@@ -746,7 +645,9 @@ class CriterionPluginManager:
         if criterion_class is None:
             raise ValueError(f"Unknown criterion type: {criterion_type}")
 
-        return criterion_class(name, operator, value, weight)
+        # Create instance of the criterion class
+        instance = criterion_class(name, operator, value, weight)
+        return cast(Criterion, instance)
 
     def get_available_types(self) -> List[str]:
         """Get list of all available criterion types"""

@@ -7,7 +7,7 @@ and loading sample datasets for testing and experimentation.
 
 import pandas as pd
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, cast
 from pathlib import Path
 import pickle
 import hashlib
@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Global cache
-_data_cache = {}
+_data_cache: Dict[str, Any] = {}
 
 
 def generate_synthetic_market_data(
@@ -95,7 +95,7 @@ def load_sample_data(dataset: str = "synthetic", cache_dir: Optional[str] = None
     # Check memory cache first
     if not force_reload and cache_key in _data_cache:
         logger.info(f"Loading {dataset} from memory cache")
-        return _data_cache[cache_key].copy()
+        return cast(pd.DataFrame, _data_cache[cache_key].copy())
 
     # Check disk cache
     if cache_dir and not force_reload:
@@ -106,7 +106,7 @@ def load_sample_data(dataset: str = "synthetic", cache_dir: Optional[str] = None
                     df = pickle.load(f)
                 logger.info(f"Loading {dataset} from disk cache: {cache_path}")
                 _data_cache[cache_key] = df.copy()
-                return df
+                return cast(pd.DataFrame, df)
             except Exception as e:
                 logger.warning(f"Failed to load cache: {e}")
 
@@ -148,7 +148,7 @@ def _get_cache_path(cache_dir: str, dataset: str) -> Path:
     return Path(cache_dir) / f"dataset_{dataset_hash}.pkl"
 
 
-def preload_datasets(datasets: list, cache_dir: str = "data/cache", max_workers: int = 2):
+def preload_datasets(datasets: List[str], cache_dir: str = "data/cache", max_workers: int = 2) -> None:
     """
     Preload multiple datasets in parallel for faster subsequent access.
 
@@ -175,7 +175,7 @@ def preload_datasets(datasets: list, cache_dir: str = "data/cache", max_workers:
                 logger.error(f"Failed to preload {dataset}: {e}")
 
 
-def clear_cache(cache_dir: Optional[str] = None):
+def clear_cache(cache_dir: Optional[str] = None) -> None:
     """
     Clear data cache.
 
@@ -194,7 +194,7 @@ def clear_cache(cache_dir: Optional[str] = None):
             logger.info(f"Cleared disk cache: {cache_dir}")
 
 
-def save_parquet_chunked(df: pd.DataFrame, base_path: str, partition_cols: Optional[List[str]] = None,
+def save_parquet_chunked(df: pd.DataFrame, base_path: Path, partition_cols: Optional[List[str]] = None,
                         compression: str = 'zstd', chunk_rows: int = 1000000) -> List[str]:
     """
     Save DataFrame to Parquet files in chunks with optional partitioning.
@@ -209,20 +209,16 @@ def save_parquet_chunked(df: pd.DataFrame, base_path: str, partition_cols: Optio
     Returns:
         List of saved file paths
     """
-    import pyarrow as pa
-    import pyarrow.parquet as pq
+    import pyarrow as pa  # type: ignore
+    import pyarrow.parquet as pq  # type: ignore
 
     saved_files = []
-    base_path = Path(base_path)
+    # base_path is already a Path object
 
     if partition_cols:
         # Partitioned save
         for partition_values, group_df in df.groupby(partition_cols):
-            if isinstance(partition_values, (list, tuple)):
-                partition_path = base_path / '/'.join(f"{col}={val}" for col, val in zip(partition_cols, partition_values))
-            else:
-                # Single partition column
-                partition_path = base_path / f"{partition_cols[0]}={partition_values}"
+            partition_path = base_path / '/'.join(f"{col}={val}" for col, val in zip(partition_cols, partition_values))
 
             partition_path.mkdir(parents=True, exist_ok=True)
 
@@ -250,7 +246,7 @@ def save_parquet_chunked(df: pd.DataFrame, base_path: str, partition_cols: Optio
 
 
 def load_parquet_pattern(pattern: str, columns: Optional[List[str]] = None,
-                        filters: Optional[List] = None) -> pd.DataFrame:
+                        filters: Optional[List[Any]] = None) -> pd.DataFrame:
     """
     Load Parquet files matching a pattern with optional column selection and filtering.
 
@@ -278,10 +274,10 @@ def load_parquet_pattern(pattern: str, columns: Optional[List[str]] = None,
 
     combined_df = pd.concat(dfs, ignore_index=True)
     logger.info(f"Loaded {len(combined_df)} rows from {len(dfs)} Parquet files")
-    return combined_df
+    return cast(pd.DataFrame, combined_df)
 
 
-def save_parquet_chunked(df: pd.DataFrame, path: str, chunk: str = 'M', compression: str = 'zstd') -> List[str]:
+def save_parquet_monthly_chunked(df: pd.DataFrame, path: str, chunk: str = 'M', compression: str = 'zstd') -> List[str]:
     """
     Save DataFrame to Parquet files in monthly chunks with zstd compression.
 
@@ -308,11 +304,11 @@ def save_parquet_chunked(df: pd.DataFrame, path: str, chunk: str = 'M', compress
     for period, group_df in df.groupby(pd.Grouper(freq=chunk.replace('M', 'ME'))):
         # Create filename with period
         if chunk == 'M':
-            filename = f"{period.year}-{period.month:02d}.parquet"
+            filename = f"{period.year}-{period.month:02d}.parquet"  # type: ignore
         elif chunk == 'W':
-            filename = f"{period.year}-W{period.week:02d}.parquet"
+            filename = f"{period.year}-W{period.week:02d}.parquet"  # type: ignore
         else:
-            filename = f"{period.strftime('%Y%m%d')}.parquet"
+            filename = f"{period.strftime('%Y%m%d')}.parquet"  # type: ignore
 
         file_path = base_path / filename
 

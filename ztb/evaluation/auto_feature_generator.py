@@ -99,7 +99,7 @@ class FeatureCalculator:
         }, index=ohlc_data.index)
 
     @staticmethod
-    def _calculate_simple_kama(price: np.ndarray, slow: int, er_period: int) -> np.ndarray:
+    def _calculate_simple_kama(price: np.ndarray[Any, np.dtype[Any]], slow: int, er_period: int) -> np.ndarray[Any, np.dtype[Any]]:
         """Simplified KAMA calculation"""
         n = len(price)
         kama = np.full(n, np.nan)
@@ -438,7 +438,7 @@ class AutoFeatureGenerator:
             counter += 1
         return name
 
-    def _calculate_simple_kama(self, price: np.ndarray, slow: int, er_period: int) -> np.ndarray:
+    def _calculate_simple_kama(self, price: np.ndarray[Any, np.dtype[Any]], slow: int, er_period: int) -> np.ndarray[Any, np.dtype[Any]]:
         """Simplified KAMA calculation for auto-generation"""
         n = len(price)
         kama = np.full(n, np.nan)

@@ -7,13 +7,13 @@ Uses APScheduler for cron-like scheduling of data fetching tasks.
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 import time
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from ztb.notifications import DiscordNotifier
+from ztb.data.binance_data import fetch_historical_klines, interpolate_missing_data, save_parquet_chunked
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class DataAcquisitionScheduler:
             if df is None or df.empty:
                 error_msg = f"Failed to fetch data for {yesterday.date()} after {self.max_retries} attempts"
                 logger.error(error_msg)
-                self.notifier.notify(error_msg, level="error")
+                self.notifier.send_notification("Data Fetch Error", error_msg, "error")
                 return
 
             # Interpolate missing data
@@ -71,12 +71,12 @@ class DataAcquisitionScheduler:
 
             success_msg = f"Successfully fetched and saved {len(df_clean)} records for {yesterday.date()}"
             logger.info(success_msg)
-            self.notifier.notify(success_msg, level="info")
+            self.notifier.send_notification("Data Fetch Success", success_msg, "info")
 
         except Exception as e:
             error_msg = f"Unexpected error in daily data fetch: {e}"
             logger.error(error_msg)
-            self.notifier.notify(error_msg, level="error")
+            self.notifier.send_notification("Data Save Error", error_msg, "error")
 
     def schedule_daily_fetch(self, hour: int = 0, minute: int = 0):
         """
@@ -100,14 +100,14 @@ class DataAcquisitionScheduler:
     def start(self):
         """Start the scheduler"""
         logger.info("Starting data acquisition scheduler")
-        self.notifier.notify("Data acquisition scheduler started", level="info")
+        self.notifier.send_notification("Scheduler", "Data acquisition scheduler started", "info")
         self.scheduler.start()
 
     def stop(self):
         """Stop the scheduler"""
         logger.info("Stopping data acquisition scheduler")
         self.scheduler.shutdown()
-        self.notifier.notify("Data acquisition scheduler stopped", level="info")
+        self.notifier.send_notification("Scheduler", "Data acquisition scheduler stopped", "info")
 
     def run_once(self):
         """Run data fetch once for testing"""

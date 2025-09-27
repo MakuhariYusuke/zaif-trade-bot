@@ -13,7 +13,7 @@ import os
 class FeatureRegistry:
     """全特徴量関数を一元管理するレジストリ"""
 
-    _registry: Dict[str, Callable[[pd.DataFrame], pd.Series]] = {}  # type: Dict[str, Callable[[pd.DataFrame], pd.Series]]
+    _registry: Dict[str, Callable[[pd.DataFrame], pd.Series]] = {}
     _cache_enabled: bool = True
     _parallel_enabled: bool = True
     _initialized: bool = False
@@ -21,7 +21,7 @@ class FeatureRegistry:
     _base_seed: int = 42
 
     @classmethod
-    def initialize(cls, seed: Optional[int] = None, cache_enabled: Optional[bool] = None, parallel_enabled: Optional[bool] = None):
+    def initialize(cls, seed: Optional[int] = None, cache_enabled: Optional[bool] = None, parallel_enabled: Optional[bool] = None) -> None:
         """Initialize the registry with seed, cache and parallel settings"""
         if cls._initialized:
             return
@@ -68,14 +68,14 @@ class FeatureRegistry:
         cls._initialized = True
 
     @classmethod
-    def reset_for_testing(cls):
+    def reset_for_testing(cls) -> None:
         """Reset registry state for testing purposes"""
         cls._initialized = False
         cls._registry.clear()
         cls._config.clear()
 
     @classmethod
-    def set_worker_seed(cls, worker_id: int):
+    def set_worker_seed(cls, worker_id: int) -> None:
         """Set deterministic seed for parallel worker processes"""
         if not cls._initialized:
             raise RuntimeError("FeatureRegistry must be initialized before setting worker seed")
@@ -100,8 +100,8 @@ class FeatureRegistry:
         return deepcopy(cls._config)
 
     @classmethod
-    def register(cls, name: str):
-        def decorator(func: Callable[[pd.DataFrame], pd.Series]):
+    def register(cls, name: str) -> Callable[[Callable[[pd.DataFrame], pd.Series]], Callable[[pd.DataFrame], pd.Series]]:
+        def decorator(func: Callable[[pd.DataFrame], pd.Series]) -> Callable[[pd.DataFrame], pd.Series]:
             cls._registry[name] = func
             return func
         return decorator

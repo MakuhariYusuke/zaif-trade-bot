@@ -7,7 +7,6 @@ Usage:
     python ztb/experiments/smoke_test.py --steps 10000 --dataset coingecko
 """
 
-import os
 import sys
 import time
 import psutil
@@ -20,10 +19,7 @@ from typing import Dict, Any
 sys.path.append(str(Path(__file__).parent.parent))
 from ztb.experiments.base import ExperimentBase, ExperimentResult
 from ztb.utils import LoggerManager
-from ztb.utils.data_generation import load_sample_data
 from ztb.utils.feature_testing import evaluate_feature_performance
-from ztb.utils.trading_metrics import sharpe_ratio
-from ztb.utils.error_handler import catch_and_notify
 
 
 class SmokeTestExperiment(ExperimentBase):
@@ -148,9 +144,7 @@ def main():
     args = parser.parse_args()
 
     # Setup logging
-    logger_manager = LoggerManager(
-        experiment_id="smoke_test"
-    )
+    logger_manager = LoggerManager(experiment_id="smoke_test")
 
     config = {
         'total_steps': args.steps,
@@ -171,8 +165,6 @@ def main():
         print("✅ Smoke test passed!")
         sys.exit(0)
     else:
-        print("❌ Smoke test failed!")
-        sys.exit(1)
         print("❌ Smoke test failed!")
         sys.exit(1)
 
