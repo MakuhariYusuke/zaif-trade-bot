@@ -6,7 +6,7 @@ Extended Kalman Filter analysis with residuals and autocorrelation
 
 import numpy as np
 import pandas as pd
-from typing import Tuple, List, Optional, cast
+from typing import Tuple, List, cast
 from scipy.stats import pearsonr
 
 
@@ -18,18 +18,14 @@ class SimpleKalmanFilter:
     def __init__(self, process_variance: float = 0.01, measurement_variance: float = 0.1):
         self.process_variance = process_variance
         self.measurement_variance = measurement_variance
-        self.posterior_estimate: Optional[float] = None
-        self.posterior_error_estimate: Optional[float] = None
-        self.estimates: List[float] = []
-        self.error_estimates: List[float] = []
         self.reset()
     
     def reset(self) -> None:
         """Reset filter state"""
         self.posterior_estimate = None
         self.posterior_error_estimate = None
-        self.estimates = []
-        self.error_estimates = []
+        self.estimates: List[float] = []
+        self.error_estimates: List[float] = []
     
     def update(self, measurement: float) -> Tuple[float, float]:
         """
@@ -41,7 +37,7 @@ class SimpleKalmanFilter:
         Returns:
             Tuple of (estimate, error_estimate)
         """
-        if self.posterior_estimate is None and self.posterior_error_estimate is None:
+        if self.posterior_estimate is None or self.posterior_error_estimate is None:
             # First measurement: initialize without prediction step
             self.posterior_estimate = measurement
             self.posterior_error_estimate = 1.0
@@ -55,12 +51,10 @@ class SimpleKalmanFilter:
             self.posterior_estimate = prior_estimate + kalman_gain * (measurement - prior_estimate)
             self.posterior_error_estimate = (1 - kalman_gain) * prior_error_estimate
         
-        self.estimates.append(self.posterior_estimate)
-        self.error_estimates.append(self.posterior_error_estimate)
+        self.estimates.append(cast(float, self.posterior_estimate))
+        self.error_estimates.append(cast(float, self.posterior_error_estimate))
         
-        assert self.posterior_estimate is not None
-        assert self.posterior_error_estimate is not None
-        return self.posterior_estimate, self.posterior_error_estimate
+        return cast(float, self.posterior_estimate), cast(float, self.posterior_error_estimate)
 
 
 def calculate_kalman_extended(data: pd.DataFrame,
@@ -307,8 +301,8 @@ def print_residual_analysis(extended_features: pd.DataFrame) -> None:
     print(f"\nResidual analysis:")
     print(f"  Mean: {residuals.mean():.6f}")
     print(f"  Std: {residuals.std():.6f}")
-    print(f"  Skewness: {cast(float, residuals.skew()):.4f}")
-    print(f"  Kurtosis: {cast(float, residuals.kurt()):.4f}")
+    print(f"  Skewness: {residuals.skew():.4f}")
+    print(f"  Kurtosis: {residuals.kurt():.4f}")
 
 def print_autocorr_analysis(extended_features: pd.DataFrame) -> None:
     if 'kalman_autocorr_lag1' in extended_features.columns:

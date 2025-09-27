@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 import json
-from typing import Dict, List, Optional, TypedDict, Any, cast, cast
+from typing import Dict, List, Optional, TypedDict, Any, cast
 from torch.utils.tensorboard import SummaryWriter
 import argparse
 import warnings
@@ -151,8 +151,8 @@ class TradingEvaluator:
         step_count = 0
         while not done and step_count < self.config['max_steps_per_episode']:
             # 行動の予測
-            action, _ = self.model.predict(obs, deterministic=self.config['deterministic'])
-            action: int = cast(int, action.item())
+            action_value, _ = self.model.predict(obs, deterministic=self.config['deterministic'])
+            action = cast(int, action_value.item())
 
             # 環境ステップ
             next_obs, reward, done, truncated, info = self.env.step(action)
@@ -161,7 +161,7 @@ class TradingEvaluator:
             rewards.append(reward)
             positions.append(info['position'])
             pnls.append(info.get('pnl', 0))
-            actions.append(action_int)
+            actions.append(action)
             states.append(obs.copy())
 
             obs = next_obs

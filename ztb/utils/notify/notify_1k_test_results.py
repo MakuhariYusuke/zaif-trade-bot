@@ -7,6 +7,7 @@
 import sys
 import os
 from pathlib import Path
+from typing import Dict, Any
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent.parent
@@ -14,14 +15,14 @@ sys.path.append(str(project_root))
 
 from ztb.utils import DiscordNotifier
 
-def send_1k_test_results():
+def send_1k_test_results() -> None:
     """1kステップテスト結果をDiscordに通知"""
 
     # DiscordNotifierの初期化
     notifier = DiscordNotifier()
 
     # テスト結果データ
-    test_results = {
+    test_results: Dict[str, Any] = {
         "total_features": 29,
         "passed_features": 28,
         "failed_features": 1,
@@ -69,9 +70,9 @@ def send_1k_test_results():
 
     # Discord通知送信
     success_rate = test_results['passed_features'] / test_results['total_features']
-    color = 0x00ff00 if success_rate > 0.8 else 0xffa500  # 緑 or オレンジ
+    color = "success" if success_rate > 0.8 else "warning"
 
-    notifier.send_custom_notification(
+    notifier.send_notification(
         "🚀 強化学習テスト完了",
         message,
         color=color

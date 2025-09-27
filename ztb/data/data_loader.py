@@ -37,7 +37,7 @@ def detect_outliers_zscore(data: pd.DataFrame, column: str, threshold: float = 3
     # NaNをそのまま除外（0に変換しない）
     z_scores_series = pd.Series(np.abs(z_scores_unmasked), index=series.index)
     outliers = data[z_scores_series > threshold]
-    return outliers
+    return outliers  # type: ignore[no-any-return]
 
 def get_project_root() -> Path:
     """プロジェクトルートのパスを取得"""
@@ -47,7 +47,7 @@ def project_path(*parts: str) -> Path:
     """プロジェクトルートからの相対パスを組み立てる"""
     return get_project_root().joinpath(*parts)
 
-def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[str, Path, None] = None):
+def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[str, Path, None] = None) -> None:
     """特徴量分布の詳細分析"""
     print("=== 詳細データ品質チェック ===")
 
@@ -169,8 +169,8 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
             # 歪度と尖度
             skewness = data.skew()
             kurtosis = data.kurtosis()
-            print(f"  歪度: {skewness:.4f}")
-            print(f"  尖度: {kurtosis:.4f}")
+            print(f"  歪度: {skewness:.4f}")  # type: ignore[str-bytes-safe]
+            print(f"  尖度: {kurtosis:.4f}")  # type: ignore[str-bytes-safe]
 
             # 正規性検定
             if len(data) > 5000:  # サンプルサイズが十分な場合のみ
@@ -231,7 +231,7 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
     else:
         print("主要特徴量がデータに存在しません。")
 
-def main():
+def main() -> None:
     """メイン実行関数"""
     print("🔍 詳細データ品質チェック開始")
     

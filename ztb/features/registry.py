@@ -125,3 +125,15 @@ class FeatureRegistry:
     def is_parallel_enabled(cls) -> bool:
         """Check if parallel processing is enabled"""
         return cls._parallel_enabled
+
+    def get_enabled_features(self, wave: Optional[int] = None) -> List[str]:
+        """Get enabled features for the given wave"""
+        return self.list()
+
+    def compute_features(self, df: pd.DataFrame, wave: Optional[int] = None) -> pd.DataFrame:
+        """Compute features for the given dataframe"""
+        features = self.get_enabled_features(wave)
+        for feature in features:
+            func = self.get(feature)
+            df[feature] = func(df)
+        return df

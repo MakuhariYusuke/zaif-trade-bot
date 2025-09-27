@@ -4,7 +4,7 @@ metrics.py
 """
 
 import numpy as np
-from typing import Dict, List, Optional, Union, Any, cast
+from typing import Dict, List, Tuple, Optional, Union, Any, cast
 import pandas as pd
 
 
@@ -114,7 +114,7 @@ def calculate_delta_sharpe(
     }
 
 
-def validate_ablation_results(results: Dict[str, Any]) -> bool:
+def validate_ablation_results(results: Dict) -> bool:
     """
     アブレーション結果の妥当性を検証
 

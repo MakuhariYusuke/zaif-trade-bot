@@ -4,6 +4,7 @@
 ExperimentBase class-based feature evaluation experiment with strategy support
 """
 
+import os
 import sys
 import time
 import json
@@ -17,6 +18,7 @@ from typing import Dict, List, Any, Union
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 from ztb.experiments.base import ScalingExperiment, ExperimentResult
+from ztb.utils.error_handler import catch_and_notify  # type: ignore[import-not-found]
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.parallel_experiments import ResourceMonitor
 from ztb.utils import LoggerManager
@@ -478,6 +480,8 @@ class MLReinforcement100KExperiment(ScalingExperiment):
         }
 
 
+# エラー発生時に通知を行うデコレータ（例外をキャッチして通知サービスへ送信）
+@catch_and_notify  # type: ignore[misc]
 def main() -> None:
     """Main function"""
     import argparse
