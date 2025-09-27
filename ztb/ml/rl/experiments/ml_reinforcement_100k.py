@@ -10,7 +10,7 @@ import time
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Union, cast
 
 import psutil
 import random
@@ -568,8 +568,8 @@ def aggregate_results(results: List[ExperimentResult], output_dir: Path) -> Dict
             'total_steps': sum(r.metrics.get('total_steps', 0) for r in successful),
             'avg_reward': sum(r.metrics.get('avg_reward', 0) for r in successful) / len(successful),
             'avg_total_pnl': sum(r.metrics.get('total_pnl', 0) for r in successful) / len(successful),
-            'best_sharpe_ratio': max(r.metrics.get('sharpe_ratio', 0) for r in successful),
-            'best_portfolio': max(r.metrics.get('final_portfolio_value', 0) for r in successful)
+            'best_sharpe_ratio': max(cast(float, r.metrics.get('sharpe_ratio', 0)) for r in successful),
+            'best_portfolio': max(cast(float, r.metrics.get('final_portfolio_value', 0)) for r in successful)
         }
     else:
         aggregated = {'error': 'No successful experiments'}

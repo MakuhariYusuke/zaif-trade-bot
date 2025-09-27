@@ -625,10 +625,9 @@ class StatusTransitionManager:
             return False
 
         # Remove from current status
-        pass  # type: ignore[unreachable]
         if current_status == FeatureStatus.VERIFIED:
             coverage_data[current_status.value].remove(feature_name)
-        elif current_item is not None:
+        elif current_item is not None:  # type: ignore[unreachable]
             coverage_data[current_status.value].remove(current_item)
 
         # Add to new status
