@@ -11,13 +11,10 @@ import random
 import threading
 import asyncio
 import requests
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, cast
 from dataclasses import dataclass, field
 from datetime import datetime
 import pandas as pd
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
-from datetime import datetime
 from ztb.monitoring import get_exporter
 
 logger = logging.getLogger(__name__)
@@ -32,7 +29,7 @@ class SlippageAnalysis:
     slippage_events: List[Dict[str, Any]] = field(default_factory=list)
 
     def add_slippage_event(self, symbol: str, side: str, intended_price: float,
-                          executed_price: float, quantity: float):
+                          executed_price: float, quantity: float) -> None:
         """Add a slippage event for analysis"""
         slippage_amount = executed_price - intended_price
         slippage_percent = (slippage_amount / intended_price) * 100
@@ -79,7 +76,7 @@ class VirtualOrder:
     filled_price: Optional[float] = None
     commission: float = 0.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.timestamp is None:
             self.timestamp = datetime.now()
         if self.filled_quantity == 0.0 and self.status == 'filled':
@@ -95,7 +92,7 @@ class VirtualTradingBridge:
     Provides interface compatible with live trading for seamless transition.
     """
 
-    def __init__(self, initial_balance: float = 10000.0, commission_rate: float = 0.001):
+    def __init__(self, initial_balance: float = 10000.0, commission_rate: float = 0.001) -> None:
         self.initial_balance = initial_balance
         self.balance = initial_balance
         self.commission_rate = commission_rate
@@ -213,7 +210,7 @@ class VirtualTradingBridge:
         """Get order history"""
         return self.orders.copy()
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset bridge to initial state"""
         self.balance = self.initial_balance
         self.positions.clear()
@@ -226,7 +223,7 @@ class VirtualTradingBridge:
         """Get slippage analysis summary"""
         return self.slippage_analysis.get_summary()
 
-    def reset_analysis(self):
+    def reset_analysis(self) -> None:
         """Reset slippage analysis"""
         self.slippage_analysis = SlippageAnalysis()
 
@@ -259,7 +256,7 @@ class LiveTradingBridge:
         self.current_drawdown = 0.0
 
         # Position tracking
-        self.open_positions = {}  # symbol -> position info
+        self.open_positions: Dict[str, Any] = {}  # symbol -> position info
         self.position_count = 0
 
         # Trading state
@@ -349,7 +346,7 @@ class LiveTradingBridge:
 
         return True
 
-    def update_position_tracking(self, symbol: str, side: str, quantity: float, price: float):
+    def update_position_tracking(self, symbol: str, side: str, quantity: float, price: float) -> None:
         """
         Update position tracking after order execution.
 
@@ -386,7 +383,7 @@ class LiveTradingBridge:
                     # Reduce position
                     self.open_positions[symbol]['quantity'] = existing_qty - quantity
 
-    def _handle_api_failure(self, error: Exception):
+    def _handle_api_failure(self, error: Exception) -> None:
         """Handle API connection failure and manage watchdog state"""
         self.failed_attempts += 1
         self.last_failure_time = time.time()
@@ -401,9 +398,9 @@ class LiveTradingBridge:
             # Start retry timer
             self._schedule_retry()
 
-    def _schedule_retry(self):
+    def _schedule_retry(self) -> None:
         """Schedule automatic retry after interval"""
-        def retry():
+        def retry() -> None:
             logger.info(f"Attempting API reconnection after {self.retry_interval} seconds...")
             # Simple connectivity test - try to get balance
             try:
@@ -429,7 +426,7 @@ class LiveTradingBridge:
             'retry_interval': self.retry_interval
         }
 
-    def set_watchdog_state(self, state: Dict[str, Any]):
+    def set_watchdog_state(self, state: Dict[str, Any]) -> None:
         """Restore watchdog state from persistence"""
         self.failed_attempts = state.get('failed_attempts', 0)
         self.is_paused = state.get('is_paused', False)
@@ -437,7 +434,7 @@ class LiveTradingBridge:
         self.max_retries = state.get('max_retries', 5)
         self.retry_interval = state.get('retry_interval', 600)
 
-    def _send_discord_alert(self, message: str):
+    def _send_discord_alert(self, message: str) -> None:
         """Send alert to Discord webhook"""
         if not self.discord_webhook_url:
             logger.info(f"Discord alert (no webhook configured): {message}")
@@ -592,7 +589,7 @@ class LiveTradingBridge:
         """Get slippage analysis summary"""
         return self.slippage_analysis.get_summary()
 
-    def reset_slippage_analysis(self):
+    def reset_slippage_analysis(self) -> None:
         """Reset slippage analysis"""
         self.slippage_analysis = SlippageAnalysis()
 
@@ -626,7 +623,7 @@ class BridgeReplay:
         mask = self.market_data['timestamp'] <= timestamp
         if not mask.any():
             return None
-        return self.market_data[mask]['price'].iloc[-1]
+        return cast(Optional[float], self.market_data[mask]['price'].iloc[-1])
 
     def replay_order(self, symbol: str, side: str, quantity: float, timestamp: datetime) -> Optional[VirtualOrder]:
         """
@@ -709,12 +706,3 @@ class BridgeReplay:
     def get_replay_results(self) -> List[Dict[str, Any]]:
         """Get detailed replay results"""
         return self.replay_results.copy()
-        """Reset daily trading statistics"""
-        current_balance = self.get_balance()
-        self.daily_start_balance = current_balance
-        self.peak_balance = current_balance  # Reset MDD tracking
-        self.current_drawdown = 0.0
-        self.consecutive_losses = 0
-        self.circuit_breaker_triggered = False
-        # Note: Keep position tracking across daily resets
-        logger.info("Daily trading stats reset")
