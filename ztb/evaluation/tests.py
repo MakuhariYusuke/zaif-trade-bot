@@ -7,14 +7,10 @@ success rate validation, edge case testing, and performance regression detection
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Any, Optional, Callable, Tuple
-import pytest
+from typing import Dict, List, Any, Optional, Callable
 from pathlib import Path
-import json
 from datetime import datetime, timedelta
 from ztb.evaluation.logging import EvaluationLogger
-from ztb.metrics.metrics import calculate_all_metrics
-import warnings
 
 
 def validate_evaluation_success_rate(logger: EvaluationLogger,
