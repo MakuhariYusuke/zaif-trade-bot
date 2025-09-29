@@ -38,7 +38,7 @@ describe('ml-simulate', ()=>{
   ].map(o=>JSON.stringify(o)).join('\n');
   fs.writeFileSync(jsonlPath, jsonlLines);
     await waitForFileNonEmpty(jsonlPath);
-    const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
+    const mlPath = path.resolve(process.cwd(), 'ztb', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
   const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair}`;
     process.env.QUIET = '1';
     const out = execSync(cmd, { encoding: 'utf8', env: { ...process.env } as any });
@@ -67,7 +67,7 @@ describe('ml-simulate', ()=>{
     await waitForFileNonEmpty(jsonlPath);
     // Windows の遅延 flush レース緩和
     await sleep(80);
-    const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
+    const mlPath = path.resolve(process.cwd(), 'ztb', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
   const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair}`;
     process.env.QUIET = '1';
     const out = execSync(cmd, { encoding: 'utf8', env: { ...process.env } as any });
@@ -88,7 +88,7 @@ describe('ml-simulate', ()=>{
     // ensure empty directory exists
     fs.mkdirSync(dir, { recursive: true });
     await sleep(50);
-    const mlPath = path.resolve(process.cwd(), 'src', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
+    const mlPath = path.resolve(process.cwd(), 'ztb', 'tools', 'ml-simulate.ts').replace(/\\/g,'/');
   const cmd = `node -e "require('ts-node').register(); require('${mlPath}');" -- --pair ${pair}`;
     process.env.QUIET = '1';
     const out = execSync(cmd, { encoding: 'utf8', env: { ...process.env } as any });

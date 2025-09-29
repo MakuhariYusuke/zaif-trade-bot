@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { runDash } from '../../src/tools/metrics-dash';
+import { runDash } from '../../ztb/tools/metrics-dash';
 
 describe('metrics-dash --watch', () => {
   it('refreshes at least twice and stops on SIGINT', async () => {

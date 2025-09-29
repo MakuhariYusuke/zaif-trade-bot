@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RateLimiter } from '../../src/application/rate-limiter';
+import { RateLimiter } from '../../ztb/application/rate-limiter';
 
 function sleep(ms: number){ return new Promise(r => setTimeout(r, ms)); }
 

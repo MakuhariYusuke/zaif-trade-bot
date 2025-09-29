@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RateLimiter, setRateLimiter } from '../../src/application/rate-limiter';
+import { RateLimiter, setRateLimiter } from '../../ztb/application/rate-limiter';
 
 const LONG = String(process.env.LONG_TESTS ?? '0') === '1';
 
@@ -17,7 +17,7 @@ LONG && describe('RateLimiter throughput (long)', () => {
   });
 
   it('handles ~100 req around 10/sec', async () => {
-    const { withRetry } = await import('../../src/adapters/base-service');
+    const { withRetry } = await import('../../ztb/adapters/base-service');
     const start = Date.now();
     const calls: Promise<any>[] = [];
     for (let i=0;i<100;i++) calls.push(withRetry(async () => 1, 't', 1, 1, { category: 'API-PUBLIC', priority: 'normal' }));

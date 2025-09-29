@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RateLimiter, setRateLimiter } from '../../src/application/rate-limiter';
-import { withRetry } from '../../src/adapters/base-service';
+import { RateLimiter, setRateLimiter } from '../../ztb/application/rate-limiter';
+import { withRetry } from '../../ztb/adapters/base-service';
 
 describe('RateLimiter metrics + reserved policy', () => {
   beforeEach(() => {

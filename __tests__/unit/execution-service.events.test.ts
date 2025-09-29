@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { InMemoryEventBus, setEventBus, getEventBus } from '../../src/application/events/bus';
-import { submitWithRetry, init as initExec, pollFillState } from '../../src/adapters/execution-service';
-import * as market from '../../src/adapters/market-service';
+import { InMemoryEventBus, setEventBus, getEventBus } from '../../ztb/application/events/bus';
+import { submitWithRetry, init as initExec, pollFillState } from '../../ztb/adapters/execution-service';
+import * as market from '../../ztb/adapters/market-service';
 
 describe('execution-service events', () => {
   beforeEach(() => {

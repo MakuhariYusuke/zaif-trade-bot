@@ -1,5 +1,5 @@
-import { createPrivateApi } from "../../src/api/adapters";
-import { logInfo, logError } from "../../src/utils/logger";
+import { createPrivateApi } from "../../ztb/api/adapters";
+import { logInfo, logError } from "../../ztb/utils/logger";
 
 (async () => {
   process.env.USE_PRIVATE_MOCK = '1';
