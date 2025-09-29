@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { __resetCacheMetrics, setCacheMetricsInterval, cacheHit, cacheMiss, cacheStale } from '../../src/utils/cache-metrics';
+import { __resetCacheMetrics, setCacheMetricsInterval, cacheHit, cacheMiss, cacheStale } from '../../ztb/utils/cache-metrics';
 
 describe('cache-metrics', () => {
   beforeEach(()=>{ __resetCacheMetrics(); setCacheMetricsInterval(100); delete process.env.TEST_MODE; process.env.LOG_LEVEL = 'INFO'; });

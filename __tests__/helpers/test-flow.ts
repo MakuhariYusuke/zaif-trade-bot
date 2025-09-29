@@ -1,8 +1,8 @@
-import { strategyOnce } from '../../src/index';
-import { logInfo, logError } from '../../src/utils/logger';
-import { createPrivateApi } from '../../src/api/adapters';
-import { getOrderBook } from '../../src/api/public';
-import { baseFromPair, fetchBalances } from '../../src/utils/toolkit';
+import { strategyOnce } from '../../ztb/app/index';
+import { logInfo, logError } from '../../ztb/utils/logger';
+import { createPrivateApi } from '../../ztb/api/adapters';
+import { getOrderBook } from '../../ztb/api/public';
+import { baseFromPair, fetchBalances } from '../../ztb/utils/toolkit';
 
 async function main(){
   try {
