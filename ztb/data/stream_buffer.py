@@ -13,9 +13,10 @@ import zlib
 import gzip
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Callable, Deque, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
+import pandas as pd
 from ztb.utils.observability import ObservabilityClient
 
 try:  # Optional acceleration libraries

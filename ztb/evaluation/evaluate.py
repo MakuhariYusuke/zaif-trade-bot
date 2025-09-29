@@ -137,6 +137,69 @@ class TradingEvaluator:
 
         return stats
 
+    def compare_models(self, model_paths: List[str], model_names: Optional[List[str]] = None, dsr_trials: Optional[int] = None, bootstrap_resamples: int = 1000, bootstrap_block: Optional[int] = None, bootstrap_overlap: Optional[bool] = None) -> Dict:
+        """複数のモデルの比較評価"""
+        print("Starting model comparison...")
+
+        if model_names is None:
+            model_names = [f"Model_{i+1}" for i in range(len(model_paths))]
+
+        if len(model_names) != len(model_paths):
+            raise ValueError("model_names must have same length as model_paths")
+
+        # Calculate DSR trials
+        strategies = len(model_paths)
+        windows = self.config['n_eval_episodes']  # Assume windows = episodes for now
+        default_dsr_trials = min(1000, strategies * windows)
+        dsr_trials = dsr_trials or default_dsr_trials
+
+        # Calculate bootstrap parameters
+        n = len(self.df)  # Number of data points
+        bootstrap_block = bootstrap_block or max(16, math.ceil(math.sqrt(n)))
+        bootstrap_overlap = bootstrap_overlap if bootstrap_overlap is not None else True
+
+        print(f"Bootstrap: resamples={bootstrap_resamples}, block={bootstrap_block}, overlap={bootstrap_overlap}")
+
+        results = {}
+        for model_path, model_name in zip(model_paths, model_names):
+            print(f"\nEvaluating {model_name}...")
+            # Create evaluator for this model
+            evaluator = TradingEvaluator(model_path, str(self.data_path), self.config)
+            stats = evaluator.evaluate_model()
+            results[model_name] = stats
+
+        # Save comparison results
+        comparison_data = {
+            'dsr_trials': dsr_trials,
+            'strategies_compared': strategies,
+            'independent_windows': windows,
+            'models': results,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        comparison_file = self.results_dir / f'model_comparison_{timestamp}.json'
+        with open(comparison_file, 'w') as f:
+            json.dump(comparison_data, f, indent=2, default=str)
+
+        # Save metrics.json
+        metrics_file = self.results_dir / 'metrics.json'
+        metrics_data = {
+            'dsr_trials': dsr_trials,
+            'bootstrap_resamples': bootstrap_resamples,
+            'bootstrap_block': bootstrap_block,
+            'bootstrap_overlap': bootstrap_overlap,
+            'evaluation_timestamp': datetime.now().isoformat(),
+            'strategies_compared': strategies,
+            'independent_windows': windows
+        }
+        with open(metrics_file, 'w') as f:
+            json.dump(metrics_data, f, indent=2, default=str)
+
+        print(f"Comparison results saved to {comparison_file}")
+        print(f"Metrics saved to {metrics_file}")
+        return comparison_data
+
     def _evaluate_single_episode(self) -> Dict:
         """単一エピソードの評価"""
         obs, info = self.env.reset()
@@ -878,6 +941,10 @@ def main() -> None:
     parser.add_argument('--compare-models', nargs='+', help='Paths to models for comparison')
     parser.add_argument('--model-names', nargs='+', help='Names for compared models')
     parser.add_argument('--n-episodes', type=int, default=20, help='Number of evaluation episodes')
+    parser.add_argument('--dsr-trials', type=int, default=None, help='Number of DSR trials (default: min(1000, strategies * windows))')
+    parser.add_argument('--bootstrap-resamples', type=int, default=1000, help='Number of bootstrap resamples (default: 1000)')
+    parser.add_argument('--bootstrap-block', type=int, default=None, help='Bootstrap block size (default: max(16, ceil(sqrt(n))))')
+    parser.add_argument('--bootstrap-overlap', action='store_true', default=True, help='Bootstrap overlap (default: True)')
 
     args = parser.parse_args()
 
@@ -905,7 +972,7 @@ def main() -> None:
             print("Error: --compare-models required for comparison mode")
             return
 
-        evaluator.compare_models(args.compare_models, args.model_names)
+        evaluator.compare_models(args.compare_models, args.model_names, args.dsr_trials, args.bootstrap_resamples, args.bootstrap_block, args.bootstrap_overlap)
 
 
 if __name__ == '__main__':
