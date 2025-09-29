@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.1.0 - 2025-09-29
+
+### Added
+
+- **Advanced Infrastructure Harness (Codex Work Package v3.1)**: Production-grade resilience and observability framework
+  - Table-driven failure injection harness with 8 scenario types (ws_disconnect, api_timeout, memory_pressure, etc.)
+  - End-to-end correlation ID propagation for debugging and monitoring
+  - Async checkpoint I/O with compression support and performance benchmarks
+  - Zero-copy buffer path with memory usage tracking and performance counters
+  - Broker contract tests for sim and skeleton broker validation
+  - Release-prep orchestrator for go/no-go checks and artifact bundling
+  - Fault injection canary testing with configurable scenarios
+
+- **Unified Results Schema + Validator**: JSON schema validation for CI/CD pipeline integration
+  - Created `ztb/utils/results_validator.py` with comprehensive validation
+  - Added `tests/test_results_validator.py` with full test coverage
+  - CLI interface for automated validation in CI pipelines
+
+- **Global Kill Switch & Circuit Breakers**: Emergency shutdown and failure threshold management
+  - Created `ztb/utils/kill_switch.py` for graceful system shutdown
+  - Created `ztb/utils/circuit_breaker.py` with configurable failure thresholds
+  - Signal handling and graceful degradation capabilities
+
+- **Order Idempotency & State Machine**: Reliable order lifecycle management
+  - Created `ztb/trading/order_state_machine.py` with full order lifecycle
+  - Idempotency manager to prevent duplicate operations
+  - State transitions: PENDING → CONFIRMED → PARTIAL/FILLED or CANCELLED/REJECTED/EXPIRED
+
+- **Reconciliation Framework**: Consistency checking between internal and external states
+  - Created `ztb/live/reconciliation.py` and `ztb/trading/reconciliation.py`
+  - Strategies for order and position reconciliation
+  - Discrepancy detection and resolution mechanisms
+
+- **Python 3.13 Readiness**: Compatibility updates for latest Python version
+  - Updated `requirements.txt` with Python version requirements
+  - Verified `noxfile.py` supports Python 3.13 testing
+  - All code uses compatible syntax and patterns
+
+### Performance
+
+- **Benchmark Results**: Suite completion in <90s with memory efficiency
+- **Async Checkpoint I/O**: Compression benchmarks showing performance metrics
+- **Zero-copy Buffers**: Memory usage tracking and performance counters
+
+### Documentation
+
+- Updated `docs/deployment/canary.md` with fault injection usage and examples
+- Fixed all markdown lint errors (MD031, MD040, MD047, MD029)
+- Enhanced module ownership documentation in `docs/architecture/module_ownership.md`
+
 ## 2.5.2 - 2025-09-28
 
 ### Added
