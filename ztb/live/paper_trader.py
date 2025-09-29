@@ -20,6 +20,7 @@ from .sim_broker import SimBroker
 from ..backtest.adapters import create_adapter, StrategyAdapter
 from ..risk.circuit_breakers import get_global_kill_switch, KillSwitchActivatedError
 from ..risk.position_sizing import PositionSizer
+from ..utils.run_metadata import capture_run_metadata
 
 
 def load_venue_config(venue_name: str, config_dir: str = 'venues') -> Dict[str, Any]:
@@ -95,6 +96,9 @@ class PaperTrader:
         self.kill_file = kill_file
         self.venue_config = venue_config or {}
 
+        # Initialize position sizer
+        self.position_sizer = PositionSizer(target_volatility=target_vol or 0.10)
+
         # Load symbol metadata for validation
         self.symbol_meta = {}
         if 'symbols' in self.venue_config:
@@ -169,6 +173,10 @@ class PaperTrader:
         if self.data_feed is None:
             raise ValueError("No data feed available for replay mode")
 
+        # Capture run metadata
+        metadata_path = output_dir / 'run_metadata.json'
+        capture_run_metadata(str(metadata_path))
+
         print(f"Starting replay simulation for {self.duration_minutes} minutes...")
 
         position = 0  # -1, 0, 1
@@ -215,6 +223,21 @@ class PaperTrader:
                         if sizes:
                             size = sizes[0]
                             quantity = size.quantity
+
+                            # Log sizing chain to orders.csv
+                            order_record = {
+                                'timestamp': timestamp.isoformat(),
+                                'symbol': symbol,
+                                'side': signal['action'],
+                                'price': price,
+                                'quantity': quantity,
+                                'sizing_chain': json.dumps(size.sizing_chain),
+                                'reason': size.sizing_reason
+                            }
+
+                            # Append to orders.csv
+                            orders_file = output_dir / 'orders.csv'
+                            pd.DataFrame([order_record]).to_csv(orders_file, mode='a', header=not orders_file.exists(), index=False)
                             sizing_reason = size.sizing_reason
                         else:
                             quantity = self.broker.balance / price

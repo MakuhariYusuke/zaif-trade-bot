@@ -24,6 +24,24 @@
         },
         "config": {
           "type": "object"
+        },
+        "dsr_trials": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bootstrap_resamples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bootstrap_block": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bootstrap_overlap": {
+          "type": "boolean"
+        },
+        "run_metadata_ref": {
+          "type": "string"
         }
       },
       "required": ["version", "timestamp", "run_id", "type"]
@@ -108,6 +126,19 @@
           },
           "pnl": {
             "type": "number"
+          },
+          "sizing_chain": {
+            "type": "object",
+            "properties": {
+              "raw_size": { "type": "number" },
+              "vol_target": { "type": "number" },
+              "kelly": { "type": "number" },
+              "decimal_rounded": { "type": "number" },
+              "validated": { "type": "number" },
+              "circuit_breaker_veto": { "type": "number" },
+              "final_quantity": { "type": "number" },
+              "skip_reason": { "type": "string" }
+            }
           }
         },
         "required": ["id", "timestamp", "symbol", "side", "quantity", "price"]

@@ -15,6 +15,8 @@ from datetime import datetime
 import json
 import pkg_resources
 
+from .observability import generate_correlation_id
+
 
 class RunMetadata:
     """Captures and manages run metadata."""
@@ -93,6 +95,44 @@ class RunMetadata:
 
         return env_vars
 
+    def capture_git_info(self) -> Dict[str, str]:
+        """Capture git repository information."""
+        git_info = {
+            "sha": "unknown",
+            "branch": "unknown",
+            "status": "unknown",
+            "remote_url": "unknown"
+        }
+
+        try:
+            # Get current commit SHA
+            result = subprocess.run(["git", "rev-parse", "HEAD"],
+                                  capture_output=True, text=True, cwd=os.getcwd())
+            if result.returncode == 0:
+                git_info["sha"] = result.stdout.strip()
+
+            # Get current branch
+            result = subprocess.run(["git", "branch", "--show-current"],
+                                  capture_output=True, text=True, cwd=os.getcwd())
+            if result.returncode == 0:
+                git_info["branch"] = result.stdout.strip()
+
+            # Get git status (clean/dirty)
+            result = subprocess.run(["git", "status", "--porcelain"],
+                                  capture_output=True, text=True, cwd=os.getcwd())
+            git_info["status"] = "clean" if not result.stdout.strip() else "dirty"
+
+            # Get remote URL
+            result = subprocess.run(["git", "remote", "get-url", "origin"],
+                                  capture_output=True, text=True, cwd=os.getcwd())
+            if result.returncode == 0:
+                git_info["remote_url"] = result.stdout.strip()
+
+        except Exception:
+            pass
+
+        return git_info
+
     def capture_package_info(self) -> Dict[str, str]:
         """Capture installed package versions and hashes."""
         packages = {}
@@ -132,6 +172,46 @@ class RunMetadata:
                 pass
 
         return packages
+
+    def capture_config_hashes(self, config_files: list = None) -> Dict[str, str]:
+        """Capture hashes of configuration files."""
+        if config_files is None:
+            config_files = [
+                "trade-config.json",
+                "config/trade-config.json",
+                "venues/zaif.yaml",
+                "venues/coincheck.yaml"
+            ]
+
+        config_hashes = {}
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'rb') as f:
+                        hasher = hashlib.sha256()
+                        hasher.update(f.read())
+                        config_hashes[config_file] = hasher.hexdigest()[:16]
+                except Exception:
+                    config_hashes[config_file] = "error"
+
+        return config_hashes
+
+    def capture_all_metadata(self) -> Dict[str, Any]:
+        """Capture all metadata in one call."""
+        metadata = {
+            "correlation_id": generate_correlation_id(),
+            "system": self.capture_system_info(),
+            "git": self.capture_git_info(),
+            "packages": self.capture_package_info(),
+            "config_hashes": self.capture_config_hashes(),
+            "run_config": {
+                "random_seed": self.random_seed,
+                "captured_at": datetime.now().isoformat()
+            }
+        }
+
+        self.metadata = metadata
+        return metadata
 
     def _get_package_hash(self, dist) -> str:
         """Generate hash of package files."""
