@@ -1,0 +1,27 @@
+{
+  "correlation_id": "20250929T120000Z",
+  "timestamp": "2025-09-29T16:17:40.993410",
+  "metadata": {
+    "version": "1.0.0",
+    "timestamp": "2025-09-29T16:17:40.993410",
+    "run_id": "20250929T120000Z",
+    "type": "training"
+  },
+  "metrics": {},
+  "evaluations": {},
+  "summary": {
+    "global_step": 0,
+    "wall_clock_duration_hours": 0,
+    "rss_peak_mb": 0,
+    "vram_peak_mb": 0,
+    "best_sharpe": null,
+    "best_dsr": null,
+    "best_bootstrap_p_value": null,
+    "acceptance_gate": {},
+    "artifact_paths": {
+      "metrics_json": null,
+      "eval_files": [],
+      "metadata_json": null
+    }
+  }
+}

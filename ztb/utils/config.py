@@ -5,7 +5,7 @@ Central configuration management for ZTB system
 """
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 
 class ZTBConfig:
@@ -20,7 +20,7 @@ class ZTBConfig:
         value = os.getenv(key)
         if value is None:
             return default
-        return value.lower() in ('true', '1', 'yes', 'on')
+        return value.lower() in ("true", "1", "yes", "on")
 
     def get_int(self, key: str, default: int = 0) -> int:
         """Get integer configuration value"""
@@ -30,7 +30,9 @@ class ZTBConfig:
         try:
             return int(value)
         except ValueError:
-            print(f"Warning: Invalid integer value for {key}: {value}, using default {default}")
+            print(
+                f"Warning: Invalid integer value for {key}: {value}, using default {default}"
+            )
             return default
 
     def get_float(self, key: str, default: float = 0.0) -> float:
@@ -41,15 +43,21 @@ class ZTBConfig:
         try:
             return float(value)
         except ValueError:
-            print(f"Warning: Invalid float value for {key}: {value}, using default {default}")
+            print(
+                f"Warning: Invalid float value for {key}: {value}, using default {default}"
+            )
             return default
 
     def log_config(self) -> None:
         """Log current configuration for debugging"""
         config_vars = [
-            'ZTB_MEM_PROFILE', 'ZTB_CUDA_WARN_GB', 'ZTB_LOG_LEVEL',
-            'ZTB_CHECKPOINT_INTERVAL', 'ZTB_MAX_MEMORY_GB',
-            'ZTB_TEST_ISOLATION', 'ZTB_FLOAT_TOLERANCE'
+            "ZTB_MEM_PROFILE",
+            "ZTB_CUDA_WARN_GB",
+            "ZTB_LOG_LEVEL",
+            "ZTB_CHECKPOINT_INTERVAL",
+            "ZTB_MAX_MEMORY_GB",
+            "ZTB_TEST_ISOLATION",
+            "ZTB_FLOAT_TOLERANCE",
         ]
         print("Current ZTB Configuration:")
         for var in config_vars:

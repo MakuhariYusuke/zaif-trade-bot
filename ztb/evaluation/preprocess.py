@@ -5,15 +5,16 @@ This module provides common data alignment and preprocessing functions
 to ensure consistent evaluation across all features.
 """
 
+from typing import Dict, List, Optional, Set, cast
+
 import pandas as pd
-from typing import Optional, cast, Set, Dict, List
 
 
 def align_series(
     df: pd.DataFrame,
     tz: str = "UTC",
     min_periods: int = 5,
-    fill_method: Optional[str] = "ffill"
+    fill_method: Optional[str] = "ffill",
 ) -> pd.DataFrame:
     """
     Align and preprocess time series data for consistent evaluation.
@@ -32,12 +33,14 @@ def align_series(
 
     # Ensure datetime index
     if not isinstance(df.index, pd.DatetimeIndex):
-        if 'timestamp' in df.columns:
-            df = df.set_index('timestamp')
-        elif 'date' in df.columns:
-            df = df.set_index('date')
+        if "timestamp" in df.columns:
+            df = df.set_index("timestamp")
+        elif "date" in df.columns:
+            df = df.set_index("date")
         else:
-            raise ValueError("DataFrame must have datetime index or 'timestamp'/'date' column")
+            raise ValueError(
+                "DataFrame must have datetime index or 'timestamp'/'date' column"
+            )
 
     if not isinstance(df.index, pd.DatetimeIndex):
         # 文字列等を datetime へ
@@ -54,7 +57,7 @@ def align_series(
 
     # Sort & deduplicate
     df = df.sort_index()
-    df = df[~df.index.duplicated(keep='first')]
+    df = df[~df.index.duplicated(keep="first")]
 
     # Fill missing values
     if fill_method:
@@ -66,14 +69,15 @@ def align_series(
             raise ValueError(f"Unsupported fill_method: {fill_method}")
 
     if len(df) < min_periods:
-        raise ValueError(f"Insufficient data: {len(df)} rows, minimum {min_periods} required")
+        raise ValueError(
+            f"Insufficient data: {len(df)} rows, minimum {min_periods} required"
+        )
 
     return df
 
 
 def prepare_ohlc_data(
-    df: pd.DataFrame,
-    required_columns: Optional[List[str]] = None
+    df: pd.DataFrame, required_columns: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
     Prepare OHLC data with standard validation and preprocessing.
@@ -86,7 +90,7 @@ def prepare_ohlc_data(
         Preprocessed OHLC DataFrame
     """
     if required_columns is None:
-        required_columns = ['open', 'high', 'low', 'close']
+        required_columns = ["open", "high", "low", "close"]
 
     # Check required columns
     missing_cols = [col for col in required_columns if col not in df.columns]
@@ -98,11 +102,11 @@ def prepare_ohlc_data(
 
     # Validate OHLC relationships
     invalid_ohlc = (
-        (df['high'] < df['low']) |
-        (df['open'] < df['low']) |
-        (df['open'] > df['high']) |
-        (df['close'] < df['low']) |
-        (df['close'] > df['high'])
+        (df["high"] < df["low"])
+        | (df["open"] < df["low"])
+        | (df["open"] > df["high"])
+        | (df["close"] < df["low"])
+        | (df["close"] > df["high"])
     )
     if invalid_ohlc.any():
         raise ValueError("Invalid OHLC relationships detected")
@@ -125,8 +129,8 @@ def generate_time_features(df: pd.DataFrame) -> pd.DataFrame:
     # 明示的コピー
     df = df.copy()
     dt_index = cast(pd.DatetimeIndex, df.index)
-    df['DOW'] = dt_index.dayofweek
-    df['HourOfDay'] = dt_index.hour
+    df["DOW"] = dt_index.dayofweek
+    df["HourOfDay"] = dt_index.hour
     return df
 
 
@@ -167,7 +171,7 @@ class SmartPreprocessor:
         out = df.copy()
 
         # Check if data has changed (simple hash-based check)
-        current_hash = str(hash(tuple(out['close'].values[:10])))  # Sample-based hash
+        current_hash = str(hash(tuple(out["close"].values[:10])))  # Sample-based hash
         if current_hash != self._cache_data_hash:
             # Data changed, clear global cache
             self._global_cache.clear()
@@ -209,7 +213,13 @@ class SmartPreprocessor:
                     self._global_cache[cache_key] = out[col].copy()
 
         # Rolling calculations
-        rolling_keys = [k for k in self.required if k.startswith(("rolling_mean:", "rolling_std:", "rolling_max:", "rolling_min:"))]
+        rolling_keys = [
+            k
+            for k in self.required
+            if k.startswith(
+                ("rolling_mean:", "rolling_std:", "rolling_max:", "rolling_min:")
+            )
+        ]
         for key in rolling_keys:
             parts = key.split(":")
             calc_type = parts[0]

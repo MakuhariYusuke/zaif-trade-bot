@@ -6,9 +6,12 @@ Ensures sim and skeleton brokers behave consistently.
 """
 
 import pytest
-from typing import Dict, Any
 
-from ztb.live.broker_registry import get_broker_registry, BrokerProtocol, CoincheckSkeletonBroker
+from ztb.live.broker_registry import (
+    BrokerProtocol,
+    CoincheckSkeletonBroker,
+    get_broker_registry,
+)
 
 
 class TestBrokerContract:

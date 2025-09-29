@@ -7,11 +7,9 @@ and recovery mechanisms in canary harness scenarios.
 
 import asyncio
 import contextlib
-import logging
-import random
 import time
 from dataclasses import dataclass
-from typing import Any, AsyncContextManager, Callable, Dict, Optional
+from typing import AsyncContextManager, Callable, Dict, Optional
 
 from ztb.utils.observability import get_logger
 
@@ -21,6 +19,7 @@ logger = get_logger(__name__)
 @dataclass
 class FaultInjectionConfig:
     """Configuration for fault injection."""
+
     name: str
     fault_type: str
     duration_s: float
@@ -82,7 +81,9 @@ class FaultContext:
         if handler:
             await handler(self.config)
         else:
-            logger.warning(f"No handler registered for fault type: {self.config.fault_type}")
+            logger.warning(
+                f"No handler registered for fault type: {self.config.fault_type}"
+            )
 
         return self
 
@@ -166,8 +167,13 @@ def _register_default_handlers(injector: FaultInjector):
 
 
 @contextlib.asynccontextmanager
-async def inject_fault(name: str, fault_type: str, duration_s: float = 5.0,
-                      severity: float = 0.5, expected_action: str = "continue"):
+async def inject_fault(
+    name: str,
+    fault_type: str,
+    duration_s: float = 5.0,
+    severity: float = 0.5,
+    expected_action: str = "continue",
+):
     """
     Convenience context manager for fault injection.
 
@@ -183,7 +189,7 @@ async def inject_fault(name: str, fault_type: str, duration_s: float = 5.0,
         fault_type=fault_type,
         duration_s=duration_s,
         severity=severity,
-        expected_action=expected_action
+        expected_action=expected_action,
     )
 
     injector = get_fault_injector()

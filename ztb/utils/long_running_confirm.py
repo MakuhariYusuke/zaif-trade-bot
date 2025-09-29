@@ -2,14 +2,11 @@
 Long-running operation confirmation utility.
 """
 
-import sys
 from typing import Optional
 
 
 def confirm_long_running_operation(
-    operation_name: str,
-    estimated_time: str,
-    risk_description: Optional[str] = None
+    operation_name: str, estimated_time: str, risk_description: Optional[str] = None
 ) -> bool:
     """
     Confirm before starting a long-running operation.
@@ -37,10 +34,10 @@ def confirm_long_running_operation(
 
     while True:
         response = input("\nDo you want to proceed? (yes/no): ").strip().lower()
-        if response in ['yes', 'y']:
+        if response in ["yes", "y"]:
             print("✅ Proceeding with operation...")
             return True
-        elif response in ['no', 'n']:
+        elif response in ["no", "n"]:
             print("❌ Operation cancelled by user.")
             return False
         else:
@@ -54,5 +51,5 @@ def require_confirmation_for_experiments() -> bool:
     return confirm_long_running_operation(
         operation_name="Machine Learning Experiment",
         estimated_time="Several hours to days",
-        risk_description="High memory usage, potential system instability, large disk usage"
+        risk_description="High memory usage, potential system instability, large disk usage",
     )

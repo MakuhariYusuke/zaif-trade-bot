@@ -5,32 +5,37 @@ Paper trader CLI.
 Runs paper trading simulations with replay or live-lite modes.
 """
 
-import argparse
 import asyncio
-import sys
-import os
-from typing import Dict, List, Any, Optional
-import time
-from pathlib import Path
-from datetime import datetime
-import pandas as pd
 import json
+import os
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
 import yaml
 
-from .sim_broker import SimBroker
-from ..backtest.adapters import create_adapter, StrategyAdapter
-from ..risk.circuit_breakers import get_global_kill_switch, KillSwitchActivatedError
+from ztb.utils.cli_common import (
+    CLIFormatter,
+    CLIValidator,
+    CommonArgs,
+    create_standard_parser,
+)
+
+from ..backtest.adapters import StrategyAdapter, create_adapter
+from ..risk.circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 from ..risk.position_sizing import PositionSizer
-from ..utils.run_metadata import capture_run_metadata
+from .sim_broker import SimBroker
 
 
-def load_venue_config(venue_name: str, config_dir: str = 'venues') -> Dict[str, Any]:
+def load_venue_config(venue_name: str, config_dir: str = "venues") -> Dict[str, Any]:
     """Load venue configuration from YAML file."""
     config_path = Path(config_dir) / f"{venue_name}.yaml"
     if not config_path.exists():
         raise FileNotFoundError(f"Venue config not found: {config_path}")
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     return config
@@ -40,17 +45,19 @@ class SymbolMeta:
     """Symbol metadata for validation."""
 
     def __init__(self, symbol_config: Dict[str, Any]):
-        self.symbol = symbol_config['symbol']
-        self.base_asset = symbol_config['base_asset']
-        self.quote_asset = symbol_config['quote_asset']
-        self.min_order_size = symbol_config['min_order_size']
-        self.max_order_size = symbol_config['max_order_size']
-        self.price_precision = symbol_config['price_precision']
-        self.quantity_precision = symbol_config['quantity_precision']
-        self.min_price = symbol_config['min_price']
-        self.max_price = symbol_config['max_price']
+        self.symbol = symbol_config["symbol"]
+        self.base_asset = symbol_config["base_asset"]
+        self.quote_asset = symbol_config["quote_asset"]
+        self.min_order_size = symbol_config["min_order_size"]
+        self.max_order_size = symbol_config["max_order_size"]
+        self.price_precision = symbol_config["price_precision"]
+        self.quantity_precision = symbol_config["quantity_precision"]
+        self.min_price = symbol_config["min_price"]
+        self.max_price = symbol_config["max_price"]
 
-    def validate_order(self, side: str, quantity: float, price: Optional[float] = None) -> List[str]:
+    def validate_order(
+        self, side: str, quantity: float, price: Optional[float] = None
+    ) -> List[str]:
         """Validate order parameters against symbol constraints."""
         errors = []
 
@@ -77,14 +84,15 @@ class PaperTrader:
         self,
         broker: SimBroker,
         strategy: StrategyAdapter,
-        mode: str = 'replay',
+        mode: str = "replay",
         dataset: Optional[str] = None,
         duration_minutes: int = 60,
         enable_risk: bool = False,
-        risk_profile: str = 'balanced',
-        kill_file: str = '/tmp/ztb.stop',
+        risk_profile: str = "aggressive",
+        kill_file: str = "/tmp/ztb.stop",
         venue_config: Optional[Dict[str, Any]] = None,
-        target_vol: Optional[float] = None
+        target_vol: Optional[float] = None,
+        from_streaming: bool = False,
     ):
         """Initialize paper trader."""
         self.broker = broker
@@ -96,15 +104,16 @@ class PaperTrader:
         self.risk_profile = risk_profile
         self.kill_file = kill_file
         self.venue_config = venue_config or {}
+        self.from_streaming = from_streaming
 
         # Initialize position sizer
         self.position_sizer = PositionSizer(target_volatility=target_vol or 0.10)
 
         # Load symbol metadata for validation
         self.symbol_meta = {}
-        if 'symbols' in self.venue_config:
-            for symbol_config in self.venue_config['symbols']:
-                symbol = symbol_config['symbol']
+        if "symbols" in self.venue_config:
+            for symbol_config in self.venue_config["symbols"]:
+                symbol = symbol_config["symbol"]
                 self.symbol_meta[symbol] = SymbolMeta(symbol_config)
 
         # Initialize kill switch if risk management enabled
@@ -119,12 +128,14 @@ class PaperTrader:
             self.position_sizer = None
 
         # Load data feed for replay mode
-        if self.mode == 'replay':
-            self.data_feed = self._load_data_feed(self.dataset or 'btc_jpy_1m')
+        if self.mode == "replay":
+            self.data_feed = self._load_data_feed(self.dataset or "btc_jpy_1m")
         else:
             self.data_feed = None
 
-    def validate_order(self, symbol: str, side: str, quantity: float, price: Optional[float] = None) -> None:
+    def validate_order(
+        self, symbol: str, side: str, quantity: float, price: Optional[float] = None
+    ) -> None:
         """Validate order against venue constraints."""
         if symbol not in self.symbol_meta:
             raise ValueError(f"Symbol {symbol} not configured in venue")
@@ -144,9 +155,9 @@ class PaperTrader:
 
         # Generate data for replay
         start_time = datetime.now()
-        times = pd.date_range(start=start_time,
-                            periods=self.duration_minutes,
-                            freq='1min')
+        times = pd.date_range(
+            start=start_time, periods=self.duration_minutes, freq="1min"
+        )
 
         # Generate realistic BTC price series
         base_price = 30000
@@ -161,16 +172,18 @@ class PaperTrader:
         low_mult = 1 - np.random.uniform(0, 0.005, n_points)
         volume = np.random.uniform(50, 500, n_points)
 
-        data = pd.DataFrame({
-            'timestamp': times,
-            'open': prices * (1 + np.random.normal(0, 0.002, n_points)),
-            'high': prices * high_mult,
-            'low': prices * low_mult,
-            'close': prices,
-            'volume': volume
-        })
+        data = pd.DataFrame(
+            {
+                "timestamp": times,
+                "open": prices * (1 + np.random.normal(0, 0.002, n_points)),
+                "high": prices * high_mult,
+                "low": prices * low_mult,
+                "close": prices,
+                "volume": volume,
+            }
+        )
 
-        data.set_index('timestamp', inplace=True)
+        data.set_index("timestamp", inplace=True)
         return data
 
     async def run_replay(self, output_dir: Path) -> Dict[str, Any]:
@@ -179,16 +192,16 @@ class PaperTrader:
             raise ValueError("No data feed available for replay mode")
 
         # Capture run metadata
-        metadata_path = output_dir / 'run_metadata.json'
+        metadata_path = output_dir / "run_metadata.json"
         # capture_run_metadata(str(metadata_path))
         # Create dummy metadata for canary test
         dummy_metadata = {
             "correlation_id": "dummy",
             "system": {"os": "dummy"},
             "git": {"sha": "dummy"},
-            "run_config": {"random_seed": 42}
+            "run_config": {"random_seed": 42},
         }
-        with open(metadata_path, 'w') as f:
+        with open(metadata_path, "w") as f:
             json.dump(dummy_metadata, f, indent=2)
 
         print(f"Starting replay simulation for {self.duration_minutes} minutes...")
@@ -212,23 +225,27 @@ class PaperTrader:
                     continue
 
             # Get current market data up to this point
-            current_data = self.data_feed.iloc[:i+1]
+            current_data = self.data_feed.iloc[: i + 1]
 
             # Generate trading signal
             signal = self.strategy.generate_signal(current_data, position)
 
             # Execute trade if signal
-            if signal['action'] in ['buy', 'sell']:
+            if signal["action"] in ["buy", "sell"]:
                 try:
-                    symbol = 'btc_jpy'
-                    price = row['close']
+                    symbol = "btc_jpy"
+                    price = row["close"]
 
                     # Calculate position size
                     if self.position_sizer:
                         # Use position sizer
-                        signals = {'BTC_JPY': 1.0 if signal['action'] == 'buy' else -1.0}
-                        current_prices = {'BTC_JPY': price}
-                        asset_vols = {'BTC_JPY': 0.5}  # Simplified volatility assumption
+                        signals = {
+                            "BTC_JPY": 1.0 if signal["action"] == "buy" else -1.0
+                        }
+                        current_prices = {"BTC_JPY": price}
+                        asset_vols = {
+                            "BTC_JPY": 0.5
+                        }  # Simplified volatility assumption
 
                         sizes = self.position_sizer.calculate_position_sizes(
                             signals, current_prices, self.broker.balance, asset_vols
@@ -240,18 +257,23 @@ class PaperTrader:
 
                             # Log sizing chain to orders.csv
                             order_record = {
-                                'timestamp': timestamp.isoformat(),
-                                'symbol': symbol,
-                                'side': signal['action'],
-                                'price': price,
-                                'quantity': quantity,
-                                'sizing_chain': json.dumps(size.sizing_chain),
-                                'reason': size.sizing_reason
+                                "timestamp": timestamp.isoformat(),
+                                "symbol": symbol,
+                                "side": signal["action"],
+                                "price": price,
+                                "quantity": quantity,
+                                "sizing_chain": json.dumps(size.sizing_chain),
+                                "reason": size.sizing_reason,
                             }
 
                             # Append to orders.csv
-                            orders_file = output_dir / 'orders.csv'
-                            pd.DataFrame([order_record]).to_csv(orders_file, mode='a', header=not orders_file.exists(), index=False)
+                            orders_file = output_dir / "orders.csv"
+                            pd.DataFrame([order_record]).to_csv(
+                                orders_file,
+                                mode="a",
+                                header=not orders_file.exists(),
+                                index=False,
+                            )
                             sizing_reason = size.sizing_reason
                         else:
                             quantity = self.broker.balance / price
@@ -262,21 +284,23 @@ class PaperTrader:
                         sizing_reason = "Fixed quantity"
 
                     # Validate order against venue constraints
-                    self.validate_order(symbol, signal['action'], quantity)
+                    self.validate_order(symbol, signal["action"], quantity)
 
                     order = await self.broker.place_order(
                         symbol=symbol,
-                        side=signal['action'],
+                        side=signal["action"],
                         quantity=quantity,
-                        order_type='market',
+                        order_type="market",
                         sizing_reason=sizing_reason,
-                        target_vol=self.target_vol
+                        target_vol=self.target_vol,
                     )
 
-                    if order.status == 'filled':
+                    if order.status == "filled":
                         trades_executed += 1
-                        position = 1 if signal['action'] == 'buy' else -1
-                        print(f"Executed {signal['action']} at {order.price:.0f} JPY (size: {quantity:.6f}, reason: {sizing_reason})")
+                        position = 1 if signal["action"] == "buy" else -1
+                        print(
+                            f"Executed {signal['action']} at {order.price:.0f} JPY (size: {quantity:.6f}, reason: {sizing_reason})"
+                        )
 
                 except Exception as e:
                     print(f"Trade execution failed: {e}")
@@ -291,9 +315,9 @@ class PaperTrader:
         pnl_series = self.broker.get_pnl_series()
 
         return {
-            'trade_log': trade_log,
-            'pnl_series': pnl_series,
-            'trades_executed': trades_executed
+            "trade_log": trade_log,
+            "pnl_series": pnl_series,
+            "trades_executed": trades_executed,
         }
 
     async def run_live_lite(self, output_dir: Path) -> Dict[str, Any]:
@@ -311,19 +335,17 @@ class PaperTrader:
         for i in range(3):
             try:
                 # Random buy/sell
-                side = 'buy' if i % 2 == 0 else 'sell'
+                side = "buy" if i % 2 == 0 else "sell"
                 quantity = 0.001
-                symbol = 'btc_jpy'
+                symbol = "btc_jpy"
 
                 # Validate order against venue constraints
                 self.validate_order(symbol, side, quantity)
 
-                current_price = await self.broker.get_current_price('BTC_JPY')
+                current_price = await self.broker.get_current_price("BTC_JPY")
                 if current_price:
                     order = await self.broker.place_order(
-                        symbol='BTC_JPY',
-                        side=side,
-                        quantity=quantity
+                        symbol="BTC_JPY", side=side, quantity=quantity
                     )
                     trades_executed += 1
                     print(f"Executed {side} at {order.price:.0f} JPY")
@@ -338,16 +360,16 @@ class PaperTrader:
         pnl_series = self.broker.get_pnl_series()
 
         return {
-            'trade_log': trade_log,
-            'pnl_series': pnl_series,
-            'trades_executed': trades_executed
+            "trade_log": trade_log,
+            "pnl_series": pnl_series,
+            "trades_executed": trades_executed,
         }
 
     async def run(self, output_dir: Path) -> Dict[str, Any]:
         """Run the paper trading simulation."""
-        if self.mode == 'replay':
+        if self.mode == "replay":
             return await self.run_replay(output_dir)
-        elif self.mode == 'live-lite':
+        elif self.mode == "live-lite":
             return await self.run_live_lite(output_dir)
         else:
             raise ValueError(f"Unknown mode: {self.mode}")
@@ -356,66 +378,109 @@ class PaperTrader:
 def save_results(results: Dict[str, Any], output_dir: Path):
     """Save simulation results to files."""
     # Save P&L series as CSV
-    if results['pnl_series']:
-        pnl_df = pd.DataFrame(results['pnl_series'])
-        pnl_df.to_csv(output_dir / 'pnl.csv', index=False)
+    if results["pnl_series"]:
+        pnl_df = pd.DataFrame(results["pnl_series"])
+        pnl_df.to_csv(output_dir / "pnl.csv", index=False)
 
     # Save trade log as JSON
-    with open(output_dir / 'trade_log.json', 'w') as f:
-        json.dump(results['trade_log'], f, indent=2)
+    with open(output_dir / "trade_log.json", "w") as f:
+        json.dump(results["trade_log"], f, indent=2)
 
     # Save orders as CSV
-    orders_df = pd.DataFrame(results['trade_log']) if results['trade_log'] else pd.DataFrame()
-    orders_df.to_csv(output_dir / 'orders.csv', index=False)
+    orders_df = (
+        pd.DataFrame(results["trade_log"]) if results["trade_log"] else pd.DataFrame()
+    )
+    orders_df.to_csv(output_dir / "orders.csv", index=False)
 
     # Save summary
     summary = {
-        'timestamp': datetime.now().isoformat(),
-        'mode': 'replay',  # Would be parameterized
-        'trades_executed': results['trades_executed'],
-        'total_pnl': sum(t.get('pnl', 0) for t in results['trade_log']),
-        'duration_minutes': 60  # Would be parameterized
+        "timestamp": datetime.now().isoformat(),
+        "mode": "replay",  # Would be parameterized
+        "trades_executed": results["trades_executed"],
+        "total_pnl": sum(t.get("pnl", 0) for t in results["trade_log"]),
+        "duration_minutes": 60,  # Would be parameterized
     }
 
-    with open(output_dir / 'stats.json', 'w') as f:
+    with open(output_dir / "stats.json", "w") as f:
         json.dump(summary, f, indent=2)
 
 
 def main():
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(description='Run paper trading simulation')
-    parser.add_argument('--mode', required=True,
-                       choices=['replay', 'live-lite'],
-                       help='Trading mode')
-    parser.add_argument('--policy', default='sma_fast_slow',
-                       choices=['rl', 'sma_fast_slow', 'buy_hold'],
-                       help='Trading strategy (default: sma_fast_slow)')
-    parser.add_argument('--dataset', default='btc_jpy_1m',
-                       help='Dataset for replay mode (default: btc_jpy_1m)')
-    parser.add_argument('--duration-minutes', type=int, default=60,
-                       help='Duration in minutes for replay (default: 60)')
-    parser.add_argument('--initial-balance', type=float, default=10000.0,
-                       help='Initial JPY balance (default: 10000.0)')
-    parser.add_argument('--output-dir', default='results/paper',
-                       help='Output directory (default: results/paper)')
-    parser.add_argument('--enable-risk', action='store_true',
-                       help='Enable risk management features (kill switches, circuit breakers)')
-    parser.add_argument('--risk-profile', default='balanced',
-                       choices=['conservative', 'balanced', 'aggressive'],
-                       help='Risk profile (default: balanced)')
-    parser.add_argument('--kill-file', default='/tmp/ztb.stop',
-                       help='Kill switch file path (default: /tmp/ztb.stop)')
-    parser.add_argument('--venue', default='coincheck',
-                       help='Trading venue configuration file (default: coincheck)')
-    parser.add_argument('--venue-config-dir', default='venues',
-                       help='Directory containing venue config files (default: venues)')
-    parser.add_argument('--target-vol', type=float,
-                       help='Target volatility for position sizing (enables vol targeting)')
+    parser = create_standard_parser("Run paper trading simulation")
+    parser.add_argument(
+        "--mode",
+        required=True,
+        choices=["replay", "live-lite"],
+        help=CLIFormatter.format_required_help("Trading mode", ["replay", "live-lite"]),
+    )
+    parser.add_argument(
+        "--policy",
+        default="sma_fast_slow",
+        choices=["rl", "sma_fast_slow", "buy_hold"],
+        help=CLIFormatter.format_help(
+            "Trading strategy", "sma_fast_slow", ["rl", "sma_fast_slow", "buy_hold"]
+        ),
+    )
+    parser.add_argument(
+        "--dataset",
+        default="btc_jpy_1m",
+        help=CLIFormatter.format_help("Dataset for replay mode", "btc_jpy_1m"),
+    )
+    parser.add_argument(
+        "--duration-minutes",
+        type=lambda x: CLIValidator.validate_positive_int(x, "duration-minutes"),
+        default=60,
+        help=CLIFormatter.format_help("Duration in minutes for replay", 60),
+    )
+    parser.add_argument(
+        "--initial-balance",
+        type=lambda x: CLIValidator.validate_positive_float(x, "initial-balance"),
+        default=10000.0,
+        help=CLIFormatter.format_help("Initial JPY balance", 10000.0),
+    )
+    CommonArgs.add_output_dir(parser, default="results/paper")
+    parser.add_argument(
+        "--enable-risk",
+        action="store_true",
+        help="Enable risk management features (kill switches, circuit breakers)",
+    )
+    parser.add_argument(
+        "--risk-profile",
+        default="aggressive",
+        choices=["conservative", "balanced", "aggressive"],
+        help=CLIFormatter.format_help(
+            "Risk profile", "aggressive", ["conservative", "balanced", "aggressive"]
+        ),
+    )
+    parser.add_argument(
+        "--kill-file",
+        default="/tmp/ztb.stop",
+        help=CLIFormatter.format_help("Kill switch file path", "/tmp/ztb.stop"),
+    )
+    CommonArgs.add_venue(parser)
+    parser.add_argument(
+        "--venue-config-dir",
+        default="venues",
+        help=CLIFormatter.format_help(
+            "Directory containing venue config files", "venues"
+        ),
+    )
+    parser.add_argument(
+        "--target-vol",
+        type=lambda x: CLIValidator.validate_positive_float(x, "target-vol"),
+        help="Target volatility for position sizing (enables vol targeting)",
+    )
+    parser.add_argument(
+        "--from-streaming",
+        action="store_true",
+        help="Use streaming pipeline as data source instead of cached data",
+    )
 
     args = parser.parse_args()
 
     # Create output directory
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path(args.output_dir) / f"{args.mode}_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -438,13 +503,14 @@ def main():
             broker=broker,
             strategy=strategy,
             mode=args.mode,
-            dataset=args.dataset if args.mode == 'replay' else None,
+            dataset=args.dataset if args.mode == "replay" else None,
             duration_minutes=args.duration_minutes,
             enable_risk=args.enable_risk,
             risk_profile=args.risk_profile,
             kill_file=args.kill_file,
             venue_config=venue_config,
-            target_vol=args.target_vol
+            target_vol=args.target_vol,
+            from_streaming=args.from_streaming,
         )
 
         # Run simulation
@@ -455,15 +521,16 @@ def main():
 
         print("Paper trading completed successfully!")
         print(f"Trades executed: {results['trades_executed']}")
-        total_pnl = sum(t.get('pnl', 0) for t in results['trade_log'])
+        total_pnl = sum(t.get("pnl", 0) for t in results["trade_log"])
         print(f"Total P&L: {total_pnl:.2f} JPY")
 
     except Exception as e:
         print(f"Paper trading failed: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

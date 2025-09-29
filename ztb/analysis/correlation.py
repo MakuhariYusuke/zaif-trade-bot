@@ -1,11 +1,14 @@
 """Correlation analysis utilities"""
-import pandas as pd
+
 from typing import Dict, Optional
+
+import pandas as pd
+
 
 def compute_correlations(
     frames: Dict[str, pd.DataFrame],
     nan_strategy: str = "drop",  # "drop", "fill", or "none"
-    fill_value: float = 0.0
+    fill_value: float = 0.0,
 ) -> Dict[str, Optional[pd.DataFrame]]:
     """Compute correlations for successful feature frames.
 
@@ -25,7 +28,9 @@ def compute_correlations(
     for key, df in frames.items():
         df = df.copy()
         df = df.loc[:, ~df.columns.duplicated()]  # remove duplicate columns
-        df.columns = [f"{key}_{col}" for col in df.columns]  # prefix to ensure uniqueness
+        df.columns = [
+            f"{key}_{col}" for col in df.columns
+        ]  # prefix to ensure uniqueness
         aligned_frames[key] = df
 
     # Reindex all DataFrames to the union of all indexes
@@ -59,6 +64,6 @@ def compute_correlations(
     if filtered_df.empty or len(filtered_df.columns) < 2:
         return {"pearson": None, "spearman": None}
 
-    pearson = filtered_df.corr(method='pearson')
-    spearman = filtered_df.corr(method='spearman')
+    pearson = filtered_df.corr(method="pearson")
+    spearman = filtered_df.corr(method="spearman")
     return {"pearson": pearson, "spearman": spearman}

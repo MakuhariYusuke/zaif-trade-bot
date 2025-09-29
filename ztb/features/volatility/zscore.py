@@ -3,10 +3,11 @@ Z-Score implementation.
 標準化スコア - ボラティリティ指標
 """
 
-import pandas as pd
 import numpy as np
-from ztb.features.registry import FeatureRegistry
+import pandas as pd
+
 from ztb.features.feature_cache import feature_cache
+from ztb.features.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("ZScore")
@@ -25,7 +26,7 @@ def compute_zscore(df: pd.DataFrame, window: int = 20) -> pd.Series[float]:
 
 def _compute_zscore_numpy(df: pd.DataFrame, window: int = 20) -> pd.Series[float]:
     """Optimized Z-Score computation using pandas rolling"""
-    returns = df['close'].pct_change().fillna(0)
+    returns = df["close"].pct_change().fillna(0)
 
     if len(returns) < window:
         return pd.Series(np.zeros(len(returns)), index=df.index)

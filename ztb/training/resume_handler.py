@@ -1,10 +1,10 @@
-﻿"""Helpers for resuming training sessions from checkpoints."""
+"""Helpers for resuming training sessions from checkpoints."""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 import pandas as pd
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -34,7 +34,7 @@ class ResumeHandler:
         self,
         checkpoint_manager: TrainingCheckpointManager,
         *,
-        streaming_pipeline: Optional['StreamingPipeline'] = None,
+        streaming_pipeline: Optional["StreamingPipeline"] = None,
     ) -> None:
         self.checkpoint_manager = checkpoint_manager
         self.streaming_pipeline = streaming_pipeline
@@ -54,7 +54,7 @@ class ResumeHandler:
         else:
             self.checkpoint_manager.apply_snapshot(model, snapshot)
 
-        stream_state = snapshot.payload.get('stream_state')
+        stream_state = snapshot.payload.get("stream_state")
         self._restore_streaming_state(stream_state)
 
         return ResumeState(
@@ -68,9 +68,13 @@ class ResumeHandler:
         if not self.streaming_pipeline or not stream_state:
             return
 
-        buffer_df = stream_state.get('buffer')
+        buffer_df = stream_state.get("buffer")
         if buffer_df is not None:
-            df = buffer_df if isinstance(buffer_df, pd.DataFrame) else pd.DataFrame(buffer_df)
+            df = (
+                buffer_df
+                if isinstance(buffer_df, pd.DataFrame)
+                else pd.DataFrame(buffer_df)
+            )
             self.streaming_pipeline.buffer.clear()
             if not df.empty:
                 self.streaming_pipeline.buffer.extend(df)

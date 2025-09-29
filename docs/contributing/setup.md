@@ -167,4 +167,3 @@ After setup, review:
 
 - [Architecture Overview](architecture.md)
 - [Testing Guide](testing.md)
-- [Contributing Guidelines](../../CONTRIBUTING.md)

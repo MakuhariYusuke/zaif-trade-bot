@@ -28,7 +28,7 @@ class ResultsValidator:
         if schema_path is None:
             schema_path = Path(__file__).parent / "results_schema.json"
 
-        with open(schema_path, 'r', encoding='utf-8') as f:
+        with open(schema_path, "r", encoding="utf-8") as f:
             self.schema = json.load(f)
 
         # Compile validator for performance
@@ -70,7 +70,7 @@ class ResultsValidator:
             True if valid, False otherwise
         """
         try:
-            with open(results_path, 'r', encoding='utf-8') as f:
+            with open(results_path, "r", encoding="utf-8") as f:
                 results = json.load(f)
             return self.validate(results)
         except (json.JSONDecodeError, FileNotFoundError) as e:
@@ -89,11 +89,13 @@ class ResultsValidator:
         """
         errors = []
         for error in self.validator.iter_errors(results):
-            errors.append({
-                'message': error.message,
-                'path': str(error.absolute_path),
-                'schema_path': str(error.absolute_schema_path)
-            })
+            errors.append(
+                {
+                    "message": error.message,
+                    "path": str(error.absolute_path),
+                    "schema_path": str(error.absolute_schema_path),
+                }
+            )
         return errors
 
 
@@ -101,7 +103,9 @@ def validate_results_cli():
     """CLI entry point for result validation."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Validate results against unified schema")
+    parser = argparse.ArgumentParser(
+        description="Validate results against unified schema"
+    )
     parser.add_argument("results_file", help="Path to results JSON file")
     parser.add_argument("--schema", help="Path to schema file (optional)")
 

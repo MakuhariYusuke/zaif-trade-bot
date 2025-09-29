@@ -7,21 +7,29 @@ Feature computation engine with stability and efficiency improvements.
 
 import sys
 import time
-import psutil
-import pandas as pd
 from pathlib import Path
 from typing import List, Optional
+
+import pandas as pd
+import psutil
 
 # Add parent directory to sys.path to ensure ztb modules can be imported when running as a script
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features import FeatureRegistry
-from ztb.features.utils.rolling import optimize_dataframe_dtypes, generate_intermediate_report
+from ztb.features.utils.rolling import (
+    generate_intermediate_report,
+    optimize_dataframe_dtypes,
+)
 from ztb.utils.data.data_generation import generate_synthetic_market_data
 
 
-def compute_features_batch(df: pd.DataFrame, feature_names: Optional[List[str]] = None,
-                          report_interval: int = 10000, verbose: bool = True) -> pd.DataFrame:
+def compute_features_batch(
+    df: pd.DataFrame,
+    feature_names: Optional[List[str]] = None,
+    report_interval: int = 10000,
+    verbose: bool = True,
+) -> pd.DataFrame:
     """
     Compute features in batch with stability and efficiency improvements
 
@@ -67,7 +75,9 @@ def compute_features_batch(df: pd.DataFrame, feature_names: Optional[List[str]] 
             # Generate intermediate report
             if step_count % report_interval == 0:
                 memory_usage = psutil.Process().memory_info().rss / 1024 / 1024  # MB
-                generate_intermediate_report(step_count, feature_times, memory_usage, nan_rates)
+                generate_intermediate_report(
+                    step_count, feature_times, memory_usage, nan_rates
+                )
                 print(f"Generated intermediate report at step {step_count}")
 
         except Exception as e:
@@ -80,7 +90,7 @@ def compute_features_batch(df: pd.DataFrame, feature_names: Optional[List[str]] 
 
     # Optimize dtypes
     config = FeatureRegistry.get_config()
-    if config.get('optimize_dtypes', True):
+    if config.get("optimize_dtypes", True):
         features_df = optimize_dataframe_dtypes(features_df)
         print("Optimized DataFrame dtypes")
 

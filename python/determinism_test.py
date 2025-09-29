@@ -4,16 +4,17 @@ Determinism test for feature engineering.
 同じseedで同一入力 → 完全一致する出力を保証
 """
 
+import hashlib
+import os
+import random
+import sys
+from typing import Dict
+
 import numpy as np
 import pandas as pd
-import random
-import os
-from typing import Dict
-import sys
-import hashlib
 
 # Add ztb to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ztb.features.registry import FeatureRegistry
 
@@ -23,7 +24,7 @@ def generate_test_data(n_rows: int = 1000, seed: int = 42) -> pd.DataFrame:
     np.random.seed(seed)
     random.seed(seed)
 
-    dates = pd.date_range('2023-01-01', periods=n_rows, freq='1min')
+    dates = pd.date_range("2023-01-01", periods=n_rows, freq="1min")
 
     # Generate price data with controlled randomness
     base_price = 100.0
@@ -36,14 +37,16 @@ def generate_test_data(n_rows: int = 1000, seed: int = 42) -> pd.DataFrame:
     open_price = close.shift(1).fillna(base_price)
     volume = np.random.lognormal(10, 1, n_rows)
 
-    df = pd.DataFrame({
-        'timestamp': dates,
-        'open': open_price,
-        'high': high,
-        'low': low,
-        'close': close,
-        'volume': volume
-    })
+    df = pd.DataFrame(
+        {
+            "timestamp": dates,
+            "open": open_price,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+        }
+    )
 
     return df
 
@@ -72,7 +75,7 @@ def test_determinism_single_process():
 
         # Compute features
         features = {}
-        for feature_name in ['rsi14', 'macd', 'bb_width', 'atr14']:
+        for feature_name in ["rsi14", "macd", "bb_width", "atr14"]:
             try:
                 feature_func = FeatureRegistry.get(feature_name)
                 features[feature_name] = feature_func(df)
@@ -83,7 +86,7 @@ def test_determinism_single_process():
         if features:
             hash_val = compute_feature_hash(features)
             results.append(hash_val)
-            print(f"  Run {i+1}: {hash_val[:16]}...")
+            print(f"  Run {i + 1}: {hash_val[:16]}...")
 
     # Check all results are identical
     if len(set(results)) == 1:
@@ -114,7 +117,7 @@ def test_determinism_parallel_simulation():
 
         # Compute features
         features = {}
-        for feature_name in ['rsi14', 'macd', 'bb_width', 'atr14']:
+        for feature_name in ["rsi14", "macd", "bb_width", "atr14"]:
             try:
                 feature_func = FeatureRegistry.get(feature_name)
                 features[feature_name] = feature_func(df)
@@ -152,7 +155,7 @@ def test_different_seeds_produce_different_results():
         df = generate_test_data(seed=99999)  # Same input data
 
         features = {}
-        for feature_name in ['rsi14', 'macd']:
+        for feature_name in ["rsi14", "macd"]:
             try:
                 feature_func = FeatureRegistry.get(feature_name)
                 features[feature_name] = feature_func(df)
@@ -197,6 +200,7 @@ def main():
             print(f"❌ Test failed with exception: {e}")
             print()
             import traceback
+
             traceback.print_exc()
 
     print("=" * 50)
