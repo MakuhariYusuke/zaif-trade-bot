@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Unified Results Schema",
+  "description": "Schema for validating results from backtesting, training, and live trading operations",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["backtest", "training", "live", "benchmark"]
+        },
+        "config": {
+          "type": "object"
+        }
+      },
+      "required": ["version", "timestamp", "run_id", "type"]
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "total_return": {
+          "type": "number"
+        },
+        "sharpe_ratio": {
+          "type": "number"
+        },
+        "max_drawdown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "win_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "total_trades": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "profit_factor": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "properties": {
+        "value_at_risk": {
+          "type": "number"
+        },
+        "expected_shortfall": {
+          "type": "number"
+        },
+        "beta": {
+          "type": "number"
+        },
+        "volatility": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "trades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string",
+            "enum": ["buy", "sell"]
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "fee": {
+            "type": "number",
+            "minimum": 0
+          },
+          "pnl": {
+            "type": "number"
+          }
+        },
+        "required": ["id", "timestamp", "symbol", "side", "quantity", "price"]
+      }
+    },
+    "positions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "avg_price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "current_price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "unrealized_pnl": {
+            "type": "number"
+          }
+        },
+        "required": ["symbol", "quantity"]
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["number", "string", "boolean", "array", "object"]
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "plots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": ["metadata"]
+}

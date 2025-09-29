@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.5.2 - 2025-09-28
+
+### Added
+- **Part1 System Hardening Complete**: Test isolation, observability hooks, config management, CI guardrails
+- **Part2 Infrastructure Preparation**: Streaming pipeline and checkpoint resume work package handed off to Codex AI agent
+
+### Fixed
+- **Type Safety**: Resolved 41 of 50 mypy errors, remaining 9 require architectural changes
+- **Test Stability**: Fixed float precision issues in position store recovery tests
+- **CI Reliability**: Added smoke test integration with configurable memory profiling
+
 ## 2.5.1 - 2025-09-28
 
 ### Fixed

@@ -37,7 +37,7 @@ class SimpleKalmanFilter:
         Returns:
             Tuple of (estimate, error_estimate)
         """
-        if self.posterior_estimate is None or self.posterior_error_estimate is None:
+        if self.posterior_estimate is None or self.posterior_error_estimate is None:  # type: ignore[unreachable]
             # First measurement: initialize without prediction step
             self.posterior_estimate = measurement
             self.posterior_error_estimate = 1.0

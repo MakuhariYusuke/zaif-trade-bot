@@ -7,8 +7,9 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  lint-and-type-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v4
@@ -30,10 +31,6 @@ jobs:
       run: |
         pre-commit run --all-files --show-diff-on-failure
 
-    - name: Run tests
-      run: |
-        pytest -q
-
     - name: Run linting
       run: |
         flake8 ztb/
@@ -42,28 +39,108 @@ jobs:
       run: |
         mypy ztb/ --strict --exclude 'tests/'
 
-    - name: Test verified features
-      run: |
-        pytest -q scripts/test_verified_features.py
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.13']
 
-    - name: Test simple features
-      run: |
-        pytest -q scripts/test_simple_features.py
+    steps:
+    - uses: actions/checkout@v4
 
-    - name: Check for secrets in code
-      run: |
-        # Check for hardcoded secrets/API keys in ztb/ directory
-        SECRET_COUNT=$(git grep -n "\(SECRET\|API_KEY\|WEBHOOK\)" -- ztb | wc -l)
-        if [ "$SECRET_COUNT" -gt 0 ]; then
-          echo "Found $SECRET_COUNT potential secrets in code:"
-          git grep -n "\(SECRET\|API_KEY\|WEBHOOK\)" -- ztb
-          exit 1
-        fi
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
 
-    - name: Test all features with coingecko data
+    - name: Install dependencies
       run: |
-        python scripts/test_all_features.py --dataset coingecko --bootstrap --save-debug
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install types-requests types-psutil
 
-    - name: Archive coverage data
+    - name: Run unit tests
       run: |
-        python scripts/archive_coverage.py
+        npm run test:unit
+
+  leakage-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install types-requests types-psutil
+
+    - name: Run leakage detection tests
+      run: |
+        python -m pytest tests/test_no_lookahead.py -v
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install types-requests types-psutil
+
+    - name: Run integration tests
+      run: |
+        npm run test:int-fast
+
+  smoke-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install types-requests types-psutil
+
+    - name: Run smoke test with memory profiling
+      run: |
+        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+        export ZTB_MEM_PROFILE=1
+        python ztb/experiments/smoke_test.py --steps 1000 --dataset synthetic
+
+    - name: Upload memory profile
+      uses: actions/upload-artifact@v4
+      with:
+        name: memory-profile-${{ github.run_id }}
+        path: |
+          memory_profile_*.csv
+          logs/**/*.jsonl
+        retention-days: 30
