@@ -8,7 +8,7 @@ Ensures sim and skeleton brokers behave consistently.
 import pytest
 from typing import Dict, Any
 
-from ztb.live.broker_registry import get_broker_registry, BrokerProtocol
+from ztb.live.broker_registry import get_broker_registry, BrokerProtocol, CoincheckSkeletonBroker
 
 
 class TestBrokerContract:
@@ -34,14 +34,19 @@ class TestBrokerContract:
 
     def test_get_balance_contract(self, broker):
         """Test get_balance method contract."""
-        # Should return a float
-        balance = broker.get_balance("JPY")
-        assert isinstance(balance, float)
-        assert balance >= 0
+        if isinstance(broker, CoincheckSkeletonBroker):
+            # Skeleton should raise NotImplementedError
+            with pytest.raises(NotImplementedError):
+                broker.get_balance("JPY")
+        else:
+            # Should return a float
+            balance = broker.get_balance("JPY")
+            assert isinstance(balance, float)
+            assert balance >= 0
 
     def test_place_order_contract(self, broker):
         """Test place_order method contract."""
-        if isinstance(broker, type(broker)).__name__ == "CoincheckSkeletonBroker":
+        if isinstance(broker, CoincheckSkeletonBroker):
             # Skeleton should raise NotImplementedError
             with pytest.raises(NotImplementedError):
                 broker.place_order("btc_jpy", "buy", 0.01, 30000.0)
@@ -72,7 +77,7 @@ class TestBrokerContract:
 
     def test_get_open_orders_contract(self, broker):
         """Test get_open_orders method contract."""
-        if isinstance(broker, type(broker)).__name__ == "CoincheckSkeletonBroker":
+        if isinstance(broker, CoincheckSkeletonBroker):
             # Skeleton should raise NotImplementedError
             with pytest.raises(NotImplementedError):
                 broker.get_open_orders()

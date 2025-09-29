@@ -4,6 +4,7 @@
 param(
     [int]$DurationMinutes = 3,
     [string]$Policy = "sma_fast_slow",
+    [string]$OutputDir,
     [switch]$EnableRisk
 )
 
@@ -11,11 +12,18 @@ Write-Host "Running canary test (Windows)..."
 
 # Set environment variables
 $env:QUIET = "1"
-$env:PYTHONPATH = "$PSScriptRoot\..\.."
+$env:PYTHONPATH = "$PSScriptRoot"
 
 # Create temp directory
-$tempDir = "$env:TEMP\ztb_canary_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+if ($OutputDir) {
+    $tempDir = $OutputDir
+} else {
+    $tempDir = "$env:TEMP\ztb_canary_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+}
+
+# Copy venues directory to temp dir
+Copy-Item -Path "$PSScriptRoot\venues" -Destination $tempDir -Recurse
 
 try {
     # Run paper trader replay
@@ -23,7 +31,8 @@ try {
         "-m", "ztb.live.paper_trader",
         "--mode", "replay",
         "--policy", $Policy,
-        "--duration-minutes", $DurationMinutes
+        "--duration-minutes", $DurationMinutes,
+        "--output-dir", $tempDir
     )
 
     if ($EnableRisk) {
@@ -38,6 +47,13 @@ try {
         exit 1
     }
 
+    # Find artifacts directory (created by paper trader)
+    $artifactsDir = Get-ChildItem $tempDir -Directory | Select-Object -First 1
+    if (-not $artifactsDir) {
+        Write-Error "No artifacts directory found"
+        exit 1
+    }
+
     # Verify artifacts
     $expectedFiles = @(
         "run_metadata.json",
@@ -46,7 +62,7 @@ try {
     )
 
     foreach ($file in $expectedFiles) {
-        if (-not (Test-Path "$tempDir\$file")) {
+        if (-not (Test-Path "$tempDir\$artifactsDir\$file")) {
             Write-Error "Missing expected artifact: $file"
             exit 1
         }
@@ -59,8 +75,8 @@ try {
     Write-Error "Canary test failed: $($_.Exception.Message)"
     exit 1
 } finally {
-    # Cleanup
-    if (Test-Path $tempDir) {
+    # Cleanup only if we created the temp dir
+    if (-not $OutputDir -and (Test-Path $tempDir)) {
         Remove-Item -Path $tempDir -Recurse -Force
     }
 }

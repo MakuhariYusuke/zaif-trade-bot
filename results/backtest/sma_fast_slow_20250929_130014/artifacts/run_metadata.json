@@ -1,0 +1,29 @@
+{
+  "correlation_id": "374bfc325e5e47d495983f6dc1c56f0e",
+  "timestamp": "2025-09-29T04:00:15.129058",
+  "payload": {
+    "correlation_id": "374bfc325e5e47d495983f6dc1c56f0e",
+    "timestamp": "2025-09-29T04:00:15.087125",
+    "run_id": "backtest_sma_fast_slow_20250929_130014",
+    "type": "backtest",
+    "config": {
+      "policy": "sma_fast_slow",
+      "dataset": "btc_usd_1m",
+      "slippage_bps": 5.0,
+      "initial_capital": 1000.0,
+      "enable_risk": false,
+      "risk_profile": "balanced",
+      "target_vol": null
+    },
+    "environment": {
+      "python_version": "3.11.9",
+      "platform": "Windows-10-10.0.26100-SP0",
+      "cpu_count": 8
+    },
+    "seeds": {
+      "numpy": 42,
+      "random": null
+    },
+    "package_hashes": {}
+  }
+}
