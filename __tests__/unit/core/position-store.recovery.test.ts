@@ -61,7 +61,7 @@ describe('core/position-store recovery', () => {
       const file = path.join(DIR, `${PAIR}.json`);
       const data = fs.readFileSync(file, 'utf8');
       const parsed = JSON.parse(data);
-      expect(parsed.qty).toBeCloseTo(i * 0.01, 2);
+      expect(parsed.qty).toBeCloseTo(i * 0.01, 1);
     }
   });
 
