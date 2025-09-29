@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setRateLimiter, RateLimiter } from '../../src/application/rate-limiter';
-import { withRetry } from '../../src/adapters/base-service';
+import { setRateLimiter, RateLimiter } from '../../ztb/application/rate-limiter';
+import { withRetry } from '../../ztb/adapters/base-service';
 
 function pAll<T>(arr: Promise<T>[]) { return Promise.allSettled(arr); }
 
