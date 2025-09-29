@@ -1,0 +1,47 @@
+name: Manual Rollup Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      correlation_id:
+        description: 'Correlation ID for the session'
+        required: true
+        type: string
+      operation:
+        description: 'Operation to run'
+        required: true
+        type: choice
+        options:
+        - eta
+        - bundle
+        - errors
+        - health
+        - cronish
+        - validate
+        - launch
+      args:
+        description: 'Additional arguments for the operation'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  run-operation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Run operation
+      run: |
+        python -m ztb.ops.cli ${{ inputs.operation }} --correlation-id ${{ inputs.correlation_id }} ${{ inputs.args }}

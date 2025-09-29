@@ -17,22 +17,25 @@ logger = logging.getLogger(__name__)
 
 class CircuitState(Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"         # Failing, requests blocked
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, requests blocked
     HALF_OPEN = "half_open"  # Testing recovery
 
 
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker."""
-    failure_threshold: int = 5       # Failures before opening
-    recovery_timeout: float = 60.0   # Seconds to wait before half-open
-    success_threshold: int = 3       # Successes needed to close
-    timeout: float = 10.0           # Request timeout in seconds
+
+    failure_threshold: int = 5  # Failures before opening
+    recovery_timeout: float = 60.0  # Seconds to wait before half-open
+    success_threshold: int = 3  # Successes needed to close
+    timeout: float = 10.0  # Request timeout in seconds
 
 
 class CircuitBreakerOpenException(Exception):
     """Exception raised when circuit breaker is open."""
+
     pass
 
 
@@ -76,8 +79,7 @@ class CircuitBreaker:
         try:
             # Execute with timeout
             result = await asyncio.wait_for(
-                func(*args, **kwargs),
-                timeout=self.config.timeout
+                func(*args, **kwargs), timeout=self.config.timeout
             )
             await self._on_success()
             return result
@@ -94,7 +96,9 @@ class CircuitBreaker:
                 if self._should_attempt_reset():
                     self.state = CircuitState.HALF_OPEN
                     self.success_count = 0
-                    logger.info(f"Circuit breaker '{self.name}' entering half-open state")
+                    logger.info(
+                        f"Circuit breaker '{self.name}' entering half-open state"
+                    )
                     return True
                 return False
             elif self.state == CircuitState.HALF_OPEN:
@@ -116,7 +120,9 @@ class CircuitBreaker:
                 self.success_count += 1
                 if self.success_count >= self.config.success_threshold:
                     self.state = CircuitState.CLOSED
-                    logger.info(f"Circuit breaker '{self.name}' closed after successful recovery")
+                    logger.info(
+                        f"Circuit breaker '{self.name}' closed after successful recovery"
+                    )
             # CLOSED state: no action needed
 
     async def _on_failure(self):
@@ -127,11 +133,17 @@ class CircuitBreaker:
 
             if self.state == CircuitState.HALF_OPEN:
                 self.state = CircuitState.OPEN
-                logger.warning(f"Circuit breaker '{self.name}' reopened after failure in half-open")
-            elif (self.state == CircuitState.CLOSED and
-                  self.failure_count >= self.config.failure_threshold):
+                logger.warning(
+                    f"Circuit breaker '{self.name}' reopened after failure in half-open"
+                )
+            elif (
+                self.state == CircuitState.CLOSED
+                and self.failure_count >= self.config.failure_threshold
+            ):
                 self.state = CircuitState.OPEN
-                logger.warning(f"Circuit breaker '{self.name}' opened after {self.failure_count} failures")
+                logger.warning(
+                    f"Circuit breaker '{self.name}' opened after {self.failure_count} failures"
+                )
 
     def get_state(self) -> CircuitState:
         """Get current circuit breaker state."""
@@ -150,7 +162,9 @@ class CircuitBreaker:
 _circuit_breakers: dict[str, CircuitBreaker] = {}
 
 
-def get_circuit_breaker(name: str, config: Optional[CircuitBreakerConfig] = None) -> CircuitBreaker:
+def get_circuit_breaker(
+    name: str, config: Optional[CircuitBreakerConfig] = None
+) -> CircuitBreaker:
     """
     Get or create circuit breaker instance.
 
@@ -163,7 +177,9 @@ def get_circuit_breaker(name: str, config: Optional[CircuitBreakerConfig] = None
     """
     if name not in _circuit_breakers:
         if config is None:
-            raise ValueError(f"Circuit breaker '{name}' not found and no config provided")
+            raise ValueError(
+                f"Circuit breaker '{name}' not found and no config provided"
+            )
         _circuit_breakers[name] = CircuitBreaker(name, config)
 
     return _circuit_breakers[name]

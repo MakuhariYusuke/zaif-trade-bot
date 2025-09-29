@@ -4,10 +4,12 @@ Configuration validation module for RL project
 """
 
 import json
-import jsonschema
-from pathlib import Path
-from typing import Dict, Any, Optional
 import logging
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import jsonschema
+
 
 class ConfigValidator:
     """Configuration validator with JSON schema validation"""
@@ -17,7 +19,7 @@ class ConfigValidator:
         if schema_path is None:
             schema_path = str((Path(__file__).parent / "config_schema.json").resolve())
 
-        with open(schema_path, 'r') as f:
+        with open(schema_path, "r") as f:
             self.schema = json.load(f)
 
     def validate_config(self, config: Dict[str, Any]) -> bool:
@@ -34,10 +36,12 @@ class ConfigValidator:
             logging.error(f"Schema error: {e.message}")
             return False
 
-    def validate_config_file(self, config_path: str) -> tuple[bool, Optional[Dict[str, Any]]]:
+    def validate_config_file(
+        self, config_path: str
+    ) -> tuple[bool, Optional[Dict[str, Any]]]:
         """Validate configuration file"""
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = json.load(f)
 
             if self.validate_config(config):
@@ -52,15 +56,22 @@ class ConfigValidator:
             logging.error(f"Invalid JSON in configuration file: {e}")
             return False, None
 
-def load_and_validate_config(config_path: str = "rl_config.json") -> Optional[Dict[str, Any]]:
+
+def load_and_validate_config(
+    config_path: str = "rl_config.json",
+) -> Optional[Dict[str, Any]]:
     """Load and validate configuration file"""
     validator = ConfigValidator()
 
     # Try different possible paths
     possible_paths = [
-        Path(config_path),  # Direct path (e.g., project root or current working directory)
+        Path(
+            config_path
+        ),  # Direct path (e.g., project root or current working directory)
         Path(__file__).parent / config_path,  # Same directory as this script
-        Path(__file__).parent.parent / "config" / config_path  # Parent directory's config folder
+        Path(__file__).parent.parent
+        / "config"
+        / config_path,  # Parent directory's config folder
     ]
 
     for path in possible_paths:

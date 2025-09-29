@@ -10,15 +10,117 @@ import hashlib
 import time
 import uuid
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any, Dict, Optional, Set
 
+from ztb.live.idempotency_store import get_idempotency_store
+from ztb.live.precision_policy import quantize_price, quantize_quantity
 from ztb.utils.observability import get_logger
 
 logger = get_logger(__name__)
 
 
+@dataclass
+class OrderRecord:
+    """Order record for tracking order state and metadata."""
+
+    order_id: str
+    client_order_id: Optional[str]
+    symbol: str
+    side: str
+    quantity: float
+    price: Optional[float]
+    venue: str
+    state: str = "pending"
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+    filled_quantity: float = 0.0
+    filled_price: Optional[float] = None
+    error_message: Optional[str] = None
+
+
+def generate_order_id() -> str:
+    """Generate unique order ID."""
+    return str(uuid.uuid4())
+
+
+def create_order_with_idempotency(
+    symbol: str,
+    side: str,
+    quantity: float,
+    price: Optional[float] = None,
+    venue: str = "coincheck",
+    client_order_id: Optional[str] = None,
+    **kwargs,
+) -> Optional[OrderRecord]:
+    """
+    Create order with automatic idempotency handling and durable storage.
+
+    Args:
+        symbol: Trading symbol
+        side: Order side (buy/sell)
+        quantity: Order quantity
+        price: Order price (None for market orders)
+        venue: Trading venue for precision policy
+        client_order_id: Client-provided order ID for idempotency
+        **kwargs: Additional order parameters
+
+    Returns:
+        Order record if created, None if duplicate
+
+    Raises:
+        ValueError: If client_order_id is duplicate
+    """
+    # Use client_order_id if provided, otherwise generate
+    if client_order_id is None:
+        client_order_id = generate_order_id()
+
+    # Check idempotency store
+    store = get_idempotency_store()
+    order_data = {
+        "symbol": symbol,
+        "side": side,
+        "quantity": quantity,
+        "price": price,
+        "venue": venue,
+        "client_order_id": client_order_id,
+        **kwargs,
+    }
+
+    if not store.check_and_store(client_order_id, order_data):
+        # Duplicate order ID
+        existing = store.get_order_data(client_order_id)
+        if existing:
+            logger.warning(f"Duplicate client_order_id: {client_order_id}")
+            raise ValueError(
+                f"Order with client_order_id {client_order_id} already exists"
+            )
+
+    # Apply precision policy
+    if price is not None:
+        price = float(quantize_price(venue, symbol, Decimal(str(price))))
+    quantity = float(quantize_quantity(venue, symbol, Decimal(str(quantity))))
+
+    order_data = OrderData(
+        order_id=client_order_id,  # Use client_order_id as order_id
+        symbol=symbol,
+        side=side,
+        quantity=quantity,
+        price=price,
+        **kwargs,
+    )
+
+    record = _order_state_machine.create_order(order_data)
+
+    # Update status to submitted
+    store.update_status(client_order_id, "submitted")
+
+    return record
+
+
 class OrderState(enum.Enum):
     """Order states in the lifecycle."""
+
     CREATED = "created"
     SUBMITTED = "submitted"
     ACCEPTED = "accepted"
@@ -32,6 +134,7 @@ class OrderState(enum.Enum):
 
 class OrderEvent(enum.Enum):
     """Events that can trigger order state transitions."""
+
     SUBMIT = "submit"
     ACCEPT = "accept"
     FILL = "fill"
@@ -46,6 +149,7 @@ class OrderEvent(enum.Enum):
 @dataclass
 class OrderData:
     """Order data structure."""
+
     order_id: str
     client_order_id: Optional[str] = None
     symbol: str = ""
@@ -62,6 +166,7 @@ class OrderData:
 @dataclass
 class OrderRecord:
     """Complete order record with state."""
+
     data: OrderData
     state: OrderState = OrderState.CREATED
     filled_quantity: float = 0.0
@@ -84,16 +189,43 @@ class OrderRecord:
 
     def is_terminal_state(self) -> bool:
         """Check if order is in a terminal state."""
-        return self.state in {OrderState.FILLED, OrderState.CANCELLED, OrderState.REJECTED, OrderState.EXPIRED, OrderState.FAILED}
+        return self.state in {
+            OrderState.FILLED,
+            OrderState.CANCELLED,
+            OrderState.REJECTED,
+            OrderState.EXPIRED,
+            OrderState.FAILED,
+        }
 
     def can_transition_to(self, new_state: OrderState) -> bool:
         """Check if transition to new state is valid."""
         # Define valid transitions
         valid_transitions = {
-            OrderState.CREATED: {OrderState.SUBMITTED, OrderState.CANCELLED, OrderState.FAILED},
-            OrderState.SUBMITTED: {OrderState.ACCEPTED, OrderState.REJECTED, OrderState.CANCELLED, OrderState.FAILED},
-            OrderState.ACCEPTED: {OrderState.PARTIAL_FILL, OrderState.FILLED, OrderState.CANCELLED, OrderState.EXPIRED, OrderState.FAILED},
-            OrderState.PARTIAL_FILL: {OrderState.PARTIAL_FILL, OrderState.FILLED, OrderState.CANCELLED, OrderState.EXPIRED, OrderState.FAILED},
+            OrderState.CREATED: {
+                OrderState.SUBMITTED,
+                OrderState.CANCELLED,
+                OrderState.FAILED,
+            },
+            OrderState.SUBMITTED: {
+                OrderState.ACCEPTED,
+                OrderState.REJECTED,
+                OrderState.CANCELLED,
+                OrderState.FAILED,
+            },
+            OrderState.ACCEPTED: {
+                OrderState.PARTIAL_FILL,
+                OrderState.FILLED,
+                OrderState.CANCELLED,
+                OrderState.EXPIRED,
+                OrderState.FAILED,
+            },
+            OrderState.PARTIAL_FILL: {
+                OrderState.PARTIAL_FILL,
+                OrderState.FILLED,
+                OrderState.CANCELLED,
+                OrderState.EXPIRED,
+                OrderState.FAILED,
+            },
             OrderState.FILLED: set(),  # Terminal
             OrderState.CANCELLED: set(),  # Terminal
             OrderState.REJECTED: set(),  # Terminal
@@ -131,12 +263,16 @@ class OrderStateMachine:
             existing_id = self.idempotency_map[record.idempotency_key]
             existing_order = self.orders.get(existing_id)
             if existing_order and not existing_order.is_terminal_state():
-                raise ValueError(f"Order with idempotency key {record.idempotency_key} already exists")
+                raise ValueError(
+                    f"Order with idempotency key {record.idempotency_key} already exists"
+                )
 
         self.orders[record.data.order_id] = record
         self.idempotency_map[record.idempotency_key] = record.data.order_id
 
-        logger.info(f"Created order {record.data.order_id} with state {record.state.value}")
+        logger.info(
+            f"Created order {record.data.order_id} with state {record.state.value}"
+        )
         return record
 
     def transition_order(self, order_id: str, event: OrderEvent, **kwargs) -> bool:
@@ -177,7 +313,9 @@ class OrderStateMachine:
 
         # Validate transition
         if not record.can_transition_to(new_state):
-            logger.warning(f"Invalid transition from {record.state.value} to {new_state.value} for order {order_id}")
+            logger.warning(
+                f"Invalid transition from {record.state.value} to {new_state.value} for order {order_id}"
+            )
             return False
 
         # Apply transition
@@ -187,20 +325,22 @@ class OrderStateMachine:
 
         # Update additional data
         if event == OrderEvent.FILL or event == OrderEvent.PARTIAL_FILL:
-            if 'filled_quantity' in kwargs:
-                record.filled_quantity = kwargs['filled_quantity']
-            if 'average_price' in kwargs:
-                record.average_price = kwargs['average_price']
-            if 'fees' in kwargs:
-                record.fees = kwargs['fees']
+            if "filled_quantity" in kwargs:
+                record.filled_quantity = kwargs["filled_quantity"]
+            if "average_price" in kwargs:
+                record.average_price = kwargs["average_price"]
+            if "fees" in kwargs:
+                record.fees = kwargs["fees"]
 
-        if 'external_order_id' in kwargs:
-            record.external_order_id = kwargs['external_order_id']
+        if "external_order_id" in kwargs:
+            record.external_order_id = kwargs["external_order_id"]
 
-        if 'error_message' in kwargs:
-            record.error_message = kwargs['error_message']
+        if "error_message" in kwargs:
+            record.error_message = kwargs["error_message"]
 
-        logger.info(f"Order {order_id} transitioned from {old_state.value} to {new_state.value}")
+        logger.info(
+            f"Order {order_id} transitioned from {old_state.value} to {new_state.value}"
+        )
         return True
 
     def get_order(self, order_id: str) -> Optional[OrderRecord]:
@@ -228,7 +368,9 @@ class OrderStateMachine:
             return self.orders.get(order_id)
         return None
 
-    def list_orders(self, state_filter: Optional[Set[OrderState]] = None) -> list[OrderRecord]:
+    def list_orders(
+        self, state_filter: Optional[Set[OrderState]] = None
+    ) -> list[OrderRecord]:
         """List orders, optionally filtered by state.
 
         Args:
@@ -254,8 +396,7 @@ class OrderStateMachine:
         to_remove = []
 
         for order_id, record in self.orders.items():
-            if (record.is_terminal_state() and
-                record.last_update < cutoff_time):
+            if record.is_terminal_state() and record.last_update < cutoff_time:
                 to_remove.append(order_id)
 
         for order_id in to_remove:
@@ -300,8 +441,14 @@ def generate_order_id() -> str:
     return f"ord_{uuid.uuid4().hex[:12]}"
 
 
-def create_order_with_idempotency(symbol: str, side: str, quantity: float,
-                                price: Optional[float] = None, **kwargs) -> OrderRecord:
+def create_order_with_idempotency(
+    symbol: str,
+    side: str,
+    quantity: float,
+    price: Optional[float] = None,
+    venue: str = "coincheck",
+    **kwargs,
+) -> OrderRecord:
     """Create order with automatic idempotency handling.
 
     Args:
@@ -309,25 +456,36 @@ def create_order_with_idempotency(symbol: str, side: str, quantity: float,
         side: Order side (buy/sell)
         quantity: Order quantity
         price: Order price (None for market orders)
+        venue: Trading venue for precision policy
         **kwargs: Additional order parameters
 
     Returns:
         Order record
     """
+    # Apply precision policy
+    if price is not None:
+        price = float(quantize_price(venue, symbol, Decimal(str(price))))
+    quantity = float(quantize_quantity(venue, symbol, Decimal(str(quantity))))
+
     order_data = OrderData(
         order_id=generate_order_id(),
         symbol=symbol,
         side=side,
         quantity=quantity,
         price=price,
-        **kwargs
+        **kwargs,
     )
 
     return _order_state_machine.create_order(order_data)
 
 
-def find_existing_order(symbol: str, side: str, quantity: float,
-                       price: Optional[float] = None, timestamp: Optional[float] = None) -> Optional[OrderRecord]:
+def find_existing_order(
+    symbol: str,
+    side: str,
+    quantity: float,
+    price: Optional[float] = None,
+    timestamp: Optional[float] = None,
+) -> Optional[OrderRecord]:
     """Find existing order by key parameters.
 
     Args:
@@ -347,3 +505,34 @@ def find_existing_order(symbol: str, side: str, quantity: float,
     idempotency_key = hashlib.sha256(key_data.encode()).hexdigest()[:16]
 
     return _order_state_machine.get_order_by_idempotency_key(idempotency_key)
+
+
+# Coincheck-specific hooks for future integration
+def coincheck_order_pre_submit_hook(order_data: OrderData) -> OrderData:
+    """Pre-submit hook for Coincheck orders (placeholder for future implementation)."""
+    # TODO: Add Coincheck-specific validation or transformation
+    logger.debug(f"Coincheck pre-submit hook called for order {order_data.order_id}")
+    return order_data
+
+
+def coincheck_order_post_submit_hook(
+    order_data: OrderData, broker_response: Any
+) -> None:
+    """Post-submit hook for Coincheck orders (placeholder for future implementation)."""
+    # TODO: Handle Coincheck-specific response processing
+    logger.debug(f"Coincheck post-submit hook called for order {order_data.order_id}")
+
+
+def coincheck_reconciliation_hook(
+    order_data: OrderData, broker_state: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Reconciliation hook for Coincheck orders (placeholder for future implementation)."""
+    # TODO: Implement Coincheck-specific reconciliation logic
+    logger.debug(
+        f"Coincheck reconciliation hook called for order {order_data.order_id}"
+    )
+    return broker_state
+
+
+# Global order state machine instance
+_order_state_machine = OrderStateMachine()

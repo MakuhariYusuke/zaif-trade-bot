@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 from pathlib import Path
 from typing import Iterator, Optional
@@ -13,8 +13,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import types
 
-if 'ztb.features' not in sys.modules:
-    fake_features = types.ModuleType('ztb.features')
+if "ztb.features" not in sys.modules:
+    fake_features = types.ModuleType("ztb.features")
 
     class _FakeRegistry:
         @classmethod
@@ -26,15 +26,15 @@ if 'ztb.features' not in sys.modules:
             return []
 
     fake_features.FeatureRegistry = _FakeRegistry
-    sys.modules['ztb.features'] = fake_features
+    sys.modules["ztb.features"] = fake_features
 
-    fake_feature_engine = types.ModuleType('ztb.features.feature_engine')
+    fake_feature_engine = types.ModuleType("ztb.features.feature_engine")
 
     def _compute_features_batch(df, feature_names=None, **_kwargs):
         return pd.DataFrame(index=df.index)
 
     fake_feature_engine.compute_features_batch = _compute_features_batch
-    sys.modules['ztb.features.feature_engine'] = fake_feature_engine
+    sys.modules["ztb.features.feature_engine"] = fake_feature_engine
 
 from ztb.data.coin_gecko_stream import MarketDataBatch, StreamConfig
 from ztb.data.streaming_pipeline import StreamingPipeline
@@ -49,15 +49,15 @@ class SyntheticStream:
         self.fail_on = fail_on
 
     def _frame(self) -> pd.DataFrame:
-        base_ts = pd.Timestamp.utcnow().floor('s')
-        offsets = pd.to_timedelta(range(self.batch_rows), unit='s')
+        base_ts = pd.Timestamp.utcnow().floor("s")
+        offsets = pd.to_timedelta(range(self.batch_rows), unit="s")
         prices = 100 + self._counter + pd.Series(range(self.batch_rows)) * 0.01
         df = pd.DataFrame(
             {
                 "timestamp": base_ts + offsets,
-                "price": prices.astype('float32'),
-                "market_cap": (prices * 1000).astype('float32'),
-                "volume": (prices * 10).astype('float32'),
+                "price": prices.astype("float32"),
+                "market_cap": (prices * 1000).astype("float32"),
+                "volume": (prices * 10).astype("float32"),
             }
         )
         self._counter += 1
@@ -86,7 +86,12 @@ class SyntheticStream:
             if self.fail_on is not None and self._counter == self.fail_on:
                 self.fail_on = None
                 raise RuntimeError("Synthetic network failure")
-            yield self.fetch_range(config.coin_id, config.vs_currency, pd.Timestamp.utcnow(), pd.Timestamp.utcnow())
+            yield self.fetch_range(
+                config.coin_id,
+                config.vs_currency,
+                pd.Timestamp.utcnow(),
+                pd.Timestamp.utcnow(),
+            )
 
 
 @pytest.fixture()
@@ -104,7 +109,9 @@ def synthetic_pipeline() -> StreamingPipeline:
     pipeline.close()
 
 
-def test_streaming_pipeline_long_run_stability(synthetic_pipeline: StreamingPipeline) -> None:
+def test_streaming_pipeline_long_run_stability(
+    synthetic_pipeline: StreamingPipeline,
+) -> None:
     process = psutil.Process(os.getpid())
     rss_before = process.memory_info().rss / (1024 * 1024)
 

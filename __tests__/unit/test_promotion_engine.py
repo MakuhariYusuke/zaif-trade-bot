@@ -2,10 +2,17 @@
 Tests for Promotion Engine functionality.
 """
 
-import pytest
-import yaml
 from unittest.mock import patch
-from ztb.evaluation.promotion import YamlPromotionEngine, PromotionResult, Criterion, NumericCriterion, RatioCriterion, DurationCriterion, DistributionCriterion, PromotionNotifier
+
+from ztb.evaluation.promotion import (
+    DistributionCriterion,
+    DurationCriterion,
+    NumericCriterion,
+    PromotionNotifier,
+    PromotionResult,
+    RatioCriterion,
+    YamlPromotionEngine,
+)
 
 
 class TestNumericCriterion:
@@ -92,12 +99,12 @@ class TestDistributionCriterion:
 class TestYamlPromotionEngine:
     """Test YamlPromotionEngine class"""
 
-    @patch('ztb.evaluation.promotion.Path')
+    @patch("ztb.evaluation.promotion.Path")
     def test_load_config(self, mock_path):
         mock_path.return_value.exists.return_value = True
         mock_path.return_value.__str__ = lambda x: "config/promotion_criteria.yaml"
 
-        with patch('builtins.open') as mock_open:
+        with patch("builtins.open") as mock_open:
             mock_file = mock_open.return_value.__enter__.return_value
             mock_file.read.return_value = """
 categories:
@@ -111,18 +118,20 @@ categories:
     required_score: 0.7
 """
 
-            with patch('yaml.safe_load') as mock_yaml:
+            with patch("yaml.safe_load") as mock_yaml:
                 mock_yaml.return_value = {
                     "categories": {
                         "test_category": {
                             "logic": "AND",
-                            "criteria": [{
-                                "name": "sharpe_ratio",
-                                "operator": ">",
-                                "value": 0.3,
-                                "weight": 0.5
-                            }],
-                            "required_score": 0.7
+                            "criteria": [
+                                {
+                                    "name": "sharpe_ratio",
+                                    "operator": ">",
+                                    "value": 0.3,
+                                    "weight": 0.5,
+                                }
+                            ],
+                            "required_score": 0.7,
                         }
                     }
                 }
@@ -136,18 +145,18 @@ categories:
             "categories": {
                 "trend_features": {
                     "logic": "AND",
-                    "criteria": [{
-                        "name": "sharpe_ratio",
-                        "operator": ">",
-                        "value": 0.3,
-                        "weight": 1.0
-                    }],
-                    "required_score": 0.8
+                    "criteria": [
+                        {
+                            "name": "sharpe_ratio",
+                            "operator": ">",
+                            "value": 0.3,
+                            "weight": 1.0,
+                        }
+                    ],
+                    "required_score": 0.8,
                 }
             },
-            "staging": {
-                "min_samples_required": 1000
-            }
+            "staging": {"min_samples_required": 1000},
         }
 
         engine = YamlPromotionEngine.__new__(YamlPromotionEngine)
@@ -157,7 +166,9 @@ categories:
 
         # Test successful promotion
         feature_results = {"sharpe_ratio": 0.5, "sample_count": 1500}
-        result, details = engine.evaluate_promotion("test_feature", feature_results, "pending", "trend_features")
+        result, details = engine.evaluate_promotion(
+            "test_feature", feature_results, "pending", "trend_features"
+        )
 
         assert result == PromotionResult.PROMOTE
         assert details["achieved_score"] > details["required_score"]
@@ -168,18 +179,18 @@ categories:
             "categories": {
                 "trend_features": {
                     "logic": "AND",
-                    "criteria": [{
-                        "name": "sharpe_ratio",
-                        "operator": ">",
-                        "value": 0.3,
-                        "weight": 1.0
-                    }],
-                    "required_score": 0.8
+                    "criteria": [
+                        {
+                            "name": "sharpe_ratio",
+                            "operator": ">",
+                            "value": 0.3,
+                            "weight": 1.0,
+                        }
+                    ],
+                    "required_score": 0.8,
                 }
             },
-            "staging": {
-                "min_samples_required": 1000
-            }
+            "staging": {"min_samples_required": 1000},
         }
 
         engine = YamlPromotionEngine.__new__(YamlPromotionEngine)
@@ -189,7 +200,9 @@ categories:
 
         # Test successful promotion with sufficient samples
         feature_results = {"sharpe_ratio": 0.5, "sample_count": 1500}
-        result, details = engine.evaluate_promotion("test_feature", feature_results, "staging", "trend_features")
+        result, details = engine.evaluate_promotion(
+            "test_feature", feature_results, "staging", "trend_features"
+        )
 
         assert result == PromotionResult.PROMOTE
         assert details["staging_samples"] == 1500
@@ -201,18 +214,18 @@ categories:
             "categories": {
                 "trend_features": {
                     "logic": "AND",
-                    "criteria": [{
-                        "name": "sharpe_ratio",
-                        "operator": ">",
-                        "value": 0.3,
-                        "weight": 1.0
-                    }],
-                    "required_score": 0.8
+                    "criteria": [
+                        {
+                            "name": "sharpe_ratio",
+                            "operator": ">",
+                            "value": 0.3,
+                            "weight": 1.0,
+                        }
+                    ],
+                    "required_score": 0.8,
                 }
             },
-            "staging": {
-                "min_samples_required": 2000
-            }
+            "staging": {"min_samples_required": 2000},
         }
 
         engine = YamlPromotionEngine.__new__(YamlPromotionEngine)
@@ -222,7 +235,9 @@ categories:
 
         # Test blocked by insufficient samples
         feature_results = {"sharpe_ratio": 0.5, "sample_count": 1500}
-        result, details = engine.evaluate_promotion("test_feature", feature_results, "staging", "trend_features")
+        result, details = engine.evaluate_promotion(
+            "test_feature", feature_results, "staging", "trend_features"
+        )
 
         assert result == PromotionResult.KEEP
         assert details["staging_samples"] == 1500
@@ -234,13 +249,15 @@ categories:
             "categories": {
                 "trend_features": {
                     "logic": "AND",
-                    "criteria": [{
-                        "name": "sharpe_ratio",
-                        "operator": ">",
-                        "value": 0.3,
-                        "weight": 1.0
-                    }],
-                    "required_score": 0.8
+                    "criteria": [
+                        {
+                            "name": "sharpe_ratio",
+                            "operator": ">",
+                            "value": 0.3,
+                            "weight": 1.0,
+                        }
+                    ],
+                    "required_score": 0.8,
                 }
             }
         }
@@ -252,7 +269,9 @@ categories:
 
         # Test demotion due to poor performance
         feature_results = {"sharpe_ratio": 0.1}
-        result, details = engine.evaluate_promotion("test_feature", feature_results, "verified", "trend_features")
+        result, details = engine.evaluate_promotion(
+            "test_feature", feature_results, "verified", "trend_features"
+        )
 
         assert result == PromotionResult.DEMOTE
         assert details["achieved_score"] < details["required_score"]
@@ -268,16 +287,16 @@ categories:
                             "name": "sharpe_ratio",
                             "operator": ">",
                             "value": 0.5,
-                            "weight": 0.6
+                            "weight": 0.6,
                         },
                         {
                             "name": "win_rate",
                             "operator": ">",
                             "value": 0.7,
-                            "weight": 0.4
-                        }
+                            "weight": 0.4,
+                        },
                     ],
-                    "required_score": 0.5
+                    "required_score": 0.5,
                 }
             }
         }
@@ -289,7 +308,9 @@ categories:
 
         # Test OR logic - only one criterion met
         feature_results = {"sharpe_ratio": 0.3, "win_rate": 0.8}
-        result, details = engine.evaluate_promotion("test_feature", feature_results, "pending", "test_category")
+        result, details = engine.evaluate_promotion(
+            "test_feature", feature_results, "pending", "test_category"
+        )
 
         assert result == PromotionResult.PROMOTE
         assert details["logic"] == "OR"
@@ -300,20 +321,24 @@ categories:
             "categories": {
                 "trend_features": {
                     "logic": "AND",
-                    "criteria": [{
-                        "name": "sharpe_ratio",
-                        "operator": ">",
-                        "value": 0.3,
-                        "weight": 1.0,
-                        "type": "ratio"
-                    }],
-                    "hard_requirements": [{
-                        "name": "max_drawdown",
-                        "operator": "<",
-                        "value": -0.3,
-                        "type": "numeric"
-                    }],
-                    "required_score": 0.8
+                    "criteria": [
+                        {
+                            "name": "sharpe_ratio",
+                            "operator": ">",
+                            "value": 0.3,
+                            "weight": 1.0,
+                            "type": "ratio",
+                        }
+                    ],
+                    "hard_requirements": [
+                        {
+                            "name": "max_drawdown",
+                            "operator": "<",
+                            "value": -0.3,
+                            "type": "numeric",
+                        }
+                    ],
+                    "required_score": 0.8,
                 }
             }
         }
@@ -325,7 +350,9 @@ categories:
 
         # Test successful promotion with hard requirements met
         feature_results = {"sharpe_ratio": 0.5, "max_drawdown": -0.4}
-        result, details = engine.evaluate_promotion("test_feature", feature_results, "pending", "trend_features")
+        result, details = engine.evaluate_promotion(
+            "test_feature", feature_results, "pending", "trend_features"
+        )
 
         assert result == PromotionResult.PROMOTE
         assert details["hard_requirements_passed"] == True
@@ -337,20 +364,24 @@ categories:
             "categories": {
                 "trend_features": {
                     "logic": "AND",
-                    "criteria": [{
-                        "name": "sharpe_ratio",
-                        "operator": ">",
-                        "value": 0.3,
-                        "weight": 1.0,
-                        "type": "ratio"
-                    }],
-                    "hard_requirements": [{
-                        "name": "max_drawdown",
-                        "operator": "<",
-                        "value": -0.3,
-                        "type": "numeric"
-                    }],
-                    "required_score": 0.8
+                    "criteria": [
+                        {
+                            "name": "sharpe_ratio",
+                            "operator": ">",
+                            "value": 0.3,
+                            "weight": 1.0,
+                            "type": "ratio",
+                        }
+                    ],
+                    "hard_requirements": [
+                        {
+                            "name": "max_drawdown",
+                            "operator": "<",
+                            "value": -0.3,
+                            "type": "numeric",
+                        }
+                    ],
+                    "required_score": 0.8,
                 }
             }
         }
@@ -361,8 +392,13 @@ categories:
         engine.notifier = PromotionNotifier({})
 
         # Test blocked by hard requirements
-        feature_results = {"sharpe_ratio": 0.5, "max_drawdown": -0.2}  # Hard requirement fails
-        result, details = engine.evaluate_promotion("test_feature", feature_results, "pending", "trend_features")
+        feature_results = {
+            "sharpe_ratio": 0.5,
+            "max_drawdown": -0.2,
+        }  # Hard requirement fails
+        result, details = engine.evaluate_promotion(
+            "test_feature", feature_results, "pending", "trend_features"
+        )
 
         assert result == PromotionResult.KEEP
         assert details["hard_requirements_passed"] == False

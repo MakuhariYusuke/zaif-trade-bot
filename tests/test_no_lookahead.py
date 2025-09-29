@@ -5,11 +5,11 @@ Leakage detection tests for trading strategies.
 Ensures no data leakage (look-ahead bias) in backtesting.
 """
 
-import pytest
-import pandas as pd
+from typing import Any, Dict, List
+
 import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
+import pandas as pd
+import pytest
 
 from ztb.backtest.adapters import StrategyAdapter
 from ztb.backtest.runner import BacktestEngine
@@ -24,17 +24,25 @@ class MockStrategy(StrategyAdapter):
     def generate_signal(self, data: pd.DataFrame, current_index: int) -> Dict[str, Any]:
         """Generate trading signal."""
         if current_index < self.lookback_period:
-            return {'action': 'hold'}
+            return {"action": "hold"}
 
         # Check for potential leakage: using future data
-        future_data = data.iloc[current_index + 1: current_index + 5]  # This would be leakage!
+        future_data = data.iloc[
+            current_index + 1 : current_index + 5
+        ]  # This would be leakage!
 
-        if not future_data.empty and future_data['close'].max() > data.iloc[current_index]['close'] * 1.01:
-            return {'action': 'buy'}
-        elif not future_data.empty and future_data['close'].min() < data.iloc[current_index]['close'] * 0.99:
-            return {'action': 'sell'}
+        if (
+            not future_data.empty
+            and future_data["close"].max() > data.iloc[current_index]["close"] * 1.01
+        ):
+            return {"action": "buy"}
+        elif (
+            not future_data.empty
+            and future_data["close"].min() < data.iloc[current_index]["close"] * 0.99
+        ):
+            return {"action": "sell"}
 
-        return {'action': 'hold'}
+        return {"action": "hold"}
 
 
 class CleanStrategy(StrategyAdapter):
@@ -46,37 +54,43 @@ class CleanStrategy(StrategyAdapter):
     def generate_signal(self, data: pd.DataFrame, current_index: int) -> Dict[str, Any]:
         """Generate trading signal using only past data."""
         if current_index < self.lookback_period:
-            return {'action': 'hold'}
+            return {"action": "hold"}
 
         # Only use past data
-        past_data = data.iloc[max(0, current_index - self.lookback_period):current_index]
+        past_data = data.iloc[
+            max(0, current_index - self.lookback_period) : current_index
+        ]
 
-        if past_data['close'].iloc[-1] > past_data['close'].mean():
-            return {'action': 'buy'}
-        elif past_data['close'].iloc[-1] < past_data['close'].mean():
-            return {'action': 'sell'}
+        if past_data["close"].iloc[-1] > past_data["close"].mean():
+            return {"action": "buy"}
+        elif past_data["close"].iloc[-1] < past_data["close"].mean():
+            return {"action": "sell"}
 
-        return {'action': 'hold'}
+        return {"action": "hold"}
 
 
 def create_test_data(length: int = 1000) -> pd.DataFrame:
     """Create synthetic price data for testing."""
     np.random.seed(42)  # For reproducible tests
 
-    dates = pd.date_range('2020-01-01', periods=length, freq='1min')
+    dates = pd.date_range("2020-01-01", periods=length, freq="1min")
     prices = 10000 * np.exp(np.cumsum(np.random.normal(0, 0.001, length)))
 
-    return pd.DataFrame({
-        'timestamp': dates,
-        'open': prices,
-        'high': prices * 1.001,
-        'low': prices * 0.999,
-        'close': prices,
-        'volume': np.random.uniform(0.1, 10, length)
-    }).set_index('timestamp')
+    return pd.DataFrame(
+        {
+            "timestamp": dates,
+            "open": prices,
+            "high": prices * 1.001,
+            "low": prices * 0.999,
+            "close": prices,
+            "volume": np.random.uniform(0.1, 10, length),
+        }
+    ).set_index("timestamp")
 
 
-def detect_future_data_access(strategy: StrategyAdapter, data: pd.DataFrame) -> List[str]:
+def detect_future_data_access(
+    strategy: StrategyAdapter, data: pd.DataFrame
+) -> List[str]:
     """
     Detect if strategy accesses future data by monitoring data access patterns.
 
@@ -87,12 +101,13 @@ def detect_future_data_access(strategy: StrategyAdapter, data: pd.DataFrame) -> 
 
     # Check strategy code for obvious future data access patterns
     import inspect
+
     source = inspect.getsource(strategy.generate_signal)
 
-    if 'current_index + 1' in source or 'future_data' in source:
+    if "current_index + 1" in source or "future_data" in source:
         violations.append("Strategy appears to access future data directly")
 
-    if 'data.iloc[current_index + ' in source:
+    if "data.iloc[current_index + " in source:
         violations.append("Strategy uses positive offset from current_index")
 
     return violations
@@ -115,7 +130,9 @@ class TestLeakageDetection:
         data = create_test_data(100)
 
         violations = detect_future_data_access(strategy, data)
-        assert len(violations) == 0, f"Clean strategy should not have violations: {violations}"
+        assert len(violations) == 0, (
+            f"Clean strategy should not have violations: {violations}"
+        )
 
     def test_backtest_runner_prevents_future_access(self):
         """Test that backtest runner properly isolates data access."""
@@ -128,7 +145,9 @@ class TestLeakageDetection:
 
         # Verify strategy only sees past data
         assert len(equity_curve) > 0, "Backtest should produce results"
-        assert not orders.empty or len(orders) == 0, "Orders should be generated or empty"
+        assert not orders.empty or len(orders) == 0, (
+            "Orders should be generated or empty"
+        )
 
     def test_signal_generation_is_deterministic(self):
         """Test that signals are deterministic given same data."""
@@ -154,7 +173,9 @@ class TestLeakageDetection:
 
         final_state = strategy.__dict__.copy()
 
-        assert initial_state == final_state, "Strategy state should not change during signal generation"
+        assert initial_state == final_state, (
+            "Strategy state should not change during signal generation"
+        )
 
     def test_backtest_results_reproducible(self):
         """Test that backtest results are reproducible."""
@@ -170,5 +191,5 @@ class TestLeakageDetection:
         pd.testing.assert_frame_equal(orders1, orders2, check_like=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main([__file__])

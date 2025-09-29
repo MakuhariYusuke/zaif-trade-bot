@@ -18,14 +18,16 @@ logger = get_logger(__name__)
 
 class CircuitBreakerState(enum.Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"         # Failing, requests blocked
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, requests blocked
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker."""
+
     failure_threshold: int = 5  # Failures before opening
     recovery_timeout: float = 60.0  # Seconds to wait before trying again
     success_threshold: int = 3  # Successes needed to close circuit
@@ -71,8 +73,7 @@ class CircuitBreaker:
         try:
             # Execute with timeout
             result = await asyncio.wait_for(
-                func(*args, **kwargs),
-                timeout=self.config.timeout
+                func(*args, **kwargs), timeout=self.config.timeout
             )
             await self._on_success()
             return result
@@ -89,7 +90,9 @@ class CircuitBreaker:
                 if time.time() - self.last_failure_time >= self.config.recovery_timeout:
                     self.state = CircuitBreakerState.HALF_OPEN
                     self.success_count = 0
-                    logger.info(f"Circuit breaker '{self.name}' entering half-open state")
+                    logger.info(
+                        f"Circuit breaker '{self.name}' entering half-open state"
+                    )
                     return True
                 return False
             else:  # HALF_OPEN
@@ -103,7 +106,9 @@ class CircuitBreaker:
                 if self.success_count >= self.config.success_threshold:
                     self.state = CircuitBreakerState.CLOSED
                     self.failure_count = 0
-                    logger.info(f"Circuit breaker '{self.name}' closed - service recovered")
+                    logger.info(
+                        f"Circuit breaker '{self.name}' closed - service recovered"
+                    )
             else:
                 # Reset failure count on success in closed state
                 self.failure_count = 0
@@ -116,11 +121,17 @@ class CircuitBreaker:
 
             if self.state == CircuitBreakerState.HALF_OPEN:
                 self.state = CircuitBreakerState.OPEN
-                logger.warning(f"Circuit breaker '{self.name}' opened due to failure in half-open state")
-            elif (self.state == CircuitBreakerState.CLOSED and
-                  self.failure_count >= self.config.failure_threshold):
+                logger.warning(
+                    f"Circuit breaker '{self.name}' opened due to failure in half-open state"
+                )
+            elif (
+                self.state == CircuitBreakerState.CLOSED
+                and self.failure_count >= self.config.failure_threshold
+            ):
                 self.state = CircuitBreakerState.OPEN
-                logger.warning(f"Circuit breaker '{self.name}' opened after {self.failure_count} failures")
+                logger.warning(
+                    f"Circuit breaker '{self.name}' opened after {self.failure_count} failures"
+                )
 
     def get_state(self) -> CircuitBreakerState:
         """Get current circuit breaker state."""
@@ -137,6 +148,7 @@ class CircuitBreaker:
 
 class CircuitBreakerOpenError(Exception):
     """Exception raised when circuit breaker is open."""
+
     pass
 
 
@@ -205,11 +217,14 @@ class KillSwitch:
     async def check_and_raise(self) -> None:
         """Check kill switch and raise exception if active."""
         if self._killed:
-            raise KillSwitchActivatedError(f"Kill switch '{self.name}' is active: {self._reason}")
+            raise KillSwitchActivatedError(
+                f"Kill switch '{self.name}' is active: {self._reason}"
+            )
 
 
 class KillSwitchActivatedError(Exception):
     """Exception raised when kill switch is active."""
+
     pass
 
 
@@ -221,7 +236,9 @@ class CircuitBreakerRegistry:
         self.breakers: Dict[str, CircuitBreaker] = {}
         self._lock = asyncio.Lock()
 
-    def get_or_create(self, name: str, config: Optional[CircuitBreakerConfig] = None) -> CircuitBreaker:
+    def get_or_create(
+        self, name: str, config: Optional[CircuitBreakerConfig] = None
+    ) -> CircuitBreaker:
         """Get existing or create new circuit breaker.
 
         Args:
@@ -284,10 +301,7 @@ def create_api_circuit_breaker(endpoint: str) -> CircuitBreaker:
         Configured circuit breaker
     """
     config = CircuitBreakerConfig(
-        failure_threshold=3,
-        recovery_timeout=30.0,
-        success_threshold=2,
-        timeout=5.0
+        failure_threshold=3, recovery_timeout=30.0, success_threshold=2, timeout=5.0
     )
     return _circuit_breaker_registry.get_or_create(f"api_{endpoint}", config)
 
@@ -302,9 +316,6 @@ def create_database_circuit_breaker(db_name: str) -> CircuitBreaker:
         Configured circuit breaker
     """
     config = CircuitBreakerConfig(
-        failure_threshold=5,
-        recovery_timeout=60.0,
-        success_threshold=3,
-        timeout=15.0
+        failure_threshold=5, recovery_timeout=60.0, success_threshold=3, timeout=15.0
     )
     return _circuit_breaker_registry.get_or_create(f"db_{db_name}", config)

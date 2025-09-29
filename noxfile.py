@@ -20,7 +20,9 @@ def test(session):
     session.run("python", "-m", "mypy", "ztb/")
 
     # Import sorting check
-    session.run("python", "-m", "isort", "--check-only", "--diff", "ztb/", "scripts/")
+    session.run(
+        "python", "-m", "isort", "--check-only", "--diff", "ztb/", "ztb/scripts/"
+    )
 
 
 @nox.session(python=["3.11", "3.12", "3.13"])
@@ -29,11 +31,13 @@ def lint(session):
     session.install("-r", "requirements-dev.txt")
 
     # Code formatting
-    session.run("python", "-m", "black", "--check", "--diff", "ztb/", "scripts/")
-    session.run("python", "-m", "isort", "--check-only", "--diff", "ztb/", "scripts/")
+    session.run("python", "-m", "black", "--check", "--diff", "ztb/", "ztb/scripts/")
+    session.run(
+        "python", "-m", "isort", "--check-only", "--diff", "ztb/", "ztb/scripts/"
+    )
 
     # Linting
-    session.run("python", "-m", "flake8", "ztb/", "scripts/")
+    session.run("python", "-m", "flake8", "ztb/", "ztb/scripts/")
 
 
 @nox.session(python=["3.11", "3.12", "3.13"])
@@ -42,7 +46,7 @@ def type_check(session):
     session.install("-r", "requirements-dev.txt")
     session.install("-e", ".")
 
-    session.run("python", "-m", "mypy", "ztb/", "scripts/")
+    session.run("python", "-m", "mypy", "ztb/", "ztb/scripts/")
 
 
 @nox.session(python="3.11")

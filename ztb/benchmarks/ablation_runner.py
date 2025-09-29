@@ -19,8 +19,6 @@ import yaml
 # プロジェクトルートをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
-
 
 def evaluate_experimental_features(df, experimental_features, baseline_sharpe=None):
     """
@@ -30,15 +28,21 @@ def evaluate_experimental_features(df, experimental_features, baseline_sharpe=No
     return {
         "status": "not_implemented",
         "experimental_features": experimental_features,
-        "baseline_sharpe": baseline_sharpe
+        "baseline_sharpe": baseline_sharpe,
     }
 
-from ztb.utils.metrics.trading_metrics import sharpe_ratio, sharpe_with_stats, calculate_delta_sharpe, validate_ablation_results
+
+from ztb.utils.metrics.trading_metrics import (
+    calculate_delta_sharpe,
+    sharpe_ratio,
+    sharpe_with_stats,
+    validate_ablation_results,
+)
 
 
 def load_config(config_path: Path) -> dict:
     """設定ファイルを読み込み"""
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -48,20 +52,17 @@ def load_evaluation_config() -> dict:
     if not config_path.exists():
         # デフォルト値
         return {
-            'thresholds': {
-                're_evaluate': 0.05,
-                'monitor': 0.01
-            },
-            'min_samples': 10000
+            "thresholds": {"re_evaluate": 0.05, "monitor": 0.01},
+            "min_samples": 10000,
         }
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def load_feature_sets(sets_path: Path) -> dict:
     """特徴量セットを読み込み"""
-    with open(sets_path, 'r', encoding='utf-8') as f:
+    with open(sets_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -70,7 +71,7 @@ def run_ablation_analysis(
     experimental_features: Optional[List[str]] = None,
     data_path: Optional[Path] = None,
     num_runs: int = 5,
-    evaluation_config: Optional[dict] = None
+    evaluation_config: Optional[dict] = None,
 ) -> Dict:
     """
     アブレーション分析を実行
@@ -89,10 +90,7 @@ def run_ablation_analysis(
         "experimental_features": experimental_features or [],
         "ablation_results": {},
         "experimental_eval": {},
-        "summary": {
-            "total_runs": num_runs,
-            "valid_results": 0
-        }
+        "summary": {"total_runs": num_runs, "valid_results": 0},
     }
 
     # データ読み込み（仮）
@@ -102,14 +100,18 @@ def run_ablation_analysis(
         # サンプルデータ生成
         np.random.seed(42)  # 再現性のためにシード固定
         n_samples = 1000
-        df = pd.DataFrame({
-            'close': 100 + np.cumsum(np.random.normal(0.001, 0.02, n_samples)),
-            'price': 100 + np.cumsum(np.random.normal(0.001, 0.02, n_samples)),
-            'volume': np.random.normal(1000, 100, n_samples)
-        })
+        df = pd.DataFrame(
+            {
+                "close": 100 + np.cumsum(np.random.normal(0.001, 0.02, n_samples)),
+                "price": 100 + np.cumsum(np.random.normal(0.001, 0.02, n_samples)),
+                "volume": np.random.normal(1000, 100, n_samples),
+            }
+        )
 
     # 評価設定からパラメータ取得
-    min_samples = evaluation_config.get('min_samples', 10000) if evaluation_config else 10000
+    min_samples = (
+        evaluation_config.get("min_samples", 10000) if evaluation_config else 10000
+    )
 
     # ベース特徴量でのSharpe ratio計算（シミュレーション）
     base_sharpes = []
@@ -140,7 +142,7 @@ def run_ablation_analysis(
             "sharpe_stats": sharpe_with_stats(with_feature_sharpes),
             "delta_sharpe": delta_sharpe,
             "runs": num_runs,
-            "is_experimental": feature_name in (experimental_features or [])
+            "is_experimental": feature_name in (experimental_features or []),
         }
 
         if validate_ablation_results(results["ablation_results"][feature_name]):
@@ -150,7 +152,9 @@ def run_ablation_analysis(
 
     # experimental特徴量の評価
     if experimental_features:
-        exp_results = evaluate_experimental_features(df, experimental_features, baseline_sharpe=base_stats["mean"])
+        exp_results = evaluate_experimental_features(
+            df, experimental_features, baseline_sharpe=base_stats["mean"]
+        )
         results["experimental_eval"] = exp_results
 
     return results
@@ -159,11 +163,11 @@ def run_ablation_analysis(
 def save_results(results: Dict, output_path: Path):
     """結果をJSONファイルとCSVファイルに保存"""
     # JSON保存
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
     # CSV保存
-    csv_path = output_path.with_suffix('.csv')
+    csv_path = output_path.with_suffix(".csv")
     csv_data = []
 
     for feature_name, feature_result in results["ablation_results"].items():
@@ -171,66 +175,95 @@ def save_results(results: Dict, output_path: Path):
             "feature": feature_name,
             "is_experimental": feature_result.get("is_experimental", False),
             "success": feature_result.get("success", False),
-            "runs": feature_result.get("runs", 0)
+            "runs": feature_result.get("runs", 0),
         }
 
         # Sharpe統計
         if "sharpe_stats" in feature_result:
             stats = feature_result["sharpe_stats"]
-            row.update({
-                "sharpe_mean": stats.get("mean", 0.0),
-                "sharpe_std": stats.get("std", 0.0),
-                "sharpe_ci_low": stats.get("ci95", [0.0, 0.0])[0],
-                "sharpe_ci_high": stats.get("ci95", [0.0, 0.0])[1]
-            })
+            row.update(
+                {
+                    "sharpe_mean": stats.get("mean", 0.0),
+                    "sharpe_std": stats.get("std", 0.0),
+                    "sharpe_ci_low": stats.get("ci95", [0.0, 0.0])[0],
+                    "sharpe_ci_high": stats.get("ci95", [0.0, 0.0])[1],
+                }
+            )
 
         # delta_sharpe統計
-        if "delta_sharpe" in feature_result and feature_result["delta_sharpe"] is not None:
+        if (
+            "delta_sharpe" in feature_result
+            and feature_result["delta_sharpe"] is not None
+        ):
             ds = feature_result["delta_sharpe"]
-            row.update({
-                "delta_sharpe_mean": ds.get("mean", 0.0),
-                "delta_sharpe_std": ds.get("std", 0.0),
-                "delta_sharpe_ci_low": ds.get("ci95", [0.0, 0.0])[0],
-                "delta_sharpe_ci_high": ds.get("ci95", [0.0, 0.0])[1]
-            })
+            row.update(
+                {
+                    "delta_sharpe_mean": ds.get("mean", 0.0),
+                    "delta_sharpe_std": ds.get("std", 0.0),
+                    "delta_sharpe_ci_low": ds.get("ci95", [0.0, 0.0])[0],
+                    "delta_sharpe_ci_high": ds.get("ci95", [0.0, 0.0])[1],
+                }
+            )
         else:
-            row.update({
-                "delta_sharpe_mean": None,
-                "delta_sharpe_std": None,
-                "delta_sharpe_ci_low": None,
-                "delta_sharpe_ci_high": None
-            })
+            row.update(
+                {
+                    "delta_sharpe_mean": None,
+                    "delta_sharpe_std": None,
+                    "delta_sharpe_ci_low": None,
+                    "delta_sharpe_ci_high": None,
+                }
+            )
 
         csv_data.append(row)
 
     # CSV出力
     df = pd.DataFrame(csv_data)
-    df.to_csv(csv_path, index=False, encoding='utf-8')
+    df.to_csv(csv_path, index=False, encoding="utf-8")
 
     logging.info(f"Results saved to {output_path} and {csv_path}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='特徴量アブレーション分析')
-    parser.add_argument('--config', type=Path, default=Path('config/features.yaml'),
-                       help='特徴量設定ファイル')
-    parser.add_argument('--feature-sets', type=Path, default=Path('config/feature_sets.yaml'),
-                       help='特徴量セット設定ファイル')
-    parser.add_argument('--set', type=str, default='balanced',
-                       help='使用する特徴量セット (minimal/balanced/extended)')
-    parser.add_argument('--include-experimental', action='store_true',
-                       help='experimental特徴量を含めて評価')
-    parser.add_argument('--data', type=Path,
-                       help='評価用データファイル')
-    parser.add_argument('--num-runs', type=int, default=5,
-                       help='アブレーション分析の実行回数')
-    parser.add_argument('--output', type=Path, default=Path('results/ablation_results.json'),
-                       help='出力ファイルパス')
+    parser = argparse.ArgumentParser(description="特徴量アブレーション分析")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=Path("config/features.yaml"),
+        help="特徴量設定ファイル",
+    )
+    parser.add_argument(
+        "--feature-sets",
+        type=Path,
+        default=Path("config/feature_sets.yaml"),
+        help="特徴量セット設定ファイル",
+    )
+    parser.add_argument(
+        "--set",
+        type=str,
+        default="balanced",
+        help="使用する特徴量セット (minimal/balanced/extended)",
+    )
+    parser.add_argument(
+        "--include-experimental",
+        action="store_true",
+        help="experimental特徴量を含めて評価",
+    )
+    parser.add_argument("--data", type=Path, help="評価用データファイル")
+    parser.add_argument(
+        "--num-runs", type=int, default=5, help="アブレーション分析の実行回数"
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("results/ablation_results.json"),
+        help="出力ファイルパス",
+    )
 
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO,
-                       format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
     try:
         # 設定読み込み
@@ -239,20 +272,22 @@ def main():
         feature_sets = load_feature_sets(args.feature_sets)
 
         # 特徴量セット取得
-        if args.set not in feature_sets['sets']:
+        if args.set not in feature_sets["sets"]:
             raise ValueError(f"Unknown feature set: {args.set}")
 
-        base_features = feature_sets['sets'][args.set]
+        base_features = feature_sets["sets"][args.set]
         experimental_features = None
 
         if args.include_experimental:
             # experimental特徴量を取得（experimental.yamlから）
-            exp_config_path = Path('config/experimental.yaml')
+            exp_config_path = Path("config/experimental.yaml")
             if exp_config_path.exists():
                 exp_config = load_config(exp_config_path)
-                experimental_features = list(exp_config.get('features', {}).keys())
+                experimental_features = list(exp_config.get("features", {}).keys())
             else:
-                logging.warning("experimental.yaml not found, skipping experimental features")
+                logging.warning(
+                    "experimental.yaml not found, skipping experimental features"
+                )
 
         # アブレーション分析実行
         logging.info(f"Running ablation analysis for set: {args.set}")
@@ -264,7 +299,7 @@ def main():
             experimental_features=experimental_features,
             data_path=args.data,
             num_runs=args.num_runs,
-            evaluation_config=evaluation_config
+            evaluation_config=evaluation_config,
         )
 
         # 結果保存
@@ -276,7 +311,7 @@ def main():
         # experimental評価結果を別ファイルにも保存
         if results["experimental_eval"]:
             exp_output = args.output.parent / "experimental_eval.json"
-            with open(exp_output, 'w', encoding='utf-8') as f:
+            with open(exp_output, "w", encoding="utf-8") as f:
                 json.dump(results["experimental_eval"], f, indent=2, ensure_ascii=False)
             logging.info(f"Experimental evaluation saved to {exp_output}")
 

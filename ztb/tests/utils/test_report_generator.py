@@ -1,9 +1,10 @@
 """
 Unit tests for ReportGenerator
 """
-import tempfile
+
 import os
-from pathlib import Path
+import tempfile
+
 from ztb.utils.report_generator import ReportGenerator
 
 
@@ -12,7 +13,7 @@ def test_generate_csv():
     generator = ReportGenerator()
     results = [{"name": "test", "value": 1.0}]
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
         temp_path = f.name
 
     try:
@@ -27,7 +28,7 @@ def test_generate_json():
     generator = ReportGenerator()
     results = [{"name": "test", "value": 1.0}]
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_path = f.name
 
     try:
@@ -42,7 +43,7 @@ def test_generate_markdown():
     generator = ReportGenerator()
     results = [{"name": "test", "value": 1.0}]
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         temp_path = f.name
 
     try:

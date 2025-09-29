@@ -5,11 +5,13 @@ Trading features package.
 
 from .registry import FeatureRegistry
 
+
 def get_feature_manager() -> FeatureRegistry:
     """Get the feature manager instance"""
     return FeatureRegistry()
 
-# Import all feature modules to register functions
-from . import time, momentum, volatility, volume, trend, utils
 
-__all__ = ['FeatureRegistry', 'get_feature_manager']
+# Import all feature modules to register functions
+from . import momentum, time, trend, utils, volatility, volume
+
+__all__ = ["FeatureRegistry", "get_feature_manager"]
