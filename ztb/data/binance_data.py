@@ -5,14 +5,15 @@ This module provides functions to fetch historical 1-minute BTC/USDT data
 from Binance API and save it in optimized Parquet format.
 """
 
-import pandas as pd
-import requests
-import time
 import logging
-from typing import Optional, List
+import time
 from pathlib import Path
+from typing import List, Optional
+
+import pandas as pd
 import pyarrow as pa  # type: ignore
 import pyarrow.parquet as pq  # type: ignore
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,14 @@ SYMBOL = "BTCUSDT"
 INTERVAL = "1m"
 LIMIT = 1000
 
+
 def fetch_binance_klines(
     symbol: str = SYMBOL,
     interval: str = INTERVAL,
     limit: int = LIMIT,
     start_time: Optional[int] = None,
     end_time: Optional[int] = None,
-    max_retries: int = 5
+    max_retries: int = 5,
 ) -> pd.DataFrame:
     """
     Fetch historical klines from Binance API with rate limiting and retries.
@@ -48,7 +50,7 @@ def fetch_binance_klines(
     params: dict[str, str | int] = {
         "symbol": symbol,
         "interval": interval,
-        "limit": limit
+        "limit": limit,
     }
 
     if start_time is not None:
@@ -69,25 +71,36 @@ def fetch_binance_klines(
 
             # Convert to DataFrame
             columns = [
-                'timestamp', 'open', 'high', 'low', 'close', 'volume',
-                'close_time', 'quote_asset_volume', 'number_of_trades',
-                'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
+                "timestamp",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "close_time",
+                "quote_asset_volume",
+                "number_of_trades",
+                "taker_buy_base_asset_volume",
+                "taker_buy_quote_asset_volume",
+                "ignore",
             ]
 
             df = pd.DataFrame(data, columns=columns)
 
             # Convert types and normalize timezone
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
-            for col in ['open', 'high', 'low', 'close', 'volume']:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+            for col in ["open", "high", "low", "close", "volume"]:
                 df[col] = df[col].astype(float)
 
-            df.set_index('timestamp', inplace=True)
-            df = df[['open', 'high', 'low', 'close', 'volume']]
+            df.set_index("timestamp", inplace=True)
+            df = df[["open", "high", "low", "close", "volume"]]
 
             # Normalize Kline boundaries (1-minute intervals should be at :00 seconds)
             df = df[df.index.second == 0]  # type: ignore
 
-            logger.info(f"Fetched {len(df)} klines from Binance (UTC, normalized boundaries)")
+            logger.info(
+                f"Fetched {len(df)} klines from Binance (UTC, normalized boundaries)"
+            )
             return df
 
         except requests.exceptions.HTTPError as e:
@@ -95,7 +108,9 @@ def fetch_binance_klines(
                 if attempt < max_retries:
                     logger.warning(f"Rate limit hit, backing off for {backoff_time}s")
                     time.sleep(backoff_time)
-                    backoff_time = min(backoff_time * 2, 60)  # Exponential backoff, max 60s
+                    backoff_time = min(
+                        backoff_time * 2, 60
+                    )  # Exponential backoff, max 60s
                     continue
                 else:
                     logger.error("Max retries exceeded for rate limit")
@@ -113,11 +128,12 @@ def fetch_binance_klines(
 
     return pd.DataFrame()
 
+
 def fetch_historical_klines(
     symbol: str = SYMBOL,
     interval: str = INTERVAL,
     days: int = 30,
-    max_requests: Optional[int] = None
+    max_requests: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Fetch historical klines by making multiple requests.
@@ -147,7 +163,7 @@ def fetch_historical_klines(
             symbol=symbol,
             interval=interval,
             start_time=current_start,
-            end_time=end_time
+            end_time=end_time,
         )
 
         if df.empty:
@@ -166,13 +182,18 @@ def fetch_historical_klines(
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data)
-    combined_df = combined_df[~combined_df.index.duplicated(keep='first')]
+    combined_df = combined_df[~combined_df.index.duplicated(keep="first")]
     combined_df = combined_df.sort_index()
 
-    logger.info(f"Combined {len(all_data)} requests into {len(combined_df)} total klines")
+    logger.info(
+        f"Combined {len(all_data)} requests into {len(combined_df)} total klines"
+    )
     return combined_df
 
-def interpolate_missing_data(df: pd.DataFrame, max_gap_minutes: int = 5, remove_long_gaps: bool = True) -> pd.DataFrame:
+
+def interpolate_missing_data(
+    df: pd.DataFrame, max_gap_minutes: int = 5, remove_long_gaps: bool = True
+) -> pd.DataFrame:
     """
     Interpolate missing data in the DataFrame.
 
@@ -185,7 +206,7 @@ def interpolate_missing_data(df: pd.DataFrame, max_gap_minutes: int = 5, remove_
         DataFrame with interpolated data
     """
     # Create complete 1-minute index
-    full_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq='1min')
+    full_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="1min")
     df_reindexed = df.reindex(full_index)
 
     # Forward fill missing values (max 5 minutes)
@@ -195,7 +216,9 @@ def interpolate_missing_data(df: pd.DataFrame, max_gap_minutes: int = 5, remove_
     if remove_long_gaps:
         # Find gaps longer than 1 hour
         missing_mask = df_reindexed.isnull().any(axis=1)
-        gap_groups = missing_mask.groupby((missing_mask != missing_mask.shift()).cumsum())
+        gap_groups = missing_mask.groupby(
+            (missing_mask != missing_mask.shift()).cumsum()
+        )
         long_gaps = gap_groups.sum() > 60  # type: ignore
 
         if long_gaps.any():
@@ -214,7 +237,10 @@ def interpolate_missing_data(df: pd.DataFrame, max_gap_minutes: int = 5, remove_
     logger.info(f"Interpolated data: {len(df)} -> {len(df_clean)} rows")
     return df_clean
 
-def save_parquet_chunked(df: pd.DataFrame, path: str, chunk: str = 'M', compression: str = 'zstd') -> List[str]:
+
+def save_parquet_chunked(
+    df: pd.DataFrame, path: str, chunk: str = "M", compression: str = "zstd"
+) -> List[str]:
     """
     Save DataFrame to Parquet files in monthly chunks with zstd compression.
 
@@ -235,11 +261,11 @@ def save_parquet_chunked(df: pd.DataFrame, path: str, chunk: str = 'M', compress
     base_path.mkdir(parents=True, exist_ok=True)
 
     # Group by chunk period
-    for period, group_df in df.groupby(pd.Grouper(freq=chunk.replace('M', 'ME'))):
+    for period, group_df in df.groupby(pd.Grouper(freq=chunk.replace("M", "ME"))):
         # Create filename with period
-        if chunk == 'M':
+        if chunk == "M":
             filename = f"{period.year}-{period.month:02d}.parquet"  # type: ignore
-        elif chunk == 'W':
+        elif chunk == "W":
             filename = f"{period.year}-W{period.week:02d}.parquet"  # type: ignore
         else:
             filename = f"{period.strftime('%Y%m%d')}.parquet"  # type: ignore
@@ -256,7 +282,10 @@ def save_parquet_chunked(df: pd.DataFrame, path: str, chunk: str = 'M', compress
     logger.info(f"Saved {len(saved_files)} Parquet files to {base_path}")
     return saved_files
 
-def load_parquet_pattern(path: str, columns: Optional[List[str]] = None) -> pd.DataFrame:
+
+def load_parquet_pattern(
+    path: str, columns: Optional[List[str]] = None
+) -> pd.DataFrame:
     """
     Load Parquet files from a directory pattern.
 

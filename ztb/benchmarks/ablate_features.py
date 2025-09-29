@@ -6,17 +6,18 @@ Feature ablation script for trading.
 
 import argparse
 import json
+import logging
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List
+
 import numpy as np
 import pandas as pd
 import torch
-from pathlib import Path
-from typing import Dict, List
-from datetime import datetime
-import sys
-import logging
 
 # ロギング設定
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent.as_posix()
@@ -24,12 +25,12 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.callbacks import BaseCallback
 
-from ztb.trading.environment import HeavyTradingEnv
 from ztb.features import get_feature_manager
+from ztb.trading.environment import HeavyTradingEnv
 
 
 class MetricsCallback(BaseCallback):
@@ -43,12 +44,12 @@ class MetricsCallback(BaseCallback):
         self.current_episode_length = 0
 
     def _on_step(self) -> bool:
-        if len(self.locals['rewards']) > 0:
-            self.current_episode_reward += self.locals['rewards'][0]
+        if len(self.locals["rewards"]) > 0:
+            self.current_episode_reward += self.locals["rewards"][0]
         self.current_episode_length += 1
         # If using multiple environments, consider: if all(self.locals['dones'])
         # This code assumes a single environment.
-        if self.locals['dones'][0]:
+        if self.locals["dones"][0]:
             self.episode_rewards.append(self.current_episode_reward)
             self.episode_lengths.append(self.current_episode_length)
             self.current_episode_reward = 0
@@ -60,12 +61,12 @@ class MetricsCallback(BaseCallback):
     def get_metrics(self) -> Dict[str, float]:
         if not self.episode_rewards:
             return {
-                'mean_reward': 0.0,
-                'win_rate': 0.0,
-                'sharpe_like': 0.0,
-                'trades_per_1k': 0.0,
-                'fps': 0.0,
-                'env_step_ms': 0.0
+                "mean_reward": 0.0,
+                "win_rate": 0.0,
+                "sharpe_like": 0.0,
+                "trades_per_1k": 0.0,
+                "fps": 0.0,
+                "env_step_ms": 0.0,
             }
 
         rewards = np.array(self.episode_rewards)
@@ -81,8 +82,10 @@ class MetricsCallback(BaseCallback):
             sharpe_like = 0
 
         # trades_per_1k: 環境から取得（複数環境時は平均を取る）
-        trades_per_1k_values = self.training_env.env_method('get_trades_per_1k')
-        if trades_per_1k_values and all(isinstance(v, (int, float)) for v in trades_per_1k_values):
+        trades_per_1k_values = self.training_env.env_method("get_trades_per_1k")
+        if trades_per_1k_values and all(
+            isinstance(v, (int, float)) for v in trades_per_1k_values
+        ):
             trades_per_1k = float(np.mean(trades_per_1k_values))
         else:
             trades_per_1k = 0.0
@@ -93,41 +96,43 @@ class MetricsCallback(BaseCallback):
 
         # env_step_ms: 環境ステップ時間
         # Robustly handle env_method return value for get_last_step_time
-        step_times = self.training_env.env_method('get_last_step_time')
+        step_times = self.training_env.env_method("get_last_step_time")
         if step_times and isinstance(step_times[0], (int, float)):
             env_step_ms = step_times[0] * 1000
         else:
             env_step_ms = 0.0
 
         return {
-            'mean_reward': float(mean_reward),
-            'win_rate': float(win_rate),
-            'sharpe_like': float(sharpe_like),
-            'trades_per_1k': float(trades_per_1k),
-            'fps': float(fps),
-            'env_step_ms': float(env_step_ms)
+            "mean_reward": float(mean_reward),
+            "win_rate": float(win_rate),
+            "sharpe_like": float(sharpe_like),
+            "trades_per_1k": float(trades_per_1k),
+            "fps": float(fps),
+            "env_step_ms": float(env_step_ms),
         }
 
 
-def create_env_with_features(df: pd.DataFrame, enabled_features: List[str]) -> HeavyTradingEnv:
+def create_env_with_features(
+    df: pd.DataFrame, enabled_features: List[str]
+) -> HeavyTradingEnv:
     """特徴量を有効化した環境を作成"""
     # 特徴量計算
     manager = get_feature_manager()
     original_enabled = manager.get_enabled_features()
 
     # Wave3特徴量チェック
-    wave3_features = {'Ichimoku', 'Donchian', 'RegimeClustering', 'KalmanFilter'}
+    wave3_features = {"Ichimoku", "Donchian", "RegimeClustering", "KalmanFilter"}
     is_wave3_only = set(enabled_features).issubset(wave3_features)
 
     # 一時的に特徴量を変更
     for name in manager.features:
-        config = manager.config['features'].get(name, {})
+        config = manager.config["features"].get(name, {})
         if is_wave3_only and name in wave3_features:
             # Wave3のみの場合、harmfulを無視
-            config['enabled'] = name in enabled_features
+            config["enabled"] = name in enabled_features
         else:
-            config['enabled'] = name in enabled_features
-        manager.config['features'][name] = config
+            config["enabled"] = name in enabled_features
+        manager.config["features"][name] = config
 
     # 特徴量計算 (wave=Noneで全て計算)
     df_with_features = manager.compute_features(df, wave=None)
@@ -140,14 +145,16 @@ def create_env_with_features(df: pd.DataFrame, enabled_features: List[str]) -> H
 
     # 設定戻す
     for name in manager.features:
-        config = manager.config['features'].get(name, {})
-        config['enabled'] = name in original_enabled
-        manager.config['features'][name] = config
+        config = manager.config["features"].get(name, {})
+        config["enabled"] = name in original_enabled
+        manager.config["features"][name] = config
 
     return env
 
 
-def run_training(seed: int, timesteps: int, enabled_features: List[str], df: pd.DataFrame) -> Dict[str, float]:
+def run_training(
+    seed: int, timesteps: int, enabled_features: List[str], df: pd.DataFrame
+) -> Dict[str, float]:
     """学習実行"""
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -162,7 +169,7 @@ def run_training(seed: int, timesteps: int, enabled_features: List[str], df: pd.
 
     # PPO設定（テスト用）
     model = PPO(
-        'MlpPolicy',
+        "MlpPolicy",
         env,
         learning_rate=3e-4,
         n_steps=1024,
@@ -175,7 +182,7 @@ def run_training(seed: int, timesteps: int, enabled_features: List[str], df: pd.
         vf_coef=0.5,
         max_grad_norm=0.5,
         verbose=0,
-        seed=seed
+        seed=seed,
     )
 
     # コールバック
@@ -194,7 +201,7 @@ def run_training(seed: int, timesteps: int, enabled_features: List[str], df: pd.
 def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
     """合成データを生成（学習用）"""
     np.random.seed(42)
-    dates = pd.date_range('2024-01-01', periods=n_rows, freq='1H')
+    dates = pd.date_range("2024-01-01", periods=n_rows, freq="1H")
 
     returns = np.random.normal(0, 0.02, n_rows)
     price = 100 * np.exp(np.cumsum(returns))
@@ -206,75 +213,97 @@ def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
 
     # エピソードID: 1000ステップごとに変更
     episode_length = 1000
-    episode_ids = np.repeat(np.arange(n_rows // episode_length + 1), episode_length)[:n_rows]
+    episode_ids = np.repeat(np.arange(n_rows // episode_length + 1), episode_length)[
+        :n_rows
+    ]
 
-    df = pd.DataFrame({
-        'ts': dates.view('int64') // 10**9,
-        'close': close,
-        'high': high,
-        'low': low,
-        'volume': volume,
-        'exchange': 'synthetic',
-        'pair': 'BTC/USD',
-        'episode_id': episode_ids
-    })
+    df = pd.DataFrame(
+        {
+            "ts": dates.view("int64") // 10**9,
+            "close": close,
+            "high": high,
+            "low": low,
+            "volume": volume,
+            "exchange": "synthetic",
+            "pair": "BTC/USD",
+            "episode_id": episode_ids,
+        }
+    )
 
     return df
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Feature ablation analysis')
-    parser.add_argument('--timesteps', type=int, default=10000, help='Training timesteps')
-    parser.add_argument('--seeds', type=str, default='42,123,2025', help='Comma-separated seeds')
-    parser.add_argument('--waves', type=str, default='1', help='Comma-separated waves')
-    parser.add_argument('--features', type=str, default=None, help='Feature set to ablate (e.g., wave3)')
-    parser.add_argument('--mode', type=str, default=None, help='Special mode (e.g., wave3_refined)')
-    parser.add_argument('--output', type=str, default=None, help='Output CSV path')
-    parser.add_argument('--data-rows', type=int, default=5000, help='Number of data rows')
-    parser.add_argument('--float-precision', type=int, default=3, help='Float precision for output')
-    parser.add_argument('--dump-metrics', action='store_true', help='Dump individual run metrics to JSON')
+    parser = argparse.ArgumentParser(description="Feature ablation analysis")
+    parser.add_argument(
+        "--timesteps", type=int, default=10000, help="Training timesteps"
+    )
+    parser.add_argument(
+        "--seeds", type=str, default="42,123,2025", help="Comma-separated seeds"
+    )
+    parser.add_argument("--waves", type=str, default="1", help="Comma-separated waves")
+    parser.add_argument(
+        "--features", type=str, default=None, help="Feature set to ablate (e.g., wave3)"
+    )
+    parser.add_argument(
+        "--mode", type=str, default=None, help="Special mode (e.g., wave3_refined)"
+    )
+    parser.add_argument("--output", type=str, default=None, help="Output CSV path")
+    parser.add_argument(
+        "--data-rows", type=int, default=5000, help="Number of data rows"
+    )
+    parser.add_argument(
+        "--float-precision", type=int, default=3, help="Float precision for output"
+    )
+    parser.add_argument(
+        "--dump-metrics",
+        action="store_true",
+        help="Dump individual run metrics to JSON",
+    )
 
     args = parser.parse_args()
 
     # モード処理
-    if args.mode == 'wave3_refined':
-        args.features = 'wave3'
+    if args.mode == "wave3_refined":
+        args.features = "wave3"
         args.timesteps = 10000
-        args.seeds = '42,123'
+        args.seeds = "42,123"
         args.float_precision = 6
 
     # マネージャー初期化
     manager = get_feature_manager()
     # シード
-    seeds = [int(s.strip()) for s in args.seeds.split(',')]
+    seeds = [int(s.strip()) for s in args.seeds.split(",")]
     df = generate_synthetic_data(args.data_rows)
 
     # シード
-    seeds = [int(s.strip()) for s in args.seeds.split(',') if s.strip()]
+    seeds = [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
 
     # 特徴量セット
-    if args.features == 'wave3':
+    if args.features == "wave3":
         # Wave3のみをアブレーション（harmfulフラグを無視）
-        all_features = ['Ichimoku', 'Donchian', 'RegimeClustering', 'KalmanFilter']
+        all_features = ["Ichimoku", "Donchian", "RegimeClustering", "KalmanFilter"]
     else:
-        waves = [int(w.strip()) for w in args.waves.split(',') if w.strip()]
+        waves = [int(w.strip()) for w in args.waves.split(",") if w.strip()]
         all_features = []
         for wave in waves:
             all_features.extend(manager.get_enabled_features(wave))
 
     # 出力ディレクトリ
-    output_dir = Path('reports/feature_ranking')
+    output_dir = Path("reports/feature_ranking")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+    date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     if args.output is None:
-        output_file = output_dir / f'ablation_{date_str}.csv'
+        output_file = output_dir / f"ablation_{date_str}.csv"
     else:
         output_file = Path(args.output)
 
     results = []
 
-    logging.info(f"Running ablation analysis with {len(seeds)} seeds, {args.timesteps} timesteps each...")
+    logging.info(
+        f"Running ablation analysis with {len(seeds)} seeds, {args.timesteps} timesteps each..."
+    )
 
     # ベースライン（全特徴量ON）
     logging.info("Baseline (all features)...")
@@ -289,21 +318,23 @@ def main():
     # 平均
     baseline_avg = {k: np.mean(v) for k, v in baseline_metrics.items()}
 
-    results.append({
-        'feature': 'baseline',
-        'mean_reward': baseline_avg['mean_reward'],
-        'win_rate': baseline_avg['win_rate'],
-        'sharpe_like': baseline_avg['sharpe_like'],
-        'trades_per_1k': baseline_avg['trades_per_1k'],
-        'fps': baseline_avg['fps'],
-        'env_step_ms': baseline_avg['env_step_ms'],
-        'delta_mean_reward': 0,
-        'delta_win_rate': 0,
-        'delta_sharpe_like': 0,
-        'delta_trades_per_1k': 0,
-        'delta_fps': 0,
-        'delta_env_step_ms': 0
-    })
+    results.append(
+        {
+            "feature": "baseline",
+            "mean_reward": baseline_avg["mean_reward"],
+            "win_rate": baseline_avg["win_rate"],
+            "sharpe_like": baseline_avg["sharpe_like"],
+            "trades_per_1k": baseline_avg["trades_per_1k"],
+            "fps": baseline_avg["fps"],
+            "env_step_ms": baseline_avg["env_step_ms"],
+            "delta_mean_reward": 0,
+            "delta_win_rate": 0,
+            "delta_sharpe_like": 0,
+            "delta_trades_per_1k": 0,
+            "delta_fps": 0,
+            "delta_env_step_ms": 0,
+        }
+    )
 
     # Leave-One-Outアブレーション
     for ablated_feature in all_features:
@@ -321,39 +352,53 @@ def main():
         # 平均
         ablation_avg = {k: np.mean(v) for k, v in ablation_metrics.items()}
 
-        results.append({
-            'feature': ablated_feature,
-            'mean_reward': ablation_avg['mean_reward'],
-            'win_rate': ablation_avg['win_rate'],
-            'sharpe_like': ablation_avg['sharpe_like'],
-            'trades_per_1k': ablation_avg['trades_per_1k'],
-            'fps': ablation_avg['fps'],
-            'env_step_ms': ablation_avg['env_step_ms'],
-            'delta_mean_reward': ablation_avg['mean_reward'] - baseline_avg['mean_reward'],
-            'delta_win_rate': ablation_avg['win_rate'] - baseline_avg['win_rate'],
-            'delta_sharpe_like': ablation_avg['sharpe_like'] - baseline_avg['sharpe_like'],
-            'delta_trades_per_1k': ablation_avg['trades_per_1k'] - baseline_avg['trades_per_1k'],
-            'delta_fps': ablation_avg['fps'] - baseline_avg['fps'],
-            'delta_env_step_ms': ablation_avg['env_step_ms'] - baseline_avg['env_step_ms']
-        })
+        results.append(
+            {
+                "feature": ablated_feature,
+                "mean_reward": ablation_avg["mean_reward"],
+                "win_rate": ablation_avg["win_rate"],
+                "sharpe_like": ablation_avg["sharpe_like"],
+                "trades_per_1k": ablation_avg["trades_per_1k"],
+                "fps": ablation_avg["fps"],
+                "env_step_ms": ablation_avg["env_step_ms"],
+                "delta_mean_reward": ablation_avg["mean_reward"]
+                - baseline_avg["mean_reward"],
+                "delta_win_rate": ablation_avg["win_rate"] - baseline_avg["win_rate"],
+                "delta_sharpe_like": ablation_avg["sharpe_like"]
+                - baseline_avg["sharpe_like"],
+                "delta_trades_per_1k": ablation_avg["trades_per_1k"]
+                - baseline_avg["trades_per_1k"],
+                "delta_fps": ablation_avg["fps"] - baseline_avg["fps"],
+                "delta_env_step_ms": ablation_avg["env_step_ms"]
+                - baseline_avg["env_step_ms"],
+            }
+        )
 
     # CSV出力
     # float_format の指定例: float_format="%.3f" で小数点以下3桁にフォーマット
     df_results = pd.DataFrame(results)
-    df_results.to_csv(output_file, index=False, float_format=f'%.{args.float_precision}f')
+    df_results.to_csv(
+        output_file, index=False, float_format=f"%.{args.float_precision}f"
+    )
 
     if args.dump_metrics:
         # 個別metrics保存
-        baseline_json = output_dir / f'baseline_{date_str}.json'
-        with open(baseline_json, 'w') as f:
+        baseline_json = output_dir / f"baseline_{date_str}.json"
+        with open(baseline_json, "w") as f:
             json.dump(baseline_metrics, f, indent=2)
     logging.info(f"Results saved to {output_file}")
     logging.info("\nTop 5 most impactful features (by delta_sharpe_like):")
-    ablation_results = df_results[df_results['feature'] != 'baseline'].sort_values('delta_sharpe_like', ascending=False)
+    ablation_results = df_results[df_results["feature"] != "baseline"].sort_values(
+        "delta_sharpe_like", ascending=False
+    )
     for _, row in ablation_results.head(5).iterrows():
-        logging.info(f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}")
-        logging.info(f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}")
+        logging.info(
+            f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}"
+        )
+        logging.info(
+            f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

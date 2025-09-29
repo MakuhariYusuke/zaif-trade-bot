@@ -13,7 +13,7 @@ Usage:
 """
 
 import functools
-from typing import Callable, Any
+from typing import Any, Callable
 
 
 class ErrorHandler:
@@ -29,11 +29,13 @@ class ErrorHandler:
 
 def catch_and_notify(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to catch exceptions and notify"""
+
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except Exception as e:
+        except Exception:
             # Handle error
             pass
+
     return wrapper

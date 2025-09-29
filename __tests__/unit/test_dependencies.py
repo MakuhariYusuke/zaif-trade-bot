@@ -2,7 +2,6 @@
 Tests for Feature Dependencies functionality.
 """
 
-import pytest
 from ztb.evaluation.dependency import DependencyGraph, FeatureDependencyManager
 
 

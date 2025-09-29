@@ -1,9 +1,10 @@
 """
 Unit tests for stats utilities
 """
-import pandas as pd
+
 import numpy as np
-from ztb.utils.stats import calculate_skew, calculate_kurtosis, nan_ratio, correlation
+import pandas as pd
+from ztb.utils.stats import calculate_kurtosis, calculate_skew, correlation, nan_ratio
 
 
 def test_calculate_skew():

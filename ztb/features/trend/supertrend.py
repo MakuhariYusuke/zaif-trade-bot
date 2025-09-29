@@ -1,8 +1,11 @@
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from numba import jit  # type: ignore[import-untyped]
-from typing import Any
+
 from ztb.features.base import ParameterizedFeature
+
 
 class Supertrend(ParameterizedFeature):
     """
@@ -21,11 +24,12 @@ class Supertrend(ParameterizedFeature):
       - The DataFrame must include an ATR column named 'atr_{period}' (e.g., 'atr_10').
       - You should compute and add the ATR column beforehand, for example using an ATR feature or function.
     """
+
     def __init__(self, **kwargs: Any):
         super().__init__(
             "Supertrend",
             deps=["high", "low", "close"],
-            default_params={"period": 10, "multiplier": 3.0}
+            default_params={"period": 10, "multiplier": 3.0},
         )
 
     def _compute_with_params(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
@@ -33,25 +37,27 @@ class Supertrend(ParameterizedFeature):
         df columns must include: ['high', 'low', 'close'] and ATR column.
         Returns a DataFrame with Supertrend values.
         """
-        period = params.get('period', 10)
-        multiplier = params.get('multiplier', 3.0)
-        atr_col = f'atr_{period}'
+        period = params.get("period", 10)
+        multiplier = params.get("multiplier", 3.0)
+        atr_col = f"atr_{period}"
 
         if atr_col not in df.columns:
-            raise ValueError(f"ATR column '{atr_col}' not found in DataFrame. Please compute ATR first.")
+            raise ValueError(
+                f"ATR column '{atr_col}' not found in DataFrame. Please compute ATR first."
+            )
 
         supertrend_df = pd.DataFrame(index=df.index)
-        high = df['high'].values
-        low = df['low'].values
-        close = df['close'].values
+        high = df["high"].values
+        low = df["low"].values
+        close = df["close"].values
         atr = df[atr_col].values
 
         supertrend, direction = self._compute_supertrend(
             high, low, close, atr, multiplier
         )
 
-        supertrend_df['supertrend'] = supertrend
-        supertrend_df['supertrend_direction'] = direction
+        supertrend_df["supertrend"] = supertrend
+        supertrend_df["supertrend_direction"] = direction
 
         return supertrend_df
 
@@ -77,11 +83,13 @@ class Supertrend(ParameterizedFeature):
             upperband = hl2 + (multiplier * atr[i])
             lowerband = hl2 - (multiplier * atr[i])
 
-            prev_supertrend = supertrend[i-1]
-            prev_direction = direction[i-1]
+            prev_supertrend = supertrend[i - 1]
+            prev_direction = direction[i - 1]
 
             # トレンド方向の決定
-            if np.isclose(prev_supertrend, upperband) or np.isclose(prev_supertrend, lowerband):
+            if np.isclose(prev_supertrend, upperband) or np.isclose(
+                prev_supertrend, lowerband
+            ):
                 if close[i] > upperband:
                     direction[i] = 1
                     supertrend[i] = lowerband

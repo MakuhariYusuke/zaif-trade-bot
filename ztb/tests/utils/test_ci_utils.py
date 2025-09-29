@@ -1,6 +1,7 @@
 """
 Unit tests for CI utils
 """
+
 from ztb.utils.ci_utils import collect_ci_metrics, notify_ci_results
 
 

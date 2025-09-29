@@ -8,6 +8,6 @@ exports.default = (0, config_1.defineConfig)({
             reporter: ['text', 'json', 'html'],
             reportsDirectory: 'coverage'
         },
-        include: ['__tests__/**/*.test.ts']
+        include: ['archived/ts_legacy/__tests__/**/*.test.ts']
     }
 });

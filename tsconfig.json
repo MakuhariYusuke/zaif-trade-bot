@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
   "module": "Node16",
-    "rootDir": "./src",
+  "rootDir": "./archived/ts_legacy/src",
     "outDir": "./dist",
     "strict": true,
   "esModuleInterop": true,
@@ -13,26 +13,26 @@
   "skipLibCheck": true,
   "baseUrl": ".",
   "paths": {
-  "@adapters": ["src/adapters/index.ts"],
-  "@adapters/*": ["src/adapters/*"],
-  "@contracts": ["src/contracts/index.ts"],
-  "@contracts/*": ["src/contracts/*"],
-  "@utils/*": ["src/utils/*"],
-  "@core/*": ["src/core/*"],
-  "@application": ["src/application/index.ts"],
-  "@application/*": ["src/application/*"]
+  "@adapters": ["archived/ts_legacy/src/adapters/index.ts"],
+  "@adapters/*": ["archived/ts_legacy/src/adapters/*"],
+  "@contracts": ["archived/ts_legacy/src/contracts/index.ts"],
+  "@contracts/*": ["archived/ts_legacy/src/contracts/*"],
+  "@utils/*": ["archived/ts_legacy/src/utils/*"],
+  "@core/*": ["archived/ts_legacy/src/core/*"],
+  "@application": ["archived/ts_legacy/src/application/index.ts"],
+  "@application/*": ["archived/ts_legacy/src/application/*"]
   }
   }
   ,
   "include": [
-    "src/**/*"
+    "archived/ts_legacy/src/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "__tests__",
+    "archived/ts_legacy/__tests__",
     "**/*.test.ts",
     "**/*.test.js",
-    "vitest.config.ts"
+    "archived/ts_legacy/vitest.config.ts"
   ]
 }

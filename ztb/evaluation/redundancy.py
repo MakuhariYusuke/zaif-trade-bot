@@ -5,9 +5,10 @@ This module provides functionality for detecting and removing redundant features
 using correlation clustering and other redundancy metrics.
 """
 
-import pandas as pd
+from typing import Any, Dict, List, Tuple
+
 import numpy as np
-from typing import Dict, List, Tuple, Any
+import pandas as pd
 from sklearn.cluster import AgglomerativeClustering  # type: ignore[import-untyped]
 
 
@@ -36,8 +37,9 @@ def calculate_feature_correlations(feature_df: pd.DataFrame) -> pd.DataFrame:
     return corr_matrix
 
 
-def find_highly_correlated_features(corr_matrix: pd.DataFrame,
-                                   threshold: float = 0.8) -> List[Tuple[str, str, float]]:
+def find_highly_correlated_features(
+    corr_matrix: pd.DataFrame, threshold: float = 0.8
+) -> List[Tuple[str, str, float]]:
     """
     Find pairs of highly correlated features
 
@@ -75,8 +77,9 @@ def find_highly_correlated_features(corr_matrix: pd.DataFrame,
     return correlated_pairs  # type: ignore[return-value]
 
 
-def cluster_features_by_correlation(feature_df: pd.DataFrame,
-                                   distance_threshold: float = 0.3) -> Dict[int, List[str]]:
+def cluster_features_by_correlation(
+    feature_df: pd.DataFrame, distance_threshold: float = 0.3
+) -> Dict[int, List[str]]:
     """
     Cluster features based on correlation distance
 
@@ -101,9 +104,7 @@ def cluster_features_by_correlation(feature_df: pd.DataFrame,
 
     # Perform hierarchical clustering
     clustering = AgglomerativeClustering(
-        n_clusters=None,
-        distance_threshold=distance_threshold,
-        linkage='average'
+        n_clusters=None, distance_threshold=distance_threshold, linkage="average"
     )
 
     try:
@@ -123,10 +124,12 @@ def cluster_features_by_correlation(feature_df: pd.DataFrame,
         return {0: list(feature_df.columns)}
 
 
-def select_representative_features_from_clusters(clusters: Dict[int, List[str]],
-                                               feature_df: pd.DataFrame,
-                                               target_returns: pd.Series,
-                                               method: str = 'correlation') -> List[str]:
+def select_representative_features_from_clusters(
+    clusters: Dict[int, List[str]],
+    feature_df: pd.DataFrame,
+    target_returns: pd.Series,
+    method: str = "correlation",
+) -> List[str]:
     """
     Select representative features from each cluster
 
@@ -147,16 +150,20 @@ def select_representative_features_from_clusters(clusters: Dict[int, List[str]],
             selected_features.extend(features)
             continue
 
-        if method == 'correlation':
+        if method == "correlation":
             # Select feature with highest absolute correlation to target
             best_feature = None
             best_corr: float = 0.0
 
             for feature in features:
                 if feature in feature_df.columns:
-                    aligned_data = pd.concat([feature_df[feature], target_returns], axis=1).dropna()
+                    aligned_data = pd.concat(
+                        [feature_df[feature], target_returns], axis=1
+                    ).dropna()
                     if len(aligned_data) > 10:
-                        corr = aligned_data[feature].corr(aligned_data[target_returns.name])
+                        corr = aligned_data[feature].corr(
+                            aligned_data[target_returns.name]
+                        )
                         if abs(corr) > abs(best_corr):
                             best_corr = corr
                             best_feature = feature
@@ -164,7 +171,7 @@ def select_representative_features_from_clusters(clusters: Dict[int, List[str]],
             if best_feature:
                 selected_features.append(best_feature)
 
-        elif method == 'variance':
+        elif method == "variance":
             # Select feature with highest variance
             best_feature = None
             best_variance: float = 0.0
@@ -172,14 +179,18 @@ def select_representative_features_from_clusters(clusters: Dict[int, List[str]],
             for feature in features:
                 if feature in feature_df.columns:
                     variance = feature_df[feature].var()
-                    if pd.notna(variance) and isinstance(variance, (int, float)) and variance > best_variance:
+                    if (
+                        pd.notna(variance)
+                        and isinstance(variance, (int, float))
+                        and variance > best_variance
+                    ):
                         best_variance = variance
                         best_feature = feature
 
             if best_feature:
                 selected_features.append(best_feature)
 
-        elif method == 'random':
+        elif method == "random":
             # Random selection
             selected_features.append(np.random.choice(features))
 
@@ -190,10 +201,12 @@ def select_representative_features_from_clusters(clusters: Dict[int, List[str]],
     return selected_features
 
 
-def remove_redundant_features(feature_df: pd.DataFrame,
-                            target_returns: pd.Series,
-                            corr_threshold: float = 0.8,
-                            method: str = 'correlation') -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def remove_redundant_features(
+    feature_df: pd.DataFrame,
+    target_returns: pd.Series,
+    corr_threshold: float = 0.8,
+    method: str = "correlation",
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Remove redundant features using correlation-based clustering
 
@@ -207,13 +220,13 @@ def remove_redundant_features(feature_df: pd.DataFrame,
         Tuple of (reduced_feature_df, reduction_info)
     """
     if feature_df.empty:
-        return feature_df, {'status': 'empty_input'}
+        return feature_df, {"status": "empty_input"}
 
     # Calculate correlation matrix
     corr_matrix = calculate_feature_correlations(feature_df)
 
     if corr_matrix.empty:
-        return feature_df, {'status': 'no_valid_features'}
+        return feature_df, {"status": "no_valid_features"}
 
     # Find highly correlated pairs
     correlated_pairs = find_highly_correlated_features(corr_matrix, corr_threshold)
@@ -235,21 +248,26 @@ def remove_redundant_features(feature_df: pd.DataFrame,
 
     # Create reduction info
     reduction_info = {
-        'status': 'success',
-        'original_features': len(feature_df.columns),
-        'reduced_features': len(selected_features),
-        'reduction_ratio': len(selected_features) / len(feature_df.columns) if feature_df.columns.size > 0 else 0,
-        'correlated_pairs': correlated_pairs,
-        'clusters': clusters,
-        'selected_features': selected_features,
-        'removed_features': [f for f in feature_df.columns if f not in selected_features]
+        "status": "success",
+        "original_features": len(feature_df.columns),
+        "reduced_features": len(selected_features),
+        "reduction_ratio": len(selected_features) / len(feature_df.columns)
+        if feature_df.columns.size > 0
+        else 0,
+        "correlated_pairs": correlated_pairs,
+        "clusters": clusters,
+        "selected_features": selected_features,
+        "removed_features": [
+            f for f in feature_df.columns if f not in selected_features
+        ],
     }
 
     return reduced_df, reduction_info
 
 
-def analyze_feature_redundancy(feature_df: pd.DataFrame,
-                              target_returns: pd.Series) -> Dict[str, Any]:
+def analyze_feature_redundancy(
+    feature_df: pd.DataFrame, target_returns: pd.Series
+) -> Dict[str, Any]:
     """
     Comprehensive analysis of feature redundancy
 
@@ -261,13 +279,13 @@ def analyze_feature_redundancy(feature_df: pd.DataFrame,
         Redundancy analysis results
     """
     if feature_df.empty:
-        return {'status': 'empty_input'}
+        return {"status": "empty_input"}
 
     # Calculate correlation matrix
     corr_matrix = calculate_feature_correlations(feature_df)
 
     if corr_matrix.empty:
-        return {'status': 'no_valid_features'}
+        return {"status": "no_valid_features"}
 
     # Basic statistics
     n_features = len(corr_matrix.columns)
@@ -281,7 +299,7 @@ def analyze_feature_redundancy(feature_df: pd.DataFrame,
 
     for threshold in thresholds:
         pairs = find_highly_correlated_features(corr_matrix, threshold)
-        correlation_counts[f'corr_gt_{threshold}'] = len(pairs)
+        correlation_counts[f"corr_gt_{threshold}"] = len(pairs)
 
     # Cluster analysis
     clusters_03 = cluster_features_by_correlation(feature_df, 0.3)
@@ -298,27 +316,29 @@ def analyze_feature_redundancy(feature_df: pd.DataFrame,
                 target_correlations[col] = abs(corr) if not np.isnan(corr) else 0
 
     # Sort features by importance
-    sorted_features = sorted(target_correlations.items(), key=lambda x: x[1], reverse=True)
+    sorted_features = sorted(
+        target_correlations.items(), key=lambda x: x[1], reverse=True
+    )
 
     return {
-        'status': 'success',
-        'n_features': n_features,
-        'correlation_stats': {
-            'mean_abs_correlation': mean_abs_corr,
-            'max_correlation': max_corr,
-            'min_correlation': min_corr
+        "status": "success",
+        "n_features": n_features,
+        "correlation_stats": {
+            "mean_abs_correlation": mean_abs_corr,
+            "max_correlation": max_corr,
+            "min_correlation": min_corr,
         },
-        'correlation_counts': correlation_counts,
-        'clusters': {
-            'distance_0.3': clusters_03,
-            'distance_0.5': clusters_05,
-            'distance_0.7': clusters_07
+        "correlation_counts": correlation_counts,
+        "clusters": {
+            "distance_0.3": clusters_03,
+            "distance_0.5": clusters_05,
+            "distance_0.7": clusters_07,
         },
-        'target_correlations': target_correlations,
-        'sorted_by_importance': sorted_features,
-        'cluster_sizes': {
-            'distance_0.3': [len(cluster) for cluster in clusters_03.values()],
-            'distance_0.5': [len(cluster) for cluster in clusters_05.values()],
-            'distance_0.7': [len(cluster) for cluster in clusters_07.values()]
-        }
+        "target_correlations": target_correlations,
+        "sorted_by_importance": sorted_features,
+        "cluster_sizes": {
+            "distance_0.3": [len(cluster) for cluster in clusters_03.values()],
+            "distance_0.5": [len(cluster) for cluster in clusters_05.values()],
+            "distance_0.7": [len(cluster) for cluster in clusters_07.values()],
+        },
     }

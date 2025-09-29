@@ -3,12 +3,17 @@ metrics.py
 トレーディング指標計算モジュール
 """
 
+from typing import Any, Dict, List, Optional, Union, cast
+
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Union, Any, cast
 import pandas as pd
 
 
-def sharpe_ratio(returns: Union[List[float], np.ndarray[Any, np.dtype[Any]]], risk_free_rate: float = 0.0, periods_per_year: int = 252) -> float:
+def sharpe_ratio(
+    returns: Union[List[float], np.ndarray[Any, np.dtype[Any]]],
+    risk_free_rate: float = 0.0,
+    periods_per_year: int = 252,
+) -> float:
     """
     Sharpe ratioを計算（堅牢なNaN処理付き）
 
@@ -68,14 +73,14 @@ def sharpe_with_stats(sharpes: List[float]) -> Dict[str, Union[float, List[float
     return {
         "mean": round(mean, 6),
         "std": round(std, 6),
-        "ci95": [round(ci95_low, 6), round(ci95_high, 6)]
+        "ci95": [round(ci95_low, 6), round(ci95_high, 6)],
     }
 
 
 def calculate_delta_sharpe(
     base_sharpes: List[float],
     with_feature_sharpes: List[float],
-    min_samples: int = 10000
+    min_samples: int = 10000,
 ) -> Optional[Dict[str, Union[float, List[float]]]]:
     """
     delta_sharpeを計算（安定化版）
@@ -101,7 +106,9 @@ def calculate_delta_sharpe(
     with_stats = sharpe_with_stats(with_feature_sharpes)
 
     delta_mean = cast(float, with_stats["mean"]) - cast(float, base_stats["mean"])
-    delta_std = np.sqrt(cast(float, with_stats["std"])**2 + cast(float, base_stats["std"])**2)  # 誤差伝播
+    delta_std = np.sqrt(
+        cast(float, with_stats["std"]) ** 2 + cast(float, base_stats["std"]) ** 2
+    )  # 誤差伝播
 
     # 95%信頼区間（簡易計算）
     delta_ci95_low = delta_mean - 1.96 * delta_std
@@ -110,7 +117,7 @@ def calculate_delta_sharpe(
     return {
         "mean": round(delta_mean, 6),
         "std": round(delta_std, 6),
-        "ci95": [round(delta_ci95_low, 6), round(delta_ci95_high, 6)]
+        "ci95": [round(delta_ci95_low, 6), round(delta_ci95_high, 6)],
     }
 
 
@@ -142,26 +149,28 @@ def validate_ablation_results(results: Dict) -> bool:
     return True
 
 
-def calculate_feature_metrics(feature_data: pd.Series, price_data: pd.Series, feature_name: str) -> Dict[str, Any]:
+def calculate_feature_metrics(
+    feature_data: pd.Series, price_data: pd.Series, feature_name: str
+) -> Dict[str, Any]:
     """Calculate basic trading metrics for feature evaluation"""
     # Use feature-specific strategies
-    if feature_name == 'RSI':
+    if feature_name == "RSI":
         # RSI strategy: buy when RSI < 30, sell when RSI > 70
         signals = pd.Series(0, index=feature_data.index)
         signals[feature_data < 30] = 1  # Buy signal
         signals[feature_data > 70] = -1  # Sell signal
-    elif feature_name == 'ROC':
+    elif feature_name == "ROC":
         # ROC strategy: buy when ROC > 5, sell when ROC < -5
         signals = pd.Series(0, index=feature_data.index)
         signals[feature_data > 5] = 1
         signals[feature_data < -5] = -1
-    elif feature_name == 'OBV':
+    elif feature_name == "OBV":
         # OBV strategy: buy when OBV increasing, sell when decreasing
         obv_change = feature_data.diff().astype(float)
         signals = pd.Series(0, index=feature_data.index)
         signals[obv_change > 0] = 1
         signals[obv_change < 0] = -1
-    elif feature_name == 'ZScore':
+    elif feature_name == "ZScore":
         # ZScore strategy: buy when ZScore < -1, sell when ZScore > 1 (mean reversion)
         signals = pd.Series(0, index=feature_data.index)
         signals[feature_data < -1] = 1
@@ -176,12 +185,12 @@ def calculate_feature_metrics(feature_data: pd.Series, price_data: pd.Series, fe
     valid_idx = signals.notna() & returns.notna() & (signals != 0)
     if valid_idx.sum() == 0:
         return {
-            'win_rate': 0.0,
-            'max_drawdown': 0.0,
-            'sharpe_ratio': 0.0,
-            'sortino_ratio': 0.0,
-            'calmar_ratio': 0.0,
-            'sample_count': 0
+            "win_rate": 0.0,
+            "max_drawdown": 0.0,
+            "sharpe_ratio": 0.0,
+            "sortino_ratio": 0.0,
+            "calmar_ratio": 0.0,
+            "sample_count": 0,
         }
 
     strategy_returns = signals[valid_idx] * returns[valid_idx]
@@ -215,10 +224,10 @@ def calculate_feature_metrics(feature_data: pd.Series, price_data: pd.Series, fe
         calmar_ratio = 0.0
 
     return {
-        'win_rate': win_rate,
-        'max_drawdown': max_drawdown,
-        'sharpe_ratio': sharpe_ratio,
-        'sortino_ratio': sortino_ratio,
-        'calmar_ratio': calmar_ratio,
-        'sample_count': int(valid_idx.sum())
+        "win_rate": win_rate,
+        "max_drawdown": max_drawdown,
+        "sharpe_ratio": sharpe_ratio,
+        "sortino_ratio": sortino_ratio,
+        "calmar_ratio": calmar_ratio,
+        "sample_count": int(valid_idx.sum()),
     }

@@ -5,18 +5,20 @@ This module provides functionality for logging evaluation results
 and maintaining evaluation history with latest/best result tracking.
 """
 
-import json
-from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, cast
-from dataclasses import dataclass, asdict, field
 import gzip
+import json
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, cast
+
 import numpy as np
 
 
 @dataclass
 class EvaluationRecord:
     """Data class for evaluation records"""
+
     timestamp: str
     feature_name: str
     status: str
@@ -61,8 +63,7 @@ class EvaluationLogger:
         """
         # Create evaluation record
         record = EvaluationRecord(
-            timestamp=datetime.now().isoformat(),
-            **evaluation_result
+            timestamp=datetime.now().isoformat(), **evaluation_result
         )
 
         # Append to history file
@@ -78,8 +79,8 @@ class EvaluationLogger:
         """Append record to compressed history file"""
         record_dict = asdict(record)
 
-        with gzip.open(self.history_file, 'at', encoding='utf-8') as f:
-            f.write(json.dumps(record_dict, ensure_ascii=False) + '\n')
+        with gzip.open(self.history_file, "at", encoding="utf-8") as f:
+            f.write(json.dumps(record_dict, ensure_ascii=False) + "\n")
 
     def _update_latest_results(self, record: EvaluationRecord) -> None:
         """Update latest results file"""
@@ -94,7 +95,7 @@ class EvaluationLogger:
 
     def _update_best_results(self, record: EvaluationRecord) -> None:
         """Update best results if current record is better"""
-        if record.status != 'success' or record.best_delta_sharpe is None:
+        if record.status != "success" or record.best_delta_sharpe is None:
             return
 
         # Load existing best results
@@ -103,14 +104,14 @@ class EvaluationLogger:
         current_best = best_results.get(record.feature_name, {})
 
         # Check if this is better (higher delta sharpe)
-        current_best_score = current_best.get('best_delta_sharpe', 0)
+        current_best_score = current_best.get("best_delta_sharpe", 0)
         if record.best_delta_sharpe > current_best_score:
             best_results[record.feature_name] = asdict(record)
             self._save_json_file(self.best_file, best_results)
 
-    def get_evaluation_history(self,
-                             feature_name: Optional[str] = None,
-                             days: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_evaluation_history(
+        self, feature_name: Optional[str] = None, days: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get evaluation history
 
@@ -131,17 +132,17 @@ class EvaluationLogger:
             cutoff_date = datetime.now() - timedelta(days=days)
 
         try:
-            with gzip.open(self.history_file, 'rt', encoding='utf-8') as f:
+            with gzip.open(self.history_file, "rt", encoding="utf-8") as f:
                 for line in f:
                     record = json.loads(line.strip())
 
                     # Filter by feature name
-                    if feature_name and record['feature_name'] != feature_name:
+                    if feature_name and record["feature_name"] != feature_name:
                         continue
 
                     # Filter by date
                     if cutoff_date:
-                        record_date = datetime.fromisoformat(record['timestamp'])
+                        record_date = datetime.fromisoformat(record["timestamp"])
                         if record_date < cutoff_date:
                             continue
 
@@ -199,43 +200,61 @@ class EvaluationLogger:
         history = self.get_evaluation_history(days=days)
 
         if not history:
-            return {'total_evaluations': 0}
+            return {"total_evaluations": 0}
 
         # Basic statistics
         total_evaluations = len(history)
-        successful_evaluations = len([r for r in history if r['status'] == 'success'])
+        successful_evaluations = len([r for r in history if r["status"] == "success"])
         failed_evaluations = total_evaluations - successful_evaluations
 
         # Performance statistics
-        successful_records = [r for r in history if r['status'] == 'success']
-        avg_computation_time = np.mean([r['computation_time_ms'] for r in successful_records]) if successful_records else 0
-        avg_nan_rate = np.mean([r['nan_rate'] for r in successful_records]) if successful_records else 0
+        successful_records = [r for r in history if r["status"] == "success"]
+        avg_computation_time = (
+            np.mean([r["computation_time_ms"] for r in successful_records])
+            if successful_records
+            else 0
+        )
+        avg_nan_rate = (
+            np.mean([r["nan_rate"] for r in successful_records])
+            if successful_records
+            else 0
+        )
 
         # Sharpe ratio statistics
-        sharpe_ratios = [r['baseline_sharpe'] for r in successful_records if r.get('baseline_sharpe') is not None]
+        sharpe_ratios = [
+            r["baseline_sharpe"]
+            for r in successful_records
+            if r.get("baseline_sharpe") is not None
+        ]
         avg_sharpe = np.mean(sharpe_ratios) if sharpe_ratios else 0
 
         # Feature performance
-        delta_sharpes = [r['best_delta_sharpe'] for r in successful_records if r.get('best_delta_sharpe') is not None]
+        delta_sharpes = [
+            r["best_delta_sharpe"]
+            for r in successful_records
+            if r.get("best_delta_sharpe") is not None
+        ]
         avg_delta_sharpe = np.mean(delta_sharpes) if delta_sharpes else 0
 
         # Feature counts by status
         status_counts: Dict[str, int] = {}
         for record in history:
-            status = record['status']
+            status = record["status"]
             status_counts[status] = status_counts.get(status, 0) + 1
 
         return {
-            'total_evaluations': total_evaluations,
-            'successful_evaluations': successful_evaluations,
-            'failed_evaluations': failed_evaluations,
-            'success_rate': successful_evaluations / total_evaluations if total_evaluations > 0 else 0,
-            'avg_computation_time_ms': avg_computation_time,
-            'avg_nan_rate': avg_nan_rate,
-            'avg_baseline_sharpe': avg_sharpe,
-            'avg_best_delta_sharpe': avg_delta_sharpe,
-            'status_counts': status_counts,
-            'period_days': days
+            "total_evaluations": total_evaluations,
+            "successful_evaluations": successful_evaluations,
+            "failed_evaluations": failed_evaluations,
+            "success_rate": successful_evaluations / total_evaluations
+            if total_evaluations > 0
+            else 0,
+            "avg_computation_time_ms": avg_computation_time,
+            "avg_nan_rate": avg_nan_rate,
+            "avg_baseline_sharpe": avg_sharpe,
+            "avg_best_delta_sharpe": avg_delta_sharpe,
+            "status_counts": status_counts,
+            "period_days": days,
         }
 
     def _load_json_file(self, file_path: Path) -> Dict[str, Any]:
@@ -244,7 +263,7 @@ class EvaluationLogger:
             return {}
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 return cast(Dict[str, Any], json.load(f))
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
@@ -253,7 +272,7 @@ class EvaluationLogger:
     def _save_json_file(self, file_path: Path, data: Dict[str, Any]) -> None:
         """Save JSON file safely"""
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"Error saving {file_path}: {e}")
@@ -272,16 +291,16 @@ class EvaluationLogger:
             return 0
 
         cutoff_date = datetime.now() - timedelta(days=days_to_keep)
-        temp_file = self.history_file.with_suffix('.tmp')
+        temp_file = self.history_file.with_suffix(".tmp")
 
         removed_count = 0
         kept_records = []
 
         try:
-            with gzip.open(self.history_file, 'rt', encoding='utf-8') as f:
+            with gzip.open(self.history_file, "rt", encoding="utf-8") as f:
                 for line in f:
                     record = json.loads(line.strip())
-                    record_date = datetime.fromisoformat(record['timestamp'])
+                    record_date = datetime.fromisoformat(record["timestamp"])
 
                     if record_date >= cutoff_date:
                         kept_records.append(record)
@@ -289,9 +308,9 @@ class EvaluationLogger:
                         removed_count += 1
 
             # Write kept records back
-            with gzip.open(temp_file, 'wt', encoding='utf-8') as f:
+            with gzip.open(temp_file, "wt", encoding="utf-8") as f:
                 for record in kept_records:
-                    f.write(json.dumps(record, ensure_ascii=False) + '\n')
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
             # Replace original file
             temp_file.replace(self.history_file)

@@ -1,0 +1,21 @@
+name: Docs Link Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Check links
+      run: |
+        python -m ztb.ops.check_links --roots README.md docs ztb --exclude "ztb/reports/"
+      continue-on-error: true  # Shows broken links but does not block merge

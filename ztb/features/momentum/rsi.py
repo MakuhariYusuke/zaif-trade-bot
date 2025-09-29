@@ -3,10 +3,11 @@ RSI (Relative Strength Index) implementation.
 RSIの実装
 """
 
-import pandas as pd
 import numpy as np
-from ztb.features.registry import FeatureRegistry
+import pandas as pd
+
 from ztb.features.feature_cache import feature_cache
+from ztb.features.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("RSI")
@@ -26,10 +27,10 @@ def compute_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series[float]:
 def _compute_rsi_numpy(df: pd.DataFrame, period: int = 14) -> pd.Series[float]:
     """Optimized RSI computation using numpy + pandas EWM"""
     # Calculate returns if not present
-    if 'return' not in df.columns:
-        returns = df['close'].pct_change().fillna(0)
+    if "return" not in df.columns:
+        returns = df["close"].pct_change().fillna(0)
     else:
-        returns = df['return'].fillna(0)
+        returns = df["return"].fillna(0)
 
     # Use numpy for gain/loss calculation
     gains = np.where(returns > 0, returns, 0)

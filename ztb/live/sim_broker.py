@@ -5,14 +5,14 @@ Provides realistic trading simulation without real exchange connectivity.
 """
 
 import asyncio
-import time
-from typing import Dict, Any, List, Optional, AsyncGenerator
-from datetime import datetime, timedelta
-import pandas as pd
-import numpy as np
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from .broker_interfaces import IBroker, Order, Position, Balance
-from .order_state import get_order_state_machine, OrderStateMachine, OrderRecord
+import numpy as np
+import pandas as pd
+
+from .broker_interfaces import Balance, IBroker, Order, Position
+from .order_state import OrderStateMachine
 
 
 class SimBroker(IBroker):
@@ -23,7 +23,7 @@ class SimBroker(IBroker):
         initial_balance: float = 10000.0,
         slippage_bps: float = 5.0,
         commission_bps: float = 0.0,
-        price_feed: Optional[pd.DataFrame] = None
+        price_feed: Optional[pd.DataFrame] = None,
     ):
         """Initialize simulated broker."""
         self.initial_balance = initial_balance
@@ -31,7 +31,7 @@ class SimBroker(IBroker):
         self.commission_bps = commission_bps
 
         # Account state
-        self.balance = {'JPY': initial_balance, 'BTC': 0.0}
+        self.balance = {"JPY": initial_balance, "BTC": 0.0}
         self.positions: Dict[str, Position] = {}
         self.orders: Dict[str, Order] = {}
         self.order_counter = 0
@@ -46,16 +46,19 @@ class SimBroker(IBroker):
         # Order state management
         self.order_state_machine = OrderStateMachine()
 
-    def _generate_idempotency_key(self, symbol: str, side: str, quantity: float, price: Optional[float]) -> str:
+    def _generate_idempotency_key(
+        self, symbol: str, side: str, quantity: float, price: Optional[float]
+    ) -> str:
         """Generate idempotency key for order deduplication."""
         import hashlib
+
         key_data = f"{symbol}:{side}:{quantity}:{price or 0}"
         return hashlib.sha256(key_data.encode()).hexdigest()[:16]
 
     def _apply_slippage(self, price: float, side: str) -> float:
         """Apply slippage to execution price."""
         slippage_factor = self.slippage_bps / 10000  # Convert bps to decimal
-        if side == 'buy':
+        if side == "buy":
             return price * (1 + slippage_factor)
         else:  # sell
             return price * (1 - slippage_factor)
@@ -66,10 +69,12 @@ class SimBroker(IBroker):
 
     def _get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price from feed or generate synthetic."""
-        if self.price_feed is not None and self.current_time_index < len(self.price_feed):
+        if self.price_feed is not None and self.current_time_index < len(
+            self.price_feed
+        ):
             row = self.price_feed.iloc[self.current_time_index]
-            if 'close' in row:
-                return float(row['close'])
+            if "close" in row:
+                return float(row["close"])
 
         # Fallback: generate synthetic price
         base_price = 30000
@@ -83,19 +88,22 @@ class SimBroker(IBroker):
         side: str,
         quantity: float,
         price: Optional[float] = None,
-        order_type: str = 'market',
+        order_type: str = "market",
         client_order_id: Optional[str] = None,
         sizing_reason: Optional[str] = None,
-        target_vol: Optional[float] = None
+        target_vol: Optional[float] = None,
     ) -> Order:
         """Place a simulated order."""
         await asyncio.sleep(0.01)  # Simulate network latency
 
         # Generate or use client_order_id
         if client_order_id is None:
-            import uuid
             import time
-            client_order_id = f"{symbol}_{side}_{quantity}_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+            import uuid
+
+            client_order_id = (
+                f"{symbol}_{side}_{quantity}_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+            )
 
         # Check for duplicate orders using state machine
         existing_order = self.order_state_machine.get_order_by_idempotency_key(
@@ -107,7 +115,7 @@ class SimBroker(IBroker):
         order_id = self._generate_order_id()
 
         # For market orders, use current price
-        if order_type == 'market' or price is None:
+        if order_type == "market" or price is None:
             current_price = self._get_current_price(symbol)
             if current_price is None:
                 raise ValueError(f"No price available for {symbol}")
@@ -124,16 +132,17 @@ class SimBroker(IBroker):
             quantity=quantity,
             price=execution_price,
             order_type=order_type,
-            status='filled',  # Immediate fill for simulation
+            status="filled",  # Immediate fill for simulation
             client_order_id=client_order_id,
             sizing_reason=sizing_reason,
-            target_vol=target_vol
+            target_vol=target_vol,
         )
 
         self.orders[order_id] = order
 
         # Register with state machine
         from .order_state import OrderData
+
         order_data = OrderData(
             order_id=order_id,
             client_order_id=client_order_id,
@@ -141,7 +150,7 @@ class SimBroker(IBroker):
             side=side,
             quantity=quantity,
             price=execution_price,
-            order_type=order_type
+            order_type=order_type,
         )
         self.order_state_machine.create_order(order_data)
 
@@ -163,16 +172,16 @@ class SimBroker(IBroker):
         notional = quantity * price
         commission = self._apply_commission(notional)
 
-        if side == 'buy':
+        if side == "buy":
             # Check sufficient balance
             required_jpy = notional + commission
-            if self.balance.get('JPY', 0) < required_jpy:
-                order.status = 'rejected'
+            if self.balance.get("JPY", 0) < required_jpy:
+                order.status = "rejected"
                 return
 
             # Update balance and position
-            self.balance['JPY'] -= required_jpy
-            self.balance['BTC'] = self.balance.get('BTC', 0) + quantity
+            self.balance["JPY"] -= required_jpy
+            self.balance["BTC"] = self.balance.get("BTC", 0) + quantity
 
             # Update or create position
             if symbol in self.positions:
@@ -188,19 +197,19 @@ class SimBroker(IBroker):
                     quantity=quantity,
                     avg_price=price,
                     current_price=price,
-                    pnl=0.0
+                    pnl=0.0,
                 )
 
         else:  # sell
             # Check sufficient position
-            current_btc = self.balance.get('BTC', 0)
+            current_btc = self.balance.get("BTC", 0)
             if current_btc < quantity:
-                order.status = 'rejected'
+                order.status = "rejected"
                 return
 
             # Update balance and position
-            self.balance['BTC'] -= quantity
-            self.balance['JPY'] += (notional - commission)
+            self.balance["BTC"] -= quantity
+            self.balance["JPY"] += notional - commission
 
             # Update position
             if symbol in self.positions:
@@ -208,29 +217,33 @@ class SimBroker(IBroker):
                 if pos.quantity <= quantity:
                     # Close position
                     pnl = (price - pos.avg_price) * pos.quantity
-                    self.trade_log.append({
-                        'timestamp': datetime.now().isoformat(),
-                        'symbol': symbol,
-                        'side': side,
-                        'quantity': pos.quantity,
-                        'price': price,
-                        'pnl': pnl,
-                        'commission': commission
-                    })
+                    self.trade_log.append(
+                        {
+                            "timestamp": datetime.now().isoformat(),
+                            "symbol": symbol,
+                            "side": side,
+                            "quantity": pos.quantity,
+                            "price": price,
+                            "pnl": pnl,
+                            "commission": commission,
+                        }
+                    )
                     del self.positions[symbol]
                 else:
                     # Partial close
                     pnl = (price - pos.avg_price) * quantity
                     pos.quantity -= quantity
-                    self.trade_log.append({
-                        'timestamp': datetime.now().isoformat(),
-                        'symbol': symbol,
-                        'side': side,
-                        'quantity': quantity,
-                        'price': price,
-                        'pnl': pnl,
-                        'commission': commission
-                    })
+                    self.trade_log.append(
+                        {
+                            "timestamp": datetime.now().isoformat(),
+                            "symbol": symbol,
+                            "side": side,
+                            "quantity": quantity,
+                            "price": price,
+                            "pnl": pnl,
+                            "commission": commission,
+                        }
+                    )
 
         # Update position P&L
         current_price = self._get_current_price(symbol) or price
@@ -244,8 +257,8 @@ class SimBroker(IBroker):
 
         if order_id in self.orders:
             order = self.orders[order_id]
-            if order.status == 'pending':
-                order.status = 'cancelled'
+            if order.status == "pending":
+                order.status = "cancelled"
                 return True
 
         return False
@@ -256,7 +269,7 @@ class SimBroker(IBroker):
 
     async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
         """Get open orders."""
-        orders = [o for o in self.orders.values() if o.status == 'pending']
+        orders = [o for o in self.orders.values() if o.status == "pending"]
         if symbol:
             orders = [o for o in orders if o.symbol == symbol]
         return orders
@@ -270,12 +283,14 @@ class SimBroker(IBroker):
         balances = []
         for curr, amount in self.balance.items():
             if currency is None or curr == currency:
-                balances.append(Balance(
-                    currency=curr,
-                    free=amount,
-                    locked=0.0,  # Simplified
-                    total=amount
-                ))
+                balances.append(
+                    Balance(
+                        currency=curr,
+                        free=amount,
+                        locked=0.0,  # Simplified
+                        total=amount,
+                    )
+                )
         return balances
 
     async def get_current_price(self, symbol: str) -> Optional[float]:
@@ -292,13 +307,15 @@ class SimBroker(IBroker):
         cumulative_pnl = 0.0
 
         for trade in self.trade_log:
-            cumulative_pnl += trade['pnl'] - trade.get('commission', 0)
-            pnl_data.append({
-                'timestamp': trade['timestamp'],
-                'pnl': trade['pnl'],
-                'cumulative_pnl': cumulative_pnl,
-                'balance_jpy': self.balance.get('JPY', 0),
-                'balance_btc': self.balance.get('BTC', 0)
-            })
+            cumulative_pnl += trade["pnl"] - trade.get("commission", 0)
+            pnl_data.append(
+                {
+                    "timestamp": trade["timestamp"],
+                    "pnl": trade["pnl"],
+                    "cumulative_pnl": cumulative_pnl,
+                    "balance_jpy": self.balance.get("JPY", 0),
+                    "balance_btc": self.balance.get("BTC", 0),
+                }
+            )
 
         return pnl_data

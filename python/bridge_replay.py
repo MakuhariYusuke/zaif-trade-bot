@@ -4,13 +4,14 @@ Bridge replay system for backtesting trading strategies with realistic slippage.
 取引戦略のバックテストのための現実的なスリッページを考慮したブリッジリプレイシステム
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Any, Iterator
-from datetime import datetime, timedelta
 import json
 import logging
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,11 @@ class BridgeReplay:
     注文ログを板情報に対してリプレイし、現実的な約定をシミュレート
     """
 
-    def __init__(self, orderbook_dir: str = "data/orderbooks",
-                 trade_log_dir: str = "logs/trade_logs"):
+    def __init__(
+        self,
+        orderbook_dir: str = "data/orderbooks",
+        trade_log_dir: str = "logs/trade_logs",
+    ):
         """
         Initialize bridge replay system
 
@@ -34,7 +38,9 @@ class BridgeReplay:
         self.trade_log_dir = Path(trade_log_dir)
         self.orderbook_cache: Dict[str, pd.DataFrame] = {}
 
-    def load_orderbook_snapshot(self, timestamp: datetime, pair: str = "btc_jpy") -> Optional[pd.DataFrame]:
+    def load_orderbook_snapshot(
+        self, timestamp: datetime, pair: str = "btc_jpy"
+    ) -> Optional[pd.DataFrame]:
         """
         Load order book snapshot closest to the given timestamp
 
@@ -59,7 +65,7 @@ class BridgeReplay:
 
         # Find file with timestamp closest to target
         closest_file = None
-        min_diff = float('inf')
+        min_diff = float("inf")
 
         for file_path in orderbook_files:
             try:
@@ -67,7 +73,9 @@ class BridgeReplay:
                 filename = file_path.stem
                 if "_" in filename:
                     time_part = filename.split("_")[-1]
-                    file_timestamp = datetime.strptime(f"{date_str} {time_part}", "%Y-%m-%d %H%M%S")
+                    file_timestamp = datetime.strptime(
+                        f"{date_str} {time_part}", "%Y-%m-%d %H%M%S"
+                    )
                     diff = abs((file_timestamp - timestamp).total_seconds())
                     if diff < min_diff:
                         min_diff = diff
@@ -84,17 +92,17 @@ class BridgeReplay:
             return self.orderbook_cache[cache_key]
 
         try:
-            with open(closest_file, 'r') as f:
+            with open(closest_file, "r") as f:
                 data = json.load(f)
 
             # Convert to DataFrame
-            bids = pd.DataFrame(data.get('bids', []), columns=['price', 'size'])
-            asks = pd.DataFrame(data.get('asks', []), columns=['price', 'size'])
+            bids = pd.DataFrame(data.get("bids", []), columns=["price", "size"])
+            asks = pd.DataFrame(data.get("asks", []), columns=["price", "size"])
 
             orderbook = {
-                'timestamp': data.get('timestamp', timestamp.isoformat()),
-                'bids': bids,
-                'asks': asks
+                "timestamp": data.get("timestamp", timestamp.isoformat()),
+                "bids": bids,
+                "asks": asks,
             }
 
             df = pd.DataFrame([orderbook])
@@ -105,8 +113,9 @@ class BridgeReplay:
             logger.error(f"Failed to load orderbook {closest_file}: {e}")
             return None
 
-    def load_trade_logs(self, start_date: datetime, end_date: datetime,
-                       pair: str = "btc_jpy") -> pd.DataFrame:
+    def load_trade_logs(
+        self, start_date: datetime, end_date: datetime, pair: str = "btc_jpy"
+    ) -> pd.DataFrame:
         """
         Load trade logs for the specified date range
 
@@ -128,17 +137,17 @@ class BridgeReplay:
             if log_file.exists():
                 try:
                     logs = []
-                    with open(log_file, 'r') as f:
+                    with open(log_file, "r") as f:
                         for line in f:
                             if line.strip():
                                 entry = json.loads(line)
                                 # Filter by pair if specified
-                                if entry.get('pair', '').lower() == pair.lower():
+                                if entry.get("pair", "").lower() == pair.lower():
                                     logs.append(entry)
 
                     if logs:
                         df = pd.DataFrame(logs)
-                        df['timestamp'] = pd.to_datetime(df['timestamp'])
+                        df["timestamp"] = pd.to_datetime(df["timestamp"])
                         all_logs.append(df)
 
                 except Exception as e:
@@ -151,8 +160,9 @@ class BridgeReplay:
 
         return pd.concat(all_logs, ignore_index=True)
 
-    def simulate_order_execution(self, order: Dict[str, Any],
-                               orderbook: pd.DataFrame) -> Dict[str, Any]:
+    def simulate_order_execution(
+        self, order: Dict[str, Any], orderbook: pd.DataFrame
+    ) -> Dict[str, Any]:
         """
         Simulate order execution against order book
 
@@ -165,42 +175,44 @@ class BridgeReplay:
         """
         if orderbook.empty:
             return {
-                'executed': False,
-                'reason': 'no_orderbook',
-                'slippage': 0.0,
-                'executed_size': 0.0,
-                'executed_price': order.get('price', 0.0)
+                "executed": False,
+                "reason": "no_orderbook",
+                "slippage": 0.0,
+                "executed_size": 0.0,
+                "executed_price": order.get("price", 0.0),
             }
 
-        side = order.get('side', '').lower()
-        order_price = order.get('price', 0.0)
-        order_size = order.get('size', 0.0)
+        side = order.get("side", "").lower()
+        order_price = order.get("price", 0.0)
+        order_size = order.get("size", 0.0)
 
-        if side not in ['buy', 'sell']:
+        if side not in ["buy", "sell"]:
             return {
-                'executed': False,
-                'reason': 'invalid_side',
-                'slippage': 0.0,
-                'executed_size': 0.0,
-                'executed_price': order_price
+                "executed": False,
+                "reason": "invalid_side",
+                "slippage": 0.0,
+                "executed_size": 0.0,
+                "executed_price": order_price,
             }
 
         # Get relevant side of order book
-        book_side = orderbook['bids'].iloc[0] if side == 'sell' else orderbook['asks'].iloc[0]
+        book_side = (
+            orderbook["bids"].iloc[0] if side == "sell" else orderbook["asks"].iloc[0]
+        )
         if book_side.empty:
             return {
-                'executed': False,
-                'reason': 'empty_book_side',
-                'slippage': 0.0,
-                'executed_size': 0.0,
-                'executed_price': order_price
+                "executed": False,
+                "reason": "empty_book_side",
+                "slippage": 0.0,
+                "executed_size": 0.0,
+                "executed_price": order_price,
             }
 
         # Sort by price (best bids/asks first)
-        if side == 'sell':  # Selling to bids (highest prices first)
-            book_side = book_side.sort_values('price', ascending=False)
+        if side == "sell":  # Selling to bids (highest prices first)
+            book_side = book_side.sort_values("price", ascending=False)
         else:  # Buying from asks (lowest prices first)
-            book_side = book_side.sort_values('price', ascending=True)
+            book_side = book_side.sort_values("price", ascending=True)
 
         # Simulate execution
         remaining_size = order_size
@@ -208,14 +220,14 @@ class BridgeReplay:
         executed_value = 0.0
 
         for _, level in book_side.iterrows():
-            level_price = level['price']
-            level_size = level['size']
+            level_price = level["price"]
+            level_size = level["size"]
 
             # Check if order can execute at this level
-            if side == 'sell' and level_price < order_price:
+            if side == "sell" and level_price < order_price:
                 # Would sell at lower price than requested
                 continue
-            elif side == 'buy' and level_price > order_price:
+            elif side == "buy" and level_price > order_price:
                 # Would buy at higher price than requested
                 continue
 
@@ -230,29 +242,34 @@ class BridgeReplay:
 
         if executed_size == 0:
             return {
-                'executed': False,
-                'reason': 'no_liquidity',
-                'slippage': 0.0,
-                'executed_size': 0.0,
-                'executed_price': order_price
+                "executed": False,
+                "reason": "no_liquidity",
+                "slippage": 0.0,
+                "executed_size": 0.0,
+                "executed_price": order_price,
             }
 
         # Calculate slippage
         avg_executed_price = executed_value / executed_size
-        slippage = abs(avg_executed_price - order_price) / order_price if order_price > 0 else 0.0
+        slippage = (
+            abs(avg_executed_price - order_price) / order_price
+            if order_price > 0
+            else 0.0
+        )
 
         return {
-            'executed': True,
-            'reason': 'success',
-            'slippage': slippage,
-            'executed_size': executed_size,
-            'executed_price': avg_executed_price,
-            'requested_size': order_size,
-            'fill_ratio': executed_size / order_size if order_size > 0 else 0.0
+            "executed": True,
+            "reason": "success",
+            "slippage": slippage,
+            "executed_size": executed_size,
+            "executed_price": avg_executed_price,
+            "requested_size": order_size,
+            "fill_ratio": executed_size / order_size if order_size > 0 else 0.0,
         }
 
-    def replay_trades(self, start_date: datetime, end_date: datetime,
-                     pair: str = "btc_jpy") -> Iterator[Dict[str, Any]]:
+    def replay_trades(
+        self, start_date: datetime, end_date: datetime, pair: str = "btc_jpy"
+    ) -> Iterator[Dict[str, Any]]:
         """
         Replay trades against historical order books
 
@@ -264,7 +281,9 @@ class BridgeReplay:
         Yields:
             Dictionary with replay results for each trade
         """
-        logger.info(f"Starting trade replay for {pair} from {start_date.date()} to {end_date.date()}")
+        logger.info(
+            f"Starting trade replay for {pair} from {start_date.date()} to {end_date.date()}"
+        )
 
         # Load trade logs
         trade_logs = self.load_trade_logs(start_date, end_date, pair)
@@ -276,57 +295,63 @@ class BridgeReplay:
         logger.info(f"Loaded {len(trade_logs)} trade entries")
 
         # Sort by timestamp
-        trade_logs = trade_logs.sort_values('timestamp')
+        trade_logs = trade_logs.sort_values("timestamp")
 
         replayed_count = 0
         executed_count = 0
 
         for _, trade in trade_logs.iterrows():
-            timestamp = trade['timestamp']
+            timestamp = trade["timestamp"]
 
             # Load corresponding order book
             orderbook = self.load_orderbook_snapshot(timestamp, pair)
 
             # Simulate execution
             order = {
-                'price': trade.get('price', 0.0),
-                'size': trade.get('size', 0.0),
-                'side': trade.get('side', '')
+                "price": trade.get("price", 0.0),
+                "size": trade.get("size", 0.0),
+                "side": trade.get("side", ""),
             }
 
             if orderbook is not None:
                 execution_result = self.simulate_order_execution(order, orderbook)
             else:
                 execution_result = {
-                    'executed': False,
-                    'reason': 'no_orderbook',
-                    'slippage': 0.0,
-                    'executed_size': 0.0,
-                    'executed_price': order.get('price', 0.0)
+                    "executed": False,
+                    "reason": "no_orderbook",
+                    "slippage": 0.0,
+                    "executed_size": 0.0,
+                    "executed_price": order.get("price", 0.0),
                 }
 
             # Combine results
             result = {
-                'timestamp': timestamp.isoformat(),
-                'pair': pair,
-                'original_order': order,
-                'orderbook_available': orderbook is not None,
-                'execution': execution_result
+                "timestamp": timestamp.isoformat(),
+                "pair": pair,
+                "original_order": order,
+                "orderbook_available": orderbook is not None,
+                "execution": execution_result,
             }
 
             replayed_count += 1
-            if execution_result['executed']:
+            if execution_result["executed"]:
                 executed_count += 1
 
             # Progress logging
             if replayed_count % 100 == 0:
-                logger.info(f"Replayed {replayed_count} trades, executed {executed_count}")
+                logger.info(
+                    f"Replayed {replayed_count} trades, executed {executed_count}"
+                )
 
             yield result
 
-        logger.info(f"Replay completed: {executed_count}/{replayed_count} trades executed")
+        logger.info(
+            f"Replay completed: {executed_count}/{replayed_count} trades executed"
+        )
 
-    def get_replay_summary(self, replay_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def get_replay_summary(
+        self, replay_results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Generate summary statistics from replay results
 
@@ -339,18 +364,23 @@ class BridgeReplay:
         if not replay_results:
             return {"message": "No replay results to summarize"}
 
-        executed_trades = [r for r in replay_results if r['execution']['executed']]
-        slippage_values = [r['execution']['slippage'] for r in executed_trades]
+        executed_trades = [r for r in replay_results if r["execution"]["executed"]]
+        slippage_values = [r["execution"]["slippage"] for r in executed_trades]
 
         summary = {
-            'total_trades': len(replay_results),
-            'executed_trades': len(executed_trades),
-            'execution_rate': len(executed_trades) / len(replay_results) if replay_results else 0.0,
-            'avg_slippage': np.mean(slippage_values) if slippage_values else 0.0,
-            'max_slippage': np.max(slippage_values) if slippage_values else 0.0,
-            'median_slippage': np.median(slippage_values) if slippage_values else 0.0,
-            'slippage_std': np.std(slippage_values) if slippage_values else 0.0,
-            'orderbook_coverage': sum(1 for r in replay_results if r['orderbook_available']) / len(replay_results)
+            "total_trades": len(replay_results),
+            "executed_trades": len(executed_trades),
+            "execution_rate": len(executed_trades) / len(replay_results)
+            if replay_results
+            else 0.0,
+            "avg_slippage": np.mean(slippage_values) if slippage_values else 0.0,
+            "max_slippage": np.max(slippage_values) if slippage_values else 0.0,
+            "median_slippage": np.median(slippage_values) if slippage_values else 0.0,
+            "slippage_std": np.std(slippage_values) if slippage_values else 0.0,
+            "orderbook_coverage": sum(
+                1 for r in replay_results if r["orderbook_available"]
+            )
+            / len(replay_results),
         }
 
         return summary

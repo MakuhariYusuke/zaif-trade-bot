@@ -1,15 +1,14 @@
 """
 Feature validation tests for verified/pending/unverified status checking.
 """
-import pytest
+
 import json
-import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
-from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
-from ztb.evaluation.status import FeatureStatus, FeatureReason, validate_status_reason
-from ztb.features.registry import FeatureRegistry
+import pytest
+
 from .test_autogen import BaseFeatureTest
 
 
@@ -21,21 +20,19 @@ class TestFeatureValidation(BaseFeatureTest):
         """Load coverage.json data"""
         coverage_path = Path("coverage.json")
         if coverage_path.exists():
-            with open(coverage_path, 'r') as f:
+            with open(coverage_path, "r") as f:
                 return json.load(f)
         return {
             "verified": ["TestVerifiedFeature"],
             "pending": [
                 {"name": "TestPendingFeature1", "reason": "insufficient_data"},
-                {"name": "TestPendingFeature2", "reason": "high_nan_rate"}
+                {"name": "TestPendingFeature2", "reason": "high_nan_rate"},
             ],
             "failed": [
                 {"name": "TestFailedFeature1", "reason": "computation_error"},
-                {"name": "TestFailedFeature2", "reason": "type_mismatch"}
+                {"name": "TestFailedFeature2", "reason": "type_mismatch"},
             ],
-            "unverified": [
-                {"name": "TestUnverifiedFeature", "reason": "not_tested"}
-            ]
+            "unverified": [{"name": "TestUnverifiedFeature", "reason": "not_tested"}],
         }
 
     @pytest.fixture
@@ -50,19 +47,28 @@ class TestFeatureValidation(BaseFeatureTest):
 
         return registry
 
-    def test_verified_features_compute_without_error(self, coverage_data, mock_feature_registry):
+    def test_verified_features_compute_without_error(
+        self, coverage_data, mock_feature_registry
+    ):
         """Test that verified features can compute without errors"""
         for feature_name in coverage_data.get("verified", []):
-            with patch('ztb.features.registry.FeatureRegistry', return_value=mock_feature_registry):
+            with patch(
+                "ztb.features.registry.FeatureRegistry",
+                return_value=mock_feature_registry,
+            ):
                 try:
-                    feature_class = mock_feature_registry.get_feature_class(feature_name)
+                    feature_class = mock_feature_registry.get_feature_class(
+                        feature_name
+                    )
                     # Mock OHLC data
                     ohlc_data = MagicMock()
                     result = feature_class.compute(ohlc_data)
                     # Should not raise exception
                     assert result is not None
                 except Exception as e:
-                    pytest.fail(f"Verified feature {feature_name} failed to compute: {e}")
+                    pytest.fail(
+                        f"Verified feature {feature_name} failed to compute: {e}"
+                    )
 
     @pytest.mark.xfail(reason="Pending features may not be fully implemented")
     def test_pending_features_are_marked_as_expected_failure(self, coverage_data):
@@ -87,36 +93,49 @@ class TestFeatureValidation(BaseFeatureTest):
 
         # Check for duplicates
         unique_features = set(all_features)
-        assert len(all_features) == len(unique_features), "Duplicate features found in coverage.json"
+        assert len(all_features) == len(unique_features), (
+            "Duplicate features found in coverage.json"
+        )
 
     def test_feature_class_naming_convention(self, coverage_data):
         """Test that feature classes follow naming conventions"""
         for category, features in coverage_data.items():
             for feature in features:
                 # Feature names should be PascalCase
-                assert feature[0].isupper(), f"Feature {feature} should start with uppercase letter"
+                assert feature[0].isupper(), (
+                    f"Feature {feature} should start with uppercase letter"
+                )
                 # Should not contain spaces or special characters
-                assert " " not in feature, f"Feature {feature} should not contain spaces"
-                assert all(c.isalnum() or c == "_" for c in feature), f"Feature {feature} contains invalid characters"
+                assert " " not in feature, (
+                    f"Feature {feature} should not contain spaces"
+                )
+                assert all(c.isalnum() or c == "_" for c in feature), (
+                    f"Feature {feature} contains invalid characters"
+                )
 
     @pytest.fixture
     def sample_ohlc_data(self):
         """Create sample OHLC data for testing"""
-        import pandas as pd
         import numpy as np
+        import pandas as pd
 
-        dates = pd.date_range('2020-01-01', periods=100, freq='D')
+        dates = pd.date_range("2020-01-01", periods=100, freq="D")
         np.random.seed(42)
 
-        return pd.DataFrame({
-            'open': 100 + np.random.randn(100).cumsum(),
-            'high': 105 + np.random.randn(100).cumsum(),
-            'low': 95 + np.random.randn(100).cumsum(),
-            'close': 100 + np.random.randn(100).cumsum(),
-            'volume': np.random.randint(1000, 10000, 100)
-        }, index=dates)
+        return pd.DataFrame(
+            {
+                "open": 100 + np.random.randn(100).cumsum(),
+                "high": 105 + np.random.randn(100).cumsum(),
+                "low": 95 + np.random.randn(100).cumsum(),
+                "close": 100 + np.random.randn(100).cumsum(),
+                "volume": np.random.randint(1000, 10000, 100),
+            },
+            index=dates,
+        )
 
-    def test_verified_features_compute_successfully(self, coverage_data, sample_ohlc_data):
+    def test_verified_features_compute_successfully(
+        self, coverage_data, sample_ohlc_data
+    ):
         """Test that all verified features compute successfully"""
         from ztb.features.registry import FeatureRegistry
 
@@ -177,8 +196,9 @@ class TestFeatureStatusTransitions:
         for category in ["verified", "pending", "unverified"]:
             category_features = coverage_data.get(category, [])
             for failed_feature in failed_features:
-                assert failed_feature not in category_features, \
+                assert failed_feature not in category_features, (
                     f"Failed feature {failed_feature} appears in {category}"
+                )
 
     def test_unverified_features_require_attention(self, coverage_data):
         """Test that unverified features are flagged for attention"""

@@ -1,0 +1,30 @@
+[Unit]
+Description=Zaif Trade Bot Live Trading Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=ztb
+Group=ztb
+WorkingDirectory=/opt/ztb
+ExecStart=/opt/ztb/service_runner
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ztb-live
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/ztb
+ProtectHome=yes
+
+# Resource limits
+MemoryLimit=4G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

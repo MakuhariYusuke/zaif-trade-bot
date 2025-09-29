@@ -1,10 +1,11 @@
-﻿import pandas as pd
-import pytest
 import sys
 import types
 
-if 'ztb.features' not in sys.modules:
-    fake_features = types.ModuleType('ztb.features')
+import pandas as pd
+import pytest
+
+if "ztb.features" not in sys.modules:
+    fake_features = types.ModuleType("ztb.features")
 
     class _FakeRegistry:
         @classmethod
@@ -16,15 +17,15 @@ if 'ztb.features' not in sys.modules:
             return []
 
     fake_features.FeatureRegistry = _FakeRegistry
-    sys.modules['ztb.features'] = fake_features
+    sys.modules["ztb.features"] = fake_features
 
-    fake_feature_engine = types.ModuleType('ztb.features.feature_engine')
+    fake_feature_engine = types.ModuleType("ztb.features.feature_engine")
 
     def _compute_features_batch(df, feature_names=None, **_kwargs):
         return pd.DataFrame(index=df.index)
 
     fake_feature_engine.compute_features_batch = _compute_features_batch
-    sys.modules['ztb.features.feature_engine'] = fake_feature_engine
+    sys.modules["ztb.features.feature_engine"] = fake_feature_engine
 
 from ztb.data.stream_buffer import SchemaMismatchError, StreamBuffer
 

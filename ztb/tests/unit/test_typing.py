@@ -1,13 +1,15 @@
 """
 Type safety tests for TypedDict validation and mypy integration.
 """
-import pytest
-import pandas as pd
-from ztb.metrics.metrics import calculate_all_metrics, MetricsResult
-from ztb.evaluation.logging import EvaluationRecord
+
 import numpy as np
+import pandas as pd
+import pytest
+
+from ztb.evaluation.logging import EvaluationRecord
+from ztb.metrics.metrics import MetricsResult, calculate_all_metrics
+
 from .test_autogen import BaseFeatureTest
-from ztb.features.base import ComputableFeature
 
 
 class TestTypedDictValidation(BaseFeatureTest):
@@ -25,8 +27,15 @@ class TestTypedDictValidation(BaseFeatureTest):
 
         # Check required keys exist
         required_keys = [
-            'total_return', 'annual_return', 'volatility', 'sharpe_ratio',
-            'sortino_ratio', 'calmar_ratio', 'max_drawdown', 'win_rate', 'profit_factor'
+            "total_return",
+            "annual_return",
+            "volatility",
+            "sharpe_ratio",
+            "sortino_ratio",
+            "calmar_ratio",
+            "max_drawdown",
+            "win_rate",
+            "profit_factor",
         ]
 
         for key in required_keys:
@@ -40,28 +49,43 @@ class TestTypedDictValidation(BaseFeatureTest):
 
         # All values should be floats (not Optional)
         for key, value in result.items():
-            assert isinstance(value, (int, float)), f"Value for {key} should be numeric, got {type(value)}"
+            assert isinstance(value, (int, float)), (
+                f"Value for {key} should be numeric, got {type(value)}"
+            )
 
     def test_evaluation_result_structure(self):
         """Test that EvaluationResult contains all required keys"""
         # Create mock data for testing
         mock_data = {
-            'total_evaluations': 10,
-            'successful_evaluations': 8,
-            'failed_evaluations': 2,
-            'success_rate': 0.8,
-            'avg_computation_time_ms': 150.5,
-            'avg_sharpe_improvement': 0.15,
-            'avg_delta_sharpe': 0.12,
-            'feature_counts': {'verified': 5, 'pending': 2, 'failed': 1, 'unverified': 2},
-            'top_performing_features': ['feature1', 'feature2'],
-            'computation_time_stats': {'mean': 150.5, 'std': 25.0, 'min': 100.0, 'max': 200.0}
+            "total_evaluations": 10,
+            "successful_evaluations": 8,
+            "failed_evaluations": 2,
+            "success_rate": 0.8,
+            "avg_computation_time_ms": 150.5,
+            "avg_sharpe_improvement": 0.15,
+            "avg_delta_sharpe": 0.12,
+            "feature_counts": {
+                "verified": 5,
+                "pending": 2,
+                "failed": 1,
+                "unverified": 2,
+            },
+            "top_performing_features": ["feature1", "feature2"],
+            "computation_time_stats": {
+                "mean": 150.5,
+                "std": 25.0,
+                "min": 100.0,
+                "max": 200.0,
+            },
         }
 
         # Check that all required keys are present
         required_keys = [
-            'total_evaluations', 'successful_evaluations', 'failed_evaluations',
-            'success_rate', 'avg_computation_time_ms'
+            "total_evaluations",
+            "successful_evaluations",
+            "failed_evaluations",
+            "success_rate",
+            "avg_computation_time_ms",
         ]
 
         for key in required_keys:
@@ -80,7 +104,7 @@ class TestTypedDictValidation(BaseFeatureTest):
             aligned_periods=500,
             baseline_sharpe=0.8,
             best_delta_sharpe=0.15,
-            best_feature_name="test_feature"
+            best_feature_name="test_feature",
         )
 
         # Check that non-optional fields are not None
@@ -104,15 +128,18 @@ class TestTypedDictValidation(BaseFeatureTest):
         result = calculate_all_metrics(returns)
 
         # This should not raise mypy errors
-        sharpe: float = result['sharpe_ratio']
+        sharpe: float = result["sharpe_ratio"]
         assert isinstance(sharpe, (int, float))
 
         # Test that we can access all fields without type issues
-        total_return: float = result['total_return']
-        volatility: float = result['volatility']
-        max_drawdown: float = result['max_drawdown']
+        total_return: float = result["total_return"]
+        volatility: float = result["volatility"]
+        max_drawdown: float = result["max_drawdown"]
 
-        assert all(isinstance(x, (int, float)) for x in [sharpe, total_return, volatility, max_drawdown])
+        assert all(
+            isinstance(x, (int, float))
+            for x in [sharpe, total_return, volatility, max_drawdown]
+        )
 
 
 class TestMypyIntegration:
@@ -128,9 +155,10 @@ class TestMypyIntegration:
         """Test that all imports with type hints work correctly"""
         # Test that we can import typed modules without issues
         try:
-            from ztb.metrics.metrics import calculate_all_metrics, MetricsResult
-            from ztb.evaluation.re_evaluate_features import EvaluationResult
             from ztb.evaluation.logging import EvaluationRecord
+            from ztb.evaluation.re_evaluate_features import EvaluationResult
+            from ztb.metrics.metrics import MetricsResult, calculate_all_metrics
+
             # If we get here, imports succeeded
             assert True
         except ImportError as e:
@@ -142,39 +170,65 @@ class TestMypyIntegration:
 
         # Check calculate_all_metrics signature
         sig = inspect.signature(calculate_all_metrics)
-        assert 'returns' in sig.parameters
+        assert "returns" in sig.parameters
         assert sig.return_annotation == MetricsResult
 
         # Check that parameters have type annotations
-        returns_param = sig.parameters['returns']
+        returns_param = sig.parameters["returns"]
         assert returns_param.annotation is not inspect.Parameter.empty
 
     def test_status_reason_enum_validation(self):
         """Test that status/reason enums work correctly"""
-        from ztb.evaluation.status import FeatureStatus, FeatureReason, validate_status_reason
+        from ztb.evaluation.status import (
+            FeatureReason,
+            FeatureStatus,
+            validate_status_reason,
+        )
 
         # Test valid combinations
         assert validate_status_reason(FeatureStatus.VERIFIED, None) == True
-        assert validate_status_reason(FeatureStatus.PENDING, FeatureReason.INSUFFICIENT_DATA) == True
-        assert validate_status_reason(FeatureStatus.UNVERIFIED, FeatureReason.NOT_TESTED) == True
-        assert validate_status_reason(FeatureStatus.FAILED, FeatureReason.COMPUTATION_ERROR) == True
+        assert (
+            validate_status_reason(
+                FeatureStatus.PENDING, FeatureReason.INSUFFICIENT_DATA
+            )
+            == True
+        )
+        assert (
+            validate_status_reason(FeatureStatus.UNVERIFIED, FeatureReason.NOT_TESTED)
+            == True
+        )
+        assert (
+            validate_status_reason(
+                FeatureStatus.FAILED, FeatureReason.COMPUTATION_ERROR
+            )
+            == True
+        )
 
         # Test invalid combinations
-        assert validate_status_reason(FeatureStatus.VERIFIED, FeatureReason.INSUFFICIENT_DATA) == False
+        assert (
+            validate_status_reason(
+                FeatureStatus.VERIFIED, FeatureReason.INSUFFICIENT_DATA
+            )
+            == False
+        )
         assert validate_status_reason(FeatureStatus.PENDING, None) == False
-        assert validate_status_reason(FeatureStatus.PENDING, FeatureReason.NOT_TESTED) == False  # Wrong reason for status
+        assert (
+            validate_status_reason(FeatureStatus.PENDING, FeatureReason.NOT_TESTED)
+            == False
+        )  # Wrong reason for status
 
     def test_coverage_json_enum_consistency(self):
         """Test that coverage.json uses only defined enum values"""
-        from ztb.evaluation.status import FeatureStatus, FeatureReason, STATUS_REASONS
         import json
         from pathlib import Path
+
+        from ztb.evaluation.status import FeatureReason, FeatureStatus
 
         coverage_path = Path("coverage.json")
         if not coverage_path.exists():
             pytest.skip("coverage.json not found")
 
-        with open(coverage_path, 'r') as f:
+        with open(coverage_path, "r") as f:
             data = json.load(f)
 
         # Check that all status keys are valid enums (excluding metadata)
@@ -193,7 +247,7 @@ class TestMypyIntegration:
 
             for item in items:
                 if isinstance(item, dict):
-                    reason_str = item.get('reason')
+                    reason_str = item.get("reason")
                     if reason_str:
                         reason = FeatureReason(reason_str)
 
@@ -207,9 +261,9 @@ class TestComputableFeatureCompliance(BaseFeatureTest):
 
         kama = KAMA()
         # Check that it has the required attributes (protocol compliance)
-        assert hasattr(kama, 'name')
-        assert hasattr(kama, 'deps')
-        assert hasattr(kama, 'compute')
+        assert hasattr(kama, "name")
+        assert hasattr(kama, "deps")
+        assert hasattr(kama, "compute")
         assert callable(kama.compute)
 
         # Test compute method signature
@@ -223,9 +277,9 @@ class TestComputableFeatureCompliance(BaseFeatureTest):
 
         ichimoku = Ichimoku()
         # Check that it has the required attributes (protocol compliance)
-        assert hasattr(ichimoku, 'name')
-        assert hasattr(ichimoku, 'deps')
-        assert hasattr(ichimoku, 'compute')
+        assert hasattr(ichimoku, "name")
+        assert hasattr(ichimoku, "deps")
+        assert hasattr(ichimoku, "compute")
         assert callable(ichimoku.compute)
 
         # Test compute method signature

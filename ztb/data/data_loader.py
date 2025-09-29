@@ -1,19 +1,23 @@
 # データ品質詳細チェックスクリプト
 # 外れ値検出と詳細な分布分析
 
+import json
 import os
-import pandas as pd
+from pathlib import Path
+from typing import Union
+
 import numpy as np
 import numpy.ma as ma
-from pathlib import Path
+import pandas as pd
 from scipy import stats
-import json
-from typing import Union
 
 # プロジェクトルートをパスに追加
 # sys.path.append(str(Path(__file__).parent.parent.parent))
 
-def detect_outliers_iqr(data: pd.DataFrame, column: str) -> tuple[pd.DataFrame, float, float]:
+
+def detect_outliers_iqr(
+    data: pd.DataFrame, column: str
+) -> tuple[pd.DataFrame, float, float]:
     """IQR法による外れ値検出"""
     Q1 = data[column].quantile(0.25)
     Q3 = data[column].quantile(0.75)
@@ -24,30 +28,38 @@ def detect_outliers_iqr(data: pd.DataFrame, column: str) -> tuple[pd.DataFrame, 
     outliers = data[(data[column] < lower_bound) | (data[column] > upper_bound)]
     return outliers, lower_bound, upper_bound
 
-def detect_outliers_zscore(data: pd.DataFrame, column: str, threshold: float = 3) -> pd.DataFrame:
+
+def detect_outliers_zscore(
+    data: pd.DataFrame, column: str, threshold: float = 3
+) -> pd.DataFrame:
     """Z-score法による外れ値検出"""
     series = data[column]
     # stats.zscoreはMaskedArrayを返すことがあるため、通常のnumpy配列に変換
-    z_scores_raw = stats.zscore(series, nan_policy='omit')
-    
+    z_scores_raw = stats.zscore(series, nan_policy="omit")
+
     # MaskedArrayをnumpy配列に変換し、マスクされた値をNaNで埋める
     # np.ma.filledはMaskedArrayと通常のndarrayの両方を処理できる
     z_scores_unmasked = ma.filled(z_scores_raw, np.nan)
-    
+
     # NaNをそのまま除外（0に変換しない）
     z_scores_series = pd.Series(np.abs(z_scores_unmasked), index=series.index)
     outliers = data[z_scores_series > threshold]
     return outliers  # type: ignore[no-any-return]
 
+
 def get_project_root() -> Path:
     """プロジェクトルートのパスを取得"""
     return Path(__file__).parent.parent.parent
+
 
 def project_path(*parts: str) -> Path:
     """プロジェクトルートからの相対パスを組み立てる"""
     return get_project_root().joinpath(*parts)
 
-def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[str, Path, None] = None) -> None:
+
+def analyze_feature_distributions(
+    multiplier: float = 1.0, config_path: Union[str, Path, None] = None
+) -> None:
     """特徴量分布の詳細分析"""
     print("=== 詳細データ品質チェック ===")
 
@@ -55,12 +67,15 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
     env_config_path = os.environ.get("RL_CONFIG_PATH")
     if config_path is None:
         config_path = env_config_path or project_path("config", "rl_config.json")
-    
+
     config_path = Path(config_path)
     if config_path.exists():
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             config = json.load(f)
-        base_threshold = config.get('data_quality', {}).get('outlier_threshold_percent', 10.0) / 100.0
+        base_threshold = (
+            config.get("data_quality", {}).get("outlier_threshold_percent", 10.0)
+            / 100.0
+        )
     else:
         base_threshold = 0.10  # デフォルト10%
 
@@ -105,13 +120,13 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
     # 外れ値検出
     print("\n=== 外れ値検出 ===")
     numeric_cols = combined_df.select_dtypes(include=[np.number]).columns
-    key_features = ['price', 'volume', 'sma_5', 'sma_10', 'rsi_14', 'macd']
+    key_features = ["price", "volume", "sma_5", "sma_10", "rsi_14", "macd"]
 
     outlier_summary = []
 
     # 価格変動の極端値チェック（フラッシュクラッシュ対応）
-    if 'price' in combined_df.columns:
-        price_changes = combined_df['price'].pct_change()
+    if "price" in combined_df.columns:
+        price_changes = combined_df["price"].pct_change()
         extreme_changes = combined_df[price_changes.abs() > outlier_threshold]
         print(f"価格変動 ±{outlier_threshold * 100}% 超: {len(extreme_changes)} 件")
         if len(extreme_changes) > 0:
@@ -128,26 +143,30 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
             outliers_z = detect_outliers_zscore(combined_df, col)
 
             outlier_info = {
-                'feature': col,
-                'iqr_outliers': len(outliers_iqr),
-                'zscore_outliers': len(outliers_z),
-                'iqr_percentage': len(outliers_iqr) / len(combined_df) * 100,
-                'zscore_percentage': len(outliers_z) / len(combined_df) * 100,
-                'lower_bound': lower,
-                'upper_bound': upper
+                "feature": col,
+                "iqr_outliers": len(outliers_iqr),
+                "zscore_outliers": len(outliers_z),
+                "iqr_percentage": len(outliers_iqr) / len(combined_df) * 100,
+                "zscore_percentage": len(outliers_z) / len(combined_df) * 100,
+                "lower_bound": lower,
+                "upper_bound": upper,
             }
             outlier_summary.append(outlier_info)
 
     # 外れ値サマリーを表示
     print("特徴量別外れ値検出結果:")
     print("-" * 80)
-    print(f"{'Feature':<12} {'IQR Outliers':<20} {'Z-score Outliers':<22} {'IQR Range'}")
+    print(
+        f"{'Feature':<12} {'IQR Outliers':<20} {'Z-score Outliers':<22} {'IQR Range'}"
+    )
     print("-" * 80)
 
     for info in outlier_summary:
-        print(f"{info['feature']:<12} {info['iqr_outliers']} ({info['iqr_percentage']:.2f}%) "
-              f"Z-score: {info['zscore_outliers']} ({info['zscore_percentage']:.2f}%) "
-              f"範囲: [{info['lower_bound']:.2f}, {info['upper_bound']:.2f}]")
+        print(
+            f"{info['feature']:<12} {info['iqr_outliers']} ({info['iqr_percentage']:.2f}%) "
+            f"Z-score: {info['zscore_outliers']} ({info['zscore_percentage']:.2f}%) "
+            f"範囲: [{info['lower_bound']:.2f}, {info['upper_bound']:.2f}]"
+        )
 
     # 分布の詳細分析
     print("\n=== 分布詳細分析 ===")
@@ -175,27 +194,33 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
             # 正規性検定
             if len(data) > 5000:  # サンプルサイズが十分な場合のみ
                 sample_size = min(len(data), 5000)
-                _, p_value = stats.shapiro(data.sample(sample_size, random_state=42, replace=False))
-                print(f"  正規性検定 p値: {p_value:.6f} ({'正規分布' if p_value > 0.05 else '非正規分布'})")
+                _, p_value = stats.shapiro(
+                    data.sample(sample_size, random_state=42, replace=False)
+                )
+                print(
+                    f"  正規性検定 p値: {p_value:.6f} ({'正規分布' if p_value > 0.05 else '非正規分布'})"
+                )
 
     print("\n=== データ連続性チェック ===")
     # ts列がdatetime型でない場合のみ変換（unit指定はint型のときのみ）
-    if not pd.api.types.is_datetime64_any_dtype(combined_df['ts']):
+    if not pd.api.types.is_datetime64_any_dtype(combined_df["ts"]):
         try:
             # int型ならunit='s'で変換、そうでなければunitなし
-            if pd.api.types.is_integer_dtype(combined_df['ts']):
-                combined_df['ts'] = pd.to_datetime(combined_df['ts'], unit='s')
+            if pd.api.types.is_integer_dtype(combined_df["ts"]):
+                combined_df["ts"] = pd.to_datetime(combined_df["ts"], unit="s")
             else:
-                combined_df['ts'] = pd.to_datetime(combined_df['ts'])
+                combined_df["ts"] = pd.to_datetime(combined_df["ts"])
         except Exception as e:
             print(f"❌ ts列のdatetime変換エラー: {e}")
-            return # 変換に失敗した場合は以降の処理をスキップ
+            return  # 変換に失敗した場合は以降の処理をスキップ
 
-    if pd.api.types.is_datetime64_any_dtype(combined_df['ts']):
-        time_diffs = combined_df['ts'].sort_values().diff()
+    if pd.api.types.is_datetime64_any_dtype(combined_df["ts"]):
+        time_diffs = combined_df["ts"].sort_values().diff()
         print("タイムスタンプ間隔の統計:")
         print(time_diffs.describe())
-        print(f"  最頻間隔: {time_diffs.mode().iloc[0] if not time_diffs.mode().empty else 'N/A'}")
+        print(
+            f"  最頻間隔: {time_diffs.mode().iloc[0] if not time_diffs.mode().empty else 'N/A'}"
+        )
         print(f"  最大間隔: {time_diffs.max()}")
         print(f"  欠損間隔数 (5分以上): {(time_diffs > pd.Timedelta('5min')).sum()}")
     else:
@@ -213,14 +238,16 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
         # 高相関のペアを特定
         high_corr_pairs = []
         for i in range(len(correlation_matrix.columns)):
-            for j in range(i+1, len(correlation_matrix.columns)):
+            for j in range(i + 1, len(correlation_matrix.columns)):
                 corr = correlation_matrix.iloc[i, j]
                 if isinstance(corr, (int, float)) and abs(corr) > 0.8:
-                    high_corr_pairs.append((
-                        correlation_matrix.columns[i],
-                        correlation_matrix.columns[j],
-                        corr
-                    ))
+                    high_corr_pairs.append(
+                        (
+                            correlation_matrix.columns[i],
+                            correlation_matrix.columns[j],
+                            corr,
+                        )
+                    )
 
         if high_corr_pairs:
             print("\n高相関の特徴量ペア (相関係数 > 0.8):")
@@ -231,35 +258,40 @@ def analyze_feature_distributions(multiplier: float = 1.0, config_path: Union[st
     else:
         print("主要特徴量がデータに存在しません。")
 
+
 def main() -> None:
     """メイン実行関数"""
     print("🔍 詳細データ品質チェック開始")
-    
+
     # コマンドライン引数でmultiplierとconfig_pathを取得
     import argparse
+
     parser = argparse.ArgumentParser(description="詳細データ品質チェックスクリプト")
     parser.add_argument(
-        '--multiplier',
+        "--multiplier",
         type=float,
         default=1.0,
-        help='外れ値検出の閾値倍率（例: 1.5にすると閾値が1.5倍になります）。データの分布や異常値の許容度に応じて調整してください。'
+        help="外れ値検出の閾値倍率（例: 1.5にすると閾値が1.5倍になります）。データの分布や異常値の許容度に応じて調整してください。",
     )
     parser.add_argument(
-        '--config_path',
+        "--config_path",
         type=str,
         default=None,
-        help='設定ファイル（JSON形式）のパスを指定します。未指定の場合は環境変数RL_CONFIG_PATHまたはデフォルトパスが使用されます。'
+        help="設定ファイル（JSON形式）のパスを指定します。未指定の場合は環境変数RL_CONFIG_PATHまたはデフォルトパスが使用されます。",
     )
     args = parser.parse_args()
 
     try:
-        analyze_feature_distributions(multiplier=args.multiplier, config_path=args.config_path)
+        analyze_feature_distributions(
+            multiplier=args.multiplier, config_path=args.config_path
+        )
         print("\n" + "=" * 60)
         print("✅ 詳細データ品質チェック完了")
 
     except Exception as e:
         print(f"\n❌ エラー発生: {e}")
         import traceback
+
         traceback.print_exc()
         # エラーログをファイルに記録
         with open("data_quality_error.log", "a", encoding="utf-8") as log_file:
@@ -267,7 +299,9 @@ def main() -> None:
             traceback.print_exc(file=log_file)
         # エラーコードで終了
         import sys
+
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

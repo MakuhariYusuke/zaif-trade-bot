@@ -2,8 +2,8 @@
 """
 Unit tests for parameter validation enhancements
 """
+
 import unittest
-from unittest.mock import Mock, patch
 
 from ztb.evaluation.auto_feature_generator import ParameterCombinationGenerator
 
@@ -21,16 +21,16 @@ class TestParameterValidation(unittest.TestCase):
             "kama": {
                 "fast_periods": [5, 10],
                 "slow_periods": [20, 30],
-                "efficiency_periods": [10, 20, 30]
+                "efficiency_periods": [10, 20, 30],
             },
             "parameter_validation": {
                 "min_period": 2,
                 "max_period": 200,
                 "forbidden_combinations": [
                     {"feature": "ema_cross", "fast": ">=slow"},
-                    {"feature": "kama", "fast": ">=slow"}
-                ]
-            }
+                    {"feature": "kama", "fast": ">=slow"},
+                ],
+            },
         }
 
     def test_validate_combination_ema_valid(self):
@@ -100,7 +100,11 @@ class TestParameterValidation(unittest.TestCase):
         param_list1 = [5, 10, 20]  # fast periods
         param_list2 = [20, 30, 40]  # slow periods
 
-        combinations = list(ParameterCombinationGenerator.generate_combinations(param_list1, param_list2))
+        combinations = list(
+            ParameterCombinationGenerator.generate_combinations(
+                param_list1, param_list2
+            )
+        )
 
         # Should contain valid combinations
         self.assertTrue(len(combinations) > 0)
@@ -111,10 +115,14 @@ class TestParameterValidation(unittest.TestCase):
             # Valid combinations should have fast < slow
             is_valid = ParameterCombinationGenerator.validate_combination(combo, "kama")
             if fast < slow:
-                self.assertTrue(is_valid, f"Valid combination {combo} should pass validation")
+                self.assertTrue(
+                    is_valid, f"Valid combination {combo} should pass validation"
+                )
             else:
-                self.assertFalse(is_valid, f"Invalid combination {combo} should fail validation")
+                self.assertFalse(
+                    is_valid, f"Invalid combination {combo} should fail validation"
+                )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

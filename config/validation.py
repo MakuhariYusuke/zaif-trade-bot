@@ -4,7 +4,8 @@ Configuration validation using Pydantic models.
 This module provides type-safe configuration validation for experiment parameters.
 """
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -22,10 +23,12 @@ class ExperimentConfigModel(BaseModel):
     batch_size: int = Field(default=32, gt=0, description="Batch size")
     max_episodes: int = Field(default=1000, gt=0, description="Maximum episodes")
     test_split: float = Field(default=0.2, gt=0, lt=1, description="Test split ratio")
-    validation_split: float = Field(default=0.1, gt=0, lt=1, description="Validation split ratio")
+    validation_split: float = Field(
+        default=0.1, gt=0, lt=1, description="Validation split ratio"
+    )
     random_seed: Optional[int] = Field(default=None, ge=0, description="Random seed")
 
-    @field_validator('strategy')
+    @field_validator("strategy")
     @classmethod
     def validate_strategy(cls, v: str) -> str:
         """Validate strategy is one of allowed values"""
@@ -34,7 +37,7 @@ class ExperimentConfigModel(BaseModel):
             raise ValueError(f"Strategy must be one of {allowed_strategies}")
         return v
 
-    @field_validator('validation_split', 'test_split')
+    @field_validator("validation_split", "test_split")
     @classmethod
     def validate_splits(cls, v: float) -> float:
         """Ensure splits are valid"""
@@ -44,6 +47,7 @@ class ExperimentConfigModel(BaseModel):
 
     class Config:
         """Pydantic configuration"""
+
         validate_assignment = True
         extra = "allow"  # Allow extra fields for flexibility
 
@@ -57,7 +61,7 @@ class FeatureEvaluationConfig(BaseModel):
     time_window_days: int = Field(default=30, gt=0)
     min_samples: int = Field(default=100, gt=0)
 
-    @field_validator('evaluation_method')
+    @field_validator("evaluation_method")
     @classmethod
     def validate_method(cls, v: str) -> str:
         allowed_methods = {"correlation", "mutual_info", "importance", "stability"}
@@ -105,10 +109,11 @@ def load_and_validate_config(config_path: str) -> ExperimentConfigModel:
         Validated configuration model
     """
     import json
+
     import yaml
 
-    with open(config_path, 'r', encoding='utf-8') as f:
-        if config_path.endswith('.yaml') or config_path.endswith('.yml'):
+    with open(config_path, "r", encoding="utf-8") as f:
+        if config_path.endswith(".yaml") or config_path.endswith(".yml"):
             config_dict = yaml.safe_load(f)
         else:
             config_dict = json.load(f)

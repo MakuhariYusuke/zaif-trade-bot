@@ -5,8 +5,11 @@ Provides a registry of available brokers and their implementations,
 with contract testing support.
 """
 
-from typing import Dict, Type, Optional, Protocol
 import logging
+from typing import Dict, Optional, Protocol, Type
+
+from .broker_interfaces import IBroker
+from .coincheck_adapter import CoincheckAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +21,9 @@ class BrokerProtocol(Protocol):
         """Get balance for currency."""
         ...
 
-    def place_order(self, symbol: str, side: str, quantity: float, price: Optional[float] = None) -> str:
+    def place_order(
+        self, symbol: str, side: str, quantity: float, price: Optional[float] = None
+    ) -> str:
         """Place an order and return order ID."""
         ...
 
@@ -46,7 +51,9 @@ class SimBroker:
     def get_balance(self, currency: str) -> float:
         return self.balances.get(currency, 0.0)
 
-    def place_order(self, symbol: str, side: str, quantity: float, price: Optional[float] = None) -> str:
+    def place_order(
+        self, symbol: str, side: str, quantity: float, price: Optional[float] = None
+    ) -> str:
         self.order_counter += 1
         order_id = f"sim_{self.order_counter}"
         self.orders[order_id] = {
@@ -55,7 +62,7 @@ class SimBroker:
             "side": side,
             "quantity": quantity,
             "price": price,
-            "status": "filled"  # Sim broker fills immediately
+            "status": "filled",  # Sim broker fills immediately
         }
         return order_id
 
@@ -79,7 +86,9 @@ class CoincheckSkeletonBroker:
         self.api_key = api_key
         self.api_secret = api_secret
         if not self.api_key or not self.api_secret:
-            logger.warning("Coincheck broker initialized without credentials - will raise NotImplementedError")
+            logger.warning(
+                "Coincheck broker initialized without credentials - will raise NotImplementedError"
+            )
 
     def get_balance(self, currency: str) -> float:
         if not self.api_key:
@@ -87,7 +96,9 @@ class CoincheckSkeletonBroker:
         # TODO: Implement actual API call
         raise NotImplementedError("Coincheck balance API not implemented")
 
-    def place_order(self, symbol: str, side: str, quantity: float, price: Optional[float] = None) -> str:
+    def place_order(
+        self, symbol: str, side: str, quantity: float, price: Optional[float] = None
+    ) -> str:
         if not self.api_key:
             raise NotImplementedError("Coincheck API not configured")
         # TODO: Implement actual API call
@@ -116,20 +127,21 @@ class BrokerRegistry:
     """Registry of available brokers."""
 
     def __init__(self):
-        self._brokers: Dict[str, Type[BrokerProtocol]] = {}
+        self._brokers: Dict[str, Type[IBroker]] = {}
         self._register_default_brokers()
 
     def _register_default_brokers(self):
         """Register default broker implementations."""
         self.register_broker("sim", SimBroker)
+        self.register_broker("coincheck", CoincheckAdapter)
         self.register_broker("coincheck_skeleton", CoincheckSkeletonBroker)
 
-    def register_broker(self, name: str, broker_class: Type[BrokerProtocol]):
+    def register_broker(self, name: str, broker_class: Type[IBroker]):
         """Register a broker implementation."""
         self._brokers[name] = broker_class
         logger.info(f"Registered broker: {name}")
 
-    def get_broker(self, name: str, **kwargs) -> BrokerProtocol:
+    def get_broker(self, name: str, **kwargs) -> IBroker:
         """Get a broker instance."""
         if name not in self._brokers:
             raise ValueError(f"Unknown broker: {name}")

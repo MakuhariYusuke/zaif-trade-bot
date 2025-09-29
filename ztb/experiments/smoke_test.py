@@ -7,19 +7,20 @@ Usage:
     python ztb/experiments/smoke_test.py --steps 10000 --dataset coingecko
 """
 
+import argparse
 import sys
 import time
-import psutil
-import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
+import psutil
 
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
 from ztb.experiments.base import ExperimentBase, ExperimentResult
-from ztb.utils.data.data_generation import load_sample_data
 from ztb.utils import LoggerManager
+from ztb.utils.data.data_generation import load_sample_data
 from ztb.utils.feature_testing import evaluate_feature_performance
 
 
@@ -30,8 +31,8 @@ class SmokeTestExperiment(ExperimentBase):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config, "smoke_test")
-        self.total_steps = config.get('total_steps', 10000)
-        self.dataset = config.get('dataset', 'coingecko')
+        self.total_steps = config.get("total_steps", 10000)
+        self.dataset = config.get("dataset", "coingecko")
 
         # Performance tracking
         self.start_memory = None
@@ -41,7 +42,9 @@ class SmokeTestExperiment(ExperimentBase):
 
     def run(self) -> ExperimentResult:
         """Execute smoke test"""
-        self.logger.info(f"Starting smoke test: {self.total_steps} steps, dataset: {self.dataset}")
+        self.logger.info(
+            f"Starting smoke test: {self.total_steps} steps, dataset: {self.dataset}"
+        )
 
         # Record initial memory
         self.start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
@@ -58,11 +61,11 @@ class SmokeTestExperiment(ExperimentBase):
                 status="failed",
                 config=self.config,
                 metrics={"error": str(e)},
-                artifacts={}
+                artifacts={},
             )
 
         # Prepare close column slice for feature evaluation
-        close_slice = data.iloc[:100]['close']
+        close_slice = data.iloc[:100]["close"]
 
         # Run smoke test steps
         for step in range(self.total_steps):
@@ -71,14 +74,14 @@ class SmokeTestExperiment(ExperimentBase):
             try:
                 # Simulate feature testing
                 features = {
-                    'rsi': [30, 50, 70][step % 3],
-                    'macd': step * 0.01,
-                    'volume': step * 100
+                    "rsi": [30, 50, 70][step % 3],
+                    "macd": step * 0.01,
+                    "volume": step * 100,
                 }
 
                 # Evaluate features
-                result = evaluate_feature_performance(close_slice, close_slice, 'rsi')
-                pass_rate = result['metrics']['win_rate']
+                result = evaluate_feature_performance(close_slice, close_slice, "rsi")
+                pass_rate = result["metrics"]["win_rate"]
                 self.feature_pass_rates.append(pass_rate)
 
                 # Track memory usage
@@ -92,7 +95,9 @@ class SmokeTestExperiment(ExperimentBase):
                         avg_pass_rate = sum(recent_rates) / len(recent_rates)
                     else:
                         avg_pass_rate = 0.0
-                    self.logger.info(f"Step {step}/{self.total_steps}: Pass rate {avg_pass_rate:.2%}, Memory: {current_memory:.1f} MB")
+                    self.logger.info(
+                        f"Step {step}/{self.total_steps}: Pass rate {avg_pass_rate:.2%}, Memory: {current_memory:.1f} MB"
+                    )
 
             except Exception as e:
                 self.logger.error(f"Error at step {step}: {e}")
@@ -102,7 +107,7 @@ class SmokeTestExperiment(ExperimentBase):
                     status="failed",
                     config=self.config,
                     metrics={"error": str(e), "failed_at_step": step},
-                    artifacts={}
+                    artifacts={},
                 )
 
             step_time = time.time() - step_start
@@ -114,12 +119,12 @@ class SmokeTestExperiment(ExperimentBase):
         estimated_total_time = avg_step_time * 100000  # For 100k steps
 
         metrics = {
-            'total_steps': self.total_steps,
-            'avg_feature_pass_rate': avg_pass_rate,
-            'avg_step_time': avg_step_time,
-            'memory_peak_mb': self.peak_memory,
-            'estimated_total_time_hours': estimated_total_time / 3600,
-            'dataset_size': len(data)
+            "total_steps": self.total_steps,
+            "avg_feature_pass_rate": avg_pass_rate,
+            "avg_step_time": avg_step_time,
+            "memory_peak_mb": self.peak_memory,
+            "estimated_total_time_hours": estimated_total_time / 3600,
+            "dataset_size": len(data),
         }
         return ExperimentResult(
             experiment_name=self.experiment_name,
@@ -127,20 +132,31 @@ class SmokeTestExperiment(ExperimentBase):
             status="success" if avg_pass_rate > self.PASS_RATE_THRESHOLD else "warning",
             config=self.config,
             metrics=metrics,
-            artifacts={}
+            artifacts={},
         )
 
 
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="Run smoke test for RL experiments")
-    parser.add_argument('--steps', type=int, default=10000,
-                       help='Number of steps to run (default: 10000)')
-    parser.add_argument('--dataset', type=str, default='coingecko',
-                       choices=['synthetic', 'synthetic-v2', 'coingecko'],
-                       help='Dataset to use (default: coingecko)')
-    parser.add_argument('--notify-discord', action='store_true',
-                       help='Send Discord notification on completion')
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=10000,
+        help="Number of steps to run (default: 10000)",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="coingecko",
+        choices=["synthetic", "synthetic-v2", "coingecko"],
+        help="Dataset to use (default: coingecko)",
+    )
+    parser.add_argument(
+        "--notify-discord",
+        action="store_true",
+        help="Send Discord notification on completion",
+    )
 
     args = parser.parse_args()
 
@@ -148,9 +164,9 @@ def main():
     logger_manager = LoggerManager(experiment_id="smoke_test")
 
     config = {
-        'total_steps': args.steps,
-        'dataset': args.dataset,
-        'notify_discord': args.notify_discord
+        "total_steps": args.steps,
+        "dataset": args.dataset,
+        "notify_discord": args.notify_discord,
     }
 
     experiment = SmokeTestExperiment(config)

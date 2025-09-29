@@ -6,13 +6,14 @@ Verifies that linux_canary.sh and run_canary.ps1 produce identical
 artifacts and exit codes.
 """
 
-import subprocess
-import tempfile
-import shutil
-import os
-import sys
-from pathlib import Path
 import hashlib
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -21,7 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 def hash_file(filepath: Path) -> str:
     """Generate SHA256 hash of a file."""
     hasher = hashlib.sha256()
-    with open(filepath, 'rb') as f:
+    with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
@@ -41,7 +42,7 @@ def run_linux_canary(temp_dir: Path) -> tuple[int, dict]:
             env=env,
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutes
+            timeout=300,  # 5 minutes
         )
     except subprocess.TimeoutExpired:
         return -1, {}
@@ -73,13 +74,24 @@ def run_windows_canary(temp_dir: Path) -> tuple[int, dict]:
         powershell_cmd = "pwsh" if shutil.which("pwsh") else "powershell"
 
         result = subprocess.run(
-            [powershell_cmd, "-ExecutionPolicy", "Bypass", "-File", str(script_path),
-             "-DurationMinutes", "2", "-Policy", "sma_fast_slow", "-OutputDir", str(temp_dir)],
+            [
+                powershell_cmd,
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(script_path),
+                "-DurationMinutes",
+                "2",
+                "-Policy",
+                "sma_fast_slow",
+                "-OutputDir",
+                str(temp_dir),
+            ],
             cwd=temp_dir,
             env=env,
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutes
+            timeout=300,  # 5 minutes
         )
     except subprocess.TimeoutExpired:
         return -1, {}
@@ -145,5 +157,5 @@ def test_canary_artifacts_consistent():
     assert windows_script.exists(), "run_canary.ps1 not found"
 
     # Check if linux script is executable (on Unix-like systems)
-    if os.name == 'posix':
+    if os.name == "posix":
         assert os.access(linux_script, os.X_OK), "linux_canary.sh is not executable"

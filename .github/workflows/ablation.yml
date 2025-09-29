@@ -2,7 +2,12 @@ name: Ablation Analysis with Experimental Features
 
 on:
   schedule:
-    # 毎週月曜日の午前9時（JST）に実行
+        - name: Generate weekly report
+      run: |
+        python -m ztb.ops.generate_weekly_report
+
+    - name: Send Slack Notification
+      run: python -m ztb.ops.generate_weekly_report --notify slack日の午前9時（JST）に実行
     - cron: '0 0 * * 1'
   workflow_dispatch:
     inputs:
@@ -76,10 +81,10 @@ jobs:
 
     - name: Generate weekly report
       run: |
-        python scripts/generate_weekly_report.py
+        python -m ztb.ops.generate_weekly_report
 
     - name: Send Slack Notification
-      run: python scripts/generate_weekly_report.py --notify slack
+      run: python -m ztb.ops.generate_weekly_report --notify slack
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 

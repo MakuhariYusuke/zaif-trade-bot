@@ -7,8 +7,8 @@ Generates JSON and Markdown reports from backtest results.
 import json
 import os
 from datetime import datetime
-from typing import Dict, Any, List
 from pathlib import Path
+from typing import Any, Dict, List
 
 from .metrics import BacktestMetrics
 
@@ -22,14 +22,17 @@ class ReportGenerator:
         equity_curve: List[Dict[str, Any]],
         orders: List[Dict[str, Any]],
         metadata: Dict[str, Any],
-        output_path: str
+        output_path: str,
     ) -> str:
         """Generate JSON report."""
 
         # Convert timestamps to strings for JSON serialization
         def serialize_timestamps(obj):
             if isinstance(obj, dict):
-                return {k: (v.isoformat() if hasattr(v, 'isoformat') else v) for k, v in obj.items()}
+                return {
+                    k: (v.isoformat() if hasattr(v, "isoformat") else v)
+                    for k, v in obj.items()
+                }
             return obj
 
         report = {
@@ -37,7 +40,7 @@ class ReportGenerator:
                 "timestamp": datetime.now().isoformat(),
                 "strategy": metadata.get("strategy", "unknown"),
                 "dataset": metadata.get("dataset", "unknown"),
-                **metadata
+                **metadata,
             },
             "metrics": {
                 "sharpe_ratio": metrics.sharpe_ratio,
@@ -56,31 +59,29 @@ class ReportGenerator:
                 "turnover": metrics.turnover,
                 "estimated_slippage_bps": metrics.estimated_slippage_bps,
                 "deflated_sharpe_ratio": metrics.deflated_sharpe_ratio,
-                "pvalue_bootstrap": metrics.pvalue_bootstrap
+                "pvalue_bootstrap": metrics.pvalue_bootstrap,
             },
             "equity_curve": [serialize_timestamps(point) for point in equity_curve],
-            "orders": [serialize_timestamps(order) for order in orders]
+            "orders": [serialize_timestamps(order) for order in orders],
         }
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         return output_path
 
     @staticmethod
     def generate_markdown_report(
-        metrics: BacktestMetrics,
-        metadata: Dict[str, Any],
-        output_path: str
+        metrics: BacktestMetrics, metadata: Dict[str, Any], output_path: str
     ) -> str:
         """Generate Markdown executive summary."""
 
         md_content = f"""# Backtest Report
 
-**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-**Strategy:** {metadata.get('strategy', 'Unknown')}
-**Dataset:** {metadata.get('dataset', 'Unknown')}
+**Generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+**Strategy:** {metadata.get("strategy", "Unknown")}
+**Dataset:** {metadata.get("dataset", "Unknown")}
 
 ## Performance Summary
 
@@ -134,15 +135,14 @@ class ReportGenerator:
 """
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(md_content)
 
         return output_path
 
     @staticmethod
     def generate_equity_csv(
-        equity_curve: List[Dict[str, Any]],
-        output_path: str
+        equity_curve: List[Dict[str, Any]], output_path: str
     ) -> str:
         """Generate equity curve CSV."""
 
@@ -155,8 +155,8 @@ class ReportGenerator:
         import csv
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['timestamp', 'equity'])
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["timestamp", "equity"])
             writer.writeheader()
             for point in equity_curve:
                 writer.writerow(point)
@@ -164,10 +164,7 @@ class ReportGenerator:
         return output_path
 
     @staticmethod
-    def generate_orders_csv(
-        orders: List[Dict[str, Any]],
-        output_path: str
-    ) -> str:
+    def generate_orders_csv(orders: List[Dict[str, Any]], output_path: str) -> str:
         """Generate orders CSV."""
 
         if not orders:
@@ -184,7 +181,7 @@ class ReportGenerator:
             fieldnames.update(order.keys())
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=sorted(fieldnames))
             writer.writeheader()
             writer.writerows(orders)

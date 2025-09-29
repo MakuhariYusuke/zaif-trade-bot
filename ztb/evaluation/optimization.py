@@ -5,18 +5,21 @@ This module provides optimization techniques for computationally expensive featu
 including KAMA, ADX, and Kalman filters.
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, Any, Callable, cast, Optional, Union
 import time
 from functools import lru_cache
+from typing import Any, Callable, Dict, Optional, Union, cast
+
 import numba as nb  # type: ignore
+import numpy as np
+import pandas as pd
 
 
-def optimize_kama(prices: pd.Series,
-                  fast_period: int = 2,
-                  slow_period: int = 30,
-                  efficiency_ratio_period: int = 10) -> pd.Series:
+def optimize_kama(
+    prices: pd.Series,
+    fast_period: int = 2,
+    slow_period: int = 30,
+    efficiency_ratio_period: int = 10,
+) -> pd.Series:
     """
     Optimized Kaufman Adaptive Moving Average (KAMA)
 
@@ -29,8 +32,11 @@ def optimize_kama(prices: pd.Series,
     Returns:
         KAMA values
     """
+
     @nb.jit(nopython=True)
-    def _calculate_kama_numba(price_array, fast_period, slow_period, efficiency_ratio_period):  # type: ignore
+    def _calculate_kama_numba(
+        price_array, fast_period, slow_period, efficiency_ratio_period
+    ):  # type: ignore
         n = len(price_array)
         kama = np.full(n, np.nan)
 
@@ -65,15 +71,19 @@ def optimize_kama(prices: pd.Series,
         return kama
 
     price_array = prices.values
-    kama_values = cast(np.ndarray, _calculate_kama_numba(price_array, fast_period, slow_period, efficiency_ratio_period))
+    kama_values = cast(
+        np.ndarray,
+        _calculate_kama_numba(
+            price_array, fast_period, slow_period, efficiency_ratio_period
+        ),
+    )
 
-    return pd.Series(kama_values, index=prices.index, name='KAMA')
+    return pd.Series(kama_values, index=prices.index, name="KAMA")
 
 
-def optimize_adx(high: pd.Series,
-                 low: pd.Series,
-                 close: pd.Series,
-                 period: int = 14) -> pd.DataFrame:
+def optimize_adx(
+    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
+) -> pd.DataFrame:
     """
     Optimized Average Directional Index (ADX)
 
@@ -86,6 +96,7 @@ def optimize_adx(high: pd.Series,
     Returns:
         DataFrame with ADX, +DI, -DI
     """
+
     @nb.jit(nopython=True)
     def _calculate_adx_numba(high_array, low_array, close_array, period):  # type: ignore
         n = len(high_array)
@@ -103,9 +114,11 @@ def optimize_adx(high: pd.Series,
 
         for i in range(1, n):
             # True Range
-            tr[i] = max(high_array[i] - low_array[i],
-                       abs(high_array[i] - close_array[i - 1]),
-                       abs(low_array[i] - close_array[i - 1]))
+            tr[i] = max(
+                high_array[i] - low_array[i],
+                abs(high_array[i] - close_array[i - 1]),
+                abs(low_array[i] - close_array[i - 1]),
+            )
 
             # Directional Movement
             move_up = high_array[i] - high_array[i - 1]
@@ -122,15 +135,19 @@ def optimize_adx(high: pd.Series,
         minus_dm_smooth = np.full(n, np.nan)
 
         # Initialize first values
-        tr_smooth[period] = np.sum(tr[1:period+1])
-        plus_dm_smooth[period] = np.sum(plus_dm[1:period+1])
-        minus_dm_smooth[period] = np.sum(minus_dm[1:period+1])
+        tr_smooth[period] = np.sum(tr[1 : period + 1])
+        plus_dm_smooth[period] = np.sum(plus_dm[1 : period + 1])
+        minus_dm_smooth[period] = np.sum(minus_dm[1 : period + 1])
 
         # Calculate smoothed values
         for i in range(period + 1, n):
             tr_smooth[i] = tr_smooth[i - 1] - (tr_smooth[i - 1] / period) + tr[i]
-            plus_dm_smooth[i] = plus_dm_smooth[i - 1] - (plus_dm_smooth[i - 1] / period) + plus_dm[i]
-            minus_dm_smooth[i] = minus_dm_smooth[i - 1] - (minus_dm_smooth[i - 1] / period) + minus_dm[i]
+            plus_dm_smooth[i] = (
+                plus_dm_smooth[i - 1] - (plus_dm_smooth[i - 1] / period) + plus_dm[i]
+            )
+            minus_dm_smooth[i] = (
+                minus_dm_smooth[i - 1] - (minus_dm_smooth[i - 1] / period) + minus_dm[i]
+            )
 
         # Calculate +DI, -DI, DX, ADX
         for i in range(period, n):
@@ -138,7 +155,11 @@ def optimize_adx(high: pd.Series,
                 plus_di[i] = 100 * plus_dm_smooth[i] / tr_smooth[i]
                 minus_di[i] = 100 * minus_dm_smooth[i] / tr_smooth[i]
 
-                dx = 100 * abs(plus_di[i] - minus_di[i]) / (plus_di[i] + minus_di[i]) if (plus_di[i] + minus_di[i]) > 0 else 0
+                dx = (
+                    100 * abs(plus_di[i] - minus_di[i]) / (plus_di[i] + minus_di[i])
+                    if (plus_di[i] + minus_di[i]) > 0
+                    else 0
+                )
 
                 if i == period:
                     adx[i] = dx
@@ -155,16 +176,15 @@ def optimize_adx(high: pd.Series,
         high_array, low_array, close_array, period
     )
 
-    return pd.DataFrame({
-        'ADX': adx_values,
-        '+DI': plus_di_values,
-        '-DI': minus_di_values
-    }, index=high.index)
+    return pd.DataFrame(
+        {"ADX": adx_values, "+DI": plus_di_values, "-DI": minus_di_values},
+        index=high.index,
+    )
 
 
-def optimize_kalman_filter(prices: pd.Series,
-                          process_noise: float = 1e-5,
-                          measurement_noise: float = 1e-3) -> pd.Series:
+def optimize_kalman_filter(
+    prices: pd.Series, process_noise: float = 1e-5, measurement_noise: float = 1e-3
+) -> pd.Series:
     """
     Optimized Kalman filter for price smoothing
 
@@ -176,6 +196,7 @@ def optimize_kalman_filter(prices: pd.Series,
     Returns:
         Smoothed price series
     """
+
     @nb.jit(nopython=True)
     def _kalman_filter_numba(price_array, process_noise, measurement_noise):  # type: ignore
         n = len(price_array)
@@ -209,9 +230,11 @@ def optimize_kalman_filter(prices: pd.Series,
         return filtered
 
     price_array = prices.values
-    filtered_values = cast(np.ndarray, _kalman_filter_numba(price_array, process_noise, measurement_noise))
+    filtered_values = cast(
+        np.ndarray, _kalman_filter_numba(price_array, process_noise, measurement_noise)
+    )
 
-    return pd.Series(filtered_values, index=prices.index, name='Kalman_Filter')
+    return pd.Series(filtered_values, index=prices.index, name="Kalman_Filter")
 
 
 @lru_cache(maxsize=128)
@@ -230,9 +253,9 @@ def cached_computation(func: Callable[..., Any], *args: Any, **kwargs: Any) -> A
     return func(*args, **kwargs)
 
 
-def vectorized_rolling_computation(data: pd.Series,
-                                  window: int,
-                                  func: Callable) -> pd.Series:
+def vectorized_rolling_computation(
+    data: pd.Series, window: int, func: Callable
+) -> pd.Series:
     """
     Vectorized rolling computation for better performance
 
@@ -248,20 +271,20 @@ def vectorized_rolling_computation(data: pd.Series,
         return pd.Series([np.nan] * len(data), index=data.index)
 
     # Use pandas rolling with vectorized operations where possible
-    if func.__name__ == 'mean':
+    if func.__name__ == "mean":
         return data.rolling(window=window, min_periods=1).mean()
-    elif func.__name__ == 'std':
+    elif func.__name__ == "std":
         return data.rolling(window=window, min_periods=1).std()
-    elif func.__name__ == 'var':
+    elif func.__name__ == "var":
         return data.rolling(window=window, min_periods=1).var()
     else:
         # Fallback to apply
         return data.rolling(window=window, min_periods=1).apply(func, raw=True)
 
 
-def benchmark_feature_computation(feature_func: Callable[..., Any],
-                                *args: Any,
-                                n_runs: int = 5) -> Dict[str, float | int]:
+def benchmark_feature_computation(
+    feature_func: Callable[..., Any], *args: Any, n_runs: int = 5
+) -> Dict[str, float | int]:
     """
     Benchmark feature computation performance
 
@@ -284,17 +307,18 @@ def benchmark_feature_computation(feature_func: Callable[..., Any],
     times_array = np.array(times)
 
     return {
-        'mean_time': float(np.mean(times_array)),
-        'std_time': float(np.std(times_array)),
-        'min_time': float(np.min(times_array)),
-        'max_time': float(np.max(times_array)),
-        'median_time': float(np.median(times_array)),
-        'n_runs': n_runs  # int 許容 (型注釈を Union 化)
+        "mean_time": float(np.mean(times_array)),
+        "std_time": float(np.std(times_array)),
+        "min_time": float(np.min(times_array)),
+        "max_time": float(np.max(times_array)),
+        "median_time": float(np.median(times_array)),
+        "n_runs": n_runs,  # int 許容 (型注釈を Union 化)
     }
 
 
-def optimize_feature_pipeline(features_config: Dict[str, Any],
-                            ohlc_data: pd.DataFrame) -> Dict[str, Any]:
+def optimize_feature_pipeline(
+    features_config: Dict[str, Any], ohlc_data: pd.DataFrame
+) -> Dict[str, Any]:
     """
     Optimize feature computation pipeline
 
@@ -309,37 +333,45 @@ def optimize_feature_pipeline(features_config: Dict[str, Any],
     performance_stats = {}
 
     # Process features in parallel where possible
-    slow_features = ['KAMA', 'ADX', 'KalmanFilter']
+    slow_features = ["KAMA", "ADX", "KalmanFilter"]
 
     for feature_name, config in features_config.items():
-        result: Optional[Union[pd.Series, pd.DataFrame]] = None  # 未バインド警告回避のため初期化
+        result: Optional[Union[pd.Series, pd.DataFrame]] = (
+            None  # 未バインド警告回避のため初期化
+        )
 
         if feature_name in slow_features:
             # Use optimized versions
-            if feature_name == 'KAMA':
-                result = optimize_kama(ohlc_data['close'], **config.get('params', {}))
-            elif feature_name == 'ADX':
-                result = optimize_adx(ohlc_data['high'], ohlc_data['low'], ohlc_data['close'],
-                                    **config.get('params', {}))
-            elif feature_name == 'KalmanFilter':
-                result = optimize_kalman_filter(ohlc_data['close'], **config.get('params', {}))
+            if feature_name == "KAMA":
+                result = optimize_kama(ohlc_data["close"], **config.get("params", {}))
+            elif feature_name == "ADX":
+                result = optimize_adx(
+                    ohlc_data["high"],
+                    ohlc_data["low"],
+                    ohlc_data["close"],
+                    **config.get("params", {}),
+                )
+            elif feature_name == "KalmanFilter":
+                result = optimize_kalman_filter(
+                    ohlc_data["close"], **config.get("params", {})
+                )
             else:
                 raise ValueError(f"未対応の slow feature: {feature_name}")
 
             # Benchmark performance
             perf_stats = benchmark_feature_computation(
                 lambda: result,  # Dummy lambda to benchmark result generation
-                n_runs=1
+                n_runs=1,
             )
             performance_stats[feature_name] = perf_stats
         else:
             # Use regular computation
-            result = config['func'](ohlc_data, **config.get('params', {}))
+            result = config["func"](ohlc_data, **config.get("params", {}))
 
         optimized_results[feature_name] = result
 
     return {
-        'features': optimized_results,
-        'performance': performance_stats,
-        'optimization_applied': list(slow_features)
+        "features": optimized_results,
+        "performance": performance_stats,
+        "optimization_applied": list(slow_features),
     }

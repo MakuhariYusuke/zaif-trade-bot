@@ -10,12 +10,12 @@ This module provides unified interfaces for loading data from various sources:
 All data loading should go through this module to ensure consistency.
 """
 
-import pandas as pd
-import sqlite3
 import json
+import sqlite3
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
+from typing import Any, Dict, Union
+
+import pandas as pd
 
 
 class DataLoader:
@@ -37,7 +37,7 @@ class DataLoader:
         if not file_path.exists():
             raise FileNotFoundError(f"JSON file not found: {file_path}")
 
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)  # type: ignore[no-any-return]
 
     @staticmethod
@@ -71,16 +71,18 @@ class DataLoader:
         """Save data to JSON file."""
         file_path = Path(file_path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, default=str)
 
     @staticmethod
-    def save_sqlite(df: pd.DataFrame, db_path: Union[str, Path], table_name: str) -> None:
+    def save_sqlite(
+        df: pd.DataFrame, db_path: Union[str, Path], table_name: str
+    ) -> None:
         """Save DataFrame to SQLite database."""
         db_path = Path(db_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(str(db_path)) as conn:
-            df.to_sql(table_name, conn, if_exists='replace', index=False)
+            df.to_sql(table_name, conn, if_exists="replace", index=False)
 
 
 # Convenience functions
@@ -98,25 +100,28 @@ def load_ohlc_data(source: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
         return source
 
     source_path = Path(source)
-    if source_path.suffix == '.parquet':
+    if source_path.suffix == ".parquet":
         return DataLoader.load_parquet(source_path)
-    elif source_path.suffix == '.csv':
+    elif source_path.suffix == ".csv":
         return DataLoader.load_csv(source_path)
-    elif source_path.suffix == '.json':
+    elif source_path.suffix == ".json":
         data = DataLoader.load_json(source_path)
         return pd.DataFrame(data)
     else:
         raise ValueError(f"Unsupported file format: {source_path.suffix}")
 
 
-def save_evaluation_results(results: Dict[str, Any], output_path: Union[str, Path]) -> None:
+def save_evaluation_results(
+    results: Dict[str, Any], output_path: Union[str, Path]
+) -> None:
     """Save evaluation results to file."""
     output_path = Path(output_path)
-    if output_path.suffix == '.json':
+    if output_path.suffix == ".json":
         DataLoader.save_json(results, output_path)
     else:
         # Save as pickle for complex objects
         import pickle
+
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'wb') as f:
+        with open(output_path, "wb") as f:
             pickle.dump(results, f)

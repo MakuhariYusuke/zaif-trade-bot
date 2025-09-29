@@ -7,7 +7,6 @@ Can be triggered via file, signal, or API call for immediate safety.
 
 import atexit
 import logging
-import os
 import signal
 import threading
 import time
@@ -50,14 +49,18 @@ class GlobalKillSwitch:
 
     def _start_file_monitor(self):
         """Start monitoring kill file in background thread."""
-        self._monitor_thread = threading.Thread(target=self._monitor_kill_file, daemon=True)
+        self._monitor_thread = threading.Thread(
+            target=self._monitor_kill_file, daemon=True
+        )
         self._monitor_thread.start()
 
     def _monitor_kill_file(self):
         """Monitor kill file for creation/deletion."""
         while not self._stop_monitor.is_set():
             if self.kill_file.exists():
-                logger.warning(f"Kill file {self.kill_file} detected, initiating shutdown")
+                logger.warning(
+                    f"Kill file {self.kill_file} detected, initiating shutdown"
+                )
                 self.kill()
                 break
             time.sleep(1.0)  # Check every second

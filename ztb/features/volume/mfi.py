@@ -4,6 +4,7 @@ MFIの実装
 """
 
 import pandas as pd
+
 from ztb.features.registry import FeatureRegistry
 
 
@@ -11,10 +12,10 @@ from ztb.features.registry import FeatureRegistry
 def compute_mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """Compute MFI (Money Flow Index)"""
     # Typical Price
-    typical_price = (df['high'] + df['low'] + df['close']) / 3
+    typical_price = (df["high"] + df["low"] + df["close"]) / 3
 
     # Raw Money Flow
-    money_flow = typical_price * df['volume']
+    money_flow = typical_price * df["volume"]
 
     # Positive and Negative Money Flow
     price_diff: pd.Series = typical_price.diff()
@@ -25,7 +26,9 @@ def compute_mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
     pos_mf_sum = positive_flow.rolling(period).sum()
     neg_mf_sum = negative_flow.rolling(period).sum()
 
-    money_flow_ratio = pos_mf_sum / neg_mf_sum.replace(0, 1e-8)  # Avoid division by zero
+    money_flow_ratio = pos_mf_sum / neg_mf_sum.replace(
+        0, 1e-8
+    )  # Avoid division by zero
 
     # MFI calculation
     mfi = 100 - (100 / (1 + money_flow_ratio))

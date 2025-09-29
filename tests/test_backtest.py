@@ -1,11 +1,17 @@
 """Unit tests for backtest module."""
 
-import pytest
+from unittest.mock import Mock, patch
+
 import pandas as pd
-from unittest.mock import Mock, AsyncMock, patch
-from ztb.backtest.runner import BacktestEngine
+import pytest
+
+from ztb.backtest.adapters import (
+    BuyAndHoldAdapter,
+    RLPolicyAdapter,
+    SMACrossoverAdapter,
+)
 from ztb.backtest.metrics import MetricsCalculator
-from ztb.backtest.adapters import RLPolicyAdapter, SMACrossoverAdapter, BuyAndHoldAdapter
+from ztb.backtest.runner import BacktestEngine
 
 
 class TestBacktestEngine:
@@ -18,17 +24,19 @@ class TestBacktestEngine:
     def test_initialization(self):
         """Test engine initializes correctly."""
         assert self.engine is not None
-        assert hasattr(self.engine, 'run_backtest')
+        assert hasattr(self.engine, "run_backtest")
 
-    @patch('ztb.backtest.runner.BacktestEngine.load_data')
+    @patch("ztb.backtest.runner.BacktestEngine.load_data")
     def test_run_backtest_basic(self, mock_load_data):
         """Test basic backtest execution."""
         # Mock data
-        mock_data = pd.DataFrame({
-            'timestamp': pd.date_range('2023-01-01', periods=100, freq='h'),
-            'close': 100.0,
-            'volume': 1000.0
-        })
+        mock_data = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2023-01-01", periods=100, freq="h"),
+                "close": 100.0,
+                "volume": 1000.0,
+            }
+        )
         mock_load_data.return_value = mock_data
 
         # Mock strategy
@@ -78,19 +86,21 @@ class TestMetricsCalculator:
     def test_calculate_all_metrics(self):
         """Test comprehensive metrics calculation."""
         portfolio_values = pd.Series([100000, 101000, 99000, 102000, 98000])
-        trades = pd.DataFrame({
-            'timestamp': pd.date_range('2023-01-01', periods=5),
-            'pnl': [1000, -1000, 2000, -2000, 1000]
-        })
+        trades = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2023-01-01", periods=5),
+                "pnl": [1000, -1000, 2000, -2000, 1000],
+            }
+        )
 
         metrics = self.calculator.calculate_all_metrics(portfolio_values, trades)
 
         # metrics is a BacktestMetrics object
-        assert hasattr(metrics, 'sharpe_ratio')
-        assert hasattr(metrics, 'total_return')
-        assert hasattr(metrics, 'max_drawdown')
-        assert hasattr(metrics, 'win_rate')
-        assert hasattr(metrics, 'total_trades')
+        assert hasattr(metrics, "sharpe_ratio")
+        assert hasattr(metrics, "total_return")
+        assert hasattr(metrics, "max_drawdown")
+        assert hasattr(metrics, "win_rate")
+        assert hasattr(metrics, "total_trades")
 
 
 class TestStrategyAdapters:
@@ -98,11 +108,13 @@ class TestStrategyAdapters:
 
     def setup_method(self):
         """Set up test data."""
-        self.data = pd.DataFrame({
-            'timestamp': pd.date_range('2023-01-01', periods=100, freq='h'),
-            'close': [100 + i * 0.1 for i in range(100)],
-            'volume': [1000.0] * 100
-        })
+        self.data = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2023-01-01", periods=100, freq="h"),
+                "close": [100 + i * 0.1 for i in range(100)],
+                "volume": [1000.0] * 100,
+            }
+        )
 
     def test_sma_adapter(self):
         """Test SMA strategy adapter."""
@@ -111,8 +123,8 @@ class TestStrategyAdapters:
         signals = adapter.generate_signals(self.data)
 
         assert len(signals) == len(self.data)
-        assert 'signal' in signals.columns
-        assert all(signals['signal'].isin([-1, 0, 1]))
+        assert "signal" in signals.columns
+        assert all(signals["signal"].isin([-1, 0, 1]))
 
     def test_buy_hold_adapter(self):
         """Test buy and hold strategy adapter."""
@@ -121,22 +133,22 @@ class TestStrategyAdapters:
         signals = adapter.generate_signals(self.data)
 
         assert len(signals) == len(self.data)
-        assert 'signal' in signals.columns
+        assert "signal" in signals.columns
         # Buy and hold should have initial buy signal and hold
-        assert signals['signal'].iloc[0] == 1  # Buy signal
-        assert all(signals['signal'].iloc[1:] == 0)  # Hold signals
+        assert signals["signal"].iloc[0] == 1  # Buy signal
+        assert all(signals["signal"].iloc[1:] == 0)  # Hold signals
 
     def test_rl_adapter(self):
         """Test RL policy adapter."""
-        adapter = RLPolicyAdapter(model_path='dummy_path')
+        adapter = RLPolicyAdapter(model_path="dummy_path")
 
         signals = adapter.generate_signals(self.data)
 
         assert len(signals) == len(self.data)
-        assert 'signal' in signals.columns
+        assert "signal" in signals.columns
         # RL adapter should generate signals (mocked for now)
         assert isinstance(signals, pd.DataFrame)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main([__file__])

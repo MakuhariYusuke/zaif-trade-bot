@@ -1,0 +1,5 @@
+# Results Schema Version
+# Increment this version when making breaking changes to results schema
+# Update CHANGELOG.md when incrementing
+
+RESULTS_SCHEMA_VERSION = "1.0.0"

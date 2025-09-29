@@ -1,2247 +1,271 @@
-# Zaif Trade Bot
+﻿# Zaif Trade Bot (exchange-agnostic)
 
-軽量・検証重視の Zaif/Coincheck 向け自動売買ボット。SELL ファースト戦略、モック駆動テスト、堅牢なリトライ/CB/Rate 制御を備え、拡張しやすい土台を提供します。
+長時間学習・実運用を見据えた、**強化学習 + バックテスト + ペーパートレード**一体型の取引基盤。
+リポジトリ名に"Zaif"を含みますが、**取引所非依存（Zaif/Coincheck 等を切替可能）**な設計です。
 
-**Python/ML 拡張**: テクニカル指標フィーチャー評価、品質ゲート、強化学習環境を統合。1kステップから100k/1Mステップ規模の学習まで対応可能なスケーラブルなアーキテクチャを採用しています。
-
-**最新機能 (v3.1.0)**:
-- 🔧 **Advanced Infrastructure Harness**: Production-grade resilience with fault injection, correlation IDs, async checkpoints
-- 📊 **Unified Results Schema**: JSON schema validation for CI/CD pipeline integration
-- 🛡️ **Global Kill Switch & Circuit Breakers**: Emergency shutdown and failure threshold management
-- 🔄 **Order Idempotency & State Machine**: Reliable order lifecycle with duplicate prevention
-- 🔍 **Reconciliation Framework**: Consistency checking between internal and external states
-- 🐍 **Python 3.13 Readiness**: Compatibility updates for latest Python version
-
-📖 **[運用マニュアル (Runbook)](docs/runbook.md)** - 実験開始・停止、監視、トラブルシューティングの手順
+> ⚠️ 免責: 本ソフトウェアは研究・検証目的です。実取引は自己責任で行ってください。大きな損失が発生する可能性があります。
+> See also: [DISCLAIMER.md](./DISCLAIMER.md)
 
 ---
 
-## すぐ使う（Quick Start）
+## Project Overview
 
-### TypeScript/Node.js 環境
+- 目的：**実取引可能な Bot** を作ること。1M ステップ学習はその達成手段の一つ。
+- 特徴：長時間学習を前提に、**再開性・安全性・可観測性**を重視。
+- 交換可能な実装：ブローカー層はアダプタ方式（Zaif/Coincheck 等）。
+  参考: [docs/runbook.md](./docs/runbook.md), [ztb/trading/README.md](./ztb/trading/README.md)
 
-1) 依存インストール
-```bash
-npm install
-```
+## Key Features
 
-2) 最速検証（モック + ドライラン）
-```bash
-$env:USE_PRIVATE_MOCK="1"; $env:DRY_RUN="1"; npm start
-```
-
-3) 最小ライブ検証（自己責任・即キャンセル）
-```bash
-npm run live:minimal
-```
-
-### Python/ML 環境
-
-1) Python依存インストール
-```bash
-pip install -r requirements.txt
-```
-
-2) フィーチャー評価実行
-```bash
-python ztb/features/test_all_features.py
-```
-
-3) 強化学習実験実行
-```bash
-python ztb/experiments/ml_reinforcement_1k.py
-```
-
-ヒント: PowerShell では環境変数の一時設定に `$env:NAME="value"` を使用します。
-
-安全上の注意: 本リポジトリは学習・検証目的の参考実装です。実運用はご自身の責任で、極小サイズから十分に検証してください。
+- **学習基盤**: PPO トレーナ、1M ステップ前提のチェックポイント運用（async + zstd 圧縮）
+- **評価**: DSR（Deflated Sharpe Ratio）、Bootstrap による信頼区間、基準戦略比較
+- **データ**: ストリーミング + 循環バッファ、オフライン/オンライン両対応
+- **運用**: 監視（watcher）、自動再開（supervisor）、定期要約（rollup）
+- **安全**: Circuit Breakers、Kill-file、冪等な注文状態機械、ドライラン
+- **検証**: Canary（Linux/PS 同等動作）と障害注入（テーブル駆動）
+- **インフラ**: 取引所ヘルスチェック、統一データソース管理、一貫したCLI、回帰スモークテスト
 
 ---
 
-## 🛡️ Operational Safety (Paper/Live-Lite)
+## File Organization Migration
 
-Zaif Trade Bot includes comprehensive safety mechanisms for responsible trading system operation.
+As part of the refactoring to organize Python files into proper packages, the following files have been moved from `ztb/scripts/` to organized packages:
 
-### Risk Management Features
+| Original Path | New Path | Category |
+|---------------|----------|----------|
+| alert_notifier.py | ztb/ops/monitoring/alert_notifier.py | monitoring/notification |
+| health_monitor.py | ztb/ops/monitoring/health_monitor.py | monitoring/notification |
+| disk_health.py | ztb/ops/monitoring/disk_health.py | monitoring/notification |
+| ops_doctor.py | ztb/ops/monitoring/ops_doctor.py | monitoring/notification |
+| collect_last_errors.py | ztb/ops/monitoring/collect_last_errors.py | monitoring/notification |
+| artifacts_janitor.py | ztb/ops/artifacts/artifacts_janitor.py | artifacts/reports |
+| compact_jsonl.py | ztb/ops/artifacts/compact_jsonl.py | artifacts/reports |
+| cost_estimator.py | ztb/ops/artifacts/cost_estimator.py | artifacts/reports |
+| dump_contract_schemas.py | ztb/ops/config/dump_contract_schemas.py | config/schema |
+| benchmark_checkpoint.py | ztb/ops/benchmark/benchmark_checkpoint.py | benchmark/observability |
+| benchmark_streaming.py | ztb/ops/benchmark/benchmark_streaming.py | benchmark/observability |
+| compat_wrapper.py | ztb/ops/benchmark/compat_wrapper.py | benchmark/observability |
+| smoke_tests.py | ztb/ops/benchmark/smoke_tests.py | benchmark/observability |
+| fix_train.py | ztb/training/entrypoints/fix_train.py | training entrypoints |
+| generate_sample_data.py | ztb/training/entrypoints/generate_sample_data.py | training entrypoints |
+| validate_data_loading.py | ztb/training/entrypoints/validate_data_loading.py | training entrypoints |
+| profile_features.py | ztb/training/evaluation/profile_features.py | evaluation/regime |
+| re_evaluate_list.yaml | ztb/training/evaluation/re_evaluate_list.yaml | evaluation/regime |
 
-- **Kill Switch**: Emergency shutdown via file (`/tmp/ztb.stop`), environment variable (`ZTB_KILL=1`), or HTTP endpoint
-- **Circuit Breakers**: Automatic failure detection with configurable thresholds
-- **Order Idempotency**: Duplicate order prevention with client order ID generation
-- **Rate Limiting**: API call throttling to prevent abuse
-- **Position Limits**: Maximum exposure controls per trade and portfolio
-
-### Safety-First Defaults
-
-All safety features are **disabled by default** in development. Enable explicitly for production use:
-
-```bash
-# Enable risk management for paper trading
-python -m ztb.live.paper_trader --enable-risk --risk-profile balanced
-
-# Enable risk management for backtesting
-python -m ztb.backtest.runner --enable-risk --policy sma_fast_slow
-```
-
-### Risk Profiles
-
-- **Conservative**: Strict limits, early intervention
-- **Balanced**: Moderate risk controls (default)
-- **Aggressive**: Relaxed thresholds for high-frequency strategies
-
-### Emergency Procedures
-
-1. **Immediate Stop**: Create kill file or set environment variable
-2. **Graceful Shutdown**: System stops new orders but allows position unwinding
-3. **Post-Incident Review**: Check logs for trigger conditions
-4. **Reset and Resume**: Clear kill switch after issue resolution
-
-See **[Runbook](docs/runbook.md)** for detailed operational procedures and incident response.
+All imports have been updated to use absolute paths. The `ztb/scripts/` directory now contains only shell scripts and the `trading_service.py` shim for backward compatibility.
 
 ---
 
-## � Documentation
+## Architecture Overview
 
-### Developer Guides
-
-- **[Setup Guide](docs/contributing/setup.md)** - Development environment setup
-- **[Architecture Overview](docs/contributing/architecture.md)** - System architecture and design
-- **[Testing Guide](docs/contributing/testing.md)** - Testing strategy and practices
-
-### Module Documentation
-
-- **[Data Management](ztb/data/README.md)** - Streaming pipelines and external data sources
-- **[Trading Engine](ztb/trading/README.md)** - PPO training and checkpoint management
-- **[Test Utilities](ztb/util/README.md)** - Test isolation and performance monitoring
-
-### Operational Guides
-
-- **[Runbook](docs/runbook.md)** - Experiment management and troubleshooting
-- **[Configuration](docs/configuration.md)** - Environment variables and config files
+- **学習/環境**: ztb/trading/（PPO、環境、チェックポイント、評価フック）
+  → 詳細: [ztb/trading/README.md](./ztb/trading/README.md)
+- **データ**: ztb/data/（ストリーミング、バッファ、バリデーション）
+  → 詳細: [ztb/data/README.md](./ztb/data/README.md)
+- **ユーティリティ**: ztb/util/（テスト支援、設定、観測、スキーマ等）
+  → 詳細: [ztb/util/README.md](./ztb/util/README.md)
+- **開発者向け**: アーキテクチャ/セットアップ/テスト
+  → 詳細: [docs/contributing/architecture.md](./docs/contributing/architecture.md),
+           [docs/contributing/setup.md](./docs/contributing/setup.md),
+           [docs/contributing/testing.md](./docs/contributing/testing.md)
 
 ---
 
-## �🚀 Getting Started for New Contributors
+## Quick Start
 
-新規コントリビューター向けの開発環境セットアップと基本ワークフローです。
+> Python 3.11 で動作確認済。3.13 対応の検証は CI マトリクスで進行中。
 
 ### 環境セットアップ
 
-#### オプション1: Dev Container (推奨)
-
-VS Code で一貫した開発環境を確保する場合:
-
-1. **VS Code Dev Containers 拡張機能インストール**
-   - VS Code 拡張機能: "Dev Containers"
-
-2. **コンテナ起動**
-   ```bash
-   # Command Palette (Ctrl+Shift+P) → "Dev Containers: Reopen in Container"
-   # または: "Dev Containers: Open Folder Locally" → フォルダ選択
-   ```
-
-3. **自動セットアップ完了**
-   - Python 3.11, Node.js LTS, 必要な拡張機能が自動インストール
-   - `make setup` が自動実行され、依存関係がインストールされます
-
-#### オプション2: ローカル環境
-
-手動セットアップの場合:
-
-1. **リポジトリクローン**
-
-   ```bash
-   git clone https://github.com/MakuhariYusuke/zaif-trade-bot.git
-   cd zaif-trade-bot
-   ```
-
-2. **依存関係インストール**
-
-   ```bash
-   # Node.js/TypeScript 環境
-   npm install
-
-   # Python/ML 環境
-   pip install -r requirements.txt
-   pip install -r requirements-dev.txt  # 開発ツール用
-   ```
-
-3. **開発ツールインストール**
-
-   ```bash
-   # 型チェック・リント用
-   pip install mypy ruff pre-commit
-
-   # pre-commit フック有効化
-   pre-commit install
-   ```
-
-### 基本テスト実行
-
-1. **ユニットテスト実行**
-
-   ```bash
-   # TypeScript/Node.js テスト
-   npm run test:unit
-
-   # Python テスト (pytest)
-   python -m pytest ztb/tests/ -v
-   ```
-
-2. **統合テスト実行**
-
-   ```bash
-   # 高速統合テスト
-   npm run test:int-fast
-
-   # 完全統合テスト
-   npm run test:integration
-   ```
-
-3. **スモークテスト実行**
-
-   ```bash
-   # 最小ライブテスト (モック環境推奨)
-   npm run live:minimal
-
-   # ペーパートレーディングテスト
-   npm run paper:smoke
-   ```
-
-### 開発ワークフロー
-
-1. **ブランチ作成**
-
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **コード変更・テスト**
-
-   ```bash
-   # 変更後、テスト実行
-   npm run test:unit
-   python -m pytest ztb/tests/
-
-   # 型チェック
-   mypy ztb/
-
-   # リント
-   ruff check ztb/
-   ```
-
-3. **コミット・プッシュ**
-
-   ```bash
-   git add .
-   git commit -m "feat: add your feature"
-   git push origin feature/your-feature-name
-   ```
-
-### トラブルシューティング
-
-- **テスト失敗**: `npm run test:unit` で詳細確認
-- **型エラー**: `mypy ztb/` でエラー箇所特定
-- **環境問題**: `python --version` と `node --version` を確認
-- **メモリ不足**: `ZTB_MAX_MEMORY_GB=8` 環境変数で制限
-
----
-
-## アーキテクチャ概要
-
-### TypeScript/Node.js レイヤー
-- `core/`: 純粋ロジック（I/O・fs・env に非依存）
-- `adapters/`: I/O・外部 API 委譲（FS/HTTP/署名/レート制御等）
-- `application/`: 戦略やユースケースのオーケストレーション（イベント購読/集計）
-- `app/`: メインの定期実行ループ（`npm start`）
-- `tools/`: live/paper/ml/stats の各 CLI
-
-### Python/ML レイヤー (ztb/)
-- `ztb/core/`: コアルーチン（取引実行、市場データ、リスク管理）
-- `ztb/features/`: テクニカル指標フィーチャー（トレンド、ボラティリティ、モメンタム等）
-- `ztb/evaluation/`: 品質評価・プロモーションエンジン・ベンチマーク
-- `ztb/trading/`: 強化学習環境・PPOトレーナー
-- `ztb/ml/`: MLパイプライン・データ変換・エクスポート
-- `ztb/experiments/`: 実験コード（スケーリングテスト、検証スクリプト）
-- `ztb/utils/`: 共通ユーティリティ（通知、キャッシュ、ロギング等）
-- `ztb/tests/`: ユニットテスト・統合テスト
-- `ztb/tools/`: 運用ツール・レポート生成
-
-移行状況メモ
-- 旧 `src/services/*` は削除済みです。新規/既存コードとも `@adapters/*` を使用してください。
-- 型は `src/contracts` に集約し `@contracts` で import できます。
-- Pythonコードは `ztb/` 以下に一元化されています。
-
----
-
-## 🛠️ ユーティリティフレームワーク (ztb/utils/)
-
-Python/ML レイヤーの共通ユーティリティを整理。実験・評価・運用で再利用可能なコンポーネントを提供します。
-
-### 1. LoggerManager (logger.py)
-
-**役割**: 統一ロギング・通知・実験追跡。JSONLログ、Discord埋め込み通知、実験ライフサイクル管理、非同期通知キューイング。
-
-**代表的なクラス/関数**:
-
-- `LoggerManager`: 統一ロガー (jsonl + console + Discord + 非同期通知)
-- `start_session()`, `end_session()`: 詳細なセッション管理
-- `send_custom_notification()`: カスタム通知
-- `enqueue_notification()`: 非同期通知キューイング
-- `AsyncNotifier`: 非同期通知クラス (キュー + 集約送信)
-- `@catch_and_notify` デコレータ
-
-**使用例**:
-
-```python
-from ztb.utils import LoggerManager
-
-logger = LoggerManager(experiment_id="exp_001", test_mode=False)
-logger.start_session("training", "config_v1")
-logger.log_experiment_start("My Experiment", {"steps": 1000})
-# ... 実験実行 ...
-logger.log_experiment_end({"reward": 1000, "pnl": 500})
-logger.end_session({"reward_stats": {...}, "trading_stats": {...}})
-```
-
-### 2. Stats Utils (stats.py)
-
-**役割**: データ品質・統計分析。pandasベースの計算関数群。
-
-**代表的な関数**:
-
-- `calculate_skew()`, `calculate_kurtosis()`
-- `calculate_nan_ratio()`, `calculate_correlation()`
-
-**使用例**:
-
-```python
-from ztb.utils import calculate_skew, calculate_nan_ratio
-
-skew = calculate_skew(data)
-nan_ratio = calculate_nan_ratio(data)
-```
-
-### 3. Report Generator (report_generator.py)
-
-**役割**: 実験結果・品質レポートの統一出力。CSV/JSON/Markdown形式、エラーダンプ保存。
-
-**代表的なクラス/関数**:
-
-- `ReportGenerator`: マルチフォーマットレポート生成
-- `generate_csv()`, `generate_json()`, `generate_markdown()`
-
-**使用例**:
-
-```python
-from ztb.utils import ReportGenerator
-
-generator = ReportGenerator()
-generator.generate_csv(results, "report.csv")
-generator.generate_markdown(results, "report.md")
-```
-
-### 4. CI Utils (ci_utils.py)
-
-**役割**: CI実行時のメトリクス収集・通知。システムリソース監視とDiscord通知。
-
-**代表的な関数**:
-
-- `collect_ci_metrics()`: CPU/メモリ/実行時間収集
-- `notify_ci_results()`: Discord通知
-
-**使用例**:
-
-```python
-from ztb.utils import collect_ci_metrics, notify_ci_results
-
-metrics = collect_ci_metrics()
-notify_ci_results(metrics, "discord")
-```
-
-### 5. Checkpoint Manager (checkpoint.py)
-
-**役割**: モデル・実験状態の保存・復元。非同期・圧縮・世代管理。
-
-**代表的なクラス/関数**:
-
-- `CheckpointManager`: 非同期チェックポイント管理
-- `save_async()`, `load()`, `cleanup_old_generations()`
-
-**使用例**:
-
-```python
-from ztb.utils import CheckpointManager
-
-manager = CheckpointManager(base_path="checkpoints", max_generations=5)
-await manager.save_async(model_state, "exp_001")
-```
-
-### 6. Quality Gates & Evaluation
-
-**役割**: データ品質評価。統合された品質チェックとレポート。
-
-**代表的なクラス/関数**:
-
-- `QualityGates`: NaN率/相関/歪度/尖度の評価
-- `ExperimentBase`: 実験実行の標準化
-
-**使用例**:
-
-```python
-from ztb.evaluation.quality_gates import QualityGates
-from ztb.experiments.base import ExperimentBase
-
-gates = QualityGates()
-result = gates.evaluate(feature_data, price_data)
-```
-
-### 7. DataLoader Framework
-
-**役割**: 市場データ取得の統一インターフェース。CoinGecko/Coincheck/Synthetic をサポート。
-
-**代表的なクラス/関数**:
-
-- `CoinGeckoAPI` (coin_gecko.py)
-- Synthetic データ生成 (test_all_features.py 内)
-
-**使用例**:
-
-```python
-from data.coin_gecko import fetch_btc_jpy
-
-df = fetch_btc_jpy(days=365, interval="daily")
-```
-
-### 8. New Utility Modules (v2.4.1)
-
-#### Data Generation Utils (`ztb/utils/data_generation.py`)
-
-**役割**: 合成市場データ生成とサンプルデータ読み込み。実験・テスト用の高品質データ生成。
-
-**代表的な関数**:
-
-- `generate_synthetic_market_data()`: 現実的な潜在因子を持つOHLCVデータ生成
-- `load_sample_data()`: データセット自動選択と読み込み
-
-**使用例**:
-
-```python
-from ztb.utils.data_generation import generate_synthetic_market_data, load_sample_data
-
-# 高品質合成データ生成
-df = generate_synthetic_market_data(n_samples=10000, version="v2")
-
-# 自動データセット読み込み
-train_data = load_sample_data("synthetic-v2")
-test_data = load_sample_data("coingecko")
-```
-
-#### Trading Metrics Utils (`ztb/utils/trading_metrics.py`)
-
-**役割**: 高度な取引パフォーマンス指標計算。Sharpe/Sortino/Calmar比率と統計分析。
-
-**代表的な関数**:
-
-- `sharpe_ratio()`: Sharpe比率計算（年率換算）
-- `sharpe_with_stats()`: Sharpe比率の統計情報
-- `calculate_delta_sharpe()`: 特徴量追加によるSharpe比変化分析
-
-**使用例**:
-
-```python
-from ztb.utils.trading_metrics import sharpe_ratio, sharpe_with_stats
-
-# 単一Sharpe比率
-returns = [0.01, -0.005, 0.02, 0.015]
-sharpe = sharpe_ratio(returns)
-
-# 複数シナリオの統計分析
-sharpe_stats = sharpe_with_stats([1.2, 1.5, 0.8, 1.1])
-print(f"Mean Sharpe: {sharpe_stats['mean']:.2f} ± {sharpe_stats['std']:.2f}")
-```
-
-#### Configuration Loader (`ztb/utils/config_loader.py`)
-
-**役割**: YAML/JSON設定ファイルの標準化読み込み。自動フォーマット検出と検索パス管理。
-
-**代表的な関数**:
-
-- `load_yaml_config()`, `load_json_config()`: フォーマット別読み込み
-- `load_config()`: 自動フォーマット検出
-- `find_config_file()`: 標準パスからの設定ファイル検索
-
-**使用例**:
-
-```python
-from ztb.utils.config_loader import load_config, find_config_file
-
-# 自動フォーマット検出
-config = load_config("config/features.yaml")
-
-# 設定ファイル検索
-config_path = find_config_file("features.yaml")
-if config_path:
-    features_config = load_config(config_path)
-```
-
-#### Feature Testing Utils (`ztb/utils/feature_testing.py`)
-
-**役割**: 特徴量評価ユーティリティ。戦略別シグナル生成とパフォーマンス分析。
-
-**代表的な関数**:
-
-- `generate_feature_signals()`: 特徴量別取引戦略シグナル生成
-- `calculate_trading_metrics()`: 取引メトリクス計算
-- `evaluate_feature_performance()`: 完全な特徴量パフォーマンス評価
-
-**使用例**:
-
-```python
-from ztb.utils.feature_testing import evaluate_feature_performance
-
-# RSI特徴量の評価
-rsi_values = [30, 45, 70, 25, 80]
-price_data = [100, 102, 98, 105, 95]
-
-result = evaluate_feature_performance(rsi_values, price_data, "RSI")
-print(f"Win Rate: {result['metrics']['win_rate']:.2%}")
-print(f"Sharpe Ratio: {result['metrics']['sharpe_ratio']:.2f}")
-```
-
-### 9. Enhanced LoggerManager Integration
-
-**役割**: 実験追跡・非同期通知・セッション管理。AsyncNotifierによる非ブロッキング通知。
-
-**新機能 (v2.4.1)**:
-
-- `AsyncNotifier`: キューイング集約通知（5分間隔）
-- ハートビート監視: メモリ/CPU使用率追跡
-- 詳細セッション結果: 取引統計・パフォーマンス指標
-
-**統合例**:
-
-```python
-from ztb.utils import LoggerManager
-
-# 実験開始
-logger = LoggerManager(experiment_id="large_scale_test", test_mode=False)
-logger.start_session("scaling_test", "100k_steps")
-
-# ハートビート開始（メモリ監視）
-logger._start_heartbeat(interval_minutes=5)
-
-# 実験実行
-for step in range(100000):
-    # ... 実験ロジック ...
-    if step % 10000 == 0:
-        logger.enqueue_notification(f"Progress: {step}/100000 steps completed")
-
-# 詳細結果準備
-session_results = logger._prepare_session_results({
-    'total_steps': 100000,
-    'final_reward': final_reward,
-    'trading_stats': trading_stats,
-    'memory_peak': memory_peak_mb
-})
-
-logger.end_session(session_results)
-```
-
-### 10. Standard Flow for Running 100k Tests
-
-**目的**: 大規模テスト（100k/1Mステップ）の標準化実行フロー。安定性・再現性確保。
-
-#### 前提条件
-
 ```bash
-# 環境設定
+# リポジトリをクローン
+git clone <repository-url>
+cd zaif-trade-bot
+
+# 開発環境のセットアップ（Makefile使用推奨）
+make setup
+
+# または手動で
 pip install -r requirements.txt
-export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-```
-
-#### 標準実行フロー
-
-1. **設定ファイル準備**
-
-   ```python
-   # config/experiment_config.yaml
-   experiment:
-     name: "large_scale_test"
-     total_steps: 100000
-     dataset: "coingecko"
-     features: "extended"
-     
-   logging:
-     level: "INFO"
-     discord_webhook: "your_webhook_url"
-     enable_async: true
-     
-   monitoring:
-     heartbeat_interval: 300  # 5分
-     memory_threshold: 80.0   # パーセント
-   ```
-
-2. **LoggerManager初期化**
-
-   ```python
-   from ztb.utils import LoggerManager
-
-   logger = LoggerManager(
-       experiment_id="100k_test_run",
-       test_mode=False,
-       notify_discord=True
-   )
-   ```
-
-3. **実験実行クラス**
-
-   ```python
-   from ztb.experiments.base import ExperimentBase
-
-   class LargeScaleExperiment(ExperimentBase):
-       def run(self):
-           # ハートビート開始
-           self._start_heartbeat()
-           
-           results = []
-           for step in range(self.config['total_steps']):
-               # 実験ロジック
-               result = self.run_single_step(step)
-               results.append(result)
-               
-               # 進捗通知（1000ステップごと）
-               if step % 1000 == 0:
-                   progress = (step / self.config['total_steps']) * 100
-                   self.logger_manager.enqueue_notification(
-                       f"Progress: {progress:.1f}% ({step}/{self.config['total_steps']})"
-                   )
-           
-           return self._prepare_session_results({
-               'total_steps': len(results),
-               'avg_reward': sum(r['reward'] for r in results) / len(results),
-               'success_rate': sum(1 for r in results if r['success']) / len(results)
-           })
-   ```
-
-4. **実行スクリプト**
-
-   ```python
-   #!/usr/bin/env python3
-   import sys
-   from pathlib import Path
-
-   # 設定読み込み
-   sys.path.append(str(Path(__file__).parent.parent))
-   from ztb.utils.config_loader import load_config
-   from ztb.experiments.large_scale_experiment import LargeScaleExperiment
-
-   def main():
-       # 設定読み込み
-       config = load_config("config/experiment_config.yaml")
-       
-       # 実験実行
-       experiment = LargeScaleExperiment(config)
-       result = experiment.execute()
-       
-       print(f"Experiment completed: {result.status}")
-       print(f"Total steps: {result.metrics.get('total_steps', 0)}")
-       print(f"Average reward: {result.metrics.get('avg_reward', 0):.4f}")
-
-   if __name__ == "__main__":
-       main()
-   ```
-
-5. **実行コマンド**
-
-   ```bash
-   # 標準実行
-   python ztb/experiments/large_scale_experiment.py
-
-   # バックグラウンド実行（長時間テスト）
-   nohup python ztb/experiments/large_scale_experiment.py > logs/100k_test_$(date +%Y%m%d_%H%M%S).log 2>&1 &
-
-   # モニタリング
-   tail -f logs/100k_test_latest.log
-   ```
-
-#### 監視・デバッグ
-
-- **ログ監視**: `tail -f logs/experiment_*.log`
-- **メトリクス確認**: Discord通知またはログ内のハートビート情報
-- **メモリ監視**: ハートビートログでメモリ使用率追跡
-- **中断・再開**: チェックポイント対応実験では途中再開可能
-
-#### 期待される出力例
-
-```text
-2025-09-26 14:30:00 🚀 Experiment 'large_scale_test' started (ID: 100k_test_run)
-2025-09-26 14:30:00 📊 Progress: 10.0% (10000/100000)
-2025-09-26 14:35:00 💓 Heartbeat: Memory=2.1GB, CPU=45.2%, Steps=15000
-2025-09-26 14:40:00 📊 Progress: 20.0% (20000/100000)
-...
-2025-09-26 16:45:00 ✅ Experiment completed (ID: 100k_test_run)
-Results: total_steps=100000, avg_reward=1.2345, success_rate=78.9%
-```
-
-#### パフォーマンス最適化
-
-- **バッチ処理**: 1000ステップ単位で中間結果保存
-- **メモリ管理**: 大規模データはストリーミング処理
-- **並列化**: 独立した評価はマルチプロセス対応
-- **チェックポイント**: 定期的な状態保存で中断耐性
-
----
-
-## アプリケーションイベント（EventBus）
-
-軽量なインメモリ EventBus で実行と副作用（ポジション/統計/ロギング）を分離します。外部公開はしません。
-
-- バス: `src/application/events/bus.ts`（既定は非同期 dispatch）
-- 型: `src/application/events/types.ts`
-- サブスクライバ: `src/application/events/subscribers/*`
-- 登録: `registerAllSubscribers()` を `src/app/index.ts` で呼び出し
-
-主なイベント（抜粋）
-- `ORDER_SUBMITTED` / `ORDER_FILLED` / `ORDER_CANCELED` / `ORDER_EXPIRED`
-- `SLIPPAGE_REPRICED`（スリッページによりリプライス）
-- `TRADE_PLAN` / `TRADE_PHASE`（trade-live ツールの計画・段階進行）
-
-共通メタデータ: `requestId`, `eventId`, `pair`, `side`, `amount`, `price`, `orderId?`, `retries?`, `cause?`
-
-購読例（型安全）
-```ts
-import { getEventBus } from '@application/events';
-getEventBus().subscribe('ORDER_FILLED', (e) => {
-  console.log('filled', e.orderId, e.filled, e.avgPrice);
-});
-```
-
-Idempotency: `eventId`/`requestId` をキーに重複に耐性を持つ実装にしてください。
-
-テスト時の同期発行: 競合を避けるため、Vitest/TEST_MODE では `publishAndWait()` を用いて `TRADE_PLAN`/`TRADE_PHASE` を同期発行しています。
-
----
-
-## Circuit Breaker（内蔵）
-
-- 状態: `CLOSED`/`OPEN`/`HALF_OPEN`。判定は失敗率・連続失敗・レイテンシ中央値。
-- 適用: `API-PUBLIC`（観測のみ）, `API-PRIVATE`/`EXEC`（ゲート対象）。
-- ログ: 遷移は `CB/INFO`、ブロックは `CB/ERROR blocked`（`CIRCUIT_OPEN`）。
-- 既定（環境で上書き可）: `CB_WINDOW_SIZE=50`, `CB_FAILURE_THRESHOLD=0.5`, `CB_MAX_CONSEC_FAIL=5`, `CB_LATENCY_THRESHOLD_MS=30000`, `CB_HALF_OPEN_TRIAL=5`, `CB_COOLDOWN_MS=60000`。
-
-withRetry 使用例
-```ts
-import { withRetry } from '@adapters/base-service';
-await withRetry(() => publicApi.fetchDepth('btc_jpy'), 'fetchDepth', 2, 100, { category: 'API-PUBLIC' });
-await withRetry(() => privateApi.getBalance(), 'getBalance', 3, 150, { category: 'API-PRIVATE' });
-await withRetry(() => exec.cancelOrder(orderId), 'cancelOrder', 3, 150, { category: 'EXEC' });
-```
-
----
-
-## Rate Limiter（カテゴリ別・予約枠対応）
-
-- 概要: トークンバケツでスループットを平準化（プロセス内シングルトン）。適用順は CB → Rate → Execute。
-- 既定: `capacity=100`, `refill=10 tokens/sec`, 予約枠 10%（`opType:'ORDER'` のみ使用）。
-- 動作: 通常は最大 1 秒取得待機（`RATE_MAX_WAIT_MS` で上書き可）。未取得で `RATE_LIMITED` を投げます。`LONG_TESTS=1` 環境ではスループット長時間検証用に内部待機上限を 200 秒へ自動拡張し、100〜1000 リクエストシナリオで拒否なく平準化挙動を観測します。
-- ログ: `RATE/INFO acquired`, `RATE/WARN waited`, `RATE/ERROR rejected`, `RATE/METRICS metrics`（直近 N=50 の平均待機/拒否率/カテゴリ詳細）。
-
-環境変数（最新）
-- `RATE_LIMITER_ENABLED` (1|0, 既定 1)
-- `RATE_CAPACITY` / `RATE_REFILL`（共通）
-- `RATE_RESERVE_RATIO`（0..1, 既定 0.1）
-- `RATE_METRICS_INTERVAL_MS`（既定 60000, 0 で無効）
-- カテゴリ別: `RATE_CAPACITY_PUBLIC|PRIVATE|EXEC`, `RATE_REFILL_PUBLIC|PRIVATE|EXEC`
-  - 後方互換: `RATE_REFILL_PER_SEC`, `RATE_PRIORITY_RESERVE` も解釈されます。
-
-withRetry の指定例
-```ts
-await withRetry(() => publicApi.getTicker('btc_jpy'), 'getTicker', 2, 100, { category: 'API-PUBLIC', priority: 'low', opType: 'QUERY' });
-await withRetry(() => privateApi.getBalance(), 'getBalance', 3, 150, { category: 'API-PRIVATE', priority: 'normal' });
-await withRetry(() => exec.placeOrder(req), 'placeOrder', 3, 150, { category: 'EXEC', priority: 'high', opType: 'ORDER' });
-await withRetry(() => exec.cancelOrder(id), 'cancelOrder', 3, 150, { category: 'EXEC', priority: 'high', opType: 'CANCEL' });
-```
-
-テスト時の扱い（重要）
-- 既定でテストはレート制御を無効化しますが、スイート側でカスタム limiter を注入した場合はグローバルフラグで強制有効になります（メトリクス系テストの安定性向上）。
- - 長時間スループット検証 (`LONG_TESTS=1`): 待機上限拡張により拒否率ではなく待機時間分布の回帰を検知可能。
-
-### LONG_TESTS モード
-
-| 項目 | 内容 |
-|------|------|
-| 目的 | レートリミッタの 100 / 1000 リクエスト連続取得でのスループット回帰検知 |
-| 発動 | `LONG_TESTS=1` 環境変数（ローカル/CI） |
-| 主効果 | 内部 `RATE_MAX_WAIT_DEFAULT` を 1000ms → 200000ms に拡張 |
-| 対象テスト | `integration.api.rate.heavy.test.ts`, `rate-limiter.throughput.test.ts` |
-| 期待所要時間 | 100 リクエスト: ~9–12s / 1000 リクエスト: ~90–110s |
-| 本番影響 | 非発動時は従来の 1s 上限で動作 |
-
-ローカル実行例 (PowerShell):
-```powershell
-$env:LONG_TESTS=1; npm run test:long
-```
-
-直接指定例:
-```powershell
-$env:LONG_TESTS=1; npx vitest run __tests__/unit/integration.api.rate.heavy.test.ts __tests__/unit/rate-limiter.throughput.test.ts
-```
-
-CI では手動/ナイトリー用に `LONG_TESTS=1` を付与したワークフローを追加し、性能退行 (拒否増/時間短縮=不正な早期拒否) を監視することを推奨します。
-
----
-
-## キャッシュ・メトリクス（任意）
-
-- 市場系キャッシュのヒット/ミス/ステールをカウントし、`CACHE/METRICS` を定期出力。
-- 主に `market:ticker`/`market:orderbook`/`market:trades` を可視化。
-- 環境: `CACHE_METRICS_INTERVAL_MS`, `MARKET_CACHE_TTL_MS`。
-
-### メモリ効率化・軽量化機能
-
-バックテスト高速化のための特徴量キャッシュと、トレーニング高速化のための軽量チェックポイントを備えています。
-
-#### 特徴量キャッシュ（Feature Cache）
-
-- **動的圧縮**: zstd/lz4/zlib をデータサイズ・アクセス頻度に応じて自動選択
-- **LRU + TTL**: サイズ制限と有効期限ベースの自動クリーンアップ
-- **プロセス分離**: 並列実行時の競合回避
-
-```bash
-# 基本使用
-python scripts/train.py --timesteps 10000
-
-# キャッシュ設定例
-python scripts/train.py \
-  --cache-compressor auto \
-  --cache-access-pattern balanced \
-  --cache-max-mb 500 \
-  --cache-ttl-days 7
-```
-
-**圧縮アルゴリズム選択基準**:
-- `< 50KB`: lz4優先（速度最優先）
-- `< 1MB`: アクセス頻度により lz4/zstd 選択
-- `>= 1MB`: zstd優先（CPUコア数考慮）
-
-#### 軽量チェックポイント
-
-- **最小保存セット**: policy + value_net + scaler（optimizer/replay除外）
-- **圧縮保存**: 自動圧縮でサイズ60-80%削減
-- **高速復元**: 学習再開時のオーバーヘッド最小化
-
-```bash
-# 軽量チェックポイント使用
-python scripts/train.py \
-  --checkpoint-light \
-  --checkpoint-compressor zstd
-
-# 並列トレーニング
-python scripts/parallel_train.py \
-  --timesteps 1000 \
-  --checkpoint-light \
-  --cache-compressor auto
-```
-
-**サイズ削減効果**:
-- 完全チェックポイント: 500MB
-- 軽量チェックポイント: 150MB (70%削減)
-- Policyのみ: 50MB (90%削減)
-
----
-
-## ダッシュボード（軽量 CLI）
-
-直近の RATE/CACHE/EVENT メトリクスを要約表示します（`LOG_JSON=1` 前提）。
-```
-npm run dash
-npm run dash -- --watch         # 2 秒ごと
-npm run dash -- --watch 5000    # 5 秒ごと
-```
-PowerShell 例
-```
-npm run dash -- --file .\logs\trades-2025-09-17.log --lines 8000
-```
-
-使い方（補足）
-- フラグ: `--file <path>`（既定は最新ログ自動検出/`METRICS_LOG`）、`--lines N`（末尾N行）、`--watch [ms]`（継続監視）、`--json`（1回分のJSON出力）
-- インタラクティブ操作: 上下矢印で RATE/CACHE/EVENT を切替、左右でスパークライン幅、`q` で終了
-- 表示: RATE は p95/拒否率とカテゴリ別、CACHE はヒット率/ステール率、EVENT はタイプ別 pub/calls/errors/avg/p95 と最頻ハンドラ
-- TRADE_PHASE: `TRADE_STATE_FILE`（既定 `trade-state.json`）を読み取り、現在フェーズと累計成功を併記
-- 精度: `LOG_JSON=1` を推奨（プレーンテキストは簡易パーサのフォールバック）
-
-JSON 出力例（`--json`）
-```json
-{
-	"rate": { "avgWaitMs": 120, "rejectRate": 0.03, "details": { "PUBLIC": {"acquired": 50} } },
-	"cache": { "ticker": { "hits": 90, "misses": 10, "stale": 2, "hitRate": 0.9 } },
-	"events": { "windowMs": 60000, "types": { "ORDER_FILLED": { "publishes": 3 } } },
-	"tradePhase": { "phase": 2, "totalSuccess": 21 }
-}
-```
-
----
-
-## 観測性（Observability）まとめ
-
-- ログ形式: 既定はプレーン。`LOG_JSON=1` で JSONL（`ts`,`level`,`category`,`message`,`data[]`）。カテゴリーは `RATE`/`CACHE`/`EVENT` などを使用
-- メトリクス:
-	- Rate Limiter: `RATE/METRICS` を定期出力（平均待機/拒否率/カテゴリ別詳細）。間隔は `RATE_METRICS_INTERVAL_MS`
-	- Cache: `CACHE/METRICS`（ヒット/ミス/ステール）。`CACHE_METRICS_INTERVAL_MS`
-	- Event: `EVENT/METRICS`（タイプ別 pub/calls/errors/latency）。ダッシュが拾います
-- レッドアクション: 機密キー/シークレット/Authorization/生ペイロード等は自動マスク（`src/utils/logger.ts` の `addLoggerRedactFields` で拡張可）
-- 推奨レベル: 運用は `INFO`、調査/CI は `DEBUG`。テスト時は低レベルログを抑制しつつ、重要イベント（ERROR/WARN/メトリクス）は出力
-- 付随メタデータ: `requestId`/`eventId`/`pair`/`side` などをイベントに付与（冪等/相関用）
-
----
-
-## テスト構成 (2025-09 リファクタ後)
-
-| 種別 | パス | 内容 |
-|------|------|------|
-| Unit | `__tests__/unit/application/events` | EventBus / subscriber 系 (旧 `unit/events` 統合) |
-| Unit | `__tests__/unit/core` | 戦略・実行・ポジション等純粋ロジック |
-| Unit | `__tests__/unit/tools` | CLI/ダッシュ/設定系ユニット |
-| Unit | `__tests__/unit/adapters` | FS/価格キャッシュ/リスク計算アダプタ |
-| Unit | `__tests__/unit/ml` | ML シミュレーション/特徴量/探索 |
-| Unit | `__tests__/unit/obs` | システムメトリクスなど観測系 |
-| Integration | `__tests__/integration/trade-live` | trade-live フロー/フェーズ昇格 |
-
-変更点:
-- `integration-fast` → `integration` に統合
-- `unit/events` を削除し `unit/application/events` に一元化
-- `test:integration-fast` スクリプトが新パスを参照
-
-拡張指針:
-- API 実結合: `__tests__/integration/api/`
-- シナリオ/E2E: `__tests__/integration/scenario/`
-
----
-
-## Trade Live（段階制御 / Phase-driven）
-
-- 設定: `trade-config.json`（`TRADE_CONFIG_FILE` で切替）
-- 状態: `trade-state.json`（`TRADE_STATE_FILE` で切替）
-- コマンド: `npm run trade:live` / `npm run trade:live:dry`
-- 昇格ルールは環境で調整: `PROMO_TO2_DAYS`, `PROMO_TO3_SUCCESS`, `PROMO_TO4_SUCCESS`
-- テストでは `publishAndWait()` により `TRADE_PLAN`/`TRADE_PHASE` を同期発行し、昇格閾値も TEST_MODE デフォルトで緩和（1 日で 1→2 を許可）
-
-### Trading Phases 詳細
-
-- 設定ファイル: `trade-config.json`（`TRADE_CONFIG_FILE` で差し替え）
-	- 例:
-		```json
-		{ "pair":"btc_jpy", "phase":1, "phaseSteps":[
-			{"phase":1,"ordersPerDay":1}, {"phase":2,"ordersPerDay":3}, {"phase":3,"ordersPerDay":5}, {"phase":4,"ordersPerDay":10}
-		]}
-		```
-- 状態ファイル: `trade-state.json`（`TRADE_STATE_FILE`）。`{ phase, consecutiveDays, totalSuccess, lastDate }`
-- 昇格ルール（環境で上書き）: `PROMO_TO2_DAYS`（既定 5・TEST_MODE は 1）/`PROMO_TO3_SUCCESS`（既定 20）/`PROMO_TO4_SUCCESS`（既定 50）
-- CLI:
-	- ドライラン: `npm run -s trade:live:dry > trade-plan.json`（標準出力に計画 JSON: `pair/phase/plannedOrders/today`）
-	- ライブ: `npm run trade:live`（当日の成功数に応じて `trade-state.json` を更新し、必要時 `EVENT/TRADE_PHASE` を発行）
-- テスト安定化: Vitest/TEST_MODE では `publishAndWait()` で `TRADE_PLAN/TRADE_PHASE` を同期発行し、日次成功の既定を 1 に短縮
-
----
-
-## 日常の使い方
-
-戦略モード切替（`TRADE_MODE=SELL|BUY`）
-- SELL/BUY で戦略を切替。ログに `[SIGNAL][mode=SELL|BUY]` が出ます。
-
-オーダーフロー（`TRADE_FLOW`）
-- `BUY_ONLY|SELL_ONLY|BUY_SELL|SELL_BUY`（既定 BUY_SELL）。
-- `TEST_FLOW_QTY>0` で 1 サイクル内にフロー実行。DRY_RUN=1 なら即時 fill をシミュレート。
-
-Coincheck 切替
-```
-$env:EXCHANGE="coincheck"; npm start
-```
-注意: 最小単位や丸めが異なります。小サイズで開始してください。
-
----
-
-## スクリプト一覧（主要）
-
-package.json に定義された主なコマンド:
-
-- 実行
-  - `npm start`（メインループ）
-  - `npm run live:minimal`（最小ライブ検証・即キャンセル）
-  - `npm run health`（署名/nonce/permission ヘルス）
-- テスト
-  - `npm run test:unit` / `:int-fast` / `:cb-rate` / `:event-metrics` / `:long`
-  - `npm run test`（カバレッジ込みフル）
-- ツール
-  - `npm run dash`（メトリクスダッシュ）
-  - `npm run stats:today` / `stats:graph`
-  - ML: `ml:export` / `ml:search` / `feature:importance`
-
----
-
-## TEST_MODE/Vitest の振る舞い（安定化の工夫）
-
-- EventBus: `TRADE_PLAN`/`TRADE_PHASE` を `publishAndWait()` で同期発行。
-- Trade Live: テストでは daySuccess 既定を 1 に短縮し、1→2 昇格を観測しやすくしています。
-- Sleep: `utils/toolkit.sleep` は Vitest/TEST_MODE で自動的に短縮（デフォルト ~1ms）。
-- Live minimal: テスト時は重いサブプロセス/サマリー書き込みをスキップし、タイムアウト回避。
-- Rate Limiter: 既定無効。ただしテストでカスタム limiter をセットした場合は強制有効化しメトリクスを出力。
-- 一時ディレクトリ: テストは一時領域を用い、実データと混ざらないよう配慮（`STATS_DIR`, `POSITION_STORE_DIR` など）。
-
----
-
-## Coverage / CI
-
-- GitHub Actions で `unit / integration / cb-rate / event-metrics / long` に分割実行。
-- Coverage レポートは Pages に公開可能。ワークフロー: `.github/workflows/coverage-pages.yml`。
-- 既定しきい値: Statements >= 70%。
-
-### テストマトリクス（分割）
-- `unit`: 純粋ロジック/ユーティリティ
-- `integration-fast`: 主要フローの高速結合（EventBus 同期発行でレース回避）
-- `cb-rate`: Circuit Breaker/Rate Limiter の待機・拒否・メトリクス
-- `event-metrics`: EVENT/METRICS の集計とハンドラ健全性
-- `long`（任意）: 長時間スモーク
-
-### Nightly / Paper
-- `paper-nightly`: 1 日分をドライランし、`reports/day-YYYY-MM-DD/` に成果をコミット
-- 主要成果: `stats-timeline.svg`, `stats-diff.json`, `report-summary-paper.json`, `ml-search-top.json`, `trade-plan.json`
-- `trade-plan.json`: `npm run -s trade:live:dry` の出力 JSON。レポート index にリンク
-- `ts-prune.yml`: 未使用エクスポート件数の推移を `ci/reports/ts-prune-*.json` に保存（count/top20 サマリ付き）
-
-### CI チェックリスト
-- テスト green: unit / integration-fast / cb-rate / event-metrics
-- Coverage >= 70%（Pages 有効なら `/coverage/` で HTML 確認）
-- `trade:live:dry` が成功し `trade-plan.json` が生成（レポート index に含まれる）
-- `npm run dash -- --json` が rate/cache/event/tradePhase を返す
-- ts-prune 件数が直近から悪化していない（WoW）
-
----
-
-## ストレージ破損時の挙動（Recovery Semantics）
-
-対象: price-cache (`price_cache.json`), position-store (`positions.json` など fs 保存物)。
-
-- 原則: 読み込み時に JSON パース失敗すると「破損」と見なし、イベント/ログを 1 回だけ出します。
-	- price-cache: `CACHE_ERROR`（2.2.1 で同期単発保証）。
-	- position-store: 破損は即座に空状態として再初期化（次の write が健全ファイルを再生成）。
-- リカバリ: 過去履歴の再構築は行いません（シンプルさと一貫性優先）。
-- 推奨運用: 日次/週次で `logs/` or `artifacts/` を外部へローテーションし、必要なら別途履歴保管層を実装。
-- チューニング: 高頻度書き込み競合は atomic write（`fs-atomic`）と一時ファイル rename で抑制しています。
-
-FAQ:
-- Q: 破損イベント後はトレード止めるべき？ → 重要度によります。price-cache は再生成されますが、履歴指標計算が乖離するリスクがあるため再計測/監視を推奨。
-
----
-
-## Live 起動前セーフティチェックリスト
-
-次の最低限を満たしてから `npm run trade:live` もしくは `live:minimal` を実行してください。
-
-1. DRY RUN から開始: `$env:DRY_RUN="1"` で期待ログ/イベントを確認済み
-2. API キー: 取引所（Zaif/Coincheck）側で権限/残高/手数料を確認（最初は極小数量）
-3. `TRADE_CONFIG_FILE`: phaseSteps が意図通り（例: `1,3,10,25`）か再チェック
-4. SAFETY_MODE 有効: `$env:SAFETY_MODE="1"` と clamp ログ動作確認
-5. Rate/Circuit 設定: 既定の `CB_*` / `RATE_*` を本番レイテンシ・API 制限に合わせ調整済み
-6. ログ出力形式: `LOG_JSON=1` でメトリクス/イベントを可視化できる状態
-7. タイムゾーン/時計: OS 時刻同期が取れている（約定タイムスタンプ依存指標を守る）
-8. バックアップ: `trade-state.json` / ポジションファイルの初期バックアップを取得
-9. テスト済み: `npm run test:unit` / `:int-fast` / `:cb-rate` / `:event-metrics` が local green
-10. 失敗ハンドリング: `EVENT/ERROR` ログを監視する簡易アラート（tail or dashboard）用意
-
-追加推奨:
-- 小さな `TEST_FLOW_QTY` で 1 サイクル流し fill→EXIT ライフサイクルを live:minimal で先に確認
-- 監視: 5〜10 分間は手動監視し、意図しない連続注文が無いか確認
-
----
-
----
-
-## Live Minimal（DRY_RUN 統合）
-
-最小の発注→即キャンセル検証を `live:minimal` に統合。`DRY_RUN=1` ならモック/ドライラン、`DRY_RUN=0` なら実発注（要 API キー）。
-
-環境変数
-- `EXCHANGE` / `PAIR` / `TRADE_FLOW`
-- `TEST_FLOW_QTY`（DRY_RUN=1 既定 0.002）
-- `TEST_FLOW_RATE` / `ORDER_TYPE=market|limit`
-- `DRY_RUN=0|1`, `SAFETY_MODE=1`, `SAFETY_CLAMP_PCT`, `EXPOSURE_WARN_PCT`
-
-PowerShell 例（実発注・即キャンセル）
-```powershell
-$env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="1"; $env:TEST_FLOW_RATE="490"; $env:DRY_RUN="0"; $env:SAFETY_MODE="1"; npm run live:minimal
-```
-
----
-
-## テクニカル指標と特徴量ログ
-
-`features-logger` が RSI/SMA/MACD/ATR/BB 幅など多様な指標を自動計算し JSONL で記録します。観測開始時に 1 回だけサンプル WARN を出力します。
-
----
-
-## 主要な環境変数（抜粋）
-
-| 変数 | 用途 |
-|------|------|
-| `EXCHANGE` | 取引所切替（`zaif`/`coincheck`） |
-| `DRY_RUN` | 実注文せずシミュレーション |
-| `PAIR` | 取引ペア（例: `btc_jpy`） |
-| `TRADE_MODE` | `SELL`/`BUY` |
-| `TRADE_FLOW` / `TEST_FLOW_QTY` | フロー/数量（ワンショット検証） |
-| `ZAIF_API_KEY`/`ZAIF_API_SECRET` | Zaif 認証 |
-| `COINCHECK_API_KEY`/`COINCHECK_API_SECRET` | Coincheck 認証 |
-| `SAFETY_MODE`/`SAFETY_CLAMP_PCT`/`EXPOSURE_WARN_PCT` | 安全クランプ/露出警告 |
-| `RATE_*` / `CB_*` / `CACHE_*` | レート/CB/キャッシュ計測 |
-
-より詳細な一覧はコードの各モジュール（`utils/config` ほか）を参照してください。
-
----
-
-## 注意事項（重要）
-
-本リポジトリは学習・検証目的です。実運用前に以下を検討してください。
-- API レート制限/指数バックオフ、WebSocket 約定照合、秘密情報管理、冗長化/復旧/アラート、時刻同期（NTP）/nonce 管理。
-
----
-
-## 変更履歴 / ライセンス
-
-- 変更履歴は `CHANGELOG.md` を参照してください。
-- ライセンスは検討中です。現時点では個人学習向けの利用を想定しています（将来 OSS ライセンス付与予定）。
-
-
-| 種別 | 規則 | 例 |
-|------|------|----|
-| 型 / Interface | PascalCase | `PrivateApi`, `OrderLifecycleSummary` |
-| 関数 / 変数 | camelCase | `fetchMarketOverview`, `appendPriceSamples` |
-| 定数 / 環境変数 | UPPER_SNAKE_CASE | `RISK_MIN_TRADE_SIZE` |
-| ファイル | kebab-case.ts | `position-store.ts` |
-
-### 命名規則（詳細）
-
-注: 本規約は厳密適用ではなく「原則＋例外を許容する運用」です。既存コードや外部API仕様との整合、スピード/安全性の観点で、合理的な範囲で弾力運用してください。PR 時に逸脱理由がわかるようコメントや説明を添えるとスムーズです。
-
-- ディレクトリ/ファイル
-	- ディレクトリは kebab-case、ソースは kebab-case.ts を基本とする。
-	- ツール類は `src/tools/`、公開APIは `src/api/*-public.ts` か `public-router.ts` に集約。
-	- 取引所ごとの差分は `src/api/EXCHANGE-*.ts` に分離し、app/core からは抽象化された関数を呼ぶ。
-
-- 型・命名の接尾辞
-	- リクエスト/レスポンス/結果型は `FooRequest` / `FooResponse` / `FooResult` / `FooParams` / `FooOptions` を使用。
-	- ドメイン横断の集計は `*Summary`（例: `OrderLifecycleSummary`）。
-	- 列挙は TypeScript の文字列リテラル Union を優先（`"bid"|"ask"` / `"BUY"|"SELL"`）。
-
-- 関数の語彙（prefix）
-	- 取得系: `get*`（キャッシュ/同期）, `fetch*`（外部IO/HTTP）, 読み込み: `load*`, 保存: `save*`, 
-		変更: `update*`, 追加: `append*`, 削除: `remove*`。
-	- 計算系: `calculate*`（SMA/RSI 等）, 記述/整形: `describe*`, 管理: `manage*`（例: `manageTrailingStop`）。
-	- 非同期関数名に Async 接尾辞は付けない（Promise/await で判別）。
-
-- 変数/定数/真偽値
-	- ランタイム不変の構成値は `UPPER_SNAKE_CASE`（環境変数名も同様）。
-	- 真偽値は `is*/has*/should*/can*` を推奨（`isArmed`, `hasCreds`, `shouldExit`, `canPlaceOrder`）。
-
-- 時刻・単位・ペア表記
-	- 内部 `ts` はミリ秒（ms）。外部APIで秒を受け取る場合は即 ms に正規化して保存。
-	- 金額は JPY、数量は BTC を基本。`amount` はベース資産数量、`price` は見積通貨（JPY）。
-	- ペアは `btc_jpy` の snake_case・小文字に統一。
-
-- サイド/方向の表現
-	- 取引API層（Zaif/Coincheck私設）では `"bid"|"ask"`、上位の発注ヘルパでは `"BUY"|"SELL"` を使用。
-	- 境界の変換は `core/market.ts`（`placeLimitOrder`）で行う。
-
-- ID と数値の扱い
-	- 外部API由来の `order_id` は一貫して文字列として扱う（比較/マップ用途のため）。
-	- 金額/数量は Number、必要に応じ 8 桁程度で丸め/切り捨て（BTC）。
-
-- ログ/イベント
-	- トレードログは `logSignal/logOrder/logExecution/logTradeError/logTradeInfo` を利用。
-	- 日次集計に反映するカウンタは `utils/daily-stats.ts` のインクリメント関数を用いる。
-
-- エラー・結果
-	- 失敗結果は `err(code, message, cause?)`、成功は `ok(value)` を推奨（`utils/result.ts`）。
-	- 例外メッセージは外部レスポンスの要点を含めつつ機密はログに出さない。
-
-- テスト/ツール命名
-	- 最小実行ツールは `src/tools/*`、テストユーティリティは `__tests__/helpers/*`。
-	- フロー検証は `test-<exchange>-flow.ts` の形式を推奨。
-
-### 既存リネームの指針（対比）
-
-| 旧 | 新 | 備考 |
-|----|----|------|
-| `trailManager` | `manageTrailingStop` | リスクサービス/コアで統一 |
-| `calcSMA` / `calcRSI` | `calculateSma` / `calculateRsi` | 関数は動詞始まり |
-| `submitWithRetry` | `submitOrderWithRetry` | 役割が明確になるように |
-| `appendPrices` | `appendPriceSamples` | 意味の明確化 |
-| `getRecentPrices` | `getPriceSeries` | シリーズ取得の意味合い |
-| `writeTradeLog` | `logTrade` | 既存ログAPIに寄せる |
-| `ok`(GuardResult) | `isAllowed` | 真偽を明示 |
-| `fillCount` | `filledCount` | 語形統一 |
-
-チェックリスト（PR時の確認）
-- [ ] 取引所差異は `api/public-router.ts` / PrivateApi 実装で吸収し、app/core は抽象 API のみ参照
-- [ ] `btc_jpy`・JPY/BTC の単位整合、ms/秒の正規化の一貫性
-- [ ] Request/Response/Params/Result の接尾辞の付与と型レベルでの I/O 明示
-- [ ] ログ種別・日次カウンタの適切な利用（重複ロギングの抑制）
-
----
-
-## ⚙️ 主な環境変数
-
-| 変数 | 用途 | 例 |
-|------|------|----|
-| `ZAIF_API_KEY` / `ZAIF_API_SECRET` | 認証キー | `xxx` |
-| `USE_PRIVATE_MOCK` | プライベートAPIモック利用 | `1` |
-| `EXCHANGE` | 取引所選択 (`zaif`/`coincheck`) | `zaif` |
-| `COINCHECK_API_KEY` / `COINCHECK_API_SECRET` | Coincheck用キー | `xxx` |
-| `DRY_RUN` | 約定シミュレーションのみ | `1` |
-| `PAIR` | 取引ペア | `btc_jpy` |
-| `LOOP_INTERVAL_MS` | メインループ周期 | `15000` |
-| `KILL_SWITCH` | 新規停止+全キャンセル | `1` |
-| `RISK_MIN_TRADE_SIZE` | 最小数量 | `0.0001` |
-| `RISK_MAX_SLIPPAGE_PCT` | 許容スリッページ | `0.005` |
-| `SMA_SHORT` / `SMA_LONG` | 短期・長期 SMA 期間 | `9` / `26` |
-| `SELL_SMA_SHORT` / `SELL_SMA_LONG` | SELL モード専用の SMA 期間（未設定時は SMA_SHORT/LONG） | `9` / `26` |
-| `BUY_SMA_SHORT` / `BUY_SMA_LONG` | BUY モード専用の SMA 期間（未設定時は SMA_SHORT/LONG） | `9` / `26` |
-| `RSI_PERIOD` | RSI 期間 | `14` |
-| `SELL_RSI_OVERBOUGHT` | SELL 判定用 RSI 上限（以上で売り強化） | `70` |
-| `BUY_RSI_OVERSOLD` | BUY 判定用 RSI 下限（以下で買い強化） | `30` |
-| `RISK_TRAIL_TRIGGER_PCT` | 利幅確保でトレール武装 | `0.05` |
-| `RISK_TRAIL_STOP_PCT` | トレール利確幅 | `0.03` |
-| `TRADE_MODE` | 戦略モード `SELL`/`BUY`（デフォルト `SELL`） | `SELL` |
-| `MOCK_FORCE_EXIT` | モック強制部分 fill 継続 | `1` |
-| `MOCK_FORCE_IMMEDIATE_FILL` | 初回即 partial fill | `1` |
-| `TRADE_FLOW` | BUY/SELL フロー: `BUY_ONLY`/`SELL_ONLY`/`BUY_SELL`/`SELL_BUY`（デフォルト `BUY_SELL`） | `BUY_SELL` |
-| `TEST_FLOW_QTY` | TRADE_FLOW 実行時の数量（>0 で有効化） | `0.002` |
-| `LOG_LEVEL` | ログレベル `DEBUG`/`INFO`/`WARN`/`ERROR`（既定: `INFO`） | `DEBUG` |
-| `LOG_JSON` | ログを1行JSONで出力（`1`で有効） | `1` |
-| `MAX_NONCE_RETRIES` | Nonce リトライ回数 | `5` |
-| `RETRY_BACKOFF_MS` | リトライ初期待機（指数バックオフの基準） | `300` |
-| `RETRY_ATTEMPTS` | 公開API取得など withRetry の試行回数（services 層）。`1` で 1 回試行のみ | `2` |
-| `RETRY_BACKOFF_FACTOR` | バックオフ係数（指数） | `1.5` |
-| `RETRY_MAX_BACKOFF_MS` | バックオフ上限 | `3000` |
-| `RETRY_JITTER_MS` | バックオフに加えるジッター | `100` |
-| `NONCE_PERSIST` | Nonce の永続化（`0`で無効、既定: 有効） | `1` |
-| `NONCE_RESTORE_ON_ERROR` | Nonce エラー時に復元（`0`で無効、既定: 有効） | `1` |
-| `SAFETY_MODE` | 安全クランプ有効化（10%デフォルト） | `1` |
-| `SAFETY_CLAMP_PCT` | クランプ割合（0-1）。例: 0.1=10% | `0.1` |
-| `EXPOSURE_WARN_PCT` | 露出警告閾値（0-1）。既定 0.05=5% | `0.05` |
-| `ML_SEARCH_MODE` | ML 探索モード `grid`/`random`/`earlystop` | `grid` |
-| `ML_RANDOM_STEPS` | `random` モードでの試行回数 | `200` |
-| `ML_EARLY_PATIENCE` | `earlystop` の打ち切り猶予ステップ | `10` |
-| `ML_EARLY_MAX_STEPS` | `earlystop` の最大試行ステップ | `300` |
-| `ML_MAX_WORKERS` | ML 探索の並列ワーカー数（CI では 1 推奨） | `1` |
-
-追加: `RETRY_TIMEOUT_MS`, `RETRY_PRICE_OFFSET_PCT`, `CLOCK_SKEW_TOLERANCE_MS` などはコード参照。
-
----
-
-## 🚀 使い方
-
-### 1. 依存インストール
-```
+pip install -r requirements-dev.txt
+pip install types-requests types-psutil
+pre-commit install
 npm install
 ```
 
-### 2. モック + ドライラン (最速検証)
-```
-USE_PRIVATE_MOCK=1 DRY_RUN=1 npm start
-```
-
-### 3. シナリオテスト
-```
-npm run mock:scenario
-```
-
-### 4. スモークテスト
-```
-npm run mock:smoke
-```
-
-### 5. 本番 (自己責任)
-### 6. Coincheck 確認 (残高/発注/取消/履歴 最小テスト)
-```
-EXCHANGE=coincheck DRY_RUN=0 npm run test:coincheck
-```
-注意: 数量・rate・手数料・最小単位に留意し、極小サイズでテストしてください。
-
----
-
-## 🎛 戦略モード切替 (TRADE_MODE)
-
-- 環境変数 `TRADE_MODE=SELL|BUY` で戦略を切替（デフォルトは SELL）。
-- モードごとに独立した実装:
-	- `core/strategies/sell-strategy.ts` — SELL ファーストの売り起点戦略
-	- `core/strategies/buy-strategy.ts` — BUY モード（買い戻し/反発起点）
-- `app/index.ts` が `utils/config.loadTradeMode()` でモードを読み、該当戦略を実行。
-- ログには `[SIGNAL][mode=SELL]` / `[SIGNAL][mode=BUY]` が出力されます。
-
----
-
-## 🔄 発注フロー (TRADE_FLOW)
-
-- `TRADE_FLOW=BUY_ONLY|SELL_ONLY|BUY_SELL|SELL_BUY`（既定: BUY_SELL）
-- `TEST_FLOW_QTY>0` を設定すると、アプリの1サイクル内でフローを実行します。
-	- BUY_SELL: BUY 約定確認後に SELL を必ず実施
-	- SELL_BUY: SELL 約定確認後に BUY を必ず実施
-- DRY_RUN=1 の場合は即時 fill をシミュレートします。
-- 日次統計（stats）はフローに応じて buyEntries/sellEntries を加算します。
-
-ワンショット実行（単発スモーク）
-```
-$env:USE_PRIVATE_MOCK="1"
-$env:DRY_RUN="1"
-$env:TRADE_FLOW="BUY_SELL"
-$env:TEST_FLOW_QTY="0.002"
-npm run smoke:once
-```
-
----
-
-## Coincheck でも npm start が動作します
-
-環境変数で `EXCHANGE=coincheck` を指定すれば、共通の戦略ループ (`src/app/index.ts`) がそのまま Coincheck を利用します。
-
-注意事項:
-- 取引最小単位や丸めは Zaif と異なります。テストは小サイズ (例: 0.005 BTC) で開始し、エラー内容に応じて調整してください。
-- 公開APIの板/トレードは取引所差異を吸収済みですが、銘柄は `btc_jpy` 固定を前提にしています。
-- レート制限に注意し、短時間に連続発注/取消を避けてください。
-```
-ZAIF_API_KEY=... ZAIF_API_SECRET=... DRY_RUN=0 npm start
-```
-
----
-
-## 🧪 テスト / ユーティリティ
-
-| コマンド | 内容 |
-|----------|------|
-| `npm run mock:scenario` | モックでシナリオ実行 (パラメータ組合せ) |
-| `npm run mock:smoke` | 最小スモーク (起動～一連 cycle) |
-| `npm run health` | 署名・nonce / permission ヘルスチェック |
-
-補助: ツール実行の統合エントリ
-
-`npm run tool -- <name>` でツールを統一的に呼び出せます（内部的に `src/tools/run.ts` が委譲）。
-
-例:
-
-```powershell
-npm run tool -- live:health
-npm run tool -- paper:mock-scenario
-npm run tool -- ml:export
-npm run tool -- stats:today -- --diff
-```
-
-### Coverage レポート（GitHub Pages）
-
-main ブランチへの push または手動実行で `coverage-pages` ワークフローが走り、`coverage/` を GitHub Pages に公開します。しきい値 (statements >= 70%) を満たさない場合は CI が失敗します。
-
-- Pages 公開先: リポジトリの Pages 設定で確認（`/coverage/` 以下に HTML レポート）
-- ワークフロー: `.github/workflows/coverage-pages.yml`
- - 公開 URL（既定）: https://MakuhariYusuke.github.io/zaif-trade-bot/
-	 - 本ワークフローは `coverage/` 配下を Pages ルートに配置するため、トップで coverage レポート（index.html）が表示されます。
-	 - 404 の場合は GitHub Pages 有効化を確認し、`/index.html` で直接参照してください。
-
----
-
-## 📑 日次レポートのリポジトリ内公開（デフォルト）
-
-各ワークフロー（paper-nightly / paper-ml / paper-matrix / live-ml / live-trade）の末尾で、生成物をブランチに直接コミットします。
-
-- パス: `reports/day-YYYY-MM-DD/`
-- 目次: `reports/day-YYYY-MM-DD/index.md`（当日の主要アーティファクトへのリンクを列挙）
-- 保持期間: 14 日分（古い日付は自動で削除）
-- Slack / GitHub コメントにも「Added report: reports/day-YYYY-MM-DD/index.md」を追記します
-
-ローカルや CI の成果を Pages に依存せず参照でき、履歴もブランチに残ります。
-
-### GitHub Pages（任意）
-
-Pages に ML/Stats のダッシュボードを公開するワークフロー（`.github/workflows/pages-ml-stats.yml`）は、既定で無効化されています。
-
-- 有効化するには、リポジトリの Actions Variables に `ENABLE_PAGES=1` を設定してください（Settings → Secrets and variables → Actions → Variables）。
-- その上でリポジトリの Pages を GitHub Actions 発行に設定します（Settings → Pages → Build and deployment → Source: GitHub Actions）。
-
-Pages を無効のままでも、上記の `reports/day-YYYY-MM-DD/` で日次レポートは参照可能です。
-
-### JSONL ベースライン（CSV 廃止）
-
-特徴量・統計の出力は JSONL に統一しました（1 行 1 レコード追記）。移行期間の CSV 読み取り互換は削除済みです。
-
-- 特徴量: `logs/features/<source>/<pair>/features-YYYY-MM-DD.jsonl`
-- 日次統計スナップショット: `logs/pairs/<pair>/stats-YYYY-MM-DD.jsonl` および合算 `logs/stats-YYYY-MM-DD.jsonl`
-- ML データセット: ルート `ml-dataset.jsonl`
-
-ユーティリティ `readFeatureCsvRows(dir)` は JSONL のみを読みます（名称は互換維持）。
-
-### テクニカル指標の自動付与
-
-`features-logger` にインジケータ計算を内蔵し、足取り（近似 OHLC）から以下を出力します。
-
-- トレンド系: SMA/EMA/WMA/HMA/KAMA（短期/長期）
-- オシレーター: RSI、ROC、Momentum、CCI、Williams %R、ストキャスティクス
-- ボラティリティ: 標準偏差（StdDev）、ATR、ボリンジャーバンド幅（BB width）、ドンチャン幅（Donchian width）
-- 複合/その他: MACD（line/signal/hist）、DMI/ADX、パラボリックSAR、一目均衡表（転換/基準/先行/遅行）
-- 価格乖離/帯: 移動平均からの乖離率（deviation%）、エンベロープ、簡易 Fibonacci 位置
-
-エイリアス列（使い勝手向上のため）
-- `rsi14`（既定 14 の RSI）、`atr14`（既定 14 の ATR）、`macd_hist`（MACD ヒストグラム）
-
-観測開始時に 1 度だけ、WARN ログでサンプルを出します。
-- 例: `[WARN] [INDICATOR] sample pair=btc_jpy rsi14=57.3 atr14=123.4 macd_hist=-0.002 ...`
-- `IND_LOG_EVERY_N` > 0 の場合、N レコードごとに `[IND]` ダイジェストを DEBUG 出力します。
-
-制御用の主な環境変数:
-
-- `IND_LOG_EVERY_N` = N 件ごとに `[IND]` ダイジェストを DEBUG ログに出力（0 で無効）
-
-### 週次トレンド（7 日集計）
-
-`npm run trend:weekly` で直近 7 日の集計を生成し、以下へ保存します。
-
-- `reports/day-YYYY-MM-DD/trend-7d.json`（当日ディレクトリ）
-- `reports/week-YYYY-WW/weekly-summary.json`（ISO 週）
-- `reports/latest/trend-weekly.json`（最新へのリンク）
-
-ワークフロー（paper-nightly / paper-ml など）から自動実行・コミットされ、Slack/PR コメントにも `Trend7d` が含まれます。
-
-#### 通知（Slack / GitHub コメント）: Trend7dWin%
-
----
-
-## Rate Limiter
-
-- 集中トークンバケツで API 呼び出しを制御します。
-- 既定: `capacity=100`, `refill=10 tokens/sec`, 予約枠 `RATE_PRIORITY_RESERVE=0.1`（高優先専用）。
-- 優先度: `high`（発注/取消）、`normal`（約定ポーリング等）、`low`（市場データ/統計）。
-- `BaseService.withRetry` のフロー順序: CircuitBreaker → RateLimiter → 実行。
-
-ログ仕様
-- `RATE/INFO` … 取得成功（`waitedMs` 同報）
-- `RATE/WARN` … 200ms 超の待機
-- `RATE/ERROR` … 1 秒以内にトークン取得できず拒否（`code: RATE_LIMITED`）
-
-環境変数
-- `RATE_CAPACITY`（既定 100）
-- `RATE_REFILL_PER_SEC`（既定 10）
-- `RATE_PRIORITY_RESERVE`（既定 0.1）
-
-使い方（カテゴリと優先度の例）
-```ts
-await withRetry(() => getTicker('btc_jpy'), 'getTicker', 2, 100, { category: 'API-PUBLIC', priority: 'low' });
-await withRetry(() => private.placeLimitOrder(...), 'placeLimitOrder', 3, 150, { category: 'API-PRIVATE', priority: 'normal' });
-await withRetry(() => exec.cancelOrder(id), 'cancelOrder', 3, 150, { category: 'EXEC', priority: 'high' });
-```
-
-`report-summary-*.json` を各ワークフロー（live-ml / live-trade / paper-ml / paper-nightly）で生成し、Totals に PnL/Win%/MaxDD に加えて 7 日移動の勝率 `Trend7dWin%` を含めて通知します。
-
-例（Totals 1 行表示）:
-
-```
-Totals: pnl=+12.34, winRate=61.1%, maxDD=3.2, Trend7dWin%=64.3
-```
-
-サマリー JSON（抜粋）:
-
-```json
-{
-	"source": "live",
-	"totals": {
-
-		"winRate": 0.611,
-		"maxDrawdown": 3.2,
-		"trend7dWinRate": 0.643
-	}
-}
-```
-## 🧼 Core 純化と I/O の外出し（今回の変更）
-
-- 目標: core は純粋ロジックのみ。I/O（fs/HTTP）、logger、環境変数依存は adapters に集約。
-- 対象: `core/risk.ts` と `core/position-store.ts` の純粋化を実施。
-	- `core/risk.ts`: I/O と logger を撤去し、環境変数のみを読む `getRiskConfig()` と計算系関数に限定。
-	- `core/position-store.ts`: FS/永続化と logger を撤去し、実体は `@adapters/position-store-fs` に委譲（API は不変）。
-- アダプタ:
-	- `@adapters/risk-config`: リスク設定読み込み/ポジション永続化の I/O を担当。
-	- `@adapters/position-store-fs`: ポジションストアの FS 実装（環境変数 `POSITION_STORE_DIR`/`POSITION_STORE_FILE` を解決）。
-	- `@adapters/risk-service`: 旧 API 互換のため、`getRiskConfig`/`getPositions`/`savePositionsToFile` の別名エクスポートを提供。
-
-互換性:
-- 既存の import は shim/再エクスポートで動作を維持しつつ、初回のみ CONFIG/WARN を 1 回出力（次メジャーで削除予定）。
-- テスト/カバレッジは既存基準（Statements >= 70%）を維持。
-
-推奨移行先（新規コード）:
-- PositionStore: `import { loadPosition, savePosition } from '@adapters/position-store-fs'`
-- Risk 設定/永続: `import { getRiskConfig, getPositions, savePositionsToFile } from '@adapters/risk-service'`
-
----
-
-## 🧰 Paper Matrix（シナリオ実行）
-
-GitHub Actions の `paper-matrix` では、モック駆動の多様なシナリオを並列実行して統計/レポートを生成・アーカイブします（tar.gz）。主なプリセットと用途:
-
-- normal: 既定の軽負荷動作
-- error: エラー頻度を上げる（`SCENARIO_PAPER_ERROR_RATE=0.2`）
-- latency: レイテンシ付加（`SCENARIO_PAPER_LATENCY_MS=200`）
-- timeout: API タイムアウト付加（`SCENARIO_PAPER_TIMEOUT_MS=1000`）
-- composite: error+latency の複合
-- hf-light: 高頻度ライト（`LOOP=2000`）
-- hf-mid: 高頻度ミドル（`LOOP=5000`）
-- hf-stress: 高頻度ストレス（`LOOP=10000`）
-- sweep-rsi: RSI しきい値スイープ
-- sweep-sma: SMA パラメータスイープ
-- high-error: 高エラー率（`SCENARIO_PAPER_ERROR_RATE=0.5`）
-- stress: レイテンシと軽負荷ループ（`SCENARIO_PAPER_LATENCY_MS=500`, `LOOP=1000`）
-
-ローカル実行の例（PowerShell）:
-
-```powershell
-$env:USE_PRIVATE_MOCK="1"; $env:DRY_RUN="1"; $env:SCENARIO_PAPER_LATENCY_MS="200"; npm run mock:scenario
-```
-
-CI ではシナリオごとに `stats-<scenario>.json/.svg` と `report-summary-<scenario>.json` をまとめて `stats-<scenario>.tar.gz` としてアップロードしています。
-
----
-## 🧠 ML 検索/レポート（grid/random/earlystop）
-
-ツール群（`src/tools/ml/*`）で特徴量の集約/探索/レポート生成を行います。データセットには以下の列が含まれます（抜粋）。
-
-- 時系列特徴: 価格、SMA、RSI 等
-- 付加列: `source`（paper/live）、`tradeFlow`、`durationSec`（エントリー〜エグジットの概算秒）
-
-探索モード（`ML_SEARCH_MODE`）
-- `grid`: しきい値の格子探索（従来）
-- `random`: ランダム探索。`ML_RANDOM_STEPS` で試行回数を制御
-- `earlystop`: 早期打ち切り探索。`ML_EARLY_PATIENCE` と `ML_EARLY_MAX_STEPS` で制御
-- 並列度は `ML_MAX_WORKERS`（CI では 1 推奨）
-
----
-
-## 📦 Path alias と移行ガイド
-
-- 型は `src/contracts` に集約しました。以後は `@contracts` で import してください。
-	- 例: `import { PositionStore, RiskManager } from '@contracts'`
-- 実装は `@adapters/*` と `@application/*` を利用してください（旧 `src/services/*` と `src/strategies/*` は削除済み）。
-	- 例: `import { createServicePositionStore } from '@adapters/position-store'`
-	- 例: `import { runBuyStrategy } from '@application/strategies/buy-strategy-app'`
-
-生成物（ルート直下）
-- `ml-dataset.jsonl`（特徴量データ・JSON Lines）
-- `ml-search-results.csv`（全試行） / `ml-search-top.json`（上位）
-- `report-ml-<mode>.json` / `report-ml-<mode>.csv`（mode は `grid|random|earlystop`）
-- Feature Importance: `report-ml-feature-importance.json`（Top N 特徴量） / `importance.csv`
-
-ローカル実行例（PowerShell）
-
-```powershell
-# 特徴量のエクスポート
-npm run tool -- ml:export
-
-# grid 探索
-$env:ML_SEARCH_MODE="grid"; npm run tool -- ml:search
-
-# random 探索（200 ステップ）
-$env:ML_SEARCH_MODE="random"; $env:ML_RANDOM_STEPS="200"; npm run tool -- ml:search
-
-# early stopping 探索（猶予 10、最大 300）
-$env:ML_SEARCH_MODE="earlystop"; $env:ML_EARLY_PATIENCE="10"; $env:ML_EARLY_MAX_STEPS="300"; npm run tool -- ml:search
-
-# Feature Importance（相関ベースの簡易重要度・Top20）
-npm run feature:importance
-```
-
-補足: 簡易シミュレーション（ml-simulate）の勝率算出
-- トレード判定: pnl が数値、または win フラグが存在する行をトレードとしてカウント
-- 勝ち判定: win が 1 | true | '1' の行を勝ちとしてカウント
-- PnL 集計: pnl がある場合のみ合算（win フラグのみの行は PnL=0 とみなす）
-
-CI 連携
-- `paper-ml` / `live-ml` ワークフローで `grid` の後に `random` を実行し、`report-ml-random.json/.csv` をアーティファクト化
-- 併せて Feature Importance を実行し、`report-ml-feature-importance.json` と `importance.csv` を成果物に含め、レポート index にリンクします
-- 通知（Slack/GitHub コメント）に「ML(random) Top: Win%/PnL/params」に加えて「Top Features: name1,name2,name3…」を 1 行で追記します
-
-備考: `stats-graph` は paper / live の PnL・勝率のテキストオーバーレイを含む SVG を出力します。
-
----
-## インジケータ（補足）
-
-- 実装: 純粋関数群は `src/utils/indicators.ts` に集約（副作用なし）。EMA/SMA/RSI/MACD/ATR/ボリンジャー/一目/CCI/ROC/Momentum/HMA/KAMA/Donchian/Choppiness/Aroon/Vortex/SuperTrend 等
-- エイリアス推奨: `rsi14`/`atr14`/`macd_hist` など既定パラメータのショート名を採用
-- スナップショット: 指標は features-logger から JSONL に追記。`IND_LOG_EVERY_N>0` で N レコードおきに `[IND]` ダイジェストを DEBUG 出力
-- 欠落サンプルの WARN: 監視開始時に 1 回だけ代表値を WARN ログで提示（冗長抑制のため once）
-- 体感的な注意点: 体積（出来高）依存の指標は現行フローで取得が無い場合があり、その際は null を返します（WARN 付与）。アルゴ側で null セーフに取り扱ってください
-
----
-### テスト実行時の環境変数の注意
-
-テストはファイル出力（統計やポジションストア）を行うため、実データと混ざらないよう一時ディレクトリを使うことを推奨します。テストコード側でも設定していますが、手動実行時は以下を任意のパスに設定してください。
-
-- `STATS_DIR`: 日次統計の出力先ディレクトリ（例: `./.tmp-stats/logs`）
-- `POSITION_STORE_DIR`: ペア別のポジションファイルを保存するディレクトリ（例: `./.positions-test`）
-- `POSITION_STORE_FILE`: 旧式の単一ストアファイルのパス（互換目的のみ）
-
-PowerShell 例:
-
-```powershell
-$env:STATS_DIR=".tmp-stats\\logs"; $env:POSITION_STORE_DIR=".positions-test"; npm run test
-```
-
----
-
-## � SAFETY_MODE=1（数量クランプと WARN ログ）
-
-`SAFETY_MODE=1` を指定すると、発注数量は残高の一定割合（既定 10%: `SAFETY_CLAMP_PCT=0.1`）にクランプされます。クランプが発生した場合は WARN ログが出力されます。
-
-例:
-
-```
-[WARN] [SAFETY] amount clamped side=bid requested=20000 clamped=10000 pct=10.0%
-```
-
-この挙動はユニットテストで検証済みで、CI でも維持されます。
-
----
-
-## �📊 ログ & 日次統計
-
-ログ種別: SIGNAL / ORDER / EXECUTION / ERROR / INFO。`logs/trades-YYYY-MM-DD.log` に JSON 追記。
-
-日次統計 `stats-YYYY-MM-DD.json`
-- filledCount / realizedPnl / 各 *RetryCount / trailArmedTotal / trailExitTotal / trailStops / sellEntries 他
-
-Trailing Stop:
-1. 価格がエントリー比 `RISK_TRAIL_TRIGGER_PCT` 上昇で武装
-2. 最高値を追従し `highestPrice * (1 - RISK_TRAIL_STOP_PCT)` を割れたら EXIT
-
----
-
-## 🔍 約定ヒューリスティック (fallback)
-
-`order_id` で特定できない場合:
-1. `submittedAt ± SLIPPAGE_TIME_WINDOW_MS`
-2. side 一致
-3. 価格偏差 <= `TOL_PRICE_PCT`
-4. 部分累積量が目標量に到達で完了
-
----
-
-## ♻️ リネーム / コード規約差分 (最近適用)
-
-| 旧 | 新 |
-|----|----|
-| `IPrivateApi` | `PrivateApi` |
-| `TradeHistoryItem` | `TradeHistoryRecord` |
-| `trailManager` | `manageTrailingStop` |
-| `calcSMA` / `calcRSI` | `calculateSma` / `calculateRsi` |
-| `submitWithRetry` | `submitOrderWithRetry` |
-| `appendPrices` | `appendPriceSamples` |
-| `getRecentPrices` | `getPriceSeries` |
-| `writeTradeLog` | `logTrade` |
-| `ok` (GuardResult) | `isAllowed` |
-| `fillCount` | `filledCount` |
-| `*Retries` | `*RetryCount` |
-
----
-
-## ⚠️ 注意事項
-
-本リポジトリは学習・検証目的の参考実装です。実運用前に以下を必ず検討してください。
-- API レート制限と指数バックオフ
-- 完全な約定照合 (WebSocket / order executions)
-- 本番用秘密情報管理 (Vault / KMS 等)
-- 冗長化 / 障害復旧 / アラート設計
-- 高精度時刻同期 (NTP) と nonce 管理
-
----
-
-## 🛠 今後の拡張候補
-
-- WebSocket 板/トレード購読
-- マルチペア同時戦略 / ポートフォリオ管理
-- PnL / リスク指標 (Sharpe, 最大ドローダウン) 生成
-- Backtest エンジン統合
-- Prometheus / OpenTelemetry 連携
-
----
-
-## 📄 ライセンス・利用条件
-
-ライセンスは未確定ですが、現時点では学習・検証目的での個人利用を想定しています。
-商用利用や再配布はご遠慮ください。今後 OSS ライセンス（MIT など）を付与する方針です。
-正式なライセンス決定後は LICENSE ファイルおよび README にて告知します。
-
-***
-
-## 最小ライブ検証（自己責任）/ Live Minimal（DRY_RUN統合）
-
-発注→即キャンセルの最小検証を、単一スクリプト `live:minimal` に統合しました。DRY_RUN=1 ならモック/ドライラン、DRY_RUN=0 なら実発注（要API鍵）で動きます。少額で慎重に実施してください。
-
-実行コマンド: `npm run live:minimal`
-
-使用する環境変数:
-- EXCHANGE: 取引所（例: coincheck, zaif）
-- TRADE_FLOW: BUY_ONLY | SELL_ONLY | BUY_SELL | SELL_BUY
-- TEST_FLOW_QTY: 発注数量（DRY_RUN=1 の場合は未設定時 0.002 を既定値として使用）
-- TEST_FLOW_RATE: 価格（未指定なら板の最優先を利用）。`ORDER_TYPE=market` の場合は未指定でOK
-- ORDER_TYPE: `market` または `limit`（省略可）
-- DRY_RUN: `0`（実発注）/ `1`（ドライラン）
-- SAFETY_MODE: 1 で残高の10%以内に数量をクランプ
- - SAFETY_CLAMP_PCT: クランプ割合（例: 0.1=10%）
- - EXPOSURE_WARN_PCT: 露出警告閾値（例: 0.05=5%）
-
-PowerShell 実行例（DRY_RUN=0 実発注・即キャンセル）:
-
-```powershell
-$env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="1"; $env:TEST_FLOW_RATE="490"; $env:DRY_RUN="0"; $env:SAFETY_MODE="1"; npm run live:minimal
-```
-
-DRY_RUN=1（ドライラン/モック）:
-
-```powershell
-$env:USE_PRIVATE_MOCK="1"; $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="0.002"; $env:DRY_RUN="1"; npm run live:minimal
-```
-
-通知に Top 3（ML random）の表を追加しました（Slack/GitHub コメント）。例:
-
-| # | pair | Win% | PnL | Params |
-| --- | --- | --- | --- | --- |
-| 1 | btc_jpy | 62 | 12.3 | S=9,L=26,RSI=70,30 |
-| 2 | eth_jpy | 59 | 10.8 | S=11,L=29,RSI=65,28 |
-| 3 | xrp_jpy | 57 | 9.4 | S=7,L=21,RSI=60,25 |
-
-注: Live最小トレード検証は features ログ（JSONL のみ）も保存します。収集したデータは `npm run ml:export`（src/tools/ml/ml-export.ts）でデータセット化し（`ml-dataset.jsonl` を出力）、`npm run ml:search`（src/tools/ml/ml-search.ts）で簡易探索が可能です。
-
-### ヘルスチェック
-
-`npm run health` で以下を確認します。
-- Private API: `healthCheck()`（未実装の場合は get_info2）
-- Public API: `ticker` と `orderbook` のベスト気配、および `EXPOSURE_WARN_PCT` の現在値（warnPct）
-
-## Live Minimal Trade (GitHub Actions)
-
-手動で最小ライブトレードを走らせ、要約をSlack/GitHubに通知するワークフローを用意しています。
-
-- ワークフロー: `.github/workflows/live-trade.yml`
-- 実行条件: 手動起動（Actionsタブ → Live Minimal Trade → Run workflow）
-- 使用Secrets:
-	- `COINCHECK_KEY` / `COINCHECK_SECRET`（CoincheckのAPIキー）
-	- `SLACK_WEBHOOK`（任意。未設定なら通知スキップ）
-- 固定パラメータ（必要に応じ変更可）:
-	- `EXCHANGE=coincheck`, `PAIR=xrp_jpy`, `TRADE_FLOW=BUY_ONLY`
-	- `TEST_FLOW_QTY=500`, `TEST_FLOW_RATE=490`, `DRY_RUN=0`, `FEATURES_SOURCE=live`
-
-成果物/通知:
-- Artifacts: `logs/live/summary-*.json`, `logs/features/live/**`
-- Slack: 成功時 ✅/失敗時 ❌ とサマリ本文（Pair/Buy/Sell/PnL/WinRate/Warn）
-- GitHub: PR/commit へ要約コメント投稿
-
-
-改善 PR / Issue 歓迎。
-
-***
-
-## 機械学習用データの利用例（Python）
-
-`npm run ml:export` で `ml-dataset.jsonl`（JSON Lines）を生成できます。以下は最小の分類タスク例です。
-
-scikit-learn:
-
-```python
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-
-df = pd.read_json('ml-dataset.jsonl', lines=True)
-X = df[["rsi","sma_short","sma_long","price","qty"]].fillna(0)
-y = df["win"].fillna(0).astype(int)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-clf = RandomForestClassifier(n_estimators=100, random_state=42)
-clf.fit(X_train, y_train)
-pred = clf.predict(X_test)
-print('Accuracy:', accuracy_score(y_test, pred))
-```
-
-TensorFlow (Keras):
-
-```python
-import pandas as pd
-import tensorflow as tf
-
-df = pd.read_json('ml-dataset.jsonl', lines=True)
-X = df[["rsi","sma_short","sma_long","price","qty"]].fillna(0).values
-y = df["win"].fillna(0).astype(int).values
-
-model = tf.keras.Sequential([
-	tf.keras.layers.Input(shape=(X.shape[1],)),
-	tf.keras.layers.Dense(32, activation='relu'),
-	tf.keras.layers.Dense(16, activation='relu'),
-	tf.keras.layers.Dense(1, activation='sigmoid')
-])
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-model.fit(X, y, epochs=5, batch_size=64)
-```
-
-PyTorch:
-
-```python
-import pandas as pd
-import torch
-import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
-
-df = pd.read_json('ml-dataset.jsonl', lines=True)
-X = torch.tensor(df[["rsi","sma_short","sma_long","price","qty"]].fillna(0).values, dtype=torch.float32)
-y = torch.tensor(df["win"].fillna(0).astype(int).values, dtype=torch.float32).unsqueeze(1)
-
-dataset = TensorDataset(X, y)
-loader = DataLoader(dataset, batch_size=64, shuffle=True)
-
-model = nn.Sequential(
-	nn.Linear(X.shape[1], 32), nn.ReLU(),
-	nn.Linear(32, 16), nn.ReLU(),
-	nn.Linear(16, 1), nn.Sigmoid()
-)
-opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-loss_fn = nn.BCELoss()
-
-for epoch in range(5):
-	for xb, yb in loader:
-		pred = model(xb)
-		loss = loss_fn(pred, yb)
-		opt.zero_grad(); loss.backward(); opt.step()
-	print('epoch', epoch, 'loss', float(loss))
-
----
-
-## RLトレーニング運用ガイド
-
-### Quickモード vs Productionモード
-
-- **Quickモード（デフォルト）**: `PRODUCTION=1` 未設定時。`total_timesteps` を1000に強制クランプ。テスト/検証用。
-- **Productionモード**: `PRODUCTION=1` 設定時。本番学習（1Mステップ等）可能。
-
-### コマンド実行例
+### 基本的なテスト実行
 
 ```bash
-# Quick実行（1kステップ固定）
-python scripts/train.py --config config/training/test.json
+# 全テスト実行
+make test
 
-# Production実行（1Mステップ）
-PRODUCTION=1 python scripts/train.py --config config/training/prod.json
+# ユニットテストのみ
+make unit
 
-# 手動timesteps指定（PRODUCTION未設定時はmin(requested, 1000)に丸め）
-python scripts/train.py --timesteps 50000  # → 1000に丸め
-PRODUCTION=1 python scripts/train.py --timesteps 50000  # → 50000実行
+# 統合テストのみ
+make integration
 
-# キャッシュ無効化（データ再処理時）
-python scripts/train.py --no-cache
+# コード品質チェック
+make check
 
-# 軽量チェックポイント（高速保存・小容量）
-python scripts/train.py --checkpoint-light
+# セキュリティ監査
+make audit
 ```
 
-### キャッシュ管理
+### よく使うユーティリティ
 
-特徴量キャッシュでデータ再処理を高速化。設定: `config/environment/*.json`
-
-- **`memory.cache_max_mb`**: キャッシュサイズ上限（MB）。超過時はLRUで古いデータを削除。
-- **`memory.max_age_days`**: キャッシュ有効期限（日）。古いファイルは自動削除。
-- **`memory.compressor`**: 圧縮アルゴリズム。`zstd`(推奨), `lz4`(最速), `zlib`(互換)から選択。
-- **`--no-cache`**: キャッシュ無効化オプション。再処理が必要な場合に使用。
-
-### チェックポイント
-
-定期的にモデルを保存。非同期・世代管理でパフォーマンスを維持。
-
-- **通常モード**: 完全モデル保存（重いが高信頼性）。
-- **軽量モード** (`--checkpoint-light`): Policyのみ保存（高速・小容量）。
-- **自動クリーンアップ**: 世代数上限で古いチェックポイントを削除。
-- **並列トレーニング**: プロセスごとに個別ディレクトリを使用。
-
-### 監視・自動最適化
-
-- **キャッシュ肥大化検知**: サイズ超過時に警告ログと自動クリーンアップ。
-- **ヒット率監視**: 低ヒット率時の警告（チューニング推奨）。
-- **メモリ使用量**: トレーニング完了時に詳細統計を表示。
-
-- 総スレッド数 ≦ 物理コア数 を厳守（例: 8コアで2プロセス×4スレッド）。
-- 各プロセスに連続コア割当（P0: 0-3, P1: 4-7）。
-- 環境変数 `PARALLEL_PROCESSES`, `PROCESS_ID`, `CPU_AFFINITY` が自動設定。
-
-### Discord通知の見分け方
-
-- **🧪TEST**: Quick/テスト実行。タイトル先頭に🧪。
-- **🚀PROD**: Production実行。タイトル先頭に🚀。
-- **🚨ERROR**: エラー通知。即時送信。
-
-### 事故防止ルール
-
-- **長時間学習は必ず `--timesteps` 明示**。
-- **PRODUCTION=1 が付かない限り1k以内に丸め**。
-- 並列実行時は総メモリ使用量を確認（プロセス数×2GB目安）。
+- 監視: python -m ztb.training.watch_1m --correlation-id `<ID>` --run-once
+- 要約: python -m ztb.training.rollup_artifacts --correlation-id `<ID>`
+- Canary: linux_canary.sh / ps_canary.ps1（同等のフロー・出力）
 
 ---
 
-## 特徴量管理
+## 1M Step Training Execution
 
-### 特徴量セット
-
-`config/feature_sets.yaml` で定義された特徴量セットを使用することで、検証規模に応じた適切な特徴量を選択できます。
-
-| セット | 特徴量数 | 目的 | 想定用途 |
-|--------|----------|------|----------|
-| **Minimal** | 5個 | 軽量テスト | 基本機能確認、CI/CD |
-| **Balanced** | 10個 | 標準検証 | 通常のバックテスト検証 |
-| **Medium** | 14個 | 中規模検証 | パフォーマンス評価、チューニング |
-| **Large** | 19個 | 広範検証 | 包括的な特徴量テスト |
-| **Extended** | 全量 | フル網羅 | 完全な特徴量評価 |
-
-### Harmfulフラグ
-
-一部の特徴量には `harmful` フラグが設定されており、以下の基準で判定されます：
-
-- **VIF (Variance Inflation Factor) > 10**: 多重共線性の問題
-- **MI (Mutual Information) ≈ 0**: ターゲット変数との関連性が低い
-- **アブレーション分析で Sharpe ratio 大幅低下**: 予測性能の悪化
-
-harmfulフラグが設定された特徴量は自動的に除外されます。詳細は `docs/features/harmful.md` を参照してください。
-
-### Experimentalフロー
-
-新しい特徴量の開発・評価フローは以下の通りです：
-
-1. **experimental.py** に実装
-2. **experimental_evaluator.py** で性能評価
-3. **ablation_runner.py** でアブレーション分析
-4. CI/CD で定期評価
-
-特徴量の成熟度は以下のレベルで管理されます：
-
-- **prototype**: 初期実装段階
-- **beta**: 評価・チューニング段階
-- **stable**: 本番投入可能
-
-### 使い方例
+### 推奨の起動方法（セッション ID = correlation-id）
 
 ```bash
-# Minimal セットで 1k テスト
-python scripts/train.py --feature-set minimal --timesteps 1000
+## 例: UTC タイムスタンプを ID に
+CORR=070929T160549Z
 
-# Medium セットで 100k 検証
-python scripts/train.py --feature-set medium --timesteps 100000
-
-# Extended セットで 1M 学習
-python scripts/train.py --feature-set extended --timesteps 1000000
+## 自動再開つき起動（存在すれば run_1m.py、なければ PPO 直呼び）
+python -m ztb.training.supervise_1m --correlation-id  \
+  --ppo-cli-args "--resume-from latest --total-timesteps 1000000 \
+  --n-envs 4 --seed 42 --eval-interval 10000 --log-interval 1000 \
+  --ckpt-async --ckpt-compress zstd --ckpt-max-pending 1"
 ```
 
-詳細は `docs/evaluation.md` を参照してください。
-
-## 特徴量評価システムの運用改善
-
-### 概要
-
-特徴量評価システムの運用効率と保守性を向上させるための改善を実施しました。
-
-### 主な改善点
-
-#### 1. 評価閾値の外部化 (`config/evaluation.yaml`)
-
-- 再評価閾値: 0.05 (5%以上の改善で再評価対象)
-- 監視閾値: 0.01 (1%以上の変化で監視対象)
-- 最小サンプル数: 10000 (統計的有意性を確保)
-
-#### 2. Slack/Discord通知システム (`scripts/notifier.py`)
-
-- 評価レポート生成時の自動通知
-- 構造化されたサマリー情報（改善特徴量数、再評価対象数など）
-- SlackおよびDiscord webhook対応
-
-#### 3. 再評価リスト管理 (`re_evaluate_list.yaml`)
-
-- 特徴量の再評価サイクルを追跡
-- 定期的な再評価の自動スケジューリング
-- 評価結果に基づく優先順位付け
-
-#### 4. CI/CD統合 (`.github/workflows/ablation.yml`)
-
-- GitHub Actionsでの自動通知配信
-- 評価完了時のSlack通知
-- 環境変数によるwebhook URL設定
-
-### 使い方
-
-#### 通知付きレポート生成
+### 進行中の監視
 
 ```bash
-# Slack通知
-python scripts/generate_weekly_report.py --notify slack
+## 一度だけチェック
+python -m ztb.training.watch_1m --correlation-id  --run-once
 
-# Discord通知
-python scripts/generate_weekly_report.py --notify discord
-
-# 通知なし
-python scripts/generate_weekly_report.py
+## 連続監視（閾値は環境変数で調整）
+ZTB_WATCH_STALL_MIN=10 ZTB_WATCH_RSS_MB=2048 ZTB_WATCH_VRAM_MB=4096 \
+python -m ztb.training.watch_1m --correlation-id
 ```
 
-#### 環境変数設定
+### 定期要約（5 分ごと）
 
 ```bash
-# Slack webhook URL
-export SLACK_WEBHOOK="https://hooks.slack.com/services/..."
+python -m ztb.training.rollup_artifacts --correlation-id  --interval-minutes 5
+`
 
-# Discord webhook URL
-export DISCORD_WEBHOOK="https://discord.com/api/webhooks/..."
-```
+### 再開 & 停止
 
-### 運用フロー
-
-1. **定期評価**: CI/CDで自動実行されるアブレーション分析
-2. **レポート生成**: 評価結果の集計と可視化
-3. **通知配信**: Slack/Discordへの自動通知
-4. **再評価管理**: 改善特徴量の追跡と再評価スケジューリング
-
-### 設定ファイル
-
-#### `config/evaluation.yaml`
-
-```yaml
-thresholds:
-  re_evaluate: 0.05    # 再評価閾値
-  monitor: 0.01        # 監視閾値
-min_samples: 10000     # 最小サンプル数
-```
-
-#### `re_evaluate_list.yaml`
-
-```yaml
-features:
-  - name: "experimental_feature_1"
-    last_evaluated: "2025-09-25"
-    priority: "high"
-    reason: "significant improvement detected"
-```
-
-### 注意事項
-
-- 通知機能を使用するには、対応するwebhook URLの環境変数を設定してください
-- 評価閾値は運用状況に応じて`config/evaluation.yaml`で調整可能です
-- CI/CDでの通知はGitHub Secretsでwebhook URLを設定してください
+- 自動再開: supervisor が最新チェックポイントから再開
+- 手動停止: プロジェクトルートに ztb.stop を作成 → 速やかに安全停止
 
 ---
 
-## 運用手順書 (Runbook)
+## Evaluation & Validation (DSR/Bootstrap/Benchmarks)
 
-### システム概要
+- **DSR**: 多重検定を考慮した Sharpe の有意性指標。--dsr-trials（既定 cap=1000）
+- **Bootstrap**: --bootstrap-resamples（既定 1000 / CI は 200）、--bootstrap-block、--bootstrap-overlap
+- **定期評価**: 既定 50k ステップごとに Sharpe/DSR/p 値を算出し、基準戦略（SMA/Buy&Hold）と比較
+- **ベンチ**
 
-Zaif Trade Botは、以下のコンポーネントで構成される自動売買システムです：
+  - ストリーミング: python ztb/benchmarks/streaming_benchmark.py
+  - チェックポイント I/O: python ztb/benchmarks/checkpoint_benchmark.py
 
-- **取引実行**: TypeScript/Node.jsベースのライブ取引エンジン
-- **特徴量エンジニアリング**: PythonベースのML特徴量生成・評価パイプライン
-- **強化学習**: Stable-Baselines3を使用した戦略学習
-- **監視・通知**: PrometheusメトリクスとDiscord/Slack通知
-- **CI/CD**: 自動テスト、型チェック、品質ゲート
-
-### 起動・停止手順
-
-#### 通常起動
-
-```bash
-# 環境変数設定
-$env:ZAIF_API_KEY="your_api_key"
-$env:ZAIF_API_SECRET="your_api_secret"
-$env:DISCORD_WEBHOOK_URL="your_webhook_url"
-
-# 起動
-npm start
-```
-
-#### テストモード起動
-
-```bash
-$env:TEST_MODE="1"
-$env:DRY_RUN="1"
-npm start
-```
-
-#### 強制停止
-
-```bash
-# プロセス確認
-ps aux | grep "ts-node"
-
-# シグナル送信
-kill -TERM <pid>
-```
-
-### 監視・メトリクス
-
-#### Prometheusメトリクス
-
-システムは以下のメトリクスを公開：
-
-- `ztb_data_fetch_total`: データ取得数
-- `ztb_job_executions_total`: ジョブ実行数
-- `ztb_portfolio_balance`: ポートフォリオ残高
-- `ztb_data_drift_score`: データドリフトスコア
-- `ztb_quality_gates_passed_total`: 品質ゲート通過数
-
-#### 監視コマンド
-
-```bash
-# ヘルスチェック
-npm run health
-
-# 統計表示
-npm run stats:today
-
-# メトリクスダッシュボード
-npm run dash
-```
-
-### トラブルシューティング
-
-#### よくある問題
-
-1. **API接続エラー**
-   ```
-   原因: APIキー設定ミス、ネットワーク問題
-   対処: 環境変数再確認、ネットワーク接続テスト
-   ```
-
-2. **メモリ不足**
-   ```
-   原因: 大規模データ処理
-   対処: バッチサイズ削減、メモリ増設
-   ```
-
-3. **モデル収束失敗**
-   ```
-   原因: 特徴量品質、ハイパーパラメータ
-   対処: 特徴量再評価、設定調整
-   ```
-
-#### ログ確認
-
-```bash
-# アプリケーションログ
-tail -f logs/trade.log
-
-# エラーログ
-grep "ERROR" logs/*.log
-
-# パフォーマンスログ
-grep "PERF" logs/*.log
-```
-
-### バックアップ・リカバリ
-
-#### データバックアップ
-
-```bash
-# 設定ファイル
-cp config/*.json backup/
-
-# モデルファイル
-cp models/checkpoints/*.pkl backup/
-
-# データベース
-cp data/*.parquet backup/
-```
-
-#### リカバリ手順
-
-1. バックアップファイル復元
-2. 環境変数再設定
-3. システム再起動
-4. 整合性チェック実行
-
-### アップデート手順
-
-#### 通常アップデート
-
-```bash
-# コードプル
-git pull origin main
-
-# 依存更新
-npm install
-pip install -r requirements.txt
-
-# テスト実行
-npm run test:unit
-
-# 再起動
-npm start
-```
-
-#### 設定変更時のアップデート
-
-```bash
-# 設定変更
-vim config/trade-config.json
-
-# 設定検証
-npm run test:unit
-
-# 設定反映
-npm start
-```
-
-### 品質ゲート
-
-システムは以下の品質ゲートを実装：
-
-- **ユニットテスト**: 95%以上のカバレッジ
-- **型チェック**: mypyによる静的型チェック
-- **データ整合性**: Parquetスキーマ検証
-- **ドリフト監視**: 特徴量分布の継続監視
-- **パフォーマンス**: レスポンスタイムSLA
-
-### 緊急停止手順
-
-1. **即時停止**: `Ctrl+C` または `kill -TERM`
-2. **ポジション確認**: 残ポジションの手動決済
-3. **ログ保存**: 停止時のログをバックアップ
-4. **原因分析**: エラーログの詳細分析
-5. **再開判断**: 問題解決後の慎重な再開
-
-### 連絡先・サポート
-
-- **技術的問題**: GitHub Issues
-- **運用相談**: Discord/Slack通知
-- **緊急連絡**: 設定済みwebhook経由
+結果は artifacts/`<ID>`/reports/eval_*.json として保存、summary.* に集約されます。
 
 ---
 
-## Stakeholder Bundle (v2)
+## Streaming & Checkpoints
 
-ステークホルダー向け実トレード準備完了証拠パッケージを生成します。バックテスト結果、ペーパートレーディング、展開検証を含む包括的なエビデンスを提供します。
-
-### 生成コマンド
-
-```bash
-# 完全なステークホルダーバンドル生成 (v2)
-./scripts/make_stakeholder_bundle.sh
-```
-
-### バンドル内容
-
-- **バックテスト結果**: SMAベースライン + RLポリシー比較
-- **ペーパートレーディング**: リプレイ + ライブライトモード検証
-- **展開検証**: カナリアスクリプトによるデプロイ準備チェック
-- **統計的有意性**: DSR、ブートストラップp値、OOS性能
-- **実行メタデータ**: 環境情報、再現性保証
-- **設定ファイル**: 使用されたvenue.yamlと構成
-
-### 出力
-
-- `artifacts/stakeholder_bundle_YYYYMMDD_HHMMSS/`: 完全なエビデンスパッケージ
-- `artifacts/stakeholder_bundle_YYYYMMDD_HHMMSS.zip`: 配布用ZIPアーカイブ
+- **ストリーミング**: 既定 OFF。有効化時は --enable-streaming
+  --stream-batch-size 64 --stream-buffer-policy drop_oldest
+- **チェックポイント**: 10k ステップ間隔、保持 5、非同期保存、zstd 圧縮、max-pending=1
+- **重複防止**: global_step を用いた **duplication guard** で再開時の二重学習を防止
 
 ---
 
-安全上の最終注意: このシステムは学習・検証目的の参考実装です。実運用は自己責任で、必ず小規模からテストしてください。 
- 
+## Production Safety (Risk Management & Shutdown)
+
+- **Circuit Breakers**: 異常時は新規建てを禁止（既存ポジの縮小は許可）
+- **Kill-file**: ztb.stop により全コンポーネントが安全停止
+- **サイジング**: 年率 10% ターゲットボラ + Kelly 0.5、Decimal 丸め、最小数量/Notional 準拠
+
+詳細: [docs/runbook.md](./docs/runbook.md)
+
+---
+
+## Canary & Fault Injection
+
+- **Canary**: Linux/PowerShell で同等のフェーズ（replay → live-lite → kill/resume）と同一アーティファクト
+- **障害注入**: テーブル駆動（切断/タイムアウト/メモリ圧 等）で回帰を検出
+  実行例と使い方: [docs/deployment/canary.md](./docs/deployment/canary.md)
+
+---
+
+## Artifacts & Schema
+
+- ルート: rtifacts/<correlation_id>/logs|metrics|reports|config|meta/
+- **run_metadata.json**: git SHA / Python/OS/CPU / seeds /
+  package & config ハッシュ / correlation_id
+- **results_schema.json** に準拠（schema/ 配下）。
+esults_validator.py で検証可能。
+
+---
+
+## Configuration, CLI & Environment Variables
+
+- 代表的な CLI:
+
+  - --total-timesteps, --n-envs, --seed, --eval-interval, --log-interval
+  - --ckpt-async, --ckpt-compress zstd, --ckpt-max-pending 1
+  - --enable-streaming, --stream-batch-size, --stream-buffer-policy
+  - --dsr-trials, --bootstrap-resamples, --bootstrap-block, --bootstrap-overlap
+- 代表的な環境変数:
+
+  - ZTB_WATCH_*（監視閾値）, ZTB_KILL（kill-file 即時反映）, 他
+    詳細: [docs/configuration.md](./docs/configuration.md)
+
+### Infrastructure Scripts
+
+- **Venue Health Check**: `python -m ztb.ops.check_venue_health --venue coincheck --symbol BTC_JPY`
+  - 取引所APIの接続性、レイテンシ、レート制限をチェック
+- **Regression Smoke Tests**: `python -m ztb.ops.smoke_tests`
+  - 合成データを使った基本機能の回帰テスト
+- **CLI Consistency**: 全スクリプトで統一されたヘルプテキストとバリデーション
+  - 共通の引数定義（--artifacts-dir, --correlation-id, --timeout等）
+  - 標準化されたエラーメッセージとデフォルト値
+
+---
+
+## 移行ガイド: 旧パス→新パス
+
+v2.5.1 より、スクリプトが適切なパッケージに再編成されました。`ztb/scripts/` はシェルスクリプト専用となり、Pythonファイルは削除されています。
+
+| 旧パス | 新パス | 備考 |
+|--------|--------|------|
+| `python scripts/supervise_1m.py` | `python -m ztb.training.supervise_1m` | 1M学習監督 |
+| `python scripts/watch_1m.py` | `python -m ztb.training.watch_1m` | 1M学習監視 |
+| `python scripts/rollup_artifacts.py` | `python -m ztb.training.rollup_artifacts` | アーティファクト集約 |
+| `python scripts/ops.py` | `python -m ztb.ops.cli` | 運用CLI |
+| `python scripts/check_schema_version.py` | `python -m ztb.ops.check_schema_version` | スキーマチェック |
+| `python scripts/check_links.py` | `python -m ztb.ops.check_links` | リンクチェック |
+| `python scripts/generate_weekly_report.py` | `python -m ztb.ops.generate_weekly_report` | 週次レポート |
+
+**注意**: `ztb/scripts/` には `.sh` および `.ps1` ファイルのみ配置可能です。PythonファイルはCIで拒否されます。
+
+**将来のエントリーポイント** (packaging時):
+- `ztb-ops` → `ztb.ops.cli:main`
+- `ztb-run1m` → `ztb.training.run_1m:main`
+- `ztb-supervise` → `ztb.training.supervise_1m:main`
+
+---
+
+## Development & Contribution Guide
+
+- セットアップ/テスト: [docs/contributing/setup.md](./docs/contributing/setup.md), [docs/contributing/testing.md](./docs/contributing/testing.md)
+- アーキ概要: [docs/contributing/architecture.md](./docs/contributing/architecture.md)
+- ルール: PULL_REQUEST_TEMPLATE.md, CODEOWNERS, LICENSE, DISCLAIMER.md
+
+---
+
+## License
+
+本リポジトリは MIT ライセンスです。詳細は [LICENSE](./LICENSE) を参照してください。

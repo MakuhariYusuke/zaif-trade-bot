@@ -4,9 +4,10 @@ Risk management checks for pre and post-trade validation.
 Provides hooks for integrating risk management into trading systems.
 """
 
-from typing import Dict, Any, Optional, Tuple, Callable
-from .rules import RiskRuleEngine
+from typing import Any, Callable, Dict, Optional, Tuple
+
 from .profiles import RiskLimits
+from .rules import RiskRuleEngine
 
 
 class RiskChecker:
@@ -16,11 +17,13 @@ class RiskChecker:
         """Initialize with risk limits."""
         self.engine = RiskRuleEngine(limits)
 
-    def pre_trade_check(self,
-                       trade_notional: float,
-                       position_notional: float,
-                       peak_value: float,
-                       sharpe_ratio: Optional[float] = None) -> Tuple[bool, str]:
+    def pre_trade_check(
+        self,
+        trade_notional: float,
+        position_notional: float,
+        peak_value: float,
+        sharpe_ratio: Optional[float] = None,
+    ) -> Tuple[bool, str]:
         """
         Pre-trade risk validation.
 
@@ -37,13 +40,15 @@ class RiskChecker:
             trade_notional=trade_notional,
             position_notional=position_notional,
             peak_value=peak_value,
-            sharpe_ratio=sharpe_ratio
+            sharpe_ratio=sharpe_ratio,
         )
 
-    def post_trade_update(self,
-                         current_value: float,
-                         volatility: float,
-                         trade_data: Optional[Dict[str, Any]] = None):
+    def post_trade_update(
+        self,
+        current_value: float,
+        volatility: float,
+        trade_data: Optional[Dict[str, Any]] = None,
+    ):
         """
         Post-trade state update.
 
@@ -61,25 +66,29 @@ class RiskChecker:
         """Update trailing stop level."""
         self.engine.update_trailing_stop(current_price, position_side)
 
-    def check_trailing_stop(self, current_price: float, position_side: str) -> Tuple[bool, str]:
+    def check_trailing_stop(
+        self, current_price: float, position_side: str
+    ) -> Tuple[bool, str]:
         """Check if trailing stop is hit."""
         return self.engine.check_trailing_stop(current_price, position_side)
 
-    def check_take_profit(self, entry_price: float, current_price: float, position_side: str) -> Tuple[bool, str]:
+    def check_take_profit(
+        self, entry_price: float, current_price: float, position_side: str
+    ) -> Tuple[bool, str]:
         """Check if take profit target is reached."""
         return self.engine.check_take_profit(entry_price, current_price, position_side)
 
     def get_risk_status(self) -> Dict[str, Any]:
         """Get current risk status summary."""
         return {
-            'daily_loss': self.engine.daily_loss,
-            'daily_loss_limit': self.engine.limits.daily_loss_limit_pct,
-            'portfolio_value': self.engine.portfolio_value,
-            'portfolio_volatility': self.engine.portfolio_volatility,
-            'trades_this_hour': self.engine.trades_this_hour,
-            'max_trades_per_hour': self.engine.limits.max_trades_per_hour,
-            'trailing_stop_level': self.engine.trailing_stop_level,
-            'cooldown_period': self.engine.get_cooldown_period()
+            "daily_loss": self.engine.daily_loss,
+            "daily_loss_limit": self.engine.limits.daily_loss_limit_pct,
+            "portfolio_value": self.engine.portfolio_value,
+            "portfolio_volatility": self.engine.portfolio_volatility,
+            "trades_this_hour": self.engine.trades_this_hour,
+            "max_trades_per_hour": self.engine.limits.max_trades_per_hour,
+            "trailing_stop_level": self.engine.trailing_stop_level,
+            "cooldown_period": self.engine.get_cooldown_period(),
         }
 
 
@@ -89,6 +98,7 @@ class RiskManager:
     def __init__(self, profile_name: str = "balanced"):
         """Initialize with risk profile."""
         from .profiles import get_risk_profile
+
         self.limits = get_risk_profile(profile_name)
         self.checker = RiskChecker(self.limits)
 
@@ -96,12 +106,14 @@ class RiskManager:
         self.on_risk_violation: Optional[Callable[[str], None]] = None
         self.on_trade_blocked: Optional[Callable[[str], None]] = None
 
-    def validate_and_execute_trade(self,
-                                  trade_func: Callable,
-                                  trade_notional: float,
-                                  position_notional: float,
-                                  peak_value: float,
-                                  **trade_kwargs) -> Tuple[bool, Any, str]:
+    def validate_and_execute_trade(
+        self,
+        trade_func: Callable,
+        trade_notional: float,
+        position_notional: float,
+        peak_value: float,
+        **trade_kwargs,
+    ) -> Tuple[bool, Any, str]:
         """
         Validate trade and execute if allowed.
 
@@ -119,7 +131,7 @@ class RiskManager:
         allowed, reason = self.checker.pre_trade_check(
             trade_notional=trade_notional,
             position_notional=position_notional,
-            peak_value=peak_value
+            peak_value=peak_value,
         )
 
         if not allowed:
@@ -138,10 +150,9 @@ class RiskManager:
                 self.on_risk_violation(error_msg)
             return False, None, error_msg
 
-    def monitor_position(self,
-                        current_price: float,
-                        entry_price: float,
-                        position_side: str) -> Dict[str, Any]:
+    def monitor_position(
+        self, current_price: float, entry_price: float, position_side: str
+    ) -> Dict[str, Any]:
         """
         Monitor position for stop loss/take profit triggers.
 
@@ -151,36 +162,34 @@ class RiskManager:
         triggers = {}
 
         # Check trailing stop
-        ts_allowed, ts_reason = self.checker.check_trailing_stop(current_price, position_side)
-        triggers['trailing_stop'] = {
-            'triggered': not ts_allowed,
-            'reason': ts_reason
-        }
+        ts_allowed, ts_reason = self.checker.check_trailing_stop(
+            current_price, position_side
+        )
+        triggers["trailing_stop"] = {"triggered": not ts_allowed, "reason": ts_reason}
 
         # Check take profit
-        tp_allowed, tp_reason = self.checker.check_take_profit(entry_price, current_price, position_side)
-        triggers['take_profit'] = {
-            'triggered': not tp_allowed,
-            'reason': tp_reason
-        }
+        tp_allowed, tp_reason = self.checker.check_take_profit(
+            entry_price, current_price, position_side
+        )
+        triggers["take_profit"] = {"triggered": not tp_allowed, "reason": tp_reason}
 
         return triggers
 
     def get_status_report(self) -> Dict[str, Any]:
         """Get comprehensive risk status report."""
         return {
-            'profile': self.limits,
-            'current_status': self.checker.get_risk_status(),
-            'limits': {
-                'max_position_notional': self.limits.max_position_notional,
-                'max_single_trade_pct': self.limits.max_single_trade_pct,
-                'daily_loss_limit_pct': self.limits.daily_loss_limit_pct,
-                'max_drawdown_pct': self.limits.max_drawdown_pct,
-                'max_trades_per_hour': self.limits.max_trades_per_hour,
-                'min_trade_interval_sec': self.limits.min_trade_interval_sec,
-                'max_volatility_pct': self.limits.max_volatility_pct,
-                'required_sharpe_ratio': self.limits.required_sharpe_ratio,
-                'stop_loss_pct': self.limits.stop_loss_pct,
-                'take_profit_pct': self.limits.take_profit_pct
-            }
+            "profile": self.limits,
+            "current_status": self.checker.get_risk_status(),
+            "limits": {
+                "max_position_notional": self.limits.max_position_notional,
+                "max_single_trade_pct": self.limits.max_single_trade_pct,
+                "daily_loss_limit_pct": self.limits.daily_loss_limit_pct,
+                "max_drawdown_pct": self.limits.max_drawdown_pct,
+                "max_trades_per_hour": self.limits.max_trades_per_hour,
+                "min_trade_interval_sec": self.limits.min_trade_interval_sec,
+                "max_volatility_pct": self.limits.max_volatility_pct,
+                "required_sharpe_ratio": self.limits.required_sharpe_ratio,
+                "stop_loss_pct": self.limits.stop_loss_pct,
+                "take_profit_pct": self.limits.take_profit_pct,
+            },
         }

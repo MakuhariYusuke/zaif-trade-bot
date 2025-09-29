@@ -1,0 +1,35 @@
+[Unit]
+Description=Zaif Trading Bot 24/7 Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=trading
+Group=trading
+WorkingDirectory=/opt/zaif-trade-bot
+ExecStart=/opt/zaif-trade-bot/venv/bin/python -m ztb.live.service_runner --config /opt/zaif-trade-bot/config/production.yaml --log-level INFO
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zaif-trading-bot
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/zaif-trade-bot
+ProtectHome=yes
+
+# Resource limits
+MemoryLimit=1G
+CPUQuota=50%
+
+# Environment
+Environment=PYTHONPATH=/opt/zaif-trade-bot
+Environment=LOG_FORMAT=json
+
+[Install]
+WantedBy=multi-user.target

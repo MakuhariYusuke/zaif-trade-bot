@@ -5,14 +5,15 @@ Run metadata capture for trading bot executions.
 Captures environment and system information for reproducibility.
 """
 
-import platform
-import sys
 import hashlib
-import subprocess
-import os
-from typing import Dict, Any
-from datetime import datetime
 import json
+import os
+import platform
+import subprocess
+import sys
+from datetime import datetime
+from typing import Any, Dict
+
 import pkg_resources
 
 from .observability import generate_correlation_id
@@ -41,7 +42,7 @@ class RunMetadata:
             "timestamp": datetime.now().isoformat(),
             "timezone": str(datetime.now().astimezone().tzinfo),
             "working_directory": os.getcwd(),
-            "environment_variables": self._get_relevant_env_vars()
+            "environment_variables": self._get_relevant_env_vars(),
         }
 
         return info
@@ -55,8 +56,12 @@ class RunMetadata:
                         if line.startswith("model name"):
                             return line.split(":")[1].strip()
             elif platform.system() == "Darwin":  # macOS
-                result = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
-                                      capture_output=True, text=True, timeout=5)
+                result = subprocess.run(
+                    ["sysctl", "-n", "machdep.cpu.brand_string"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
                 if result.returncode == 0:
                     return result.stdout.strip()
             elif platform.system() == "Windows":
@@ -77,7 +82,7 @@ class RunMetadata:
             "SHELL",
             "LANG",
             "LC_ALL",
-            "TZ"
+            "TZ",
         ]
 
         env_vars = {}
@@ -97,25 +102,40 @@ class RunMetadata:
             "sha": "unknown",
             "branch": "unknown",
             "status": "unknown",
-            "remote_url": "unknown"
+            "remote_url": "unknown",
         }
 
         try:
             # Get current commit SHA
-            result = subprocess.run(["git", "rev-parse", "HEAD"],
-                                  capture_output=True, text=True, cwd=os.getcwd(), timeout=10)
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+                timeout=10,
+            )
             if result.returncode == 0:
                 git_info["sha"] = result.stdout.strip()
 
             # Get current branch
-            result = subprocess.run(["git", "branch", "--show-current"],
-                                  capture_output=True, text=True, cwd=os.getcwd(), timeout=10)
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+                timeout=10,
+            )
             if result.returncode == 0:
                 git_info["branch"] = result.stdout.strip()
 
             # Get remote URL
-            result = subprocess.run(["git", "remote", "get-url", "origin"],
-                                  capture_output=True, text=True, cwd=os.getcwd(), timeout=10)
+            result = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+                timeout=10,
+            )
             if result.returncode == 0:
                 git_info["remote_url"] = result.stdout.strip()
 
@@ -137,27 +157,24 @@ class RunMetadata:
                 # Create a hash of the package files for change detection
                 try:
                     package_hash = self._get_package_hash(dist)
-                    packages[package_name] = {
-                        "version": version,
-                        "hash": package_hash
-                    }
+                    packages[package_name] = {"version": version, "hash": package_hash}
                 except Exception:
                     # Fallback to just version
-                    packages[package_name] = {
-                        "version": version,
-                        "hash": None
-                    }
+                    packages[package_name] = {"version": version, "hash": None}
         except Exception:
             # If pkg_resources fails, try pip
             try:
-                result = subprocess.run([sys.executable, "-m", "pip", "list", "--format=json"],
-                                      capture_output=True, text=True)
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "list", "--format=json"],
+                    capture_output=True,
+                    text=True,
+                )
                 if result.returncode == 0:
                     pip_packages = json.loads(result.stdout)
                     for pkg in pip_packages:
                         packages[pkg["name"]] = {
                             "version": pkg["version"],
-                            "hash": None
+                            "hash": None,
                         }
             except Exception:
                 pass
@@ -171,14 +188,14 @@ class RunMetadata:
                 "trade-config.json",
                 "config/trade-config.json",
                 "venues/zaif.yaml",
-                "venues/coincheck.yaml"
+                "venues/coincheck.yaml",
             ]
 
         config_hashes = {}
         for config_file in config_files:
             if os.path.exists(config_file):
                 try:
-                    with open(config_file, 'rb') as f:
+                    with open(config_file, "rb") as f:
                         hasher = hashlib.sha256()
                         hasher.update(f.read())
                         config_hashes[config_file] = hasher.hexdigest()[:16]
@@ -197,8 +214,8 @@ class RunMetadata:
             "config_hashes": self.capture_config_hashes(),
             "run_config": {
                 "random_seed": self.random_seed,
-                "captured_at": datetime.now().isoformat()
-            }
+                "captured_at": datetime.now().isoformat(),
+            },
         }
 
         self.metadata = metadata
@@ -215,10 +232,10 @@ class RunMetadata:
                 # Walk through package files
                 for root, dirs, files in os.walk(location):
                     for file in files:
-                        if file.endswith(('.py', '.pyc', '.pyo')):
+                        if file.endswith((".py", ".pyc", ".pyo")):
                             file_path = os.path.join(root, file)
                             try:
-                                with open(file_path, 'rb') as f:
+                                with open(file_path, "rb") as f:
                                     hasher.update(f.read())
                             except Exception:
                                 continue
@@ -234,36 +251,56 @@ class RunMetadata:
             "branch": None,
             "status": None,
             "remote_url": None,
-            "is_dirty": None
+            "is_dirty": None,
         }
 
         try:
             # Get current commit SHA
-            result = subprocess.run(["git", "rev-parse", "HEAD"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+            )
             if result.returncode == 0:
                 git_info["sha"] = result.stdout.strip()
 
             # Get current branch
-            result = subprocess.run(["git", "branch", "--show-current"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+            )
             if result.returncode == 0:
                 git_info["branch"] = result.stdout.strip()
 
             # Check if working directory is dirty
-            result = subprocess.run(["git", "status", "--porcelain"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+            )
             git_info["is_dirty"] = len(result.stdout.strip()) > 0
 
             # Get remote URL
-            result = subprocess.run(["git", "remote", "get-url", "origin"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+            result = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+            )
             if result.returncode == 0:
                 git_info["remote_url"] = result.stdout.strip()
 
             # Get status summary
-            result = subprocess.run(["git", "status", "--short"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+            result = subprocess.run(
+                ["git", "status", "--short"],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+            )
             if result.returncode == 0:
                 git_info["status"] = result.stdout.strip()[:200]  # Truncate
 
@@ -280,8 +317,8 @@ class RunMetadata:
             "git": self.capture_git_info(),
             "run_config": {
                 "random_seed": self.random_seed,
-                "captured_at": datetime.now().isoformat()
-            }
+                "captured_at": datetime.now().isoformat(),
+            },
         }
 
         self.metadata = metadata
@@ -289,14 +326,14 @@ class RunMetadata:
 
     def save_to_file(self, file_path: str):
         """Save metadata to JSON file."""
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.metadata, f, indent=2, ensure_ascii=False)
 
     @classmethod
-    def load_from_file(cls, file_path: str) -> 'RunMetadata':
+    def load_from_file(cls, file_path: str) -> "RunMetadata":
         """Load metadata from JSON file."""
         instance = cls()
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             instance.metadata = json.load(f)
         return instance
 
@@ -311,9 +348,13 @@ class RunMetadata:
 
         summary = []
         summary.append(f"Python: {system.get('python_version', 'Unknown')}")
-        summary.append(f"OS: {system.get('os', 'Unknown')} {system.get('os_version', 'Unknown')}")
+        summary.append(
+            f"OS: {system.get('os', 'Unknown')} {system.get('os_version', 'Unknown')}"
+        )
         summary.append(f"CPU: {system.get('cpu_model', 'Unknown')}")
-        summary.append(f"Git SHA: {git.get('sha', 'Unknown')[:8] if git.get('sha') else 'Unknown'}")
+        summary.append(
+            f"Git SHA: {git.get('sha', 'Unknown')[:8] if git.get('sha') else 'Unknown'}"
+        )
         summary.append(f"Branch: {git.get('branch', 'Unknown')}")
         summary.append(f"Packages: {len(packages)} installed")
         summary.append(f"Random Seed: {system.get('random_seed', 'Unknown')}")
@@ -330,13 +371,19 @@ def capture_run_metadata(output_path: str, random_seed: int = 42) -> RunMetadata
     return metadata
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # CLI usage
-    import argparse
 
-    parser = argparse.ArgumentParser(description='Capture run metadata')
-    parser.add_argument('--output', '-o', required=True, help='Output JSON file')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed')
+    from ztb.utils.cli_common import CLIFormatter, CLIValidator, create_standard_parser
+
+    parser = create_standard_parser("Capture run metadata")
+    parser.add_argument("--output", "-o", required=True, help="Output JSON file")
+    parser.add_argument(
+        "--seed",
+        type=lambda x: CLIValidator.validate_positive_int(x, "seed"),
+        default=42,
+        help=CLIFormatter.format_help("Random seed", 42),
+    )
 
     args = parser.parse_args()
 

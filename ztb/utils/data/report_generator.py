@@ -11,12 +11,12 @@ Usage:
     generator.generate_markdown(results, "report.md")
 """
 
-import json
 import csv
+import json
 import traceback
 from datetime import datetime
-from typing import Dict, Any, List, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 class ReportGenerator:
@@ -37,7 +37,7 @@ class ReportGenerator:
         for result in results:
             all_keys.update(result.keys())
 
-        with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+        with open(file_path, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=sorted(all_keys))
             writer.writeheader()
             for result in results:
@@ -47,7 +47,7 @@ class ReportGenerator:
         """Generate JSON report"""
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
-        with open(file_path, 'w', encoding='utf-8') as jsonfile:
+        with open(file_path, "w", encoding="utf-8") as jsonfile:
             json.dump(results, jsonfile, indent=2, ensure_ascii=False, default=str)
 
     def generate_markdown(self, results: List[Dict[str, Any]], file_path: str) -> None:
@@ -62,7 +62,7 @@ class ReportGenerator:
         for result in results:
             all_keys.update(result.keys())
 
-        with open(file_path, 'w', encoding='utf-8') as mdfile:
+        with open(file_path, "w", encoding="utf-8") as mdfile:
             mdfile.write("# Report\n\n")
             mdfile.write(f"Total results: {len(results)}\n\n")
 
@@ -83,7 +83,12 @@ class ReportGenerator:
                             row.append(str(value))
                     mdfile.write("| " + " | ".join(row) + " |\n")
 
-    def save_experiment_dump(self, experiment_id: str, config: Dict[str, Any], error: Optional[Exception] = None) -> None:
+    def save_experiment_dump(
+        self,
+        experiment_id: str,
+        config: Dict[str, Any],
+        error: Optional[Exception] = None,
+    ) -> None:
         """Save minimal experiment dump on failure"""
         dump_dir = Path("logs/dumps")
         dump_dir.mkdir(parents=True, exist_ok=True)
@@ -93,9 +98,9 @@ class ReportGenerator:
             "timestamp": datetime.now().isoformat(),
             "config": config,
             "error": str(error) if error else None,
-            "traceback": traceback.format_exc() if error else None
+            "traceback": traceback.format_exc() if error else None,
         }
 
         dump_file = dump_dir / f"dump-{experiment_id}.json"
-        with open(dump_file, 'w', encoding='utf-8') as f:
+        with open(dump_file, "w", encoding="utf-8") as f:
             json.dump(dump_data, f, indent=2, ensure_ascii=False, default=str)

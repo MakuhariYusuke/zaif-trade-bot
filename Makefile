@@ -49,6 +49,9 @@ format:  ## Format code with black and isort
 	black ztb/ tests/ scripts/
 	isort --profile black ztb/ tests/ scripts/
 
+audit:  ## Run security audit (pip-audit)
+	pip-audit
+
 # Documentation
 docs:  ## Generate documentation (placeholder)
 	@echo "Documentation generation not yet implemented"
@@ -74,7 +77,7 @@ clean:  ## Clean up temporary files and caches
 	find . -name "*.pyd" -delete
 
 # Development workflow shortcuts
-check: lint typecheck test  ## Run full code quality check (lint + typecheck + test)
+check: lint typecheck audit test  ## Run full code quality check (lint + typecheck + audit + test)
 
 ci: check smoke  ## Run CI-equivalent checks locally
 
@@ -86,4 +89,31 @@ info:  ## Show Python environment information
 	@echo "NPM version: $$(npm --version)"
 
 # Quick development cycle
-dev: format lint typecheck unit  ## Quick development cycle (format + lint + typecheck + unit tests)
+dev: format lint typecheck audit unit  ## Quick development cycle (format + lint + typecheck + audit + unit tests)
+
+# 1M Training orchestration targets
+1m-start:  ## Start 1M training session (requires CORR variable)
+	@if [ -z "$(CORR)" ]; then \
+		echo "Error: CORR variable must be set (e.g., CORR=$$(date -u +%Y%m%dT%H%M%SZ))"; \
+		exit 1; \
+	fi
+	python -m ztb.training.supervise_1m --correlation-id $(CORR)
+
+1m-watch:  ## Watch running 1M training session (requires CORR variable)
+	@if [ -z "$(CORR)" ]; then \
+		echo "Error: CORR variable must be set"; \
+		exit 1; \
+	fi
+	ZTB_WATCH_STALL_MIN=10 ZTB_WATCH_RSS_MB=2048 ZTB_WATCH_VRAM_MB=4096 \
+	python -m ztb.training.watch_1m --correlation-id $(CORR)
+
+1m-rollup:  ## Generate rollup artifacts for 1M training session (requires CORR variable)
+	@if [ -z "$(CORR)" ]; then \
+		echo "Error: CORR variable must be set"; \
+		exit 1; \
+	fi
+	python -m ztb.training.rollup_artifacts --correlation-id $(CORR) --interval-minutes 5
+
+1m-stop:  ## Stop 1M training session
+	touch ztb.stop
+	@echo "Stop signal sent. Training will stop gracefully."

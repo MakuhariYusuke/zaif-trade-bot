@@ -1,11 +1,13 @@
 """Unit tests for risk management module."""
 
-import pytest
 from unittest.mock import Mock
-from ztb.risk.profiles import get_risk_profile, create_custom_risk_profile
-from ztb.risk.rules import RiskRuleEngine
-from ztb.risk.checks import RiskChecker
+
+import pytest
+
 from ztb.risk import RiskManager
+from ztb.risk.checks import RiskChecker
+from ztb.risk.profiles import create_custom_risk_profile, get_risk_profile
+from ztb.risk.rules import RiskRuleEngine
 
 
 class TestRiskProfiles:
@@ -48,7 +50,7 @@ class TestRiskProfiles:
         custom = create_custom_risk_profile(
             max_position_notional=75000,
             daily_loss_limit_pct=0.03,
-            max_trades_per_hour=3
+            max_trades_per_hour=3,
         )
 
         assert custom.max_position_notional == 75000
@@ -67,14 +69,12 @@ class TestRiskRuleEngine:
     def test_initialization(self):
         """Test engine initializes correctly."""
         assert self.engine.limits == self.profile
-        assert hasattr(self.engine, 'check_daily_loss_limit')
-        assert hasattr(self.engine, 'check_position_size')
+        assert hasattr(self.engine, "check_daily_loss_limit")
+        assert hasattr(self.engine, "check_position_size")
 
     def test_check_position_limits_pass(self):
         """Test position limits check passes."""
-        result, message = self.engine.check_position_size(
-            position_notional=50000
-        )
+        result, message = self.engine.check_position_size(position_notional=50000)
 
         assert result is True
         assert message == ""
@@ -135,9 +135,7 @@ class TestRiskRuleEngine:
     def test_check_drawdown_limit_pass(self):
         """Test drawdown limit check passes."""
         self.engine.portfolio_value = 100000  # Same as peak, no drawdown
-        result, message = self.engine.check_max_drawdown(
-            peak_value=100000
-        )
+        result, message = self.engine.check_max_drawdown(peak_value=100000)
 
         assert result is True
         assert message == ""
@@ -146,9 +144,7 @@ class TestRiskRuleEngine:
         """Test drawdown limit check fails."""
         # Set current portfolio value to 85k with peak of 100k = 15% drawdown > 10% limit
         self.engine.portfolio_value = 85000
-        result, message = self.engine.check_max_drawdown(
-            peak_value=100000
-        )
+        result, message = self.engine.check_max_drawdown(peak_value=100000)
 
         assert result is False
         assert "Max drawdown exceeded" in message
@@ -165,7 +161,7 @@ class TestRiskChecker:
     def test_initialization(self):
         """Test checker initializes correctly."""
         assert self.checker.engine.limits == self.profile
-        assert hasattr(self.checker, 'pre_trade_check')
+        assert hasattr(self.checker, "pre_trade_check")
 
     def test_validate_trade_pass(self):
         """Test trade validation passes."""
@@ -173,7 +169,7 @@ class TestRiskChecker:
         result, message = self.checker.pre_trade_check(
             trade_notional=1000,  # 1000/52000 = 0.0192 < 0.02
             position_notional=20000,
-            peak_value=52000
+            peak_value=52000,
         )
 
         assert result is True
@@ -185,7 +181,7 @@ class TestRiskChecker:
         result, message = self.checker.pre_trade_check(
             trade_notional=1000,
             position_notional=60000,  # 60k > 50k limit
-            peak_value=52000
+            peak_value=52000,
         )
 
         assert result is False
@@ -198,7 +194,7 @@ class TestRiskChecker:
         result, message = self.checker.pre_trade_check(
             trade_notional=10000,
             position_notional=20000,
-            peak_value=55000  # Drawdown = (55k-30k)/55k = 45% > 5%
+            peak_value=55000,  # Drawdown = (55k-30k)/55k = 45% > 5%
         )
 
         assert result is False
@@ -215,8 +211,8 @@ class TestRiskManager:
     def test_initialization(self):
         """Test manager initializes correctly."""
         assert self.manager.limits is not None
-        assert hasattr(self.manager, 'validate_and_execute_trade')
-        assert hasattr(self.manager, 'get_status_report')
+        assert hasattr(self.manager, "validate_and_execute_trade")
+        assert hasattr(self.manager, "get_status_report")
 
     def test_validate_and_execute_trade_approved(self):
         """Test trade validation and execution when approved."""
@@ -230,9 +226,9 @@ class TestRiskManager:
             trade_notional=1000,  # 1000/100000 = 0.01 < 0.02
             position_notional=30000,
             peak_value=105000,
-            symbol='BTC_JPY',
-            side='buy',
-            quantity=0.001
+            symbol="BTC_JPY",
+            side="buy",
+            quantity=0.001,
         )
 
         assert allowed is True
@@ -253,9 +249,9 @@ class TestRiskManager:
             trade_notional=60000,
             position_notional=60000,  # Exceeds position limit
             peak_value=105000,
-            symbol='BTC_JPY',
-            side='buy',
-            quantity=0.001
+            symbol="BTC_JPY",
+            side="buy",
+            quantity=0.001,
         )
 
         assert allowed is False
@@ -275,19 +271,21 @@ class TestRiskManager:
             trade_notional=20000,
             position_notional=0,
             peak_value=100000,
-            symbol='BTC_JPY',
-            side='buy',
-            quantity=0.001
+            symbol="BTC_JPY",
+            side="buy",
+            quantity=0.001,
         )
 
         status = self.manager.get_status_report()
 
-        assert 'profile' in status
-        assert 'current_status' in status
-        assert 'limits' in status
-        assert hasattr(status['profile'], 'max_position_notional')  # profile is RiskLimits object
-        assert 'trades_this_hour' in status['current_status']
+        assert "profile" in status
+        assert "current_status" in status
+        assert "limits" in status
+        assert hasattr(
+            status["profile"], "max_position_notional"
+        )  # profile is RiskLimits object
+        assert "trades_this_hour" in status["current_status"]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main([__file__])

@@ -4,21 +4,23 @@ Job manager for parallel ML training execution.
 Manages 100k × 10 job splitting and execution with timeout and aggregation.
 """
 
-import os
+import hashlib
 import json
-import time
 import logging
 import sqlite3
-import numpy as np
-import hashlib
 import subprocess
+import time
+from concurrent.futures import ProcessPoolExecutor, TimeoutError, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Callable, Optional
-from concurrent.futures import ProcessPoolExecutor, as_completed, TimeoutError
-from ztb.monitoring import get_exporter
+from typing import Any, Callable, Dict, List, Optional
+
+import numpy as np
+
+from ztb.ops.monitoring.monitoring import get_exporter
 
 logger = logging.getLogger(__name__)
+
 
 class JobStateDB:
     """
@@ -33,7 +35,7 @@ class JobStateDB:
     def _init_db(self):
         """Initialize database schema"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute('''
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS jobs (
                     id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -44,69 +46,86 @@ class JobStateDB:
                     created_at REAL DEFAULT (strftime('%s', 'now')),
                     updated_at REAL DEFAULT (strftime('%s', 'now'))
                 )
-            ''')
+            """)
             conn.commit()
 
-    def save_job_state(self, job_id: str, status: str, start_time: Optional[float] = None,
-                       end_time: Optional[float] = None, checkpoint_path: Optional[str] = None,
-                       metrics: Optional[Dict[str, Any]] = None):
+    def save_job_state(
+        self,
+        job_id: str,
+        status: str,
+        start_time: Optional[float] = None,
+        end_time: Optional[float] = None,
+        checkpoint_path: Optional[str] = None,
+        metrics: Optional[Dict[str, Any]] = None,
+    ):
         """Save or update job state"""
         with sqlite3.connect(self.db_path) as conn:
             metrics_json = json.dumps(metrics) if metrics else None
-            conn.execute('''
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO jobs
                 (id, status, start_time, end_time, checkpoint_path, metrics_json, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, strftime('%s', 'now'))
-            ''', (job_id, status, start_time, end_time, checkpoint_path, metrics_json))
+            """,
+                (job_id, status, start_time, end_time, checkpoint_path, metrics_json),
+            )
             conn.commit()
 
     def get_job_state(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Get job state by ID"""
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
+            cursor = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
             row = cursor.fetchone()
             if row:
                 return {
-                    'id': row[0],
-                    'status': row[1],
-                    'start_time': row[2],
-                    'end_time': row[3],
-                    'checkpoint_path': row[4],
-                    'metrics': json.loads(row[5]) if row[5] else None,
-                    'created_at': row[6],
-                    'updated_at': row[7]
+                    "id": row[0],
+                    "status": row[1],
+                    "start_time": row[2],
+                    "end_time": row[3],
+                    "checkpoint_path": row[4],
+                    "metrics": json.loads(row[5]) if row[5] else None,
+                    "created_at": row[6],
+                    "updated_at": row[7],
                 }
         return None
 
     def get_all_jobs(self) -> List[Dict[str, Any]]:
         """Get all jobs"""
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute('SELECT * FROM jobs ORDER BY created_at')
-            return [{
-                'id': row[0],
-                'status': row[1],
-                'start_time': row[2],
-                'end_time': row[3],
-                'checkpoint_path': row[4],
-                'metrics': json.loads(row[5]) if row[5] else None,
-                'created_at': row[6],
-                'updated_at': row[7]
-            } for row in cursor.fetchall()]
+            cursor = conn.execute("SELECT * FROM jobs ORDER BY created_at")
+            return [
+                {
+                    "id": row[0],
+                    "status": row[1],
+                    "start_time": row[2],
+                    "end_time": row[3],
+                    "checkpoint_path": row[4],
+                    "metrics": json.loads(row[5]) if row[5] else None,
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                }
+                for row in cursor.fetchall()
+            ]
 
     def get_incomplete_jobs(self) -> List[Dict[str, Any]]:
         """Get jobs that are not completed"""
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT * FROM jobs WHERE status != 'completed' ORDER BY created_at")
-            return [{
-                'id': row[0],
-                'status': row[1],
-                'start_time': row[2],
-                'end_time': row[3],
-                'checkpoint_path': row[4],
-                'metrics': json.loads(row[5]) if row[5] else None,
-                'created_at': row[6],
-                'updated_at': row[7]
-            } for row in cursor.fetchall()]
+            cursor = conn.execute(
+                "SELECT * FROM jobs WHERE status != 'completed' ORDER BY created_at"
+            )
+            return [
+                {
+                    "id": row[0],
+                    "status": row[1],
+                    "start_time": row[2],
+                    "end_time": row[3],
+                    "checkpoint_path": row[4],
+                    "metrics": json.loads(row[5]) if row[5] else None,
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                }
+                for row in cursor.fetchall()
+            ]
 
 
 class JobManager:
@@ -125,8 +144,8 @@ class JobManager:
 
         # Job configuration
         self.total_steps = 1000000  # 1M steps
-        self.job_size = 100000     # 100k steps per job
-        self.num_repeats = 10       # 10 repeats per job size
+        self.job_size = 100000  # 100k steps per job
+        self.num_repeats = 10  # 10 repeats per job size
 
         # Results storage
         self.results_dir = self.base_dir / "results"
@@ -149,7 +168,7 @@ class JobManager:
                 ["git", "rev-parse", "HEAD"],
                 capture_output=True,
                 text=True,
-                cwd=Path(__file__).parent.parent.parent
+                cwd=Path(__file__).parent.parent.parent,
             )
             if result.returncode == 0:
                 return result.stdout.strip()
@@ -179,7 +198,7 @@ class JobManager:
             "input_hash": self._get_input_hash(job_config),
             "code_hash": self._get_code_hash(),
             "created_at": datetime.now().isoformat(),
-            "status": "pending"
+            "status": "pending",
         }
 
     def _get_input_hash(self, job_config: Dict[str, Any]) -> str:
@@ -188,21 +207,21 @@ class JobManager:
             "repeat": job_config["repeat"],
             "start_step": job_config["start_step"],
             "end_step": job_config["end_step"],
-            "steps": job_config["steps"]
+            "steps": job_config["steps"],
         }
         return hashlib.md5(json.dumps(input_data, sort_keys=True).encode()).hexdigest()
 
     def _save_manifest(self, manifest: Dict[str, Any]):
         """Save job manifest to file"""
         manifest_file = self.manifest_dir / f"{manifest['job_id']}.json"
-        with open(manifest_file, 'w') as f:
+        with open(manifest_file, "w") as f:
             json.dump(manifest, f, indent=2)
 
     def _load_manifest(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Load job manifest from file"""
         manifest_file = self.manifest_dir / f"{job_id}.json"
         if manifest_file.exists():
-            with open(manifest_file, 'r') as f:
+            with open(manifest_file, "r") as f:
                 return json.load(f)
         return None
 
@@ -214,8 +233,10 @@ class JobManager:
 
         # Check if manifest matches current job
         current_manifest = self._create_job_manifest(job_config)
-        if (manifest["input_hash"] != current_manifest["input_hash"] or
-            manifest["code_hash"] != current_manifest["code_hash"]):
+        if (
+            manifest["input_hash"] != current_manifest["input_hash"]
+            or manifest["code_hash"] != current_manifest["code_hash"]
+        ):
             return False
 
         # Check if result file exists and is valid
@@ -225,7 +246,7 @@ class JobManager:
 
         # Verify result file is not corrupted
         try:
-            with open(result_file, 'r') as f:
+            with open(result_file, "r") as f:
                 result = json.load(f)
                 return result.get("status") == "completed"
         except Exception:
@@ -245,19 +266,24 @@ class JobManager:
                 end_step = min(start_step + self.job_size, self.total_steps)
 
                 job_config = {
-                    "job_id": f"job_{repeat:02d}_{start_step//self.job_size:02d}",
+                    "job_id": f"job_{repeat:02d}_{start_step // self.job_size:02d}",
                     "repeat": repeat,
                     "start_step": start_step,
                     "end_step": end_step,
                     "steps": end_step - start_step,
-                    "output_file": self.results_dir / f"result_{repeat:02d}_{start_step//self.job_size:02d}.json"
+                    "output_file": self.results_dir
+                    / f"result_{repeat:02d}_{start_step // self.job_size:02d}.json",
                 }
                 jobs.append(job_config)
 
         logger.info(f"Split into {len(jobs)} jobs")
         return jobs
 
-    def execute_job(self, job_config: Dict[str, Any], train_function: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Dict[str, Any]:
+    def execute_job(
+        self,
+        job_config: Dict[str, Any],
+        train_function: Callable[[Dict[str, Any]], Dict[str, Any]],
+    ) -> Dict[str, Any]:
         """
         Execute a single training job.
 
@@ -292,7 +318,7 @@ class JobManager:
                 "status": "completed",
                 "execution_time": execution_time,
                 "result": result,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
         except TimeoutError:
@@ -303,7 +329,7 @@ class JobManager:
                 "status": "timeout",
                 "execution_time": execution_time,
                 "error": "Timeout",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             self.monitor.record_job_completion("timeout", execution_time)
 
@@ -315,14 +341,14 @@ class JobManager:
                 "status": "failed",
                 "execution_time": execution_time,
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             self.monitor.record_job_completion("failed", execution_time)
             self.monitor.record_error("job_execution")
 
         # Save job result
         output_file = job_config["output_file"]
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(job_result, f, indent=2)
 
         # Update manifest
@@ -340,18 +366,22 @@ class JobManager:
             start_time=start_time,
             end_time=end_time,
             checkpoint_path=str(job_config.get("output_file", "")),
-            metrics=metrics
+            metrics=metrics,
         )
 
         logger.info(f"Job {job_id} finished with status: {job_result['status']}")
 
         # Record successful completion if not already recorded
-        if job_result['status'] == 'completed':
+        if job_result["status"] == "completed":
             self.monitor.record_job_completion("success", execution_time)
 
         return job_result
 
-    def run_all_jobs(self, train_function: Callable[[Dict[str, Any]], Dict[str, Any]], max_workers: int = 4) -> Dict[str, Any]:
+    def run_all_jobs(
+        self,
+        train_function: Callable[[Dict[str, Any]], Dict[str, Any]],
+        max_workers: int = 4,
+    ) -> Dict[str, Any]:
         """
         Run all jobs in parallel.
 
@@ -363,22 +393,28 @@ class JobManager:
             Aggregated results
         """
         jobs = self.split_jobs()
-        
+
         # Check for incomplete jobs from previous runs
         incomplete_jobs = self.state_db.get_incomplete_jobs()
         if incomplete_jobs:
-            logger.info(f"Found {len(incomplete_jobs)} incomplete jobs from previous run")
+            logger.info(
+                f"Found {len(incomplete_jobs)} incomplete jobs from previous run"
+            )
             # For now, we'll run all jobs again. In production, you might want to resume specific jobs
-        
+
         completed_jobs = []
         failed_jobs = []
 
-        logger.info(f"Starting execution of {len(jobs)} jobs with {max_workers} workers")
+        logger.info(
+            f"Starting execution of {len(jobs)} jobs with {max_workers} workers"
+        )
 
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             # Submit all jobs
             future_to_job = {
-                executor.submit(self._execute_job_with_timeout, job, train_function): job
+                executor.submit(
+                    self._execute_job_with_timeout, job, train_function
+                ): job
                 for job in jobs
             }
 
@@ -393,31 +429,35 @@ class JobManager:
                         failed_jobs.append(result)
                 except TimeoutError:
                     logger.error(f"Job {job['job_id']} future timed out")
-                    failed_jobs.append({
-                        "job_id": job["job_id"],
-                        "status": "timeout",
-                        "error": "Future timeout"
-                    })
+                    failed_jobs.append(
+                        {
+                            "job_id": job["job_id"],
+                            "status": "timeout",
+                            "error": "Future timeout",
+                        }
+                    )
                 except Exception as e:
                     logger.error(f"Job {job['job_id']} future failed: {e}")
-                    failed_jobs.append({
-                        "job_id": job["job_id"],
-                        "status": "failed",
-                        "error": str(e)
-                    })
+                    failed_jobs.append(
+                        {"job_id": job["job_id"], "status": "failed", "error": str(e)}
+                    )
 
         # Aggregate results
         summary = self._aggregate_results(completed_jobs, failed_jobs)
 
         # Save summary
         summary_file = self.base_dir / "summary.json"
-        with open(summary_file, 'w') as f:
+        with open(summary_file, "w") as f:
             json.dump(summary, f, indent=2)
 
         logger.info(f"Job execution completed. Summary saved to {summary_file}")
         return summary
 
-    def _execute_job_with_timeout(self, job_config: Dict[str, Any], train_function: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Dict[str, Any]:
+    def _execute_job_with_timeout(
+        self,
+        job_config: Dict[str, Any],
+        train_function: Callable[[Dict[str, Any]], Dict[str, Any]],
+    ) -> Dict[str, Any]:
         """Execute job with timeout handling (Windows-compatible)"""
         try:
             # For Windows compatibility, timeout is handled in run_all_jobs
@@ -429,11 +469,12 @@ class JobManager:
                 "job_id": job_config.get("job_id", "unknown"),
                 "status": "failed",
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
-    def _aggregate_results(self, completed_jobs: List[Dict[str, Any]],
-                          failed_jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_results(
+        self, completed_jobs: List[Dict[str, Any]], failed_jobs: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Aggregate results from all jobs.
 
@@ -450,7 +491,7 @@ class JobManager:
                 "completed_jobs": 0,
                 "failed_jobs": len(failed_jobs),
                 "success_rate": 0.0,
-                "error": "No jobs completed successfully"
+                "error": "No jobs completed successfully",
             }
 
         # Extract metrics from completed jobs
@@ -474,30 +515,31 @@ class JobManager:
             "total_jobs": len(completed_jobs) + len(failed_jobs),
             "completed_jobs": len(completed_jobs),
             "failed_jobs": len(failed_jobs),
-            "success_rate": len(completed_jobs) / (len(completed_jobs) + len(failed_jobs)),
+            "success_rate": len(completed_jobs)
+            / (len(completed_jobs) + len(failed_jobs)),
             "pnl": {
                 "mean": float(np.mean(pnl_values)) if pnl_values else 0,
                 "std": float(np.std(pnl_values)) if pnl_values else 0,
                 "min": float(np.min(pnl_values)) if pnl_values else 0,
-                "max": float(np.max(pnl_values)) if pnl_values else 0
+                "max": float(np.max(pnl_values)) if pnl_values else 0,
             },
             "win_rate": {
                 "mean": float(np.mean(win_rates)) if win_rates else 0,
-                "std": float(np.std(win_rates)) if win_rates else 0
+                "std": float(np.std(win_rates)) if win_rates else 0,
             },
             "max_drawdown": {
                 "mean": float(np.mean(max_drawdowns)) if max_drawdowns else 0,
-                "max": float(np.max(max_drawdowns)) if max_drawdowns else 0
+                "max": float(np.max(max_drawdowns)) if max_drawdowns else 0,
             },
             "sharpe_ratio": {
                 "mean": float(np.mean(sharpe_ratios)) if sharpe_ratios else 0,
-                "std": float(np.std(sharpe_ratios)) if sharpe_ratios else 0
+                "std": float(np.std(sharpe_ratios)) if sharpe_ratios else 0,
             },
             "execution_time": {
                 "mean": float(np.mean(execution_times)) if execution_times else 0,
-                "total": float(np.sum(execution_times)) if execution_times else 0
+                "total": float(np.sum(execution_times)) if execution_times else 0,
             },
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         return summary
@@ -513,7 +555,7 @@ class JobManager:
             output_file = job["output_file"]
             if output_file.exists():
                 try:
-                    with open(output_file, 'r') as f:
+                    with open(output_file, "r") as f:
                         result = json.load(f)
                         if result.get("status") == "completed":
                             completed += 1
@@ -536,5 +578,5 @@ class JobManager:
             "completed": completed,
             "running": running,
             "pending": pending,
-            "progress": completed / len(jobs) if jobs else 0
+            "progress": completed / len(jobs) if jobs else 0,
         }

@@ -4,18 +4,14 @@ Integration tests for the 1M learning validation pipeline.
 Tests end-to-end workflows combining backtest, paper trading, and risk management.
 """
 
-import pytest
-import tempfile
 import json
+import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+
 import pandas as pd
 
+from ztb.backtest.adapters import BuyAndHoldAdapter, SMACrossoverAdapter
 from ztb.backtest.runner import BacktestEngine
-from ztb.backtest.adapters import SMACrossoverAdapter, BuyAndHoldAdapter
-from ztb.live.sim_broker import SimBroker
-from ztb.live.paper_trader import PaperTrader
-from ztb.risk.checks import RiskManager
 
 
 class TestBacktestRiskIntegration:
@@ -27,31 +23,34 @@ class TestBacktestRiskIntegration:
 
         # Create sample data
         self.sample_data = [
-            {'timestamp': '2024-01-01 00:00:00', 'close': 100.0, 'volume': 1000},
-            {'timestamp': '2024-01-01 01:00:00', 'close': 101.0, 'volume': 1100},
-            {'timestamp': '2024-01-01 02:00:00', 'close': 102.0, 'volume': 1200},
-            {'timestamp': '2024-01-01 03:00:00', 'close': 103.0, 'volume': 1300},
-            {'timestamp': '2024-01-01 04:00:00', 'close': 104.0, 'volume': 1400},
+            {"timestamp": "2024-01-01 00:00:00", "close": 100.0, "volume": 1000},
+            {"timestamp": "2024-01-01 01:00:00", "close": 101.0, "volume": 1100},
+            {"timestamp": "2024-01-01 02:00:00", "close": 102.0, "volume": 1200},
+            {"timestamp": "2024-01-01 03:00:00", "close": 103.0, "volume": 1300},
+            {"timestamp": "2024-01-01 04:00:00", "close": 104.0, "volume": 1400},
         ]
 
         # Save sample data
         self.data_file = self.temp_dir / "sample_data.json"
-        with open(self.data_file, 'w') as f:
+        with open(self.data_file, "w") as f:
             json.dump(self.sample_data, f)
 
     def teardown_method(self):
         """Clean up test fixtures."""
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def test_backtest_with_risk_controls(self):
         """Test backtest engine integrated with risk management."""
         # Create sample data
-        data = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=10, freq='H'),
-            'close': [100 + i for i in range(10)],
-            'volume': [1000] * 10
-        })
+        data = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2024-01-01", periods=10, freq="H"),
+                "close": [100 + i for i in range(10)],
+                "volume": [1000] * 10,
+            }
+        )
 
         # Initialize components
         strategy = SMACrossoverAdapter(fast_period=3, slow_period=5)
@@ -68,11 +67,13 @@ class TestBacktestRiskIntegration:
     def test_backtest_risk_rejection(self):
         """Test that risk controls can block trades during backtest."""
         # Create sample data
-        data = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=10, freq='H'),
-            'close': [100 + i for i in range(10)],
-            'volume': [1000] * 10
-        })
+        data = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2024-01-01", periods=10, freq="H"),
+                "close": [100 + i for i in range(10)],
+                "volume": [1000] * 10,
+            }
+        )
 
         # Use simple strategy
         strategy = BuyAndHoldAdapter()
@@ -96,6 +97,7 @@ class TestPaperTradingRiskIntegration:
     def teardown_method(self):
         """Clean up test fixtures."""
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def test_paper_trader_placeholder(self):
@@ -116,29 +118,34 @@ class TestEndToEndValidation:
         base_price = 100.0
         for i in range(100):  # 100 data points
             price = base_price + (i * 0.1) + (i % 10 - 5) * 0.5  # Trending with noise
-            self.test_data.append({
-                'timestamp': f'2024-01-{str(i//24 + 1).zfill(2)} {str(i%24).zfill(2)}:00:00',
-                'close': price,
-                'volume': 1000 + i * 10
-            })
+            self.test_data.append(
+                {
+                    "timestamp": f"2024-01-{str(i // 24 + 1).zfill(2)} {str(i % 24).zfill(2)}:00:00",
+                    "close": price,
+                    "volume": 1000 + i * 10,
+                }
+            )
 
         self.data_file = self.temp_dir / "test_data.json"
-        with open(self.data_file, 'w') as f:
+        with open(self.data_file, "w") as f:
             json.dump(self.test_data, f)
 
     def teardown_method(self):
         """Clean up test fixtures."""
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def test_complete_validation_pipeline(self):
         """Test the complete validation pipeline from backtest to paper trading."""
         # Phase 1: Backtest with risk controls
-        data = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=20, freq='H'),
-            'close': [100 + i * 0.5 for i in range(20)],
-            'volume': [1000] * 20
-        })
+        data = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2024-01-01", periods=20, freq="H"),
+                "close": [100 + i * 0.5 for i in range(20)],
+                "volume": [1000] * 20,
+            }
+        )
 
         strategy = SMACrossoverAdapter(fast_period=5, slow_period=10)
         backtest_engine = BacktestEngine()
@@ -157,11 +164,13 @@ class TestEndToEndValidation:
     def test_deterministic_execution(self):
         """Test that the pipeline produces deterministic results."""
         # Create consistent data
-        data = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=10, freq='H'),
-            'close': [100 + i for i in range(10)],
-            'volume': [1000] * 10
-        })
+        data = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2024-01-01", periods=10, freq="H"),
+                "close": [100 + i for i in range(10)],
+                "volume": [1000] * 10,
+            }
+        )
 
         # First run
         strategy1 = BuyAndHoldAdapter()

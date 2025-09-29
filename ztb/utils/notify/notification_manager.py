@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class NotificationManager:
     """Unified notification manager for errors, logs, and alerts"""
 
-    def __init__(self, logger_manager: 'LoggerManager') -> None:
+    def __init__(self, logger_manager: "LoggerManager") -> None:
         super().__init__()
         self.logger_manager = logger_manager
 
@@ -33,7 +33,9 @@ class NotificationManager:
         else:
             color = color or 0x808080
 
-        self.logger_manager.send_custom_notification(f"📝 {level.capitalize()}", msg, color=color)
+        self.logger_manager.send_custom_notification(
+            f"📝 {level.capitalize()}", msg, color=color
+        )
 
     def send_alert(self, title: str, message: str, color: int = 0xFFFF00) -> None:
         """Send alert notification"""

@@ -5,11 +5,10 @@ Provides state machine for order lifecycle management with idempotency
 to prevent duplicate orders and ensure reliable execution.
 """
 
-import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from ztb.utils.observability import get_logger
 
@@ -18,18 +17,20 @@ logger = get_logger(__name__)
 
 class OrderState(Enum):
     """Order states in the lifecycle."""
-    PENDING = "pending"      # Order submitted but not confirmed
+
+    PENDING = "pending"  # Order submitted but not confirmed
     CONFIRMED = "confirmed"  # Order confirmed by exchange
-    PARTIAL = "partial"      # Partially filled
-    FILLED = "filled"        # Fully filled
+    PARTIAL = "partial"  # Partially filled
+    FILLED = "filled"  # Fully filled
     CANCELLED = "cancelled"  # Cancelled by user
-    REJECTED = "rejected"    # Rejected by exchange
-    EXPIRED = "expired"      # Expired
-    FAILED = "failed"        # Failed to submit
+    REJECTED = "rejected"  # Rejected by exchange
+    EXPIRED = "expired"  # Expired
+    FAILED = "failed"  # Failed to submit
 
 
 class OrderEvent(Enum):
     """Events that can trigger state transitions."""
+
     SUBMIT = "submit"
     CONFIRM = "confirm"
     FILL = "fill"
@@ -43,6 +44,7 @@ class OrderEvent(Enum):
 @dataclass
 class OrderData:
     """Order data structure."""
+
     order_id: str
     client_order_id: str
     symbol: str
@@ -97,7 +99,9 @@ class OrderStateMachine:
         """
         self.order_data = order_data
         self.current_state = OrderState.PENDING
-        self.state_history: list[tuple[OrderState, float]] = [(OrderState.PENDING, time.time())]
+        self.state_history: list[tuple[OrderState, float]] = [
+            (OrderState.PENDING, time.time())
+        ]
         self.idempotency_key = f"{order_data.client_order_id}_{order_data.symbol}"
 
     def transition(self, event: OrderEvent, **kwargs) -> bool:
@@ -112,7 +116,9 @@ class OrderStateMachine:
             True if transition successful, False otherwise
         """
         if event not in self.TRANSITIONS[self.current_state]:
-            logger.warning(f"Invalid transition {event} from {self.current_state} for order {self.order_data.order_id}")
+            logger.warning(
+                f"Invalid transition {event} from {self.current_state} for order {self.order_data.order_id}"
+            )
             return False
 
         new_state = self.TRANSITIONS[self.current_state][event]
@@ -120,7 +126,9 @@ class OrderStateMachine:
         self.current_state = new_state
         self.state_history.append((new_state, time.time()))
 
-        logger.info(f"Order {self.order_data.order_id} transitioned: {old_state} -> {new_state} ({event})")
+        logger.info(
+            f"Order {self.order_data.order_id} transitioned: {old_state} -> {new_state} ({event})"
+        )
         return True
 
     def can_transition(self, event: OrderEvent) -> bool:
@@ -188,7 +196,9 @@ class IdempotencyManager:
             del self._order_states[order_id]
 
         if expired_orders:
-            logger.info(f"Cleaned up {len(expired_orders)} expired order state machines")
+            logger.info(
+                f"Cleaned up {len(expired_orders)} expired order state machines"
+            )
 
 
 # Global instance

@@ -2,12 +2,12 @@
 Tests for Event Sourcing functionality in CoverageValidator.
 """
 
-import pytest
 import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
-from ztb.evaluation.status import CoverageValidator, FeatureStatus
+
+from ztb.evaluation.status import CoverageValidator
 
 
 class TestEventSourcing:
@@ -15,18 +15,10 @@ class TestEventSourcing:
 
     def test_record_event_basic(self):
         """Test basic event recording"""
-        coverage_data = {
-            "events": [],
-            "current_state": {},
-            "metadata": {}
-        }
+        coverage_data = {"events": [], "current_state": {}, "metadata": {}}
 
         CoverageValidator.record_event(
-            coverage_data,
-            "feature_promoted",
-            "rsi_14",
-            "pending",
-            "staging"
+            coverage_data, "feature_promoted", "rsi_14", "pending", "staging"
         )
 
         assert len(coverage_data["events"]) == 1
@@ -41,25 +33,16 @@ class TestEventSourcing:
 
     def test_record_event_with_details(self):
         """Test event recording with additional details"""
-        coverage_data = {
-            "events": [],
-            "current_state": {},
-            "metadata": {}
-        }
+        coverage_data = {"events": [], "current_state": {}, "metadata": {}}
 
         details = {
             "sharpe_ratio": 0.45,
             "win_rate": 0.62,
-            "criteria_met": ["sharpe_ratio", "win_rate"]
+            "criteria_met": ["sharpe_ratio", "win_rate"],
         }
 
         CoverageValidator.record_event(
-            coverage_data,
-            "feature_promoted",
-            "ema_20",
-            "staging",
-            "verified",
-            details
+            coverage_data, "feature_promoted", "ema_20", "staging", "verified", details
         )
 
         assert len(coverage_data["events"]) == 1
@@ -71,17 +54,15 @@ class TestEventSourcing:
 
     def test_record_event_multiple_events(self):
         """Test recording multiple events"""
-        coverage_data = {
-            "events": [],
-            "current_state": {},
-            "metadata": {}
-        }
+        coverage_data = {"events": [], "current_state": {}, "metadata": {}}
 
         # Record first event
         CoverageValidator.record_event(coverage_data, "feature_added", "rsi_14")
 
         # Record second event
-        CoverageValidator.record_event(coverage_data, "feature_promoted", "rsi_14", "pending", "staging")
+        CoverageValidator.record_event(
+            coverage_data, "feature_promoted", "rsi_14", "pending", "staging"
+        )
 
         assert len(coverage_data["events"]) == 2
 
@@ -104,16 +85,16 @@ class TestEventSourcing:
                     {
                         "timestamp": "2024-01-15T10:00:00",
                         "type": "feature_promoted",
-                        "feature": "rsi_14"
+                        "feature": "rsi_14",
                     },
                     {
                         "timestamp": "2024-01-16T10:00:00",
                         "type": "feature_promoted",
-                        "feature": "ema_20"
-                    }
+                        "feature": "ema_20",
+                    },
                 ],
                 "current_state": {},
-                "metadata": {}
+                "metadata": {},
             }
 
             CoverageValidator.archive_coverage_data(coverage_data, str(archive_dir))
@@ -123,7 +104,7 @@ class TestEventSourcing:
             assert archive_file.exists()
 
             # Check archive contents
-            with open(archive_file, 'r') as f:
+            with open(archive_file, "r") as f:
                 archive_content = json.load(f)
 
             assert "events" in archive_content
@@ -136,11 +117,7 @@ class TestEventSourcing:
             archive_dir = Path(temp_dir) / "archive"
             archive_dir.mkdir()
 
-            coverage_data = {
-                "events": [],
-                "current_state": {},
-                "metadata": {}
-            }
+            coverage_data = {"events": [], "current_state": {}, "metadata": {}}
 
             # Should not create archive file
             CoverageValidator.archive_coverage_data(coverage_data, str(archive_dir))
@@ -162,7 +139,7 @@ class TestEventSourcing:
                         "type": "feature_promoted",
                         "feature": "rsi_14",
                         "from_status": "pending",
-                        "to_status": "staging"
+                        "to_status": "staging",
                     }
                 ],
                 "current_state": {
@@ -170,14 +147,12 @@ class TestEventSourcing:
                     "pending": ["ema_20"],
                     "verified": [],
                     "failed": [],
-                    "unverified": []
+                    "unverified": [],
                 },
-                "metadata": {
-                    "last_updated": "2024-01-15T10:00:00"
-                }
+                "metadata": {"last_updated": "2024-01-15T10:00:00"},
             }
 
-            with open(coverage_dir / "coverage.json", 'w') as f:
+            with open(coverage_dir / "coverage.json", "w") as f:
                 json.dump(main_coverage, f)
 
             # Load coverage
@@ -200,7 +175,7 @@ class TestEventSourcing:
                 {
                     "timestamp": "2024-01-14T10:00:00",
                     "type": "feature_added",
-                    "feature": "rsi_14"
+                    "feature": "rsi_14",
                 }
             ],
             "current_state": {
@@ -208,11 +183,9 @@ class TestEventSourcing:
                 "staging": [],
                 "pending": ["rsi_14"],
                 "failed": [],
-                "unverified": []
+                "unverified": [],
             },
-            "metadata": {
-                "last_updated": "2024-01-14T10:00:00"
-            }
+            "metadata": {"last_updated": "2024-01-14T10:00:00"},
         }
 
         source = {
@@ -222,7 +195,7 @@ class TestEventSourcing:
                     "type": "feature_promoted",
                     "feature": "rsi_14",
                     "from_status": "pending",
-                    "to_status": "staging"
+                    "to_status": "staging",
                 }
             ],
             "current_state": {
@@ -230,11 +203,9 @@ class TestEventSourcing:
                 "staging": ["rsi_14"],
                 "pending": [],
                 "failed": [],
-                "unverified": []
+                "unverified": [],
             },
-            "metadata": {
-                "last_updated": "2024-01-15T10:00:00"
-            }
+            "metadata": {"last_updated": "2024-01-15T10:00:00"},
         }
 
         CoverageValidator._merge_coverage_data(target, source, "test.json")
@@ -261,12 +232,10 @@ class TestEventSourcing:
                 "pending": ["ema_20"],
                 "failed": [],
                 "unverified": [],
-                "metadata": {
-                    "last_updated": "2024-01-15T10:00:00"
-                }
+                "metadata": {"last_updated": "2024-01-15T10:00:00"},
             }
 
-            with open(coverage_dir / "coverage.json", 'w') as f:
+            with open(coverage_dir / "coverage.json", "w") as f:
                 json.dump(old_coverage, f)
 
             # Load coverage
@@ -283,25 +252,31 @@ class TestEventSourcing:
 
     def test_event_sourcing_preserves_order(self):
         """Test that events are preserved in chronological order"""
-        coverage_data = {
-            "events": [],
-            "current_state": {},
-            "metadata": {}
-        }
+        coverage_data = {"events": [], "current_state": {}, "metadata": {}}
 
         # Record events with simulated timestamps
-        with patch('ztb.evaluation.status.datetime') as mock_datetime:
+        with patch("ztb.evaluation.status.datetime") as mock_datetime:
             # Event 1
-            mock_datetime.now.return_value.isoformat.return_value = "2024-01-15T08:00:00"
+            mock_datetime.now.return_value.isoformat.return_value = (
+                "2024-01-15T08:00:00"
+            )
             CoverageValidator.record_event(coverage_data, "feature_added", "rsi_14")
 
             # Event 2
-            mock_datetime.now.return_value.isoformat.return_value = "2024-01-15T09:00:00"
-            CoverageValidator.record_event(coverage_data, "feature_promoted", "rsi_14", "pending", "staging")
+            mock_datetime.now.return_value.isoformat.return_value = (
+                "2024-01-15T09:00:00"
+            )
+            CoverageValidator.record_event(
+                coverage_data, "feature_promoted", "rsi_14", "pending", "staging"
+            )
 
             # Event 3
-            mock_datetime.now.return_value.isoformat.return_value = "2024-01-15T10:00:00"
-            CoverageValidator.record_event(coverage_data, "feature_promoted", "rsi_14", "staging", "verified")
+            mock_datetime.now.return_value.isoformat.return_value = (
+                "2024-01-15T10:00:00"
+            )
+            CoverageValidator.record_event(
+                coverage_data, "feature_promoted", "rsi_14", "staging", "verified"
+            )
 
         assert len(coverage_data["events"]) == 3
 

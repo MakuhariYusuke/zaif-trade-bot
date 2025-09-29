@@ -2,11 +2,14 @@
 """
 Unit tests for coverage validation enhancements
 """
-import unittest
-import json
-from unittest.mock import Mock, patch
 
-from ztb.evaluation.status import CoverageValidator, validate_coverage_comprehensive, _get_feature_category
+import unittest
+
+from ztb.evaluation.status import (
+    CoverageValidator,
+    _get_feature_category,
+    validate_coverage_comprehensive,
+)
 
 
 class TestCoverageValidation(unittest.TestCase):
@@ -24,8 +27,8 @@ class TestCoverageValidation(unittest.TestCase):
             "business_rules": {
                 "trend_features_min": 2,
                 "oscillator_features_min": 1,
-                "total_verified_min": 5
-            }
+                "total_verified_min": 5,
+            },
         }
 
     def test_merge_coverage_data_strictness_priority(self):
@@ -35,14 +38,20 @@ class TestCoverageValidation(unittest.TestCase):
             "pending": [{"name": "ema_26", "reason": "insufficient_data"}],
             "unverified": [{"name": "sma_20", "reason": "not_tested"}],
             "failed": [],
-            "metadata": {"source_files": []}
+            "metadata": {"source_files": []},
         }
 
         new_data = {
             "verified": ["kama_5_20_10"],
-            "pending": [{"name": "ema_12", "reason": "high_nan_rate"}],  # Lower priority - should not override VERIFIED
-            "unverified": [{"name": "ema_26", "reason": "not_tested"}],   # Higher priority - should override PENDING
-            "failed": [{"name": "sma_20", "reason": "computation_error"}] # Lower priority - should not override UNVERIFIED
+            "pending": [
+                {"name": "ema_12", "reason": "high_nan_rate"}
+            ],  # Lower priority - should not override VERIFIED
+            "unverified": [
+                {"name": "ema_26", "reason": "not_tested"}
+            ],  # Higher priority - should override PENDING
+            "failed": [
+                {"name": "sma_20", "reason": "computation_error"}
+            ],  # Lower priority - should not override UNVERIFIED
         }
 
         CoverageValidator._merge_coverage_data(existing, new_data, "test_file.json")
@@ -51,11 +60,15 @@ class TestCoverageValidation(unittest.TestCase):
         self.assertIn("ema_12", existing["verified"])
 
         # PENDING should NOT be overridden by UNVERIFIED (lower priority)
-        ema_26_items = [item for item in existing["pending"] if item["name"] == "ema_26"]
+        ema_26_items = [
+            item for item in existing["pending"] if item["name"] == "ema_26"
+        ]
         self.assertEqual(len(ema_26_items), 1)
 
         # UNVERIFIED should not be overridden by FAILED
-        sma_20_items = [item for item in existing["unverified"] if item["name"] == "sma_20"]
+        sma_20_items = [
+            item for item in existing["unverified"] if item["name"] == "sma_20"
+        ]
         self.assertEqual(len(sma_20_items), 1)
 
         # New feature should be added
@@ -65,15 +78,22 @@ class TestCoverageValidation(unittest.TestCase):
         """Test comprehensive business rule validation"""
         # Valid coverage
         valid_coverage = {
-            "verified": ["ema_12", "ema_26", "kama_5_20_10", "rsi_14", "macd_12_26_9", "sma_20"],
+            "verified": [
+                "ema_12",
+                "ema_26",
+                "kama_5_20_10",
+                "rsi_14",
+                "macd_12_26_9",
+                "sma_20",
+            ],
             "pending": [{"name": "stoch_14_3_3", "reason": "insufficient_data"}],
             "failed": [{"name": "invalid_feature", "reason": "computation_error"}],
             "unverified": [],
             "business_rules": {
                 "trend_features_min": 3,
                 "oscillator_features_min": 2,
-                "total_verified_min": 5
-            }
+                "total_verified_min": 5,
+            },
         }
 
         is_valid, errors = validate_coverage_comprehensive(valid_coverage)
@@ -90,8 +110,8 @@ class TestCoverageValidation(unittest.TestCase):
             "business_rules": {
                 "trend_features_min": 1,
                 "oscillator_features_min": 1,
-                "total_verified_min": 1
-            }
+                "total_verified_min": 1,
+            },
         }
 
         is_valid, errors = validate_coverage_comprehensive(invalid_coverage)
@@ -108,8 +128,8 @@ class TestCoverageValidation(unittest.TestCase):
             "business_rules": {
                 "trend_features_min": 1,
                 "oscillator_features_min": 0,
-                "total_verified_min": 2
-            }
+                "total_verified_min": 2,
+            },
         }
 
         is_valid, errors = validate_coverage_comprehensive(invalid_coverage)
@@ -122,7 +142,7 @@ class TestCoverageValidation(unittest.TestCase):
             "verified": ["ema_12", "ema_26"],
             "pending": [],
             "failed": [],
-            "unverified": []
+            "unverified": [],
             # No business_rules key
         }
 
@@ -141,7 +161,13 @@ class TestCoverageValidation(unittest.TestCase):
 
     def test_get_feature_category_oscillator(self):
         """Test feature category detection for oscillators"""
-        oscillator_features = ["rsi_14", "stoch_14_3_3", "macd_12_26_9", "cci_20", "williams_r_14"]
+        oscillator_features = [
+            "rsi_14",
+            "stoch_14_3_3",
+            "macd_12_26_9",
+            "cci_20",
+            "williams_r_14",
+        ]
 
         for feature in oscillator_features:
             with self.subTest(feature=feature):
@@ -158,5 +184,5 @@ class TestCoverageValidation(unittest.TestCase):
                 self.assertEqual(category, "other")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

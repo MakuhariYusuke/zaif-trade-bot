@@ -1,118 +1,183 @@
 """
-Secrets and safety hygiene utilities for redacting sensitive data.
+Log redaction utilities for sensitive data protection.
 
-This module provides utilities to redact sensitive information from logs,
-outputs, and data structures to prevent accidental exposure of secrets.
+This module provides functions to redact sensitive information from log messages
+and data structures before they are written to logs.
 """
 
 import re
 from typing import Any, Dict, List, Union
 
 
-# Common patterns for sensitive data
-SENSITIVE_PATTERNS = [
-    # API keys (various formats)
-    r'(?i)(api[_-]?key|apikey)\s*[:=]\s*["\']?([a-zA-Z0-9_-]{20,})["\']?',
-    # Secret keys
-    r'(?i)(secret[_-]?key|secret)\s*[:=]\s*["\']?([a-zA-Z0-9_-]{20,})["\']?',
-    # Passwords
-    r'(?i)(password|passwd|pwd)\s*[:=]\s*["\']?([^"\']{3,})["\']?',
-    # Tokens
-    r'(?i)(token|bearer)\s*[:=]\s*["\']?([a-zA-Z0-9_.-]{20,})["\']?',
-    # Private keys (basic pattern)
-    r'(?i)-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----.*?-----END\s+(?:RSA\s+)?PRIVATE\s+KEY-----',
-    # Database URLs with credentials
-    r'(?i)(postgresql|mysql|mongodb)://([^:]+):([^@]+)@',
-    # Generic base64-like strings (long alphanumeric)
-    r'\b[A-Za-z0-9+/]{32,}\b',
-]
+class LogRedactor:
+    """Redacts sensitive information from log data."""
 
-REDACTED_PLACEHOLDER = "***REDACTED***"
+    # Patterns for sensitive data
+    SENSITIVE_PATTERNS = [
+        # API keys (common formats)
+        (r"api[_-]?key\s*[:=]\s*([a-zA-Z0-9_-]{15,})", "***API_KEY_REDACTED***"),
+        (r"key\s*[:=]\s*([a-zA-Z0-9_-]{15,})", "***KEY_REDACTED***"),
+        # Secret tokens
+        (r"secret\s*[:=]\s*([a-zA-Z0-9_-]{15,})", "***SECRET_REDACTED***"),
+        (r"token\s*[:=]\s*([a-zA-Z0-9_-]{15,})", "***TOKEN_REDACTED***"),
+        # Passwords
+        (r'password\s*[:=]\s*([^"\s]{3,})', "***PASSWORD_REDACTED***"),
+        (r'passwd\s*[:=]\s*([^"\s]{3,})', "***PASSWORD_REDACTED***"),
+        # Email addresses
+        (
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            "***EMAIL_REDACTED***",
+        ),
+        # Credit card numbers (basic pattern)
+        (r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b", "***CARD_NUMBER_REDACTED***"),
+        # Social security numbers (US)
+        (r"\b\d{3}[\s-]?\d{2}[\s-]?\d{4}\b", "***SSN_REDACTED***"),
+        # Private keys (PEM format headers)
+        (
+            r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
+            "***PRIVATE_KEY_REDACTED***",
+        ),
+        # Database connection strings
+        (r'(mongodb|mysql|postgresql)://[^"\s]+', "***DB_CONNECTION_REDACTED***"),
+        # Generic sensitive values in JSON-like structures
+        (
+            r'("password"|"secret"|"token"|"key"|"api_key")\s*:\s*"[^"]*"',
+            r'\1: "***REDACTED***"',
+        ),
+        (
+            r"('password'|'secret'|'token'|'key'|'api_key')\s*:\s*'[^']*'",
+            r"\1: '***REDACTED***'",
+        ),
+    ]
 
+    @staticmethod
+    def redact_text(text: str) -> str:
+        """
+        Redact sensitive information from a text string.
 
-def redact_sensitive_data(text: str) -> str:
-    """
-    Redact sensitive information from a text string.
+        Args:
+            text: The text to redact
 
-    Args:
-        text: Input text that may contain sensitive data
+        Returns:
+            The redacted text
+        """
+        if not text:
+            return text
 
-    Returns:
-        Text with sensitive data redacted
-    """
-    if not isinstance(text, str):
-        return str(text)
+        redacted = str(text)
+        for pattern, replacement in LogRedactor.SENSITIVE_PATTERNS:
+            redacted = re.sub(
+                pattern, replacement, redacted, flags=re.IGNORECASE | re.DOTALL
+            )
 
-    redacted = text
-    for pattern in SENSITIVE_PATTERNS:
-        redacted = re.sub(pattern, lambda m: m.group(0).replace(m.group(0), REDACTED_PLACEHOLDER), redacted)
+        return redacted
 
-    return redacted
+    @staticmethod
+    def redact_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Redact sensitive information from a dictionary recursively.
 
+        Args:
+            data: The dictionary to redact
 
-def redact_dict(data: Dict[str, Any], sensitive_keys: List[str] = None) -> Dict[str, Any]:
-    """
-    Redact sensitive values from a dictionary.
+        Returns:
+            A new dictionary with sensitive data redacted
+        """
+        if not isinstance(data, dict):
+            return data
 
-    Args:
-        data: Dictionary that may contain sensitive data
-        sensitive_keys: Additional keys to redact (case-insensitive)
+        redacted = {}
+        sensitive_keys = {
+            "password",
+            "passwd",
+            "secret",
+            "token",
+            "key",
+            "api_key",
+            "private_key",
+            "access_token",
+            "refresh_token",
+            "auth_token",
+            "email",
+            "ssn",
+            "social_security",
+            "credit_card",
+            "card_number",
+        }
 
-    Returns:
-        Dictionary with sensitive values redacted
-    """
-    if sensitive_keys is None:
-        sensitive_keys = ['password', 'secret', 'key', 'token', 'api_key', 'apikey']
+        for key, value in data.items():
+            lower_key = str(key).lower()
 
-    redacted = {}
-    for key, value in data.items():
-        if any(sensitive_key.lower() in key.lower() for sensitive_key in sensitive_keys):
-            redacted[key] = REDACTED_PLACEHOLDER
-        elif isinstance(value, dict):
-            redacted[key] = redact_dict(value, sensitive_keys)
-        elif isinstance(value, list):
-            redacted[key] = [redact_dict(item, sensitive_keys) if isinstance(item, dict) else redact_sensitive_data(str(item)) for item in value]
+            # Redact known sensitive keys
+            if any(sensitive in lower_key for sensitive in sensitive_keys):
+                redacted[key] = "***REDACTED***"
+            elif isinstance(value, dict):
+                redacted[key] = LogRedactor.redact_dict(value)
+            elif isinstance(value, list):
+                redacted[key] = LogRedactor.redact_list(value)
+            elif isinstance(value, str):
+                redacted[key] = LogRedactor.redact_text(value)
+            else:
+                redacted[key] = value
+
+        return redacted
+
+    @staticmethod
+    def redact_list(data: List[Any]) -> List[Any]:
+        """
+        Redact sensitive information from a list recursively.
+
+        Args:
+            data: The list to redact
+
+        Returns:
+            A new list with sensitive data redacted
+        """
+        if not isinstance(data, list):
+            return data
+
+        return [
+            LogRedactor.redact_dict(item)
+            if isinstance(item, dict)
+            else LogRedactor.redact_list(item)
+            if isinstance(item, list)
+            else LogRedactor.redact_text(item)
+            if isinstance(item, str)
+            else item
+            for item in data
+        ]
+
+    @staticmethod
+    def redact_log_data(
+        data: Union[str, Dict[str, Any], List[Any]],
+    ) -> Union[str, Dict[str, Any], List[Any]]:
+        """
+        Redact sensitive information from log data.
+
+        Args:
+            data: The data to redact (string, dict, or list)
+
+        Returns:
+            The redacted data
+        """
+        if isinstance(data, str):
+            return LogRedactor.redact_text(data)
+        elif isinstance(data, dict):
+            return LogRedactor.redact_dict(data)
+        elif isinstance(data, list):
+            return LogRedactor.redact_list(data)
         else:
-            redacted[key] = redact_sensitive_data(str(value))
-
-    return redacted
+            return data
 
 
-def is_safe_content(content: Union[str, Dict, List]) -> bool:
+def redact_for_logging(data: Any) -> Any:
     """
-    Check if content appears to be free of sensitive data.
+    Convenience function to redact data before logging.
 
     Args:
-        content: Content to check
+        data: The data to prepare for logging
 
     Returns:
-        True if content appears safe, False if sensitive data detected
+        Redacted data safe for logging
     """
-    if isinstance(content, str):
-        return not any(re.search(pattern, content, re.IGNORECASE | re.DOTALL) for pattern in SENSITIVE_PATTERNS)
-    elif isinstance(content, dict):
-        return all(is_safe_content(value) for value in content.values())
-    elif isinstance(content, list):
-        return all(is_safe_content(item) for item in content)
-    else:
-        return True
-
-
-def sanitize_log_message(message: str, context: Dict[str, Any] = None) -> str:
-    """
-    Sanitize a log message by redacting sensitive data.
-
-    Args:
-        message: Log message to sanitize
-        context: Additional context dictionary to sanitize
-
-    Returns:
-        Sanitized log message
-    """
-    sanitized = redact_sensitive_data(message)
-
-    if context:
-        sanitized_context = redact_dict(context)
-        sanitized += f" | context: {sanitized_context}"
-
-    return sanitized
+    return LogRedactor.redact_log_data(data)

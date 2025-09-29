@@ -5,19 +5,26 @@ Leakage detector for time series data.
 Detects data leakage using lagged cross-correlations and permutation tests.
 """
 
+import warnings
+from typing import List
+
 import numpy as np
 import pandas as pd
-from typing import Tuple, List, Optional
 from scipy import stats
-import warnings
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 
 class LeakageDetector:
     """Detects data leakage in time series using lagged correlations."""
 
-    def __init__(self, threshold: float = 0.2, max_lag: int = 5, n_permutations: int = 200, random_seed: int = 42):
+    def __init__(
+        self,
+        threshold: float = 0.2,
+        max_lag: int = 5,
+        n_permutations: int = 200,
+        random_seed: int = 42,
+    ):
         """
         Initialize leakage detector.
 
@@ -71,31 +78,37 @@ class LeakageDetector:
                     corr, _ = stats.pearsonr(lagged_feature_clean, aligned_target_clean)
 
                     # Permutation test for significance
-                    p_value = self._permutation_test(lagged_feature_clean.values,
-                                                    aligned_target_clean.values,
-                                                    abs(corr))
+                    p_value = self._permutation_test(
+                        lagged_feature_clean.values,
+                        aligned_target_clean.values,
+                        abs(corr),
+                    )
 
                     # Flag if correlation exceeds threshold and is significant
                     is_significant = p_value < 0.05
                     exceeds_threshold = abs(corr) > self.threshold
 
                     if exceeds_threshold and is_significant:
-                        detections.append({
-                            'feature': feature_name,
-                            'lag': -lag,  # Negative lag indicates feature precedes target
-                            'correlation': corr,
-                            'p_value': p_value,
-                            'significant': True,
-                            'description': f'Potential leakage: {feature_name} at lag {-lag} (ρ={corr:.3f}, p={p_value:.3f})'
-                        })
+                        detections.append(
+                            {
+                                "feature": feature_name,
+                                "lag": -lag,  # Negative lag indicates feature precedes target
+                                "correlation": corr,
+                                "p_value": p_value,
+                                "significant": True,
+                                "description": f"Potential leakage: {feature_name} at lag {-lag} (ρ={corr:.3f}, p={p_value:.3f})",
+                            }
+                        )
 
-                except Exception as e:
+                except Exception:
                     # Skip problematic calculations
                     continue
 
         return detections
 
-    def _permutation_test(self, x: np.ndarray, y: np.ndarray, observed_corr: float) -> float:
+    def _permutation_test(
+        self, x: np.ndarray, y: np.ndarray, observed_corr: float
+    ) -> float:
         """
         Perform permutation test for correlation significance.
 
@@ -135,17 +148,18 @@ class LeakageDetector:
         feature = pd.Series(noise + np.random.RandomState(43).normal(0, 0.1, n))
 
         # Target with leakage from feature (lag -1)
-        target = 0.5 * feature.shift(-1) + noise + np.random.RandomState(44).normal(0, 0.1, n)
-        target = target.fillna(method='bfill')  # Fill NaN at end
+        target = (
+            0.5 * feature.shift(-1)
+            + noise
+            + np.random.RandomState(44).normal(0, 0.1, n)
+        )
+        target = target.fillna(method="bfill")  # Fill NaN at end
 
         # Create DataFrame
-        df = pd.DataFrame({
-            'target': target,
-            'feature': feature
-        })
+        df = pd.DataFrame({"target": target, "feature": feature})
 
         # Detect leakage
-        detections = self.detect_leakage(df['target'], df[['feature']])
+        detections = self.detect_leakage(df["target"], df[["feature"]])
 
         # Should detect leakage
         return len(detections) > 0
@@ -165,13 +179,10 @@ class LeakageDetector:
         feature = np.random.RandomState(456).normal(0, 1, n)
 
         # Create DataFrame
-        df = pd.DataFrame({
-            'target': target,
-            'feature': feature
-        })
+        df = pd.DataFrame({"target": target, "feature": feature})
 
         # Detect leakage
-        detections = self.detect_leakage(df['target'], df[['feature']])
+        detections = self.detect_leakage(df["target"], df[["feature"]])
 
         # Should not detect leakage
         return len(detections) == 0
@@ -190,20 +201,22 @@ def run_leakage_tests() -> dict:
     no_leakage_detected = detector.test_no_leakage()
 
     results = {
-        'synthetic_leakage_test': 'PASS' if synthetic_leakage_detected else 'FAIL',
-        'no_leakage_test': 'PASS' if no_leakage_detected else 'FAIL',
-        'overall': 'PASS' if synthetic_leakage_detected and no_leakage_detected else 'FAIL'
+        "synthetic_leakage_test": "PASS" if synthetic_leakage_detected else "FAIL",
+        "no_leakage_test": "PASS" if no_leakage_detected else "FAIL",
+        "overall": "PASS"
+        if synthetic_leakage_detected and no_leakage_detected
+        else "FAIL",
     }
 
     return results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests
     results = run_leakage_tests()
     print("Leakage Detector Tests:")
     for test, result in results.items():
         print(f"  {test}: {result}")
 
-    if results['overall'] != 'PASS':
+    if results["overall"] != "PASS":
         exit(1)

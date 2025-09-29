@@ -3,8 +3,10 @@ Tests for unified results schema validator.
 """
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
+
 from schema.results_validator import ResultsValidator
 
 
@@ -25,7 +27,7 @@ class TestResultsValidator:
                 "timestamp": "2024-01-01T00:00:00Z",
                 "run_id": "test-run-123",
                 "type": "backtest",
-                "config": {"param": "value"}
+                "config": {"param": "value"},
             },
             "performance": {
                 "total_return": 0.15,
@@ -33,8 +35,8 @@ class TestResultsValidator:
                 "max_drawdown": 0.1,
                 "win_rate": 0.6,
                 "total_trades": 100,
-                "profit_factor": 1.2
-            }
+                "profit_factor": 1.2,
+            },
         }
 
     def test_valid_results(self, validator, valid_results):
@@ -76,7 +78,7 @@ class TestResultsValidator:
     def test_validate_file_valid(self, validator, valid_results, tmp_path):
         """Test validating valid results from file."""
         results_file = tmp_path / "results.json"
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(valid_results, f)
 
         assert validator.validate_file(results_file) is True
@@ -84,7 +86,7 @@ class TestResultsValidator:
     def test_validate_file_invalid_json(self, validator, tmp_path):
         """Test validating invalid JSON file."""
         results_file = tmp_path / "invalid.json"
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             f.write("invalid json")
 
         assert validator.validate_file(results_file) is False

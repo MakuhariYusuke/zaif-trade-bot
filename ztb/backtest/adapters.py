@@ -4,16 +4,17 @@ Strategy adapters for backtesting.
 Provides adapters to wrap different trading strategies for unified backtest interface.
 """
 
-import numpy as np
+from typing import Any, Dict, Optional, Protocol
+
 import pandas as pd
-from typing import Dict, Any, Optional, Protocol
-from abc import ABC, abstractmethod
 
 
 class StrategyAdapter(Protocol):
     """Protocol for trading strategy adapters."""
 
-    def generate_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
         """
         Generate trading signal.
 
@@ -37,7 +38,9 @@ class RLPolicyAdapter:
         # TODO: Load actual PPO model when available
         # For now, implement a simple rule-based fallback
 
-    def generate_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
         """Generate signal using RL policy."""
         if self.model is None:
             # Fallback: Simple momentum strategy
@@ -50,27 +53,31 @@ class RLPolicyAdapter:
         """Generate signals for backtest (returns DataFrame)."""
         signals = []
         for i in range(len(data)):
-            current_data = data.iloc[:i+1]
+            current_data = data.iloc[: i + 1]
             # Assume no position for signal generation
             signal = self.generate_signal(current_data, 0)
-            signals.append(signal['action'])
+            signals.append(signal["action"])
 
         # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {'sell': -1, 'hold': 0, 'buy': 1}
+        action_to_signal = {"sell": -1, "hold": 0, "buy": 1}
         signal_values = [action_to_signal.get(s, 0) for s in signals]
 
-        return pd.DataFrame({
-            'timestamp': data['timestamp'] if 'timestamp' in data else data.index,
-            'signal': signal_values
-        })
+        return pd.DataFrame(
+            {
+                "timestamp": data["timestamp"] if "timestamp" in data else data.index,
+                "signal": signal_values,
+            }
+        )
 
-    def _momentum_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+    def _momentum_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
         """Simple momentum-based signal as RL fallback."""
         if len(data) < 20:
             return {"action": "hold", "confidence": 0.5}
 
         # Simple RSI-based signal
-        close = data['close']
+        close = data["close"]
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -95,12 +102,14 @@ class SMACrossoverAdapter:
         self.fast_period = fast_period
         self.slow_period = slow_period
 
-    def generate_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
         """Generate SMA crossover signal."""
         if len(data) < self.slow_period:
             return {"action": "hold", "confidence": 0.5}
 
-        close = data['close']
+        close = data["close"]
         fast_ma = close.rolling(self.fast_period).mean()
         slow_ma = close.rolling(self.slow_period).mean()
 
@@ -124,19 +133,21 @@ class SMACrossoverAdapter:
         """Generate signals for backtest (returns DataFrame)."""
         signals = []
         for i in range(len(data)):
-            current_data = data.iloc[:i+1]
+            current_data = data.iloc[: i + 1]
             # Assume no position for signal generation
             signal = self.generate_signal(current_data, 0)
-            signals.append(signal['action'])
+            signals.append(signal["action"])
 
         # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {'sell': -1, 'hold': 0, 'buy': 1}
+        action_to_signal = {"sell": -1, "hold": 0, "buy": 1}
         signal_values = [action_to_signal.get(s, 0) for s in signals]
 
-        return pd.DataFrame({
-            'timestamp': data['timestamp'] if 'timestamp' in data else data.index,
-            'signal': signal_values
-        })
+        return pd.DataFrame(
+            {
+                "timestamp": data["timestamp"] if "timestamp" in data else data.index,
+                "signal": signal_values,
+            }
+        )
 
 
 class BuyAndHoldAdapter:
@@ -146,7 +157,9 @@ class BuyAndHoldAdapter:
         """Initialize buy and hold strategy."""
         self.initialized = False
 
-    def generate_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
         """Generate buy and hold signal."""
         if not self.initialized and len(data) > 0:
             self.initialized = True
@@ -158,19 +171,21 @@ class BuyAndHoldAdapter:
         """Generate signals for backtest (returns DataFrame)."""
         signals = []
         for i in range(len(data)):
-            current_data = data.iloc[:i+1]
+            current_data = data.iloc[: i + 1]
             # Assume no position for signal generation
             signal = self.generate_signal(current_data, 0)
-            signals.append(signal['action'])
+            signals.append(signal["action"])
 
         # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {'sell': -1, 'hold': 0, 'buy': 1}
+        action_to_signal = {"sell": -1, "hold": 0, "buy": 1}
         signal_values = [action_to_signal.get(s, 0) for s in signals]
 
-        return pd.DataFrame({
-            'timestamp': data['timestamp'] if 'timestamp' in data else data.index,
-            'signal': signal_values
-        })
+        return pd.DataFrame(
+            {
+                "timestamp": data["timestamp"] if "timestamp" in data else data.index,
+                "signal": signal_values,
+            }
+        )
 
 
 def create_adapter(strategy_name: str, **kwargs) -> StrategyAdapter:

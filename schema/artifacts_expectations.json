@@ -1,0 +1,29 @@
+{
+  "required_files": [
+    "summary.json",
+    "metrics.json",
+    "reports/"
+  ],
+  "optional_files": [
+    "checkpoints/",
+    "logs/",
+    "tensorboard/"
+  ],
+  "summary_schema": {
+    "type": "object",
+    "properties": {
+      "correlation_id": {"type": "string"},
+      "status": {"type": "string", "enum": ["running", "completed", "failed"]},
+      "steps_completed": {"type": "integer", "minimum": 0}
+    },
+    "required": ["correlation_id", "status"]
+  },
+  "metrics_schema": {
+    "type": "object",
+    "properties": {
+      "steps": {"type": "integer", "minimum": 0},
+      "elapsed_time": {"type": "number", "minimum": 0}
+    },
+    "required": ["steps"]
+  }
+}

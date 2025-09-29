@@ -3,11 +3,12 @@ Feature registry for trading features.
 特徴量レジストリ
 """
 
-from typing import Callable, Dict, List, Optional, Any
-import pandas as pd
-import numpy as np
-import random
 import os
+import random
+from typing import Any, Callable, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 
 class FeatureRegistry:
@@ -21,7 +22,12 @@ class FeatureRegistry:
     _base_seed: int = 42
 
     @classmethod
-    def initialize(cls, seed: Optional[int] = None, cache_enabled: Optional[bool] = None, parallel_enabled: Optional[bool] = None) -> None:
+    def initialize(
+        cls,
+        seed: Optional[int] = None,
+        cache_enabled: Optional[bool] = None,
+        parallel_enabled: Optional[bool] = None,
+    ) -> None:
         """Initialize the registry with seed, cache and parallel settings"""
         if cls._initialized:
             return
@@ -32,11 +38,12 @@ class FeatureRegistry:
         # Fix seeds for reproducibility
         np.random.seed(final_seed)
         random.seed(final_seed)
-        os.environ['PYTHONHASHSEED'] = str(final_seed)
+        os.environ["PYTHONHASHSEED"] = str(final_seed)
 
         # Set PyTorch seed if available
         try:
             import torch
+
             torch.manual_seed(final_seed)
             torch.cuda.manual_seed_all(final_seed)
             torch.backends.cudnn.deterministic = True
@@ -45,10 +52,10 @@ class FeatureRegistry:
             pass  # PyTorch not available
 
         # Set BLAS thread limits for optimal parallel performance
-        os.environ['OPENBLAS_NUM_THREADS'] = '1'
-        os.environ['MKL_NUM_THREADS'] = '1'
-        os.environ['NUMEXPR_NUM_THREADS'] = '1'
-        os.environ['OMP_NUM_THREADS'] = '1'
+        os.environ["OPENBLAS_NUM_THREADS"] = "1"
+        os.environ["MKL_NUM_THREADS"] = "1"
+        os.environ["NUMEXPR_NUM_THREADS"] = "1"
+        os.environ["OMP_NUM_THREADS"] = "1"
 
         # Store base seed for parallel processing
         cls._base_seed = final_seed
@@ -78,7 +85,9 @@ class FeatureRegistry:
     def set_worker_seed(cls, worker_id: int) -> None:
         """Set deterministic seed for parallel worker processes"""
         if not cls._initialized:
-            raise RuntimeError("FeatureRegistry must be initialized before setting worker seed")
+            raise RuntimeError(
+                "FeatureRegistry must be initialized before setting worker seed"
+            )
 
         worker_seed = cls._base_seed + worker_id
         np.random.seed(worker_seed)
@@ -87,6 +96,7 @@ class FeatureRegistry:
         # Set PyTorch seed if available
         try:
             import torch
+
             torch.manual_seed(worker_seed)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed(worker_seed)
@@ -97,19 +107,29 @@ class FeatureRegistry:
     def get_config(cls) -> Dict[str, Any]:
         """Get current configuration"""
         from copy import deepcopy
+
         return deepcopy(cls._config)
 
     @classmethod
-    def register(cls, name: str) -> Callable[[Callable[[pd.DataFrame], pd.Series]], Callable[[pd.DataFrame], pd.Series]]:
-        def decorator(func: Callable[[pd.DataFrame], pd.Series]) -> Callable[[pd.DataFrame], pd.Series]:
+    def register(
+        cls, name: str
+    ) -> Callable[
+        [Callable[[pd.DataFrame], pd.Series]], Callable[[pd.DataFrame], pd.Series]
+    ]:
+        def decorator(
+            func: Callable[[pd.DataFrame], pd.Series],
+        ) -> Callable[[pd.DataFrame], pd.Series]:
             cls._registry[name] = func
             return func
+
         return decorator
 
     @classmethod
     def get(cls, name: str) -> Callable[[pd.DataFrame], pd.Series]:
         if name not in cls._registry:
-            raise KeyError(f"Feature '{name}' is not registered in the FeatureRegistry.")
+            raise KeyError(
+                f"Feature '{name}' is not registered in the FeatureRegistry."
+            )
         return cls._registry[name]
 
     @classmethod
@@ -128,12 +148,14 @@ class FeatureRegistry:
 
     def get_enabled_features(self, wave: Optional[int] = None) -> List[str]:
         """Get enabled features for the given wave"""
-        return self.list()
+        return type(self).list()
 
-    def compute_features(self, df: pd.DataFrame, wave: Optional[int] = None) -> pd.DataFrame:
+    def compute_features(
+        self, df: pd.DataFrame
+    ) -> pd.DataFrame:
         """Compute features for the given dataframe"""
-        features = self.get_enabled_features(wave)
+        features = self.get_enabled_features()
         for feature in features:
-            func = self.get(feature)
+            func = type(self).get(feature)
             df[feature] = func(df)
         return df

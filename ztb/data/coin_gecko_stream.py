@@ -1,4 +1,4 @@
-﻿"""CoinGecko streaming client with pagination and resilience helpers."""
+"""CoinGecko streaming client with pagination and resilience helpers."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from typing import Any, Deque, Dict, Iterator, List, Mapping, Optional, Sequence
 
 import pandas as pd
 import requests
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,9 @@ class StreamConfig:
     page_size: int = 200
     poll_interval: float = 30.0
     max_empty_polls: int = 4
-    overlap: int = 3  # number of historical steps to refetch per poll to ensure continuity
+    overlap: int = (
+        3  # number of historical steps to refetch per poll to ensure continuity
+    )
 
 
 @dataclass
@@ -113,11 +114,17 @@ class CoinGeckoStream:
             else:
                 last_ts = frame["timestamp"].max()
                 # Advance start to last timestamp plus a step to avoid duplication
-                current_start = last_ts.to_pydatetime().replace(tzinfo=timezone.utc) + step
+                current_start = (
+                    last_ts.to_pydatetime().replace(tzinfo=timezone.utc) + step
+                )
 
         if frames:
             df = pd.concat(frames, ignore_index=True)
-            df = df.drop_duplicates(subset="timestamp").sort_values("timestamp").reset_index(drop=True)
+            df = (
+                df.drop_duplicates(subset="timestamp")
+                .sort_values("timestamp")
+                .reset_index(drop=True)
+            )
         else:
             df = pd.DataFrame(columns=["timestamp", "price", "market_cap", "volume"])
 
@@ -181,8 +188,12 @@ class CoinGeckoStream:
                     empty_polls = 0
             else:
                 empty_polls = 0
-                last_timestamp = df["timestamp"].max().to_pydatetime().replace(tzinfo=timezone.utc)
-                yield MarketDataBatch(df.reset_index(drop=True), batch.fetched_at, batch.request_params)
+                last_timestamp = (
+                    df["timestamp"].max().to_pydatetime().replace(tzinfo=timezone.utc)
+                )
+                yield MarketDataBatch(
+                    df.reset_index(drop=True), batch.fetched_at, batch.request_params
+                )
 
             time.sleep(config.poll_interval)
 
@@ -217,7 +228,9 @@ class CoinGeckoStream:
             except requests.RequestException as exc:
                 attempt += 1
                 if attempt > self.max_retries:
-                    raise CoinGeckoStreamError(f"connection failure after {self.max_retries} retries") from exc
+                    raise CoinGeckoStreamError(
+                        f"connection failure after {self.max_retries} retries"
+                    ) from exc
                 self._sleep_for_retry(attempt)
                 continue
 
@@ -226,7 +239,7 @@ class CoinGeckoStream:
                 if attempt > self.max_retries:
                     raise RateLimitExceeded("CoinGecko rate limit exceeded")
                 retry_after = float(response.headers.get("Retry-After", 0) or 0)
-                delay = max(retry_after, self.backoff_factor * (2 ** attempt))
+                delay = max(retry_after, self.backoff_factor * (2**attempt))
                 logger.debug("Rate limited by CoinGecko; sleeping for %.2fs", delay)
                 time.sleep(delay)
                 continue
@@ -249,7 +262,9 @@ class CoinGeckoStream:
                 data: Dict[str, Any] = response.json()
                 return data
             except ValueError as exc:
-                raise CoinGeckoStreamError("invalid JSON response from CoinGecko") from exc
+                raise CoinGeckoStreamError(
+                    "invalid JSON response from CoinGecko"
+                ) from exc
 
     def _parse_market_chart(self, payload: Mapping[str, Any]) -> pd.DataFrame:
         prices = payload.get("prices", [])
@@ -275,7 +290,9 @@ class CoinGeckoStream:
                 df = df.merge(extra, on="timestamp", how="left")
 
         df = df.sort_values("timestamp").reset_index(drop=True)
-        df[["price", "market_cap", "volume"]] = df[["price", "market_cap", "volume"]].astype("float32")
+        df[["price", "market_cap", "volume"]] = df[
+            ["price", "market_cap", "volume"]
+        ].astype("float32")
         return df
 
     def _throttle(self) -> None:
@@ -307,5 +324,7 @@ class CoinGeckoStream:
     def __enter__(self) -> "CoinGeckoStream":
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc: Optional[BaseException], tb: Optional[Any]) -> None:
+    def __exit__(
+        self, exc_type: Optional[type], exc: Optional[BaseException], tb: Optional[Any]
+    ) -> None:
         self.close()

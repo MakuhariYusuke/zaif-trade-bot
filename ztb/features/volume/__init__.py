@@ -1,2 +1,2 @@
 # Import all volume features to register them
-from . import obv, vwap, price_volume_corr, return_ma, mfi
+from . import mfi, obv, price_volume_corr, return_ma, vwap
