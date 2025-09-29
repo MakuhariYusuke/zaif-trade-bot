@@ -7,6 +7,12 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
 
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
   - repo: https://github.com/psf/black
     rev: 23.11.0
     hooks:
@@ -47,6 +53,13 @@ repos:
         language: system
         files: \.py$
         args: ["--config-file", "mypy.ini"]
+
+      - id: secrets-hygiene
+        name: Check for sensitive data leaks
+        entry: python -c "from ztb.utils.redact import is_safe_content; import sys; content = open(sys.argv[1]).read(); sys.exit(0 if is_safe_content(content) else 1)"
+        language: system
+        files: \.(py|json|yaml|yml)$
+        pass_filenames: true
 
       - id: test
         name: Run unit tests

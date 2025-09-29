@@ -21,7 +21,7 @@ current_dir = Path(__file__).parent.parent
 project_root = current_dir.parent  # Go up one more level to project root
 sys.path.insert(0, str(project_root))
 from ztb.experiments.base import ScalingExperiment, ExperimentResult
-from ztb.utils.error_handler import catch_and_notify  # type: ignore[import-not-found]
+from ztb.utils.error_handler import catch_and_notify
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.parallel_experiments import ResourceMonitor
 from ztb.utils import LoggerManager

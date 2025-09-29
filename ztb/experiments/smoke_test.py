@@ -18,6 +18,7 @@ from typing import Dict, Any
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
 from ztb.experiments.base import ExperimentBase, ExperimentResult
+from ztb.utils.data.data_generation import load_sample_data
 from ztb.utils import LoggerManager
 from ztb.utils.feature_testing import evaluate_feature_performance
 
