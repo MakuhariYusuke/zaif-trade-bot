@@ -1,56 +1,56 @@
 [
   {
     "name": "ws_disconnect_transient",
-    "type": "ws_disconnect",
+    "fault_type": "ws_disconnect",
     "duration_s": 2.0,
     "severity": 0.3,
     "expected_action": "continue"
   },
   {
     "name": "network_delay_spike",
-    "type": "network_delay",
+    "fault_type": "network_delay",
     "duration_s": 1.0,
     "severity": 0.8,
     "expected_action": "pause"
   },
   {
     "name": "data_gap_short",
-    "type": "data_gap",
+    "fault_type": "data_gap",
     "duration_s": 3.0,
     "severity": 0.5,
     "expected_action": "continue"
   },
   {
     "name": "duplicate_ticks_burst",
-    "type": "duplicate_ticks",
+    "fault_type": "duplicate_ticks",
     "duration_s": 1.0,
     "severity": 0.6,
     "expected_action": "continue"
   },
   {
     "name": "slow_disk_checkpoint",
-    "type": "slow_disk",
+    "fault_type": "slow_disk",
     "duration_s": 5.0,
     "severity": 0.7,
     "expected_action": "pause"
   },
   {
     "name": "cpu_pause_brief",
-    "type": "cpu_pause",
+    "fault_type": "cpu_pause",
     "duration_s": 0.5,
     "severity": 0.4,
     "expected_action": "continue"
   },
   {
     "name": "corrupted_checkpoint_retry",
-    "type": "corrupted_checkpoint",
+    "fault_type": "corrupted_checkpoint",
     "duration_s": 1.0,
     "severity": 0.9,
     "expected_action": "resume"
   },
   {
     "name": "stream_throttle_high",
-    "type": "stream_throttle",
+    "fault_type": "stream_throttle",
     "duration_s": 4.0,
     "severity": 0.8,
     "expected_action": "pause"

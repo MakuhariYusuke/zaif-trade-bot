@@ -54,6 +54,10 @@ function getArg(name: string, def?: string){
     if (fs.existsSync('stats.json')) return JSON.parse(fs.readFileSync('stats.json','utf8'));
     return {};
   })();
+  const metricsJson = (()=>{
+    if (fs.existsSync('metrics.json')) return JSON.parse(fs.readFileSync('metrics.json','utf8'));
+    return {};
+  })();
   const pairs: Array<any> = statsJson.data || [];
   const diffPairs: Record<string, any> = {};
   for (const d of (statsDiff.pairsDiff || [])) diffPairs[d.pair] = d.diff;
@@ -150,6 +154,8 @@ function getArg(name: string, def?: string){
   const summaryText = [
     `Source: ${source}`,
     `Total PnL: ${fmtJPY(totals.PnL)} / WinRate: ${fmtPct(totals.winRate)} / 7d: ${fmtPct(totals.trend7dWinRate)}`,
+    ...(metricsJson.dsr_trials ? [`DSR Trials: ${metricsJson.dsr_trials}`] : []),
+    ...(metricsJson.bootstrap_resamples ? [`Bootstrap: resamples=${metricsJson.bootstrap_resamples}, block=${metricsJson.bootstrap_block}, overlap=${metricsJson.bootstrap_overlap}`] : []),
     `Top pairs:`,
     top3Table
   ].join('\n');

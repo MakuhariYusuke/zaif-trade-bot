@@ -16,10 +16,13 @@ import math
 import os
 import sys
 import time
+import types
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator, Optional
+
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -51,7 +54,6 @@ if 'ztb.features' not in sys.modules:
     sys.modules['ztb.features.feature_engine'] = fake_feature_engine
 
 import numpy as np
-import pandas as pd
 import psutil
 
 from ztb.data.coin_gecko_stream import MarketDataBatch, StreamConfig
