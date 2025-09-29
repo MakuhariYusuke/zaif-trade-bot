@@ -855,9 +855,6 @@ class PPOTrainer:
             logging.getLogger().removeHandler(buffer_handler)
             if hasattr(self, 'observability') and self.observability:
                 self.observability.close()
-        finally:
-            buffer_handler.flush()
-            logging.getLogger().removeHandler(buffer_handler)
 
     def evaluate(self, model_path: Optional[str] = None, n_episodes: int = 10) -> Dict[str, Any]:
         """

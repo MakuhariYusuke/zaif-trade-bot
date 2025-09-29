@@ -56,16 +56,12 @@ class RunMetadata:
                             return line.split(":")[1].strip()
             elif platform.system() == "Darwin":  # macOS
                 result = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
-                                      capture_output=True, text=True)
+                                      capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
                     return result.stdout.strip()
             elif platform.system() == "Windows":
-                result = subprocess.run(["wmic", "cpu", "get", "name"],
-                                      capture_output=True, text=True)
-                if result.returncode == 0:
-                    lines = result.stdout.strip().split('\n')
-                    if len(lines) > 1:
-                        return lines[1].strip()
+                # Skip slow wmic command
+                return "Windows CPU"
         except Exception:
             pass
 
@@ -107,24 +103,19 @@ class RunMetadata:
         try:
             # Get current commit SHA
             result = subprocess.run(["git", "rev-parse", "HEAD"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+                                  capture_output=True, text=True, cwd=os.getcwd(), timeout=10)
             if result.returncode == 0:
                 git_info["sha"] = result.stdout.strip()
 
             # Get current branch
             result = subprocess.run(["git", "branch", "--show-current"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+                                  capture_output=True, text=True, cwd=os.getcwd(), timeout=10)
             if result.returncode == 0:
                 git_info["branch"] = result.stdout.strip()
 
-            # Get git status (clean/dirty)
-            result = subprocess.run(["git", "status", "--porcelain"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
-            git_info["status"] = "clean" if not result.stdout.strip() else "dirty"
-
             # Get remote URL
             result = subprocess.run(["git", "remote", "get-url", "origin"],
-                                  capture_output=True, text=True, cwd=os.getcwd())
+                                  capture_output=True, text=True, cwd=os.getcwd(), timeout=10)
             if result.returncode == 0:
                 git_info["remote_url"] = result.stdout.strip()
 
@@ -202,7 +193,7 @@ class RunMetadata:
             "correlation_id": generate_correlation_id(),
             "system": self.capture_system_info(),
             "git": self.capture_git_info(),
-            "packages": self.capture_package_info(),
+            # "packages": self.capture_package_info(),  # Skip slow package capture
             "config_hashes": self.capture_config_hashes(),
             "run_config": {
                 "random_seed": self.random_seed,
