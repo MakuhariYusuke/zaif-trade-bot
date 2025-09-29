@@ -15,7 +15,7 @@ from pathlib import Path
 import hashlib
 import pytest
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def hash_file(filepath: Path) -> str:
@@ -36,7 +36,7 @@ def run_linux_canary(temp_dir: Path) -> tuple[int, dict]:
 
     try:
         result = subprocess.run(
-            [str(script_path), "2", "sma_fast_slow", "false"],
+            [str(script_path), "2", "sma_fast_slow", "false", str(temp_dir)],
             cwd=temp_dir,
             env=env,
             capture_output=True,
@@ -49,10 +49,14 @@ def run_linux_canary(temp_dir: Path) -> tuple[int, dict]:
     artifacts = {}
     expected_files = ["run_metadata.json", "orders.csv", "stats.json"]
 
-    for filename in expected_files:
-        filepath = temp_dir / filename
-        if filepath.exists():
-            artifacts[filename] = hash_file(filepath)
+    # Find the output directory created by paper trader
+    output_dirs = list(temp_dir.glob("*"))
+    if output_dirs:
+        output_dir = output_dirs[0]
+        for filename in expected_files:
+            filepath = output_dir / filename
+            if filepath.exists():
+                artifacts[filename] = hash_file(filepath)
 
     return result.returncode, artifacts
 
@@ -70,7 +74,7 @@ def run_windows_canary(temp_dir: Path) -> tuple[int, dict]:
 
         result = subprocess.run(
             [powershell_cmd, "-ExecutionPolicy", "Bypass", "-File", str(script_path),
-             "-DurationMinutes", "2", "-Policy", "sma_fast_slow"],
+             "-DurationMinutes", "2", "-Policy", "sma_fast_slow", "-OutputDir", str(temp_dir)],
             cwd=temp_dir,
             env=env,
             capture_output=True,
@@ -83,10 +87,14 @@ def run_windows_canary(temp_dir: Path) -> tuple[int, dict]:
     artifacts = {}
     expected_files = ["run_metadata.json", "orders.csv", "stats.json"]
 
-    for filename in expected_files:
-        filepath = temp_dir / filename
-        if filepath.exists():
-            artifacts[filename] = hash_file(filepath)
+    # Find the output directory created by paper trader
+    output_dirs = list(temp_dir.glob("*"))
+    if output_dirs:
+        output_dir = output_dirs[0]
+        for filename in expected_files:
+            filepath = output_dir / filename
+            if filepath.exists():
+                artifacts[filename] = hash_file(filepath)
 
     return result.returncode, artifacts
 

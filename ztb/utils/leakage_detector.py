@@ -55,9 +55,9 @@ class LeakageDetector:
             # Test negative lags (feature predicts future target)
             for lag in range(1, self.max_lag + 1):
                 try:
-                    # Align series with lag
-                    lagged_feature = feature.shift(lag)
-                    aligned_target = target.iloc[lag:]
+                    # Align series with negative lag (feature predicts future target)
+                    lagged_feature = feature.shift(-lag)
+                    aligned_target = target.iloc[:-lag] if lag > 0 else target
 
                     # Remove NaN values
                     valid_idx = ~(lagged_feature.isna() | aligned_target.isna())
@@ -128,15 +128,14 @@ class LeakageDetector:
             True if leakage is detected (test passes), False otherwise
         """
         # Create synthetic data with known leakage
-        np.random.seed(42)
         n = 1000
 
         # Feature that predicts future target
-        noise = np.random.normal(0, 1, n)
-        feature = pd.Series(noise + np.random.normal(0, 0.1, n))
+        noise = np.random.RandomState(42).normal(0, 1, n)
+        feature = pd.Series(noise + np.random.RandomState(43).normal(0, 0.1, n))
 
         # Target with leakage from feature (lag -1)
-        target = 0.5 * feature.shift(-1) + noise + np.random.normal(0, 0.1, n)
+        target = 0.5 * feature.shift(-1) + noise + np.random.RandomState(44).normal(0, 0.1, n)
         target = target.fillna(method='bfill')  # Fill NaN at end
 
         # Create DataFrame
@@ -159,12 +158,11 @@ class LeakageDetector:
             True if no leakage is detected (test passes), False otherwise
         """
         # Create synthetic data with no leakage
-        np.random.seed(123)
         n = 1000
 
-        # Independent series
-        target = np.random.normal(0, 1, n)
-        feature = np.random.normal(0, 1, n)
+        # Independent series with different seeds
+        target = np.random.RandomState(123).normal(0, 1, n)
+        feature = np.random.RandomState(456).normal(0, 1, n)
 
         # Create DataFrame
         df = pd.DataFrame({
@@ -193,8 +191,8 @@ def run_leakage_tests() -> dict:
 
     results = {
         'synthetic_leakage_test': 'PASS' if synthetic_leakage_detected else 'FAIL',
-        'no_leakage_test': 'PASS' if not no_leakage_detected else 'FAIL',
-        'overall': 'PASS' if synthetic_leakage_detected and not no_leakage_detected else 'FAIL'
+        'no_leakage_test': 'PASS' if no_leakage_detected else 'FAIL',
+        'overall': 'PASS' if synthetic_leakage_detected and no_leakage_detected else 'FAIL'
     }
 
     return results
