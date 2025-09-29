@@ -4,12 +4,13 @@
 
 **Python/ML 拡張**: テクニカル指標フィーチャー評価、品質ゲート、強化学習環境を統合。1kステップから100k/1Mステップ規模の学習まで対応可能なスケーラブルなアーキテクチャを採用しています。
 
-**最新機能 (v2.5.1)**:
-- 🔄 **Feature Determinism**: 並列処理での再現性保証
-- 📊 **Quality Gates & Drift Monitoring**: データ/モデルドリフト検知とPrometheusメトリクス
-- 📈 **Bridge Replay & Slippage Analysis**: 現実的な取引シミュレーションとスリッページ分析
-- 🔧 **CI/CD Improvements**: pre-commitフックとGitHub Actions統合
-- 📋 **1M Learning Pre-Checklist**: 学習前チェックリストの自動検証
+**最新機能 (v3.1.0)**:
+- � **Advanced Infrastructure Harness**: Production-grade resilience with fault injection, correlation IDs, async checkpoints
+- 📊 **Unified Results Schema**: JSON schema validation for CI/CD pipeline integration
+- 🛡️ **Global Kill Switch & Circuit Breakers**: Emergency shutdown and failure threshold management
+- � **Order Idempotency & State Machine**: Reliable order lifecycle with duplicate prevention
+- � **Reconciliation Framework**: Consistency checking between internal and external states
+- � **Python 3.13 Readiness**: Compatibility updates for latest Python version
 
 📖 **[運用マニュアル (Runbook)](docs/runbook.md)** - 実験開始・停止、監視、トラブルシューティングの手順
 
