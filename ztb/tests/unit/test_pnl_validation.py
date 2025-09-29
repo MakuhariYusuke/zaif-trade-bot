@@ -2,15 +2,16 @@
 # 1M学習前確認項目の検証
 
 import sys
-import os
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 # プロジェクトルートをパスに追加
 sys.path.append(str(Path(__file__).parent.parent))
 
 from ztb.trading.environment import HeavyTradingEnv
+
 
 def test_pnl_calculation():
     """PnL計算ロジックの検証"""
@@ -23,10 +24,10 @@ def test_pnl_calculation():
 
     # 環境設定
     config = {
-        'reward_scaling': 1.0,
-        'transaction_cost': 0.001,
-        'max_position_size': 1.0,
-        'risk_free_rate': 0.0,
+        "reward_scaling": 1.0,
+        "transaction_cost": 0.001,
+        "max_position_size": 1.0,
+        "risk_free_rate": 0.0,
     }
 
     # 環境の作成
@@ -51,7 +52,7 @@ def test_pnl_calculation():
         # ステップ実行前のPnL計算
         if env.position != 0:
             try:
-                current_price_val = df.loc[env.current_step, 'price']
+                current_price_val = df.loc[env.current_step, "price"]
                 entry_price_val = env.entry_price
 
                 # 安全な型変換
@@ -67,7 +68,9 @@ def test_pnl_calculation():
 
                 price_change = current_price - entry_price
                 basic_pnl = float(env.position) * price_change
-                transaction_cost = abs(float(env.position)) * entry_price * config['transaction_cost']
+                transaction_cost = (
+                    abs(float(env.position)) * entry_price * config["transaction_cost"]
+                )
                 total_pnl = basic_pnl - transaction_cost
 
                 print(f"  価格変化: {price_change:.2f}")
@@ -76,8 +79,12 @@ def test_pnl_calculation():
                 print(f"  合計PnL: {total_pnl:.4f}")
             except Exception as e:
                 print(f"  PnL計算エラー: {e}")
-                print(f"  current_price: {df.loc[env.current_step, 'price']} (type: {type(df.loc[env.current_step, 'price'])})")
-                print(f"  entry_price: {env.entry_price} (type: {type(env.entry_price)})")
+                print(
+                    f"  current_price: {df.loc[env.current_step, 'price']} (type: {type(df.loc[env.current_step, 'price'])})"
+                )
+                print(
+                    f"  entry_price: {env.entry_price} (type: {type(env.entry_price)})"
+                )
 
         # アクション実行
         obs, reward, terminated, truncated, info = env.step(action)
@@ -94,6 +101,7 @@ def test_pnl_calculation():
     print(f"  総取引回数: {env.trades_count}")
     print(f"  最終ポジション: {env.position}")
     print(f"  最終累積PnL: {env.total_pnl:.4f}")
+
 
 def test_pnl_unit_logic():
     """損益単位の切り替えロジック検証"""
@@ -125,6 +133,7 @@ def test_pnl_unit_logic():
     print(f"売り取引: {sell_trades}回 ({sell_ratio:.1%})")
     print(f"判定結果: {pnl_unit}単位 (買い主体={buy_ratio > sell_ratio})")
 
+
 def test_data_quality():
     """データ品質チェック"""
     print("\n=== 3. データ品質チェック ===")
@@ -146,7 +155,7 @@ def test_data_quality():
             print(f"    {col}: {count}")
 
     # 外れ値チェック（価格の基本統計）
-    price_stats = df['price'].describe()
+    price_stats = df["price"].describe()
     print("\n価格統計:")
     print(f"  平均: {price_stats['mean']:.2f}")
     print(f"  標準偏差: {price_stats['std']:.2f}")
@@ -157,12 +166,13 @@ def test_data_quality():
     print("\n特徴量分布サマリー:")
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     for col in numeric_cols[:5]:  # 最初の5つの数値列のみ
-        if col != 'ts':  # タイムスタンプ以外
+        if col != "ts":  # タイムスタンプ以外
             stats = df[col].describe()
             print(f"  {col}:")
             print(f"    平均: {stats['mean']:.2f}")
             print(f"    標準偏差: {stats['std']:.2f}")
             print(f"    歪度: {stats['50%']:.2f}")
+
 
 def main():
     """メイン実行関数"""
@@ -180,7 +190,9 @@ def main():
     except Exception as e:
         print(f"\n❌ エラー発生: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

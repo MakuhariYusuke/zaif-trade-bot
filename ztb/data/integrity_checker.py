@@ -4,19 +4,18 @@ Parquet data integrity checker and repair tool.
 Checks for missing data, duplicates, and repairs automatically.
 """
 
-import pandas as pd
 import logging
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
-from datetime import datetime
+from typing import Any, Dict, List
 
-from ztb.notifications import DiscordNotifier
+import pandas as pd
+
 from ztb.data.binance_data import load_parquet_pattern, save_parquet_chunked
-from datetime import datetime
-
-from ztb.notifications import DiscordNotifier
+from ztb.ops.alerts.notifications import DiscordNotifier
 
 logger = logging.getLogger(__name__)
+
 
 class ParquetIntegrityChecker:
     """
@@ -39,30 +38,36 @@ class ParquetIntegrityChecker:
         issues = []
 
         # Check required columns exist
-        required_cols = ['open', 'high', 'low', 'close', 'volume']
+        required_cols = ["open", "high", "low", "close", "volume"]
         for col in required_cols:
             if col not in df.columns:
                 issues.append(f"Missing required column: {col}")
             else:
                 # Check dtypes
-                if col in ['open', 'high', 'low', 'close']:
+                if col in ["open", "high", "low", "close"]:
                     if not pd.api.types.is_numeric_dtype(df[col]):
-                        issues.append(f"Column {col} should be numeric, got {df[col].dtype}")
-                elif col == 'volume':
+                        issues.append(
+                            f"Column {col} should be numeric, got {df[col].dtype}"
+                        )
+                elif col == "volume":
                     if not pd.api.types.is_numeric_dtype(df[col]):
-                        issues.append(f"Column {col} should be numeric, got {df[col].dtype}")
+                        issues.append(
+                            f"Column {col} should be numeric, got {df[col].dtype}"
+                        )
 
         # Check index is timezone-aware UTC
         if not isinstance(df.index, pd.DatetimeIndex):
             issues.append("Index should be DatetimeIndex")
         elif df.index.tz is None:
             issues.append("Index should be timezone-aware (UTC)")
-        elif str(df.index.tz) != 'UTC':
+        elif str(df.index.tz) != "UTC":
             issues.append(f"Index timezone should be UTC, got {df.index.tz}")
 
         return issues
 
-    def check_integrity(self, symbol: str = "BTCUSDT", interval: str = "1m") -> Dict[str, Any]:
+    def check_integrity(
+        self, symbol: str = "BTCUSDT", interval: str = "1m"
+    ) -> Dict[str, Any]:
         """
         Check data integrity for the given symbol and interval.
 
@@ -77,7 +82,7 @@ class ParquetIntegrityChecker:
             "missing_periods": [],
             "duplicate_records": 0,
             "gaps": [],
-            "is_integrity_ok": True
+            "is_integrity_ok": True,
         }
 
         try:
@@ -119,7 +124,9 @@ class ParquetIntegrityChecker:
                         {
                             "start": str(gap_start),
                             "end": str(gap_start + gap_duration),
-                            "duration_minutes": gap_duration.total_seconds() / 60 if hasattr(gap_duration, 'total_seconds') else float(gap_duration) / 60
+                            "duration_minutes": gap_duration.total_seconds() / 60
+                            if hasattr(gap_duration, "total_seconds")
+                            else float(gap_duration) / 60,
                         }
                         for gap_start, gap_duration in zip(gaps.index, gaps.values)
                     ]
@@ -128,16 +135,20 @@ class ParquetIntegrityChecker:
 
                     # Check if gaps exceed threshold (0.1%)
                     total_expected_records = len(df) + len(gaps)
-                    gap_ratio = len(gaps) / total_expected_records if total_expected_records > 0 else 0
+                    gap_ratio = (
+                        len(gaps) / total_expected_records
+                        if total_expected_records > 0
+                        else 0
+                    )
                     if gap_ratio > 0.001:  # 0.1% threshold
                         report["gap_alert"] = True
                         self.notifier.notify_data_pipeline_status(
                             "gap_alert",
-                            {"gap_ratio": f"{gap_ratio:.2%}", "total_gaps": len(gaps)}
+                            {"gap_ratio": f"{gap_ratio:.2%}", "total_gaps": len(gaps)},
                         )
 
             # Check for missing OHLCV columns
-            required_cols = ['open', 'high', 'low', 'close', 'volume']
+            required_cols = ["open", "high", "low", "close", "volume"]
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
                 report["missing_columns"] = missing_cols
@@ -150,7 +161,9 @@ class ParquetIntegrityChecker:
 
         return report
 
-    def repair_integrity(self, report: Dict[str, Any], auto_repair: bool = True) -> bool:
+    def repair_integrity(
+        self, report: Dict[str, Any], auto_repair: bool = True
+    ) -> bool:
         """
         Repair data integrity issues.
 
@@ -179,7 +192,7 @@ class ParquetIntegrityChecker:
 
             # Remove duplicates
             if report.get("duplicate_records", 0) > 0:
-                df = df[~df.index.duplicated(keep='first')]
+                df = df[~df.index.duplicated(keep="first")]
                 logger.info(f"Removed {report['duplicate_records']} duplicate records")
 
             # Repair gaps by refetching missing data
@@ -195,13 +208,18 @@ class ParquetIntegrityChecker:
 
                         # Fetch missing data (simplified - in practice would need proper date range)
                         # This is a placeholder for actual gap filling logic
-                        logger.info(f"Would refetch data for gap: {start_time} to {end_time}")
+                        logger.info(
+                            f"Would refetch data for gap: {start_time} to {end_time}"
+                        )
 
                     except Exception as e:
                         logger.warning(f"Failed to repair gap {gap}: {e}")
 
             # Re-save cleaned data
-            backup_dir = self.data_dir.parent / f"{self.data_dir.name}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            backup_dir = (
+                self.data_dir.parent
+                / f"{self.data_dir.name}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
             backup_dir.mkdir(parents=True, exist_ok=True)
 
             # Move existing files to backup
@@ -211,9 +229,13 @@ class ParquetIntegrityChecker:
             # Save repaired data
             save_parquet_chunked(df, str(self.data_dir))
 
-            success_msg = f"Data integrity repair completed. Backup saved to {backup_dir}"
+            success_msg = (
+                f"Data integrity repair completed. Backup saved to {backup_dir}"
+            )
             logger.info(success_msg)
-            self.notifier.send_notification("Data Integrity Check", success_msg, "success")
+            self.notifier.send_notification(
+                "Data Integrity Check", success_msg, "success"
+            )
 
             return True
 
@@ -252,14 +274,24 @@ class ParquetIntegrityChecker:
 
         # Notify results
         if report["is_integrity_ok"]:
-            self.notifier.send_notification("Data Integrity Check", "Data integrity check passed", "success", fields={
-                "total_records": report.get("total_records", 0),
-                "duplicate_records": report.get("duplicate_records", 0)
-            })
+            self.notifier.send_notification(
+                "Data Integrity Check",
+                "Data integrity check passed",
+                "success",
+                fields={
+                    "total_records": report.get("total_records", 0),
+                    "duplicate_records": report.get("duplicate_records", 0),
+                },
+            )
         else:
-            self.notifier.send_notification("Data Integrity Check", "Data integrity issues found", "warning", fields={
-                "gaps_count": len(report.get("gaps", [])),
-                "duplicates": report.get("duplicate_records", 0)
-            })
+            self.notifier.send_notification(
+                "Data Integrity Check",
+                "Data integrity issues found",
+                "warning",
+                fields={
+                    "gaps_count": len(report.get("gaps", [])),
+                    "duplicates": report.get("duplicate_records", 0),
+                },
+            )
 
         return report

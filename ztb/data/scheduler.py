@@ -5,17 +5,24 @@ Uses APScheduler for cron-like scheduling of data fetching tasks.
 """
 
 import logging
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
-import time
 
-from apscheduler.schedulers.blocking import BlockingScheduler  # type: ignore[import-untyped]
+from apscheduler.schedulers.blocking import (
+    BlockingScheduler,  # type: ignore[import-untyped]
+)
 from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
 
-from ztb.notifications import DiscordNotifier
-from ztb.data.binance_data import fetch_historical_klines, interpolate_missing_data, save_parquet_chunked
+from ztb.data.binance_data import (
+    fetch_historical_klines,
+    interpolate_missing_data,
+    save_parquet_chunked,
+)
+from ztb.ops.alerts.notifications import DiscordNotifier
 
 logger = logging.getLogger(__name__)
+
 
 class DataAcquisitionScheduler:
     """
@@ -40,7 +47,9 @@ class DataAcquisitionScheduler:
             # Calculate yesterday's date range
             yesterday = datetime.now() - timedelta(days=1)
             start_date = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+            end_date = yesterday.replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
 
             logger.info(f"Starting daily data fetch for {yesterday.date()}")
 
@@ -90,24 +99,28 @@ class DataAcquisitionScheduler:
         self.scheduler.add_job(
             self._fetch_daily_data,
             trigger=trigger,
-            id='daily_binance_fetch',
-            name='Daily Binance Data Fetch',
+            id="daily_binance_fetch",
+            name="Daily Binance Data Fetch",
             max_instances=1,
-            replace_existing=True
+            replace_existing=True,
         )
         logger.info(f"Scheduled daily data fetch at {hour:02d}:{minute:02d}")
 
     def start(self) -> None:
         """Start the scheduler"""
         logger.info("Starting data acquisition scheduler")
-        self.notifier.send_notification("Scheduler", "Data acquisition scheduler started", "info")
+        self.notifier.send_notification(
+            "Scheduler", "Data acquisition scheduler started", "info"
+        )
         self.scheduler.start()
 
     def stop(self) -> None:
         """Stop the scheduler"""
         logger.info("Stopping data acquisition scheduler")
         self.scheduler.shutdown()
-        self.notifier.send_notification("Scheduler", "Data acquisition scheduler stopped", "info")
+        self.notifier.send_notification(
+            "Scheduler", "Data acquisition scheduler stopped", "info"
+        )
 
     def run_once(self) -> None:
         """Run data fetch once for testing"""

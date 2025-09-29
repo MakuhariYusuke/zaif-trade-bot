@@ -4,17 +4,18 @@ Benchmark script for feature computation performance.
 特徴量計算のパフォーマンスベンチマーク
 """
 
-import time
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import sys
+import time
+from pathlib import Path
+
+import numpy as np
 
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from ztb.features import FeatureRegistry
 from ztb.utils.data_generation import generate_synthetic_market_data
+
+from ztb.features import FeatureRegistry
 
 
 def benchmark_features():
@@ -28,7 +29,7 @@ def benchmark_features():
     print(f"Generated {len(df)} samples")
 
     # Features to test
-    features = ['RSI', 'ROC', 'OBV', 'ZScore']
+    features = ["RSI", "ROC", "OBV", "ZScore"]
 
     results = []
 
@@ -57,15 +58,19 @@ def benchmark_features():
         min_time = np.min(times)
         max_time = np.max(times)
 
-        print(f"  Avg: {avg_time:.4f}s, Std: {std_time:.4f}s, Min: {min_time:.4f}s, Max: {max_time:.4f}s")
-        results.append({
-            'feature': feature_name,
-            'avg_time': avg_time,
-            'std_time': std_time,
-            'min_time': min_time,
-            'max_time': max_time,
-            'samples_per_sec': len(df) / avg_time
-        })
+        print(
+            f"  Avg: {avg_time:.4f}s, Std: {std_time:.4f}s, Min: {min_time:.4f}s, Max: {max_time:.4f}s"
+        )
+        results.append(
+            {
+                "feature": feature_name,
+                "avg_time": avg_time,
+                "std_time": std_time,
+                "min_time": min_time,
+                "max_time": max_time,
+                "samples_per_sec": len(df) / avg_time,
+            }
+        )
 
     # Print summary
     print("\n📊 Performance Summary:")
@@ -74,7 +79,9 @@ def benchmark_features():
     print("-" * 70)
 
     for result in results:
-        print(f"{result['feature']:<12} {result['avg_time']:.4f}s    {result['samples_per_sec']:>8.0f} samples/sec")
+        print(
+            f"{result['feature']:<12} {result['avg_time']:.4f}s    {result['samples_per_sec']:>8.0f} samples/sec"
+        )
     print("\n✅ Benchmark completed!")
 
 

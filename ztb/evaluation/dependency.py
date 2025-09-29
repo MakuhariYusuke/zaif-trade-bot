@@ -6,10 +6,8 @@ including cycle detection, evaluation order determination, and
 failure propagation.
 """
 
-from typing import Dict, List, Set, Optional, Tuple, Any
 from collections import defaultdict, deque
-import json
-from datetime import datetime
+from typing import Any, Dict, List, Optional, Set
 
 
 class DependencyGraph:
@@ -17,7 +15,9 @@ class DependencyGraph:
 
     def __init__(self) -> None:
         self.graph: Dict[str, Set[str]] = defaultdict(set)  # feature -> dependencies
-        self.reverse_graph: Dict[str, Set[str]] = defaultdict(set)  # feature -> dependents
+        self.reverse_graph: Dict[str, Set[str]] = defaultdict(
+            set
+        )  # feature -> dependents
         self.failed_features: Set[str] = set()
         self.blocked_features: Set[str] = set()
 
@@ -173,17 +173,21 @@ class DependencyGraph:
             "graph": {k: list(v) for k, v in self.graph.items()},
             "reverse_graph": {k: list(v) for k, v in self.reverse_graph.items()},
             "failed_features": list(self.failed_features),
-            "blocked_features": list(self.blocked_features)
+            "blocked_features": list(self.blocked_features),
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'DependencyGraph':
+    def from_dict(cls, data: Dict[str, Any]) -> "DependencyGraph":
         """Create graph from dictionary representation"""
         graph = cls()
-        graph.graph = defaultdict(set, {k: set(v) for k, v in data.get('graph', {}).items()})
-        graph.reverse_graph = defaultdict(set, {k: set(v) for k, v in data.get('reverse_graph', {}).items()})
-        graph.failed_features = set(data.get('failed_features', []))
-        graph.blocked_features = set(data.get('blocked_features', []))
+        graph.graph = defaultdict(
+            set, {k: set(v) for k, v in data.get("graph", {}).items()}
+        )
+        graph.reverse_graph = defaultdict(
+            set, {k: set(v) for k, v in data.get("reverse_graph", {}).items()}
+        )
+        graph.failed_features = set(data.get("failed_features", []))
+        graph.blocked_features = set(data.get("blocked_features", []))
         return graph
 
     def get_evaluation_candidates(self, available_features: List[str]) -> List[str]:
@@ -198,7 +202,10 @@ class DependencyGraph:
 
             # Check if all dependencies are available
             deps = self.graph.get(feature, set())
-            if all(dep in available_features and dep not in self.failed_features for dep in deps):
+            if all(
+                dep in available_features and dep not in self.failed_features
+                for dep in deps
+            ):
                 candidates.append(feature)
 
         return candidates
@@ -211,7 +218,9 @@ class FeatureDependencyManager:
         self.graph = DependencyGraph()
         self.feature_categories: Dict[str, str] = {}  # feature -> category
 
-    def register_feature(self, name: str, dependencies: List[str], category: str = "other") -> None:
+    def register_feature(
+        self, name: str, dependencies: List[str], category: str = "other"
+    ) -> None:
         """Register a feature with its dependencies"""
         self.graph.add_feature_dependencies(name, dependencies)
         self.feature_categories[name] = category
@@ -221,7 +230,12 @@ class FeatureDependencyManager:
         self.graph.remove_feature(name)
         self.feature_categories.pop(name, None)
 
-    def mark_evaluation_result(self, feature: str, success: bool, error_details: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    def mark_evaluation_result(
+        self,
+        feature: str,
+        success: bool,
+        error_details: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
         """Mark the result of feature evaluation"""
         if not success:
             self.graph.mark_feature_failed(feature)
@@ -233,7 +247,7 @@ class FeatureDependencyManager:
             return {
                 "dependency_chain": dependency_chain,
                 "blocked_children": blocked_children,
-                "error_details": error_details
+                "error_details": error_details,
             }
 
         return None
@@ -273,12 +287,14 @@ class FeatureDependencyManager:
             "evaluation_order": evaluation_order,
             "blocked_features": blocked_features,
             "available_features": available_features,
-            "has_cycles": self.graph.has_cycles()
+            "has_cycles": self.graph.has_cycles(),
         }
 
     def get_category_features(self, category: str) -> List[str]:
         """Get all features in a specific category"""
-        return [name for name, cat in self.feature_categories.items() if cat == category]
+        return [
+            name for name, cat in self.feature_categories.items() if cat == category
+        ]
 
     def validate_graph(self) -> Dict[str, Any]:
         """Validate the dependency graph"""
@@ -294,13 +310,15 @@ class FeatureDependencyManager:
 
         for feature in all_features:
             if feature not in self.feature_categories:
-                issues.append(f"Feature '{feature}' is referenced in dependencies but not registered")
+                issues.append(
+                    f"Feature '{feature}' is referenced in dependencies but not registered"
+                )
 
         return {
             "valid": len(issues) == 0,
             "issues": issues,
             "total_features": len(self.feature_categories),
-            "total_dependencies": sum(len(deps) for deps in self.graph.graph.values())
+            "total_dependencies": sum(len(deps) for deps in self.graph.graph.values()),
         }
 
 

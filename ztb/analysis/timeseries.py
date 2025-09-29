@@ -1,7 +1,10 @@
 """Time series lag correlation analysis"""
-import pandas as pd
-from typing import List, Dict, Any
+
+from typing import Any, Dict, List
+
 import numpy as np
+import pandas as pd
+
 
 def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
     """Compute lag correlations for feature pairs.
@@ -45,13 +48,15 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, 
                 if len(valid) > 10:
                     corr = valid.iloc[:, 0].corr(valid.iloc[:, 1])
                     if not np.isnan(corr):
-                        results.append({
-                            "feature1": col1,
-                            "feature2": col2,
-                            "lag": lag,
-                            "correlation": corr
-                        })
+                        results.append(
+                            {
+                                "feature1": col1,
+                                "feature2": col2,
+                                "lag": lag,
+                                "correlation": corr,
+                            }
+                        )
 
     # Sort by absolute correlation, take top 10
-    results.sort(key=lambda x: abs(x['correlation']), reverse=True)
+    results.sort(key=lambda x: abs(x["correlation"]), reverse=True)
     return results[:10]

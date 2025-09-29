@@ -26,10 +26,40 @@ jobs:
         pip install -r requirements-dev.txt
         pip install types-requests types-psutil
         pip install pre-commit
+        pip install pip-audit
+
+    - name: Run security audit
+      run: |
+        pip-audit --format json --output audit-results.json || true
+        if [ -f audit-results.json ] && [ "$(jq '.vulnerabilities | length' audit-results.json)" -gt 0 ]; then
+          echo "Security vulnerabilities found:"
+          jq '.vulnerabilities[] | {name: .name, version: .version, description: .advisory.description}' audit-results.json
+          exit 1
+        else
+          echo "No security vulnerabilities found"
+        fi
 
     - name: Run pre-commit hooks
       run: |
         pre-commit run --all-files --show-diff-on-failure
+
+    - name: Check schema version
+      run: |
+        python -m ztb.ops.check_schema_version
+
+    - name: Check no .py files in ztb/scripts/
+      run: |
+        if [ "$(find ztb/scripts -name "*.py" | wc -l)" -gt 0 ]; then
+          echo "Error: Python files found in ztb/scripts/. Only shell scripts allowed."
+          find ztb/scripts -name "*.py"
+          exit 1
+        fi
+
+    - name: Smoke test module imports
+      run: |
+        python -c "import importlib; importlib.import_module('ztb.ops.cli')"
+        python -c "import importlib; importlib.import_module('ztb.training.run_1m')"
+        python -c "import importlib; importlib.import_module('ztb.training.supervise_1m')"
 
     - name: Run linting
       run: |
@@ -135,6 +165,24 @@ jobs:
         export PYTHONPATH="${PYTHONPATH}:$(pwd)"
         export ZTB_MEM_PROFILE=1
         python ztb/experiments/smoke_test.py --steps 1000 --dataset synthetic
+
+    - name: Run benchmark smoke test
+      run: |
+        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+        python -c "
+        import time
+        start = time.time()
+        # Simple benchmark smoke test
+        from ztb.core.market import Market
+        from ztb.core.strategies.base_strategy import BaseStrategy
+        market = Market()
+        strategy = BaseStrategy(market)
+        # Run a few steps
+        for i in range(10):
+            strategy.update()
+        end = time.time()
+        print(f'Benchmark smoke test completed in {end - start:.2f} seconds')
+        "
 
     - name: Upload memory profile
       uses: actions/upload-artifact@v4

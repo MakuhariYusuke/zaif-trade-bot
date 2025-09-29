@@ -1,10 +1,13 @@
-﻿import pickle
+import pickle
 from pathlib import Path
 from typing import Any, Dict
 
 import pandas as pd
 
-from ztb.training.checkpoint_manager import TrainingCheckpointConfig, TrainingCheckpointManager
+from ztb.training.checkpoint_manager import (
+    TrainingCheckpointConfig,
+    TrainingCheckpointManager,
+)
 
 
 class _DummyOptimizer:
@@ -44,13 +47,12 @@ class _DummyModel:
             self.replay_buffer = pickle.load(fh)
 
 
-
 def test_checkpoint_manager_roundtrip(tmp_path: Path) -> None:
     config = TrainingCheckpointConfig(
         interval_steps=10,
         async_save=False,
         include_rng_state=False,
-        compress='zlib',
+        compress="zlib",
     )
     manager = TrainingCheckpointManager(save_dir=str(tmp_path), config=config)
 

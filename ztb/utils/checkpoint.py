@@ -10,19 +10,18 @@ Usage:
     manager.save_async(model, step=1000)
 """
 
-import asyncio
-import os
 import pickle
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
-from typing import Any, Dict, Optional, Callable, List, Tuple, TypedDict
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 try:
     import lz4.frame as lz4_frame
+
     HAS_LZ4 = True
 except ImportError:
     lz4_frame = None
@@ -30,6 +29,7 @@ except ImportError:
 
 try:
     import zstandard as zstd
+
     HAS_ZSTD = True
 except ImportError:
     zstd = None
@@ -40,6 +40,7 @@ import zlib
 
 class CheckpointData(TypedDict):
     """Checkpoint data structure"""
+
     obj: Any
     step: int
     metadata: Dict[str, Any]
@@ -49,9 +50,15 @@ class CheckpointData(TypedDict):
 class CheckpointManager:
     """Unified checkpoint manager with async saving and generation management"""
 
-    def __init__(self, save_dir: str = "models/checkpoints", keep_last: int = 5,
-                 keep_every_nth: int = 10, compress: str = "zlib", max_queue_size: int = 10,
-                 differential: bool = False):
+    def __init__(
+        self,
+        save_dir: str = "models/checkpoints",
+        keep_last: int = 5,
+        keep_every_nth: int = 10,
+        compress: str = "zlib",
+        max_queue_size: int = 10,
+        differential: bool = False,
+    ):
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.keep_last = keep_last
@@ -74,23 +81,29 @@ class CheckpointManager:
             "saved_count": 0,
             "compressed_size_mb": 0.0,
             "total_save_time": 0.0,
-            "differential_saves": 0
+            "differential_saves": 0,
         }
 
-    def save_async(self, obj: Any, step: int, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def save_async(
+        self, obj: Any, step: int, metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Save checkpoint asynchronously"""
         if self.save_queue.full():
             print(f"Warning: Checkpoint queue full, dropping save at step {step}")
             return
 
-        self.save_queue.put({
-            "obj": obj,
-            "step": step,
-            "metadata": metadata or {},
-            "timestamp": time.time()
-        })
+        self.save_queue.put(
+            {
+                "obj": obj,
+                "step": step,
+                "metadata": metadata or {},
+                "timestamp": time.time(),
+            }
+        )
 
-    def save_sync(self, obj: Any, step: int, metadata: Optional[Dict[str, Any]] = None) -> str:
+    def save_sync(
+        self, obj: Any, step: int, metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
         """Save checkpoint synchronously (blocking)"""
         return self._save_checkpoint(obj, step, metadata or {})
 
@@ -104,26 +117,32 @@ class CheckpointManager:
         def get_step(path: Path) -> int:
             stem = path.stem
             if stem.startswith("checkpoint_diff_"):
-                return int(stem.split('_')[2])
+                return int(stem.split("_")[2])
             else:
-                return int(stem.split('_')[1])
+                return int(stem.split("_")[1])
 
         latest = max(checkpoints, key=get_step)
-        
+
         # If loading a diff checkpoint, we need to find the base
         if "diff" in latest.name:
             # Find the most recent full checkpoint before this diff
             diff_step = get_step(latest)
-            full_checkpoints = [cp for cp in checkpoints if "diff" not in cp.name and get_step(cp) <= diff_step]
+            full_checkpoints = [
+                cp
+                for cp in checkpoints
+                if "diff" not in cp.name and get_step(cp) <= diff_step
+            ]
             if full_checkpoints:
                 base_checkpoint = max(full_checkpoints, key=get_step)
-                self.last_full_checkpoint = self._load_raw_checkpoint(str(base_checkpoint))
-        
+                self.last_full_checkpoint = self._load_raw_checkpoint(
+                    str(base_checkpoint)
+                )
+
         return self._load_checkpoint(str(latest))
 
     def _load_raw_checkpoint(self, path: str) -> CheckpointData:
         """Load checkpoint without applying diffs"""
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             compressed_data = f.read()
 
         data = self._decompress_data(compressed_data)
@@ -131,17 +150,18 @@ class CheckpointManager:
 
     def cleanup_old_checkpoints(self) -> None:
         """Clean up old checkpoints based on keep_last and keep_every_nth"""
-        checkpoints = sorted(self.save_dir.glob("checkpoint_*.pkl*"),
-                           key=lambda p: self._extract_step(p))
+        checkpoints = sorted(
+            self.save_dir.glob("checkpoint_*.pkl*"), key=lambda p: self._extract_step(p)
+        )
 
         if len(checkpoints) <= self.keep_last:
             return
 
         # Keep last N
-        to_keep = set(checkpoints[-self.keep_last:])
+        to_keep = set(checkpoints[-self.keep_last :])
 
         # Keep every Nth
-        for i, ckpt in enumerate(checkpoints[:-self.keep_last]):
+        for i, ckpt in enumerate(checkpoints[: -self.keep_last]):
             if (i + 1) % self.keep_every_nth == 0:
                 to_keep.add(ckpt)
 
@@ -153,13 +173,14 @@ class CheckpointManager:
 
     def _save_worker(self) -> None:
         """Background worker for async saves"""
-        import traceback
         import gc
+        import traceback
+
         from ztb.utils.notify import get_notifier
-        
+
         notifier = get_notifier()
         logged_errors = set()  # Track logged errors to prevent spam
-        
+
         while True:
             item = self.save_queue.get()
             if item is None:  # Poison pill
@@ -167,7 +188,9 @@ class CheckpointManager:
 
             try:
                 start_time = time.time()
-                path = self._save_checkpoint(item["obj"], item["step"], item["metadata"])
+                path = self._save_checkpoint(
+                    item["obj"], item["step"], item["metadata"]
+                )
                 save_time = time.time() - start_time
 
                 self.stats["saved_count"] += 1
@@ -187,11 +210,11 @@ class CheckpointManager:
             except Exception as e:
                 error_msg = f"Error in checkpoint worker: {type(e).__name__}: {e}"
                 error_trace = traceback.format_exc()
-                
+
                 # Log full error with traceback
                 print(error_msg)
                 print(error_trace)
-                
+
                 # Send to Discord if not already logged this error
                 error_key = f"{type(e).__name__}:{str(e)}"
                 if error_key not in logged_errors:
@@ -200,7 +223,7 @@ class CheckpointManager:
                         notifier.send_notification(
                             title="Checkpoint Worker Error",
                             message=f"{error_msg}\n\n{error_trace[:1000]}...",  # Limit traceback length
-                            color="error"
+                            color="error",
                         )
 
     def _save_checkpoint(self, obj: Any, step: int, metadata: Dict[str, Any]) -> str:
@@ -209,11 +232,15 @@ class CheckpointManager:
             "obj": obj,
             "step": step,
             "metadata": metadata,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         # Check if we should save differentially
-        if self.differential and self.last_full_checkpoint is not None and step % 10 != 0:  # Save full every 10 steps
+        if (
+            self.differential
+            and self.last_full_checkpoint is not None
+            and step % 10 != 0
+        ):  # Save full every 10 steps
             # Create differential checkpoint
             diff_data = self._compute_diff(self.last_full_checkpoint, checkpoint_data)
             save_data = diff_data
@@ -241,7 +268,7 @@ class CheckpointManager:
         path = self.save_dir / filename
         self.last_checkpoint_path = str(path)
 
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             f.write(compressed_data)
 
         # Update stats
@@ -251,7 +278,7 @@ class CheckpointManager:
 
     def _load_checkpoint(self, path: str) -> Tuple[CheckpointData, int, Dict[str, Any]]:
         """Internal load method with differential support"""
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             compressed_data = f.read()
 
         # Decompress
@@ -263,10 +290,18 @@ class CheckpointManager:
         # If this is a differential checkpoint, apply it to base
         if isinstance(checkpoint_data, dict) and checkpoint_data.get("is_differential"):
             if self.last_full_checkpoint is None:
-                raise ValueError("Cannot load differential checkpoint without base checkpoint")
-            checkpoint_data = self._apply_diff(self.last_full_checkpoint, checkpoint_data)
+                raise ValueError(
+                    "Cannot load differential checkpoint without base checkpoint"
+                )
+            checkpoint_data = self._apply_diff(
+                self.last_full_checkpoint, checkpoint_data
+            )
 
-        return checkpoint_data["obj"], checkpoint_data["step"], checkpoint_data["metadata"]
+        return (
+            checkpoint_data["obj"],
+            checkpoint_data["step"],
+            checkpoint_data["metadata"],
+        )
 
     def _compress_data(self, data: bytes) -> bytes:
         """Compress data based on compression setting"""
@@ -276,7 +311,11 @@ class CheckpointManager:
     def _decompress_data(self, data: bytes) -> bytes:
         """Decompress data"""
         # Try different decompressors (data might have been saved with different compression)
-        for decompressor in [self._decompress_zstd, self._decompress_lz4, self._decompress_zlib]:
+        for decompressor in [
+            self._decompress_zstd,
+            self._decompress_lz4,
+            self._decompress_zlib,
+        ]:
             try:
                 return decompressor(data)
             except Exception:
@@ -322,12 +361,12 @@ class CheckpointManager:
         """Extract step number from checkpoint filename"""
         name = path.stem  # checkpoint_00001234 or checkpoint_00001234.pkl
         # Handle both compressed and uncompressed filenames
-        if name.endswith('.pkl'):
+        if name.endswith(".pkl"):
             name = name[:-4]  # Remove .pkl extension
-        step_str = name.split('_')[1]
+        step_str = name.split("_")[1]
         # Remove any remaining extension
-        if '.' in step_str:
-            step_str = step_str.split('.')[0]
+        if "." in step_str:
+            step_str = step_str.split(".")[0]
         return int(step_str)
 
     def get_stats(self) -> Dict[str, Any]:
@@ -339,29 +378,38 @@ class CheckpointManager:
         self.save_queue.put(None)  # Poison pill
         self.worker_thread.join(timeout=5)
 
-    def _compute_diff(self, old_data: CheckpointData, new_data: CheckpointData) -> Dict[str, Any]:
+    def _compute_diff(
+        self, old_data: CheckpointData, new_data: CheckpointData
+    ) -> Dict[str, Any]:
         """Compute differential checkpoint data"""
-        diff: Dict[str, Any] = {"step": new_data["step"], "timestamp": new_data["timestamp"]}
-        
+        diff: Dict[str, Any] = {
+            "step": new_data["step"],
+            "timestamp": new_data["timestamp"],
+        }
+
         # Compute diff for metadata
         if old_data.get("metadata") != new_data.get("metadata"):
             diff["metadata"] = new_data["metadata"]
-            
+
         # For objects, if they are dicts, compute nested diff
-        if isinstance(old_data.get("obj"), dict) and isinstance(new_data.get("obj"), dict):
+        if isinstance(old_data.get("obj"), dict) and isinstance(
+            new_data.get("obj"), dict
+        ):
             diff["obj_diff"] = self._dict_diff(old_data["obj"], new_data["obj"])
             diff["is_differential"] = True
         else:
             # Fallback to full save if not dict
             diff["obj"] = new_data["obj"]
             diff["is_differential"] = False
-            
+
         return diff
 
-    def _dict_diff(self, old_dict: Dict[str, Any], new_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _dict_diff(
+        self, old_dict: Dict[str, Any], new_dict: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Compute diff between two dictionaries (recursive)"""
         diff = {}
-        
+
         # Find changed/added keys
         for key, new_value in new_dict.items():
             if key not in old_dict:
@@ -373,36 +421,40 @@ class CheckpointManager:
                         diff[key] = ("modified", nested_diff)
                 else:
                     diff[key] = ("modified", new_value)
-                    
+
         # Find removed keys
         for key in old_dict:
             if key not in new_dict:
                 diff[key] = ("removed", None)
-                
+
         return diff
 
-    def _apply_diff(self, base_data: CheckpointData, diff: Dict[str, Any]) -> CheckpointData:
+    def _apply_diff(
+        self, base_data: CheckpointData, diff: Dict[str, Any]
+    ) -> CheckpointData:
         """Apply differential data to base checkpoint"""
         result = base_data.copy()
         result["step"] = diff["step"]
         result["timestamp"] = diff["timestamp"]
-        
+
         if "metadata" in diff:
             result["metadata"] = diff["metadata"]
-            
+
         if "obj_diff" in diff:
             # Apply dict diff
             result["obj"] = self._apply_dict_diff(base_data["obj"], diff["obj_diff"])
         elif "obj" in diff:
             # Full object replacement
             result["obj"] = diff["obj"]
-            
+
         return result
 
-    def _apply_dict_diff(self, base_dict: Dict[str, Any], diff: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply_dict_diff(
+        self, base_dict: Dict[str, Any], diff: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Apply dictionary diff to base dict (recursive)"""
         result = base_dict.copy()
-        
+
         for key, (action, value) in diff.items():
             if action == "added" or action == "modified":
                 if isinstance(value, dict) and action == "modified":
@@ -415,8 +467,9 @@ class CheckpointManager:
                     result[key] = value
             elif action == "removed":
                 result.pop(key, None)
-                
+
         return result
+
 
 class HierarchicalCheckpointManager:
     """
@@ -430,8 +483,14 @@ class HierarchicalCheckpointManager:
     Recovery policy: On failure, resume from nearest full checkpoint.
     """
 
-    def __init__(self, save_dir: str = "models/checkpoints", compress: str = "zstd",
-                 light_freq: Optional[List[int]] = None, full_freq: int = 10000, archive_freq: int = 50000):
+    def __init__(
+        self,
+        save_dir: str = "models/checkpoints",
+        compress: str = "zstd",
+        light_freq: Optional[List[int]] = None,
+        full_freq: int = 10000,
+        archive_freq: int = 50000,
+    ):
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.compress = compress
@@ -452,7 +511,9 @@ class HierarchicalCheckpointManager:
 
     def _init_executor(self):
         """Initialize ThreadPoolExecutor for async saving"""
-        self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="checkpoint")
+        self.executor = ThreadPoolExecutor(
+            max_workers=2, thread_name_prefix="checkpoint"
+        )
 
     def should_save_light(self, step: int) -> bool:
         """Check if light checkpoint should be saved at this step"""
@@ -470,10 +531,14 @@ class HierarchicalCheckpointManager:
         """Check if archive checkpoint should be saved at this step"""
         return step % self.archive_freq == 0
 
-    def save_checkpoint(self, step: int, model_state: Dict[str, Any],
-                       optimizer_state: Optional[Dict[str, Any]] = None,
-                       metrics: Optional[Dict[str, Any]] = None,
-                       checkpoint_type: str = "auto") -> None:
+    def save_checkpoint(
+        self,
+        step: int,
+        model_state: Dict[str, Any],
+        optimizer_state: Optional[Dict[str, Any]] = None,
+        metrics: Optional[Dict[str, Any]] = None,
+        checkpoint_type: str = "auto",
+    ) -> None:
         """
         Save checkpoint asynchronously.
 
@@ -496,16 +561,27 @@ class HierarchicalCheckpointManager:
 
         # Submit async save
         if self.executor:
-            self.executor.submit(self._save_checkpoint_sync, step, model_state,
-                               optimizer_state, metrics, checkpoint_type)
+            self.executor.submit(
+                self._save_checkpoint_sync,
+                step,
+                model_state,
+                optimizer_state,
+                metrics,
+                checkpoint_type,
+            )
 
-    def _save_checkpoint_sync(self, step: int, model_state: Dict[str, Any],
-                             optimizer_state: Optional[Dict[str, Any]],
-                             metrics: Optional[Dict[str, Any]],
-                             checkpoint_type: str) -> None:
+    def _save_checkpoint_sync(
+        self,
+        step: int,
+        model_state: Dict[str, Any],
+        optimizer_state: Optional[Dict[str, Any]],
+        metrics: Optional[Dict[str, Any]],
+        checkpoint_type: str,
+    ) -> None:
         """Synchronous checkpoint saving"""
         try:
             import time
+
             start_time = time.time()
 
             # Prepare checkpoint data
@@ -515,7 +591,7 @@ class HierarchicalCheckpointManager:
                 "optimizer_state": optimizer_state,
                 "metrics": metrics or {},
                 "timestamp": datetime.now().isoformat(),
-                "type": checkpoint_type
+                "type": checkpoint_type,
             }
 
             # Create filename
@@ -540,14 +616,20 @@ class HierarchicalCheckpointManager:
                 compressed_data = zlib.compress(data, 6)
 
             # Save
-            with open(filepath, 'wb') as f:
+            with open(filepath, "wb") as f:
                 f.write(compressed_data)
 
             save_time = time.time() - start_time
-            compression_ratio = len(compressed_data) / uncompressed_size if uncompressed_size > 0 else 1.0
+            compression_ratio = (
+                len(compressed_data) / uncompressed_size
+                if uncompressed_size > 0
+                else 1.0
+            )
 
-            print(f"Saved {checkpoint_type} checkpoint at step {step}: {filepath} "
-                  f"({save_time:.2f}s, {compression_ratio:.2f}x compression)")
+            print(
+                f"Saved {checkpoint_type} checkpoint at step {step}: {filepath} "
+                f"({save_time:.2f}s, {compression_ratio:.2f}x compression)"
+            )
 
             # Cleanup old checkpoints
             self._cleanup_old_checkpoints(checkpoint_type)
@@ -562,8 +644,10 @@ class HierarchicalCheckpointManager:
             light_checkpoints = list(self.save_dir.glob("checkpoint_light_*.pkl*"))
             if len(light_checkpoints) > self.keep_light:
                 # Sort by step number (descending)
-                light_checkpoints.sort(key=lambda x: int(x.stem.split('_')[2]), reverse=True)
-                for old_cp in light_checkpoints[self.keep_light:]:
+                light_checkpoints.sort(
+                    key=lambda x: int(x.stem.split("_")[2]), reverse=True
+                )
+                for old_cp in light_checkpoints[self.keep_light :]:
                     old_cp.unlink()
 
         elif checkpoint_type == "full":
@@ -571,8 +655,10 @@ class HierarchicalCheckpointManager:
             full_checkpoints = list(self.save_dir.glob("checkpoint_full_*.pkl*"))
             if len(full_checkpoints) > self.keep_full:
                 # Sort by step number (descending)
-                full_checkpoints.sort(key=lambda x: int(x.stem.split('_')[2]), reverse=True)
-                for old_cp in full_checkpoints[self.keep_full:]:
+                full_checkpoints.sort(
+                    key=lambda x: int(x.stem.split("_")[2]), reverse=True
+                )
+                for old_cp in full_checkpoints[self.keep_full :]:
                     old_cp.unlink()
 
         elif checkpoint_type == "archive":
@@ -587,21 +673,23 @@ class HierarchicalCheckpointManager:
         # Try full checkpoints first
         full_cps = list(self.save_dir.glob("checkpoint_full_*.pkl*"))
         if full_cps:
-            return max(full_cps, key=lambda x: int(x.stem.split('_')[2]))
+            return max(full_cps, key=lambda x: int(x.stem.split("_")[2]))
 
         # Then archive
         archive_cps = list(self.save_dir.glob("checkpoint_archive_*.pkl*"))
         if archive_cps:
-            return max(archive_cps, key=lambda x: int(x.stem.split('_')[2]))
+            return max(archive_cps, key=lambda x: int(x.stem.split("_")[2]))
 
         # Finally light
         light_cps = list(self.save_dir.glob("checkpoint_light_*.pkl*"))
         if light_cps:
-            return max(light_cps, key=lambda x: int(x.stem.split('_')[2]))
+            return max(light_cps, key=lambda x: int(x.stem.split("_")[2]))
 
         return None
 
-    def load_checkpoint(self, checkpoint_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    def load_checkpoint(
+        self, checkpoint_path: Optional[Path] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Load checkpoint from file.
 
@@ -618,7 +706,7 @@ class HierarchicalCheckpointManager:
             return None
 
         try:
-            with open(checkpoint_path, 'rb') as f:
+            with open(checkpoint_path, "rb") as f:
                 compressed_data = f.read()
 
             # Decompress
@@ -650,7 +738,7 @@ class HierarchicalCheckpointManager:
             "light_checkpoints": light_count,
             "full_checkpoints": full_count,
             "archive_checkpoints": archive_count,
-            "total_checkpoints": light_count + full_count + archive_count
+            "total_checkpoints": light_count + full_count + archive_count,
         }
 
     def shutdown(self) -> None:

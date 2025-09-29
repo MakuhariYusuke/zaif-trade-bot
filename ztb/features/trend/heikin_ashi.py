@@ -1,7 +1,10 @@
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import Any
+
 from ..base import BaseFeature
+
 
 class HeikinAshi(BaseFeature):
     """
@@ -58,15 +61,19 @@ class HeikinAshi(BaseFeature):
         else:
             ha_open = np.empty(0)
             ha_df["ha_open"] = ha_open
-        ha_df["ha_high"] = np.maximum.reduce([
-            df["high"].to_numpy(),
-            ha_df["ha_open"].to_numpy(),
-            ha_df["ha_close"].to_numpy()
-        ])
-        ha_df["ha_low"] = np.minimum.reduce([
-            df["low"].to_numpy(),
-            ha_df["ha_open"].to_numpy(),
-            ha_df["ha_close"].to_numpy()
-        ])
+        ha_df["ha_high"] = np.maximum.reduce(
+            [
+                df["high"].to_numpy(),
+                ha_df["ha_open"].to_numpy(),
+                ha_df["ha_close"].to_numpy(),
+            ]
+        )
+        ha_df["ha_low"] = np.minimum.reduce(
+            [
+                df["low"].to_numpy(),
+                ha_df["ha_open"].to_numpy(),
+                ha_df["ha_close"].to_numpy(),
+            ]
+        )
 
         return ha_df

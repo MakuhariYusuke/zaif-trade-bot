@@ -5,10 +5,13 @@ Unit tests for statistical significance calculations.
 Tests DSR and bootstrap p-values with synthetic data.
 """
 
-import pytest
 import numpy as np
-import pandas as pd
-from ztb.backtest.metrics import calculate_deflated_sharpe_ratio, calculate_bootstrap_pvalue
+import pytest
+
+from ztb.backtest.metrics import (
+    calculate_bootstrap_pvalue,
+    calculate_deflated_sharpe_ratio,
+)
 
 
 class TestStatisticalSignificance:
@@ -45,7 +48,9 @@ class TestStatisticalSignificance:
 
         # For identical distributions, p-value should be around 0.5
         assert p_value is not None
-        assert 0.3 <= p_value <= 0.7, f"Bootstrap p-value {p_value} should be near 0.5 for identical distributions"
+        assert 0.3 <= p_value <= 0.7, (
+            f"Bootstrap p-value {p_value} should be near 0.5 for identical distributions"
+        )
 
     def test_dominant_rl_series_low_p_value(self, fixed_seed):
         """Test that dominant RL series produces p < 0.05."""
@@ -58,11 +63,15 @@ class TestStatisticalSignificance:
         buy_hold_returns = base_returns
 
         # Calculate bootstrap p-value
-        p_value = calculate_bootstrap_pvalue(rl_returns, buy_hold_returns, n_bootstrap=200)
+        p_value = calculate_bootstrap_pvalue(
+            rl_returns, buy_hold_returns, n_bootstrap=200
+        )
 
         # RL should significantly outperform
         assert p_value is not None
-        assert p_value < 0.05, f"Bootstrap p-value {p_value} should be < 0.05 for dominant RL"
+        assert p_value < 0.05, (
+            f"Bootstrap p-value {p_value} should be < 0.05 for dominant RL"
+        )
 
     def test_bootstrap_p_value_consistency(self, fixed_seed):
         """Test that bootstrap p-values are consistent with fixed seed."""
@@ -79,7 +88,9 @@ class TestStatisticalSignificance:
             p_values.append(p_val)
 
         # All p-values should be identical with fixed seed
-        assert all(p == p_values[0] for p in p_values), f"P-values not consistent: {p_values}"
+        assert all(p == p_values[0] for p in p_values), (
+            f"P-values not consistent: {p_values}"
+        )
 
     def test_dsr_with_extreme_skewness(self, fixed_seed):
         """Test DSR calculation with skewed returns."""
@@ -99,7 +110,9 @@ class TestStatisticalSignificance:
         assert dsr is not None
         # With negative skewness, DSR should be lower than regular Sharpe
         regular_sharpe = np.mean(skewed_returns) / np.std(skewed_returns) * np.sqrt(252)
-        assert dsr < regular_sharpe, f"DSR {dsr} should be lower than regular Sharpe {regular_sharpe} for negatively skewed returns"
+        assert dsr < regular_sharpe, (
+            f"DSR {dsr} should be lower than regular Sharpe {regular_sharpe} for negatively skewed returns"
+        )
 
     def test_bootstrap_with_small_sample(self, fixed_seed):
         """Test bootstrap with small sample sizes."""
@@ -134,8 +147,10 @@ class TestStatisticalSignificance:
 
         # Identical series should give p-value very close to 0.5
         assert p_value is not None
-        assert 0.4 <= p_value <= 0.6, f"P-value {p_value} should be near 0.5 for identical series"
+        assert 0.4 <= p_value <= 0.6, (
+            f"P-value {p_value} should be near 0.5 for identical series"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main([__file__])

@@ -4,18 +4,20 @@ Position sizing module with volatility targeting.
 Provides risk-based position sizing to achieve target portfolio volatility.
 """
 
+from dataclasses import dataclass
+from decimal import ROUND_DOWN, Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass
-from enum import Enum
-from decimal import Decimal, ROUND_DOWN, ROUND_UP
-import json
-from .circuit_breakers import get_global_kill_switch, KillSwitchActivatedError
+
+from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 
 
 class SizingMethod(Enum):
     """Position sizing methods."""
+
     EQUAL_WEIGHT = "equal_weight"
     VOL_TARGETING = "vol_targeting"
     KELLY_CRITERION = "kelly_criterion"
@@ -24,6 +26,7 @@ class SizingMethod(Enum):
 @dataclass
 class PositionSize:
     """Position sizing result."""
+
     symbol: str
     quantity: float
     sizing_reason: str
@@ -35,7 +38,11 @@ class PositionSize:
 class PositionSizer:
     """Handles position sizing with volatility targeting."""
 
-    def __init__(self, target_volatility: float = 0.10, method: SizingMethod = SizingMethod.VOL_TARGETING):
+    def __init__(
+        self,
+        target_volatility: float = 0.10,
+        method: SizingMethod = SizingMethod.VOL_TARGETING,
+    ):
         """
         Initialize position sizer.
 
@@ -53,7 +60,7 @@ class PositionSizer:
         current_prices: Dict[str, float],
         portfolio_value: float,
         asset_volatilities: Dict[str, float],  # annualized volatilities
-        correlation_matrix: Optional[pd.DataFrame] = None
+        correlation_matrix: Optional[pd.DataFrame] = None,
     ) -> List[PositionSize]:
         """
         Calculate position sizes for given signals.
@@ -75,11 +82,16 @@ class PositionSizer:
             return self._equal_weight_sizing(signals, current_prices, portfolio_value)
         elif self.method == SizingMethod.VOL_TARGETING:
             return self._vol_targeting_sizing(
-                signals, current_prices, portfolio_value,
-                asset_volatilities, correlation_matrix
+                signals,
+                current_prices,
+                portfolio_value,
+                asset_volatilities,
+                correlation_matrix,
             )
         elif self.method == SizingMethod.KELLY_CRITERION:
-            return self._kelly_sizing(signals, current_prices, portfolio_value, asset_volatilities)
+            return self._kelly_sizing(
+                signals, current_prices, portfolio_value, asset_volatilities
+            )
         else:
             raise ValueError(f"Unknown sizing method: {self.method}")
 
@@ -87,7 +99,7 @@ class PositionSizer:
         self,
         signals: Dict[str, float],
         current_prices: Dict[str, float],
-        portfolio_value: float
+        portfolio_value: float,
     ) -> List[PositionSize]:
         """Equal weight position sizing."""
         positions = []
@@ -104,13 +116,15 @@ class PositionSizer:
             price = current_prices[symbol]
             quantity = (allocation_per_signal * signal) / price
 
-            positions.append(PositionSize(
-                symbol=symbol,
-                quantity=quantity,
-                sizing_reason=f"Equal weight: {allocation_per_signal:.0f} JPY allocation",
-                target_vol_contribution=0.0,  # Not applicable
-                current_portfolio_vol=0.0
-            ))
+            positions.append(
+                PositionSize(
+                    symbol=symbol,
+                    quantity=quantity,
+                    sizing_reason=f"Equal weight: {allocation_per_signal:.0f} JPY allocation",
+                    target_vol_contribution=0.0,  # Not applicable
+                    current_portfolio_vol=0.0,
+                )
+            )
 
         return positions
 
@@ -120,7 +134,7 @@ class PositionSizer:
         current_prices: Dict[str, float],
         portfolio_value: float,
         asset_volatilities: Dict[str, float],
-        correlation_matrix: Optional[pd.DataFrame] = None
+        correlation_matrix: Optional[pd.DataFrame] = None,
     ) -> List[PositionSize]:
         """Volatility targeting position sizing."""
         positions = []
@@ -145,65 +159,78 @@ class PositionSizer:
             vol = asset_volatilities[symbol]
 
             # Base allocation (risk parity style)
-            base_allocation = portfolio_value * (self.target_volatility / vol) / len(signals)
+            base_allocation = (
+                portfolio_value * (self.target_volatility / vol) / len(signals)
+            )
 
             # Apply signal and volatility scaling
             allocation = base_allocation * signal * vol_scaling
 
             # Build sizing chain
             sizing_chain = {
-                'raw_size': allocation,
-                'vol_target': allocation,  # Already applied
-                'kelly': allocation * 0.5,  # Half Kelly
-                'decimal_rounded': None,
-                'validated': None,
-                'circuit_breaker_veto': None,
-                'final_quantity': None,
-                'skip_reason': None
+                "raw_size": allocation,
+                "vol_target": allocation,  # Already applied
+                "kelly": allocation * 0.5,  # Half Kelly
+                "decimal_rounded": None,
+                "validated": None,
+                "circuit_breaker_veto": None,
+                "final_quantity": None,
+                "skip_reason": None,
             }
 
             # Kelly adjustment (0.5)
-            allocation = sizing_chain['kelly']
+            allocation = sizing_chain["kelly"]
 
             # Decimal rounding (price/qty)
             price_dec = Decimal(str(price))
             allocation_dec = Decimal(str(allocation))
             quantity_dec = allocation_dec / price_dec
             # Round down to avoid over-sizing
-            quantity_rounded = float(quantity_dec.quantize(Decimal('0.00000001'), rounding=ROUND_DOWN))
-            sizing_chain['decimal_rounded'] = quantity_rounded
+            quantity_rounded = float(
+                quantity_dec.quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
+            )
+            sizing_chain["decimal_rounded"] = quantity_rounded
 
             # Min notional/step validation (placeholder - need symbol config)
             # Assume min_order_size = 0.0001, min_price = 1, etc.
             min_order_size = 0.0001
             if quantity_rounded < min_order_size:
-                sizing_chain['skip_reason'] = f"Quantity {quantity_rounded} below minimum {min_order_size}"
+                sizing_chain["skip_reason"] = (
+                    f"Quantity {quantity_rounded} below minimum {min_order_size}"
+                )
                 quantity_rounded = 0
 
-            sizing_chain['validated'] = quantity_rounded
+            sizing_chain["validated"] = quantity_rounded
 
             # Circuit breaker veto
             try:
                 kill_switch = get_global_kill_switch()
                 if kill_switch.is_active():
-                    sizing_chain['circuit_breaker_veto'] = 0
-                    sizing_chain['skip_reason'] = "Circuit breaker active"
+                    sizing_chain["circuit_breaker_veto"] = 0
+                    sizing_chain["skip_reason"] = "Circuit breaker active"
                     quantity_rounded = 0
             except KillSwitchActivatedError:
-                sizing_chain['circuit_breaker_veto'] = 0
-                sizing_chain['skip_reason'] = "Kill switch activated"
+                sizing_chain["circuit_breaker_veto"] = 0
+                sizing_chain["skip_reason"] = "Kill switch activated"
                 quantity_rounded = 0
 
-            sizing_chain['final_quantity'] = quantity_rounded
+            sizing_chain["final_quantity"] = quantity_rounded
 
-            positions.append(PositionSize(
-                symbol=symbol,
-                quantity=quantity_rounded,
-                sizing_reason=f"Vol targeting: target {self.target_volatility:.1%}, current {portfolio_vol:.1%}" + (f" - Skipped: {sizing_chain['skip_reason']}" if sizing_chain['skip_reason'] else ""),
-                target_vol_contribution=self.target_volatility / len(signals),
-                current_portfolio_vol=portfolio_vol,
-                sizing_chain=sizing_chain
-            ))
+            positions.append(
+                PositionSize(
+                    symbol=symbol,
+                    quantity=quantity_rounded,
+                    sizing_reason=f"Vol targeting: target {self.target_volatility:.1%}, current {portfolio_vol:.1%}"
+                    + (
+                        f" - Skipped: {sizing_chain['skip_reason']}"
+                        if sizing_chain["skip_reason"]
+                        else ""
+                    ),
+                    target_vol_contribution=self.target_volatility / len(signals),
+                    current_portfolio_vol=portfolio_vol,
+                    sizing_chain=sizing_chain,
+                )
+            )
 
         return positions
 
@@ -212,7 +239,7 @@ class PositionSizer:
         signals: Dict[str, float],
         current_prices: Dict[str, float],
         portfolio_value: float,
-        asset_volatilities: Dict[str, float]
+        asset_volatilities: Dict[str, float],
     ) -> List[PositionSize]:
         """Kelly criterion position sizing."""
         positions = []
@@ -234,13 +261,15 @@ class PositionSizer:
             allocation = portfolio_value * risk_adjusted_kelly
             quantity = allocation / price
 
-            positions.append(PositionSize(
-                symbol=symbol,
-                quantity=quantity,
-                sizing_reason=f"Kelly criterion: {kelly_fraction:.2f} fraction",
-                target_vol_contribution=self.target_volatility,
-                current_portfolio_vol=vol
-            ))
+            positions.append(
+                PositionSize(
+                    symbol=symbol,
+                    quantity=quantity,
+                    sizing_reason=f"Kelly criterion: {kelly_fraction:.2f} fraction",
+                    target_vol_contribution=self.target_volatility,
+                    current_portfolio_vol=vol,
+                )
+            )
 
         return positions
 
@@ -248,7 +277,7 @@ class PositionSizer:
         self,
         signals: Dict[str, float],
         asset_volatilities: Dict[str, float],
-        correlation_matrix: Optional[pd.DataFrame] = None
+        correlation_matrix: Optional[pd.DataFrame] = None,
     ) -> float:
         """Estimate portfolio volatility from signals and asset data."""
         if not correlation_matrix:
@@ -276,7 +305,9 @@ class PositionSizer:
 
         return portfolio_vol
 
-    def estimate_asset_volatilities(self, price_history: Dict[str, pd.Series], window: int = 30) -> Dict[str, float]:
+    def estimate_asset_volatilities(
+        self, price_history: Dict[str, pd.Series], window: int = 30
+    ) -> Dict[str, float]:
         """
         Estimate asset volatilities from price history.
 

@@ -1,18 +1,21 @@
 # Heavy Trading Environment for Reinforcement Learning
 # 重特徴量ベースの取引環境
 
-import gymnasium as gym
-from gymnasium import spaces
-import numpy as np
 import time
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+
+import gymnasium as gym
+import numpy as np
 import pandas as pd
-from typing import Dict, Any, Tuple, Optional, cast, TYPE_CHECKING, List
+from gymnasium import spaces
 
 EPSILON = 1e-6  # 小さい値（ゼロ除算防止用）
 
 
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import StreamingPipeline
+    from ztb.live.stream_to_bars import StreamToBarsConverter
+
 
 class HeavyTradingEnv(gym.Env):
     """
@@ -33,6 +36,7 @@ class HeavyTradingEnv(gym.Env):
         *,
         streaming_pipeline: Optional["StreamingPipeline"] = None,
         stream_batch_size: int = 256,
+        stream_to_bars_converter: Optional["StreamToBarsConverter"] = None,
     ) -> None:
         super().__init__()
 
@@ -41,21 +45,24 @@ class HeavyTradingEnv(gym.Env):
 
         # デフォルト設定
         self.config = config or {
-            'reward_scaling': 1.0,
-            'transaction_cost': 0.001,  # 0.1%
-            'max_position_size': 1.0,
-            'risk_free_rate': 0.0,
+            "reward_scaling": 1.0,
+            "transaction_cost": 0.001,  # 0.1%
+            "max_position_size": 1.0,
+            "risk_free_rate": 0.0,
         }
 
         self.streaming_pipeline = streaming_pipeline
         self.stream_batch_size = max(1, int(stream_batch_size))
+        self.stream_to_bars_converter = stream_to_bars_converter
         self._stream_last_timestamp: Optional[pd.Timestamp] = None
         self._stream_rows_appended = 0
         self._base_columns: List[str] = []
 
         base_df = df
         if base_df is None:
-            base_df = self._fetch_streaming_snapshot(required_rows=self.stream_batch_size)
+            base_df = self._fetch_streaming_snapshot(
+                required_rows=self.stream_batch_size
+            )
             if base_df.empty:
                 raise ValueError("Streaming pipeline did not provide initial data")
 
@@ -65,7 +72,7 @@ class HeavyTradingEnv(gym.Env):
         self._base_columns = list(self.df.columns)
 
         # 特徴量の選択（除外する列を指定）
-        exclude_cols = ['ts', 'timestamp', 'exchange', 'pair', 'episode_id']
+        exclude_cols = ["ts", "timestamp", "exchange", "pair", "episode_id"]
         self.features = [c for c in self.df.columns if c not in exclude_cols]
         if not self.features:
             # 全特徴量が除外された場合は全列を利用
@@ -85,8 +92,10 @@ class HeavyTradingEnv(gym.Env):
         self.trades_count = 0
 
         # ストリーミング関連
-        self._timestamp_column = 'timestamp' if 'timestamp' in self.df.columns else None
-        self._episode_id_column = 'episode_id' if 'episode_id' in self.df.columns else None
+        self._timestamp_column = "timestamp" if "timestamp" in self.df.columns else None
+        self._episode_id_column = (
+            "episode_id" if "episode_id" in self.df.columns else None
+        )
         if not self._timestamp_column:
             self._stream_rows_appended = len(self.df)
 
@@ -113,7 +122,9 @@ class HeavyTradingEnv(gym.Env):
         if not self.streaming_pipeline:
             return pd.DataFrame()
 
-        snapshot = self.streaming_pipeline.buffer.to_dataframe(last_n=max(required_rows, self.stream_batch_size))
+        snapshot = self.streaming_pipeline.buffer.to_dataframe(
+            last_n=max(required_rows, self.stream_batch_size)
+        )
         if snapshot.empty:
             return snapshot
         return snapshot.reset_index(drop=True)
@@ -147,12 +158,14 @@ class HeavyTradingEnv(gym.Env):
         if buffer_df.empty:
             return False
 
-        if self._timestamp_column and 'timestamp' in buffer_df.columns:
-            buffer_df = buffer_df.sort_values('timestamp').reset_index(drop=True)
+        if self._timestamp_column and "timestamp" in buffer_df.columns:
+            buffer_df = buffer_df.sort_values("timestamp").reset_index(drop=True)
             if self._stream_last_timestamp is not None:
-                buffer_df = buffer_df[buffer_df['timestamp'] > self._stream_last_timestamp]
+                buffer_df = buffer_df[
+                    buffer_df["timestamp"] > self._stream_last_timestamp
+                ]
         else:
-            buffer_df = buffer_df.iloc[self._stream_rows_appended:]
+            buffer_df = buffer_df.iloc[self._stream_rows_appended :]
 
         if buffer_df.empty:
             return False
@@ -168,15 +181,15 @@ class HeavyTradingEnv(gym.Env):
         self.n_steps = len(self.df)
         self._stream_rows_appended += len(prepared)
 
-        if self._timestamp_column and 'timestamp' in buffer_df.columns:
-            self._stream_last_timestamp = pd.to_datetime(buffer_df['timestamp']).max()
+        if self._timestamp_column and "timestamp" in buffer_df.columns:
+            self._stream_last_timestamp = pd.to_datetime(buffer_df["timestamp"]).max()
 
         self._refresh_features()
         return True
 
     def _refresh_features(self) -> None:
         """特徴量と観測空間を更新"""
-        exclude_cols = ['ts', 'timestamp', 'exchange', 'pair', 'episode_id']
+        exclude_cols = ["ts", "timestamp", "exchange", "pair", "episode_id"]
         self.features = [c for c in self.df.columns if c not in exclude_cols]
         if not self.features:
             self.features = list(self.df.columns)
@@ -211,7 +224,9 @@ class HeavyTradingEnv(gym.Env):
         self._append_streaming_rows()
         self._ensure_data_available(self.current_step)
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[Dict] = None
+    ) -> Tuple[np.ndarray, Dict]:
         """環境のリセット"""
         super().reset(seed=seed)
 
@@ -249,7 +264,9 @@ class HeavyTradingEnv(gym.Env):
         # エピソード終了判定
         done = self.current_step >= self.n_steps - 1
         if not done and self._episode_id_column and self.current_step < self.n_steps:
-            current_episode = self.df.iloc[self.current_step - 1][self._episode_id_column]
+            current_episode = self.df.iloc[self.current_step - 1][
+                self._episode_id_column
+            ]
             next_episode = self.df.iloc[self.current_step][self._episode_id_column]
             if current_episode != next_episode:
                 done = True
@@ -259,12 +276,14 @@ class HeavyTradingEnv(gym.Env):
 
         # 情報
         info = self._get_info()
-        info.update({
-            'pnl': pnl,
-            'position': self.position,
-            'action': action,
-            'step': self.current_step
-        })
+        info.update(
+            {
+                "pnl": pnl,
+                "position": self.position,
+                "action": action,
+                "step": self.current_step,
+            }
+        )
 
         # 報酬履歴の更新
         self.reward_history.append(reward)
@@ -291,8 +310,8 @@ class HeavyTradingEnv(gym.Env):
 
     def _open_position(self, direction: int) -> None:
         """ポジションオープン"""
-        current_price = self.df.iloc[self.current_step]['close']
-        self.position = direction * self.config['max_position_size']
+        current_price = self.df.iloc[self.current_step]["close"]
+        self.position = direction * self.config["max_position_size"]
         self.entry_price = current_price
         self.trades_count += 1
 
@@ -308,7 +327,7 @@ class HeavyTradingEnv(gym.Env):
         if self.position == 0:
             return 0.0
 
-        current_price = self.df.iloc[self.current_step]['close']
+        current_price = self.df.iloc[self.current_step]["close"]
         entry_price = self.entry_price
         price_change = current_price - entry_price
 
@@ -317,7 +336,9 @@ class HeavyTradingEnv(gym.Env):
 
         # 取引コストの考慮（エントリー時のみ）
         if abs(self.position) > 0:
-            transaction_cost = abs(self.position) * entry_price * self.config['transaction_cost']
+            transaction_cost = (
+                abs(self.position) * entry_price * self.config["transaction_cost"]
+            )
             pnl -= transaction_cost
 
         return float(pnl)
@@ -333,8 +354,12 @@ class HeavyTradingEnv(gym.Env):
 
         if abs(self.position) > 0 and old_position == 0:  # 新規ポジションの場合
             try:
-                current_price = cast(float, self.df.iloc[self.current_step]['close'])  # 実際の価格を参照
-                transaction_cost = abs(self.position) * current_price * self.config['transaction_cost']
+                current_price = cast(
+                    float, self.df.iloc[self.current_step]["close"]
+                )  # 実際の価格を参照
+                transaction_cost = (
+                    abs(self.position) * current_price * self.config["transaction_cost"]
+                )
                 # スプレッドを価格の0.05%として仮定
                 spread_cost = abs(self.position) * current_price * 0.0005
             except (ValueError, TypeError, KeyError, IndexError):
@@ -356,7 +381,7 @@ class HeavyTradingEnv(gym.Env):
         reward = base_reward - drawdown_penalty + win_streak_bonus
 
         # リワードスケーリング
-        reward *= self.config['reward_scaling']
+        reward *= self.config["reward_scaling"]
 
         return cast(float, reward)
 
@@ -376,7 +401,9 @@ class HeavyTradingEnv(gym.Env):
 
             # ドローダウンが50%超えた場合のみペナルティ
             if initial_cumulative > 0:
-                drawdown_ratio = (initial_cumulative - cumulative_reward) / initial_cumulative
+                drawdown_ratio = (
+                    initial_cumulative - cumulative_reward
+                ) / initial_cumulative
                 if drawdown_ratio > 0.5:  # 50%超え
                     return drawdown_ratio * 0.05  # 軽めのペナルティ（5%）
 
@@ -415,18 +442,18 @@ class HeavyTradingEnv(gym.Env):
     def _get_info(self) -> Dict:
         """追加情報を取得"""
         return {
-            'current_step': self.current_step,
-            'total_steps': self.n_steps,
-            'position': self.position,
-            'total_pnl': self.total_pnl,
-            'trades_count': self.trades_count,
-            'features': self.features,
-            'config': self.config
+            "current_step": self.current_step,
+            "total_steps": self.n_steps,
+            "position": self.position,
+            "total_pnl": self.total_pnl,
+            "trades_count": self.trades_count,
+            "features": self.features,
+            "config": self.config,
         }
 
-    def render(self, mode: str = 'human') -> None:
+    def render(self, mode: str = "human") -> None:
         """環境の描画"""
-        if mode == 'human':
+        if mode == "human":
             print(f"Step: {self.current_step}/{self.n_steps}")
             print(f"Position: {self.position}")
             print(f"Total PnL: {self.total_pnl:.4f}")
@@ -452,13 +479,13 @@ class HeavyTradingEnv(gym.Env):
         rewards = np.array(self.reward_history)
 
         return {
-            'total_reward': np.sum(rewards),
-            'mean_reward': np.mean(rewards),
-            'std_reward': np.std(rewards),
-            'sharpe_ratio': np.mean(rewards) / (np.std(rewards) + EPSILON),
-            'max_reward': np.max(rewards),
-            'total_trades': self.trades_count,
-            'win_rate': np.sum(rewards > 0) / len(rewards) if len(rewards) > 0 else 0
+            "total_reward": np.sum(rewards),
+            "mean_reward": np.mean(rewards),
+            "std_reward": np.std(rewards),
+            "sharpe_ratio": np.mean(rewards) / (np.std(rewards) + EPSILON),
+            "max_reward": np.max(rewards),
+            "total_trades": self.trades_count,
+            "win_rate": np.sum(rewards > 0) / len(rewards) if len(rewards) > 0 else 0,
         }
 
     def get_trades_per_1k(self) -> float:

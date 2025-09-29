@@ -1,0 +1,245 @@
+{
+  "$defs": {
+    "CheckpointConfig": {
+      "description": "Configuration for checkpoint management.",
+      "properties": {
+        "async_save": {
+          "default": true,
+          "description": "Enable asynchronous checkpoint saving",
+          "title": "Async Save",
+          "type": "boolean"
+        },
+        "compress": {
+          "default": "zstd",
+          "description": "Compression algorithm (none, zstd, lz4)",
+          "title": "Compress",
+          "type": "string"
+        },
+        "max_pending": {
+          "default": 1,
+          "description": "Maximum pending checkpoints",
+          "title": "Max Pending",
+          "type": "integer"
+        },
+        "retention": {
+          "default": 5,
+          "description": "Number of checkpoints to retain",
+          "title": "Retention",
+          "type": "integer"
+        },
+        "interval_steps": {
+          "default": 10000,
+          "description": "Checkpoint interval in steps",
+          "title": "Interval Steps",
+          "type": "integer"
+        },
+        "light_mode": {
+          "default": false,
+          "description": "Use light checkpoint mode",
+          "title": "Light Mode",
+          "type": "boolean"
+        }
+      },
+      "title": "CheckpointConfig",
+      "type": "object"
+    },
+    "EvalConfig": {
+      "description": "Configuration for evaluation parameters.",
+      "properties": {
+        "dsr_trials": {
+          "default": 1000,
+          "description": "Number of DSR trials",
+          "title": "Dsr Trials",
+          "type": "integer"
+        },
+        "bootstrap_resamples": {
+          "default": 1000,
+          "description": "Number of bootstrap resamples",
+          "title": "Bootstrap Resamples",
+          "type": "integer"
+        },
+        "bootstrap_block": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Bootstrap block size",
+          "title": "Bootstrap Block"
+        },
+        "bootstrap_overlap": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Bootstrap overlap",
+          "title": "Bootstrap Overlap"
+        },
+        "eval_freq": {
+          "default": 50000,
+          "description": "Evaluation frequency in steps",
+          "title": "Eval Freq",
+          "type": "integer"
+        },
+        "benchmark_strategies": {
+          "default": [
+            "sma",
+            "buy_hold"
+          ],
+          "description": "Benchmark strategies",
+          "items": {
+            "type": "string"
+          },
+          "title": "Benchmark Strategies",
+          "type": "array"
+        }
+      },
+      "title": "EvalConfig",
+      "type": "object"
+    },
+    "StreamingConfig": {
+      "description": "Configuration for data streaming.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Enable streaming mode",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "batch_size": {
+          "default": 64,
+          "description": "Streaming batch size",
+          "title": "Batch Size",
+          "type": "integer"
+        },
+        "buffer_policy": {
+          "default": "drop_oldest",
+          "description": "Buffer overflow policy",
+          "title": "Buffer Policy",
+          "type": "string"
+        },
+        "prefetch_factor": {
+          "default": 2,
+          "description": "Prefetch factor for streaming",
+          "title": "Prefetch Factor",
+          "type": "integer"
+        }
+      },
+      "title": "StreamingConfig",
+      "type": "object"
+    },
+    "TrainingConfig": {
+      "description": "Configuration for training parameters.",
+      "properties": {
+        "total_timesteps": {
+          "default": 1000000,
+          "description": "Total training timesteps",
+          "title": "Total Timesteps",
+          "type": "integer"
+        },
+        "n_envs": {
+          "default": 4,
+          "description": "Number of parallel environments",
+          "title": "N Envs",
+          "type": "integer"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Random seed",
+          "title": "Seed"
+        },
+        "eval_interval": {
+          "default": 10000,
+          "description": "Evaluation interval in steps",
+          "title": "Eval Interval",
+          "type": "integer"
+        },
+        "log_interval": {
+          "default": 1000,
+          "description": "Logging interval in steps",
+          "title": "Log Interval",
+          "type": "integer"
+        },
+        "learning_rate": {
+          "default": 0.0003,
+          "description": "Learning rate",
+          "title": "Learning Rate",
+          "type": "number"
+        },
+        "batch_size": {
+          "default": 64,
+          "description": "Batch size for training",
+          "title": "Batch Size",
+          "type": "integer"
+        },
+        "n_epochs": {
+          "default": 10,
+          "description": "Number of epochs per update",
+          "title": "N Epochs",
+          "type": "integer"
+        }
+      },
+      "title": "TrainingConfig",
+      "type": "object"
+    }
+  },
+  "description": "Global configuration container.",
+  "properties": {
+    "training": {
+      "$ref": "#/$defs/TrainingConfig"
+    },
+    "checkpoint": {
+      "$ref": "#/$defs/CheckpointConfig"
+    },
+    "streaming": {
+      "$ref": "#/$defs/StreamingConfig"
+    },
+    "evaluation": {
+      "$ref": "#/$defs/EvalConfig"
+    },
+    "experiment_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Experiment name",
+      "title": "Experiment Name"
+    },
+    "log_level": {
+      "default": "INFO",
+      "description": "Logging level",
+      "title": "Log Level",
+      "type": "string"
+    },
+    "output_dir": {
+      "default": "artifacts",
+      "description": "Output directory",
+      "title": "Output Dir",
+      "type": "string"
+    }
+  },
+  "title": "GlobalConfig",
+  "type": "object"
+}

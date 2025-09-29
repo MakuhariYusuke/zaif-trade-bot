@@ -1,4 +1,4 @@
-﻿"""Streaming buffer utilities for high-frequency data ingestion.
+"""Streaming buffer utilities for high-frequency data ingestion.
 
 Provides a chunked circular buffer backed by pandas DataFrames to minimise
 copy overhead while retaining ergonomic accessors for the training pipeline.
@@ -7,20 +7,35 @@ Improved with optional in-memory compression and zero-copy slicing helpers.
 
 from __future__ import annotations
 
+import gzip
 import pickle
 import threading
 import zlib
-import gzip
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Callable, Deque, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Deque,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
+
 from ztb.utils.observability import ObservabilityClient
 
 try:  # Optional acceleration libraries
     import lz4.frame as lz4_frame
+
     HAS_LZ4 = True
 except Exception:  # pragma: no cover - optional dependency
     lz4_frame = None
@@ -28,9 +43,10 @@ except Exception:  # pragma: no cover - optional dependency
 
 try:
     import zstandard as zstd
+
     HAS_ZSTD = True
 except Exception:  # pragma: no cover - optional dependency
-    zstd = None
+    zstd = None  # type: ignore[assignment]
     HAS_ZSTD = False
 
 DataLike = Union[pd.DataFrame, Mapping[str, Any], Sequence[Mapping[str, Any]]]
@@ -105,7 +121,7 @@ class _Chunk:
         return self.materialize().copy()
 
 
-def _compress_df(df: pd.DataFrame, compression: str) -> bytes:
+def _compress_df(df: pd.DataFrame, compression: str) -> bytes:  # type: ignore[no-any-return]
     payload = pickle.dumps(df, protocol=pickle.HIGHEST_PROTOCOL)
     if compression == "zstd" and HAS_ZSTD and zstd is not None:
         return zstd.ZstdCompressor(level=3).compress(payload)
@@ -116,7 +132,7 @@ def _compress_df(df: pd.DataFrame, compression: str) -> bytes:
     return zlib.compress(payload, level=6)
 
 
-def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:
+def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:  # type: ignore[no-any-return]
     if compression == "zstd" and HAS_ZSTD and zstd is not None:
         payload = zstd.ZstdDecompressor().decompress(data)
     elif compression == "lz4" and HAS_LZ4 and lz4_frame is not None:
@@ -156,9 +172,13 @@ class StreamBuffer:
             raise ValueError("compress_min_rows must be non-negative")
 
         if compression and compression not in {"zlib", "zstd", "lz4", "gzip"}:
-            raise ValueError(f"compression must be one of {{'zlib','zstd','lz4','gzip'}}")
+            raise ValueError(
+                f"compression must be one of {{'zlib','zstd','lz4','gzip'}}"
+            )
         if compression == "zstd" and not HAS_ZSTD:
-            raise RuntimeError("zstd compression requested but python-zstandard not installed")
+            raise RuntimeError(
+                "zstd compression requested but python-zstandard not installed"
+            )
         if compression == "lz4" and not HAS_LZ4:
             raise RuntimeError("lz4 compression requested but lz4.frame not installed")
 
@@ -246,7 +266,7 @@ class StreamBuffer:
             if last_n is None or last_n >= self._rows:
                 frames = [chunk.materialize() for chunk in self._chunks]
             else:
-                frames: List[pd.DataFrame] = []
+                frames = []
                 rows_needed = last_n
                 for chunk in reversed(self._chunks):
                     df = chunk.materialize()
@@ -303,18 +323,20 @@ class StreamBuffer:
                 memory_bytes=self.memory_usage(deep=True),
             )
 
-    def iter_batches(self, batch_size: int, *, include_partial: bool = False) -> Iterator[pd.DataFrame]:
+    def iter_batches(
+        self, batch_size: int, *, include_partial: bool = False
+    ) -> Iterator[pd.DataFrame]:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
 
         with self._lock:
             if self._rows == 0:
-                return iter(())  # type: ignore[return-value]
+                return iter(())
             frames = [chunk.materialize() for chunk in self._chunks]
 
         total_rows = sum(len(frame) for frame in frames)
         if total_rows == 0:
-            return iter(())  # type: ignore[return-value]
+            return iter(())
 
         def _generator() -> Iterator[pd.DataFrame]:
             start = 0
@@ -337,7 +359,7 @@ class StreamBuffer:
             return data.copy(deep=False)
         if isinstance(data, Mapping):
             return pd.DataFrame([data])
-        if isinstance(data, Iterable) and not isinstance(data, (str, bytes)):
+        if isinstance(data, Iterable) and not isinstance(data, (str, bytes)):  # type: ignore[unreachable]
             records = list(data)
             if not records:
                 return pd.DataFrame(columns=self.columns)
@@ -359,7 +381,11 @@ class StreamBuffer:
             df = df.loc[:, list(self._columns)]
 
         if self._dtype_map:
-            cast_map = {col: dtype for col, dtype in self._dtype_map.items() if col in df.columns}
+            cast_map = {
+                col: dtype
+                for col, dtype in self._dtype_map.items()
+                if col in df.columns
+            }
             if cast_map:
                 df = df.astype(cast_map, copy=False)
 

@@ -4,10 +4,11 @@ Unit tests for schema validation of trading results.
 """
 
 import json
-import pytest
-import jsonschema
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import jsonschema
+import pytest
 
 
 class TestSchemaValidation:
@@ -16,8 +17,8 @@ class TestSchemaValidation:
     @pytest.fixture
     def results_schema(self):
         """Load the results schema."""
-        schema_path = Path(__file__).parent.parent / 'config' / 'results_schema.json'
-        with open(schema_path, 'r') as f:
+        schema_path = Path(__file__).parent.parent / "config" / "results_schema.json"
+        with open(schema_path, "r") as f:
             return json.load(f)
 
     @pytest.fixture
@@ -44,11 +45,11 @@ class TestSchemaValidation:
                 "break_even_trades": 400,
                 "payback_period_months": 6.7,
                 "roi_percentage": 177.5,
-                "total_investment": 5000.0
+                "total_investment": 5000.0,
             },
             "equity_curve": [
                 {"timestamp": "2020-01-01T00:00:00", "equity": 10000.0},
-                {"timestamp": "2020-01-02T00:00:00", "equity": 11250.0}
+                {"timestamp": "2020-01-02T00:00:00", "equity": 11250.0},
             ],
             "orders": [
                 {
@@ -60,7 +61,7 @@ class TestSchemaValidation:
                     "position_before": 0,
                     "position_after": 1,
                     "sizing_reason": "All-in position sizing",
-                    "pnl": 0.0
+                    "pnl": 0.0,
                 }
             ],
             "run_metadata": {
@@ -70,8 +71,8 @@ class TestSchemaValidation:
                 "package_hashes": {"pandas": "abc123", "numpy": "def456"},
                 "git_sha": "a1b2c3d4",
                 "random_seed": 42,
-                "timestamp": datetime.now().isoformat()
-            }
+                "timestamp": datetime.now().isoformat(),
+            },
         }
 
     def test_minimal_results_valid(self, results_schema, minimal_synthetic_results):
@@ -81,7 +82,9 @@ class TestSchemaValidation:
         except jsonschema.ValidationError as e:
             pytest.fail(f"Schema validation failed: {e.message}")
 
-    def test_missing_required_field_fails(self, results_schema, minimal_synthetic_results):
+    def test_missing_required_field_fails(
+        self, results_schema, minimal_synthetic_results
+    ):
         """Test that missing required fields cause validation failure."""
         invalid_results = minimal_synthetic_results.copy()
         del invalid_results["strategy"]
@@ -97,7 +100,9 @@ class TestSchemaValidation:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(invalid_results, results_schema)
 
-    def test_null_statistical_fields_allowed(self, results_schema, minimal_synthetic_results):
+    def test_null_statistical_fields_allowed(
+        self, results_schema, minimal_synthetic_results
+    ):
         """Test that null statistical fields are allowed."""
         results_with_nulls = minimal_synthetic_results.copy()
         results_with_nulls["deflated_sharpe_ratio"] = None
@@ -108,7 +113,9 @@ class TestSchemaValidation:
         except jsonschema.ValidationError as e:
             pytest.fail(f"Schema validation failed for null fields: {e.message}")
 
-    def test_budget_analysis_required_fields(self, results_schema, minimal_synthetic_results):
+    def test_budget_analysis_required_fields(
+        self, results_schema, minimal_synthetic_results
+    ):
         """Test that budget analysis has all required fields."""
         results_missing_budget_field = minimal_synthetic_results.copy()
         del results_missing_budget_field["budget_analysis"]["annual_pnl"]
@@ -116,7 +123,9 @@ class TestSchemaValidation:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(results_missing_budget_field, results_schema)
 
-    def test_run_metadata_required_fields(self, results_schema, minimal_synthetic_results):
+    def test_run_metadata_required_fields(
+        self, results_schema, minimal_synthetic_results
+    ):
         """Test that run metadata has all required fields."""
         results_missing_metadata_field = minimal_synthetic_results.copy()
         del results_missing_metadata_field["run_metadata"]["python_version"]
@@ -125,5 +134,5 @@ class TestSchemaValidation:
             jsonschema.validate(results_missing_metadata_field, results_schema)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main([__file__])

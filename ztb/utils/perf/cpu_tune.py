@@ -1,10 +1,14 @@
-import os
-import psutil
 import logging
-import torch
-from typing import Dict, List, Optional, Any
+import os
+from typing import Any, Dict, List, Optional
 
-def auto_config_threads(num_processes: int, pin_to_cores: Optional[List[int]] = None) -> Dict[str, Any]:
+import psutil
+import torch
+
+
+def auto_config_threads(
+    num_processes: int, pin_to_cores: Optional[List[int]] = None
+) -> Dict[str, Any]:
     """
     CPU最適化設定を自動決定
     物理コア数・並列プロセス数・コア割当を考慮して各ライブラリのスレッド数を決定
@@ -36,21 +40,22 @@ def auto_config_threads(num_processes: int, pin_to_cores: Optional[List[int]] = 
 
     # 各ライブラリのスレッド数設定
     config = {
-        'physical_cores': physical,
-        'logical_cores': logical,
-        'num_processes': default_procs,
-        'assigned_cores': assigned_cores,
-        'pin_to_cores': pin_cores,
-        'threads_per_proc': threads_per_proc,
-        'OMP_NUM_THREADS': threads_per_proc,
-        'MKL_NUM_THREADS': threads_per_proc,
-        'OPENBLAS_NUM_THREADS': threads_per_proc,
-        'NUMEXPR_NUM_THREADS': threads_per_proc,
-        'MKL_DYNAMIC': 'FALSE',
-        'torch_threads': threads_per_proc
+        "physical_cores": physical,
+        "logical_cores": logical,
+        "num_processes": default_procs,
+        "assigned_cores": assigned_cores,
+        "pin_to_cores": pin_cores,
+        "threads_per_proc": threads_per_proc,
+        "OMP_NUM_THREADS": threads_per_proc,
+        "MKL_NUM_THREADS": threads_per_proc,
+        "OPENBLAS_NUM_THREADS": threads_per_proc,
+        "NUMEXPR_NUM_THREADS": threads_per_proc,
+        "MKL_DYNAMIC": "FALSE",
+        "torch_threads": threads_per_proc,
     }
 
     return config
+
 
 def apply_cpu_tuning() -> None:
     """

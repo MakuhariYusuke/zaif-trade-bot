@@ -5,11 +5,11 @@ This module provides standardized functions for loading and validating
 configuration files in YAML and JSON formats.
 """
 
-import yaml
 import json
 from pathlib import Path
-from typing import Optional, List
-from typing import Dict, Any, Union, Optional, cast
+from typing import Any, Dict, List, Optional, Union, cast
+
+import yaml
 
 
 def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -30,7 +30,7 @@ def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         return cast(Dict[str, Any], yaml.safe_load(f))
 
 
@@ -52,7 +52,7 @@ def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         return cast(Dict[str, Any], json.load(f))
 
 
@@ -72,17 +72,16 @@ def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     file_path = Path(file_path)
     suffix = file_path.suffix.lower()
 
-    if suffix in ['.yaml', '.yml']:
+    if suffix in [".yaml", ".yml"]:
         return load_yaml_config(file_path)
-    elif suffix == '.json':
+    elif suffix == ".json":
         return load_json_config(file_path)
     else:
         raise ValueError(f"Unsupported configuration file format: {suffix}")
 
 
 def find_config_file(
-    config_name: str,
-    search_paths: Optional[List[Path]] = None
+    config_name: str, search_paths: Optional[List[Path]] = None
 ) -> Optional[Path]:
     """
     Find configuration file in standard locations.
@@ -97,8 +96,8 @@ def find_config_file(
     if search_paths is None:
         search_paths = [
             Path.cwd(),
-            Path.cwd() / 'config',
-            Path(__file__).parent.parent / 'config'
+            Path.cwd() / "config",
+            Path(__file__).parent.parent / "config",
         ]
 
     for base_path in search_paths:

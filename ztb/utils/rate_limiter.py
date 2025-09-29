@@ -7,7 +7,7 @@ and ensure fair resource usage across different operations.
 
 import asyncio
 import time
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
@@ -19,6 +19,7 @@ logger = get_logger(__name__)
 @dataclass
 class RateLimitConfig:
     """Configuration for rate limiting."""
+
     requests_per_second: float = 1.0
     burst_limit: int = 5
     window_seconds: float = 1.0
@@ -54,7 +55,7 @@ class TokenBucketRateLimiter:
             # Add tokens based on time passed
             self.tokens = min(
                 self.config.burst_limit,
-                self.tokens + time_passed * self.config.requests_per_second
+                self.tokens + time_passed * self.config.requests_per_second,
             )
 
             if self.tokens >= tokens:
@@ -113,7 +114,9 @@ class SlidingWindowRateLimiter:
         while not await self.acquire():
             # Wait until oldest request expires
             if self.requests:
-                wait_time = max(0.01, self.requests[0] + self.config.window_seconds - time.time())
+                wait_time = max(
+                    0.01, self.requests[0] + self.config.window_seconds - time.time()
+                )
                 await asyncio.sleep(wait_time)
             else:
                 await asyncio.sleep(0.01)
@@ -122,7 +125,9 @@ class SlidingWindowRateLimiter:
 class RateLimiter:
     """Unified rate limiter with multiple strategies."""
 
-    def __init__(self, config: Optional[RateLimitConfig] = None, strategy: str = "token_bucket"):
+    def __init__(
+        self, config: Optional[RateLimitConfig] = None, strategy: str = "token_bucket"
+    ):
         """Initialize rate limiter.
 
         Args:
@@ -194,7 +199,9 @@ class MultiRateLimiter:
         self.limiters: Dict[str, RateLimiter] = {}
         self._lock = asyncio.Lock()
 
-    def get_limiter(self, key: str, config: Optional[RateLimitConfig] = None) -> RateLimiter:
+    def get_limiter(
+        self, key: str, config: Optional[RateLimitConfig] = None
+    ) -> RateLimiter:
         """Get or create rate limiter for a key.
 
         Args:
@@ -208,7 +215,9 @@ class MultiRateLimiter:
             self.limiters[key] = RateLimiter(config or self.default_config)
         return self.limiters[key]
 
-    async def acquire(self, key: str, tokens: int = 1, config: Optional[RateLimitConfig] = None) -> bool:
+    async def acquire(
+        self, key: str, tokens: int = 1, config: Optional[RateLimitConfig] = None
+    ) -> bool:
         """Acquire permission for a keyed request.
 
         Args:
@@ -222,7 +231,9 @@ class MultiRateLimiter:
         limiter = self.get_limiter(key, config)
         return await limiter.acquire(tokens)
 
-    async def wait(self, key: str, tokens: int = 1, config: Optional[RateLimitConfig] = None) -> None:
+    async def wait(
+        self, key: str, tokens: int = 1, config: Optional[RateLimitConfig] = None
+    ) -> None:
         """Wait for permission for a keyed request.
 
         Args:
@@ -235,8 +246,12 @@ class MultiRateLimiter:
 
 
 # Global rate limiter instances
-_api_limiter = MultiRateLimiter(RateLimitConfig(requests_per_second=2.0, burst_limit=10))
-_file_limiter = MultiRateLimiter(RateLimitConfig(requests_per_second=1.0, burst_limit=3))
+_api_limiter = MultiRateLimiter(
+    RateLimitConfig(requests_per_second=2.0, burst_limit=10)
+)
+_file_limiter = MultiRateLimiter(
+    RateLimitConfig(requests_per_second=1.0, burst_limit=3)
+)
 
 
 def get_api_limiter() -> MultiRateLimiter:
@@ -269,7 +284,9 @@ async def rate_limited_api_call(key: str, func: callable, *args, **kwargs) -> An
         raise
 
 
-def create_rate_limiter_for_endpoint(endpoint: str, requests_per_minute: int = 60) -> RateLimiter:
+def create_rate_limiter_for_endpoint(
+    endpoint: str, requests_per_minute: int = 60
+) -> RateLimiter:
     """Create a rate limiter for a specific API endpoint.
 
     Args:
@@ -282,6 +299,6 @@ def create_rate_limiter_for_endpoint(endpoint: str, requests_per_minute: int = 6
     config = RateLimitConfig(
         requests_per_second=requests_per_minute / 60.0,
         burst_limit=max(1, requests_per_minute // 10),
-        window_seconds=60.0
+        window_seconds=60.0,
     )
     return RateLimiter(config)
