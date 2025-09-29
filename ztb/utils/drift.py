@@ -260,7 +260,7 @@ class DriftMonitor:
 
         # Check for extreme values
         max_pnl = pnl.abs().max()
-        return max_pnl <= max_reasonable_pnl
+        return bool(max_pnl <= max_reasonable_pnl)
 
     def get_drift_summary(self) -> Dict[str, Any]:
         """Get summary of recent drift history"""

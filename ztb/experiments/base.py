@@ -9,7 +9,7 @@ import glob
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Union
+from typing import Any, Dict, List, Optional, Union, TypedDict, Protocol, TYPE_CHECKING
 from dataclasses import dataclass, asdict
 
 import numpy as np
@@ -17,9 +17,8 @@ import numpy as np
 from ztb.utils import LoggerManager
 from ztb.utils.checkpoint import CheckpointManager
 
-# Type definitions for better type safety
-from typing import TypedDict, Protocol
-from dataclasses import dataclass
+if TYPE_CHECKING:
+    from ztb.data.streaming_pipeline import StreamingPipeline, PipelineStats
 
 class ExperimentConfig(TypedDict, total=False):
     """実験設定の型定義"""
@@ -101,6 +100,9 @@ class ExperimentBase(ABC):
             compress="zstd"
         )
 
+        self.streaming_pipeline: Optional["StreamingPipeline"] = None
+        self._streaming_metadata: Dict[str, Any] = {}
+
     @classmethod
     def _default_experiment_name(cls) -> str:
         """サブクラス名から一貫した experiment_name を生成"""
@@ -116,6 +118,52 @@ class ExperimentBase(ABC):
         サブクラスで実装必須
         """
         pass
+
+    def attach_streaming_pipeline(
+        self,
+        pipeline: "StreamingPipeline",
+        *,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Register a streaming pipeline for the experiment lifecycle."""
+        self.streaming_pipeline = pipeline
+        self._streaming_metadata = dict(metadata or {})
+        description = getattr(pipeline, 'describe', None)
+        if callable(description):
+            desc = description()
+        else:
+            desc = pipeline.__class__.__name__
+        self.logger.info("Streaming pipeline attached: %s", desc)
+
+    def get_streaming_stats(self) -> Optional['PipelineStats']:
+        if not self.streaming_pipeline:
+            return None
+        return self.streaming_pipeline.stats()
+
+    def _collect_streaming_metrics(self) -> Dict[str, Any]:
+        if not self.streaming_pipeline:
+            return {}
+
+        stats = self.streaming_pipeline.stats()
+        metrics: Dict[str, Any] = {
+            'stream_buffer_rows': stats.buffer.rows,
+            'stream_buffer_capacity': stats.buffer.capacity,
+            'stream_buffer_memory_bytes': stats.buffer.memory_bytes,
+            'stream_total_rows_streamed': stats.total_rows_streamed,
+        }
+        if stats.last_batch_at:
+            metrics['stream_last_batch_timestamp'] = stats.last_batch_at.isoformat()
+            metrics['stream_last_batch_rows'] = stats.last_batch_rows
+        return metrics
+
+    def _inject_streaming_metrics(self, result: ExperimentResult) -> None:
+        metrics = self._collect_streaming_metrics()
+        if not metrics:
+            return
+
+        result.metrics.update(metrics)
+        if self._streaming_metadata:
+            result.metrics.setdefault('stream_metadata', dict(self._streaming_metadata))
 
     def execute(self) -> ExperimentResult:
         """
@@ -167,6 +215,9 @@ class ExperimentBase(ABC):
         # resultがNoneでないことを確認
         if result is None:
             raise RuntimeError("Experiment execution failed to produce a result")
+
+        # ストリーミングメトリクスを結果に付与
+        self._inject_streaming_metrics(result)
 
         # 結果保存
         self.save_results(result)

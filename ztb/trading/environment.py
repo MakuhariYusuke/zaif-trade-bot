@@ -4,11 +4,15 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+import time
 import pandas as pd
-from typing import Dict, Any, Tuple, Optional, cast
+from typing import Dict, Any, Tuple, Optional, cast, TYPE_CHECKING, List
 
 EPSILON = 1e-6  # 小さい値（ゼロ除算防止用）
 
+
+if TYPE_CHECKING:
+    from ztb.data.streaming_pipeline import StreamingPipeline
 
 class HeavyTradingEnv(gym.Env):
     """
@@ -22,8 +26,18 @@ class HeavyTradingEnv(gym.Env):
     - NaN処理: ゼロ埋め
     """
 
-    def __init__(self, df: pd.DataFrame, config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        config: Optional[Dict[str, Any]] = None,
+        *,
+        streaming_pipeline: Optional["StreamingPipeline"] = None,
+        stream_batch_size: int = 256,
+    ) -> None:
         super().__init__()
+
+        if df is None and streaming_pipeline is None:
+            raise ValueError("Either df or streaming_pipeline must be provided")
 
         # デフォルト設定
         self.config = config or {
@@ -33,21 +47,32 @@ class HeavyTradingEnv(gym.Env):
             'risk_free_rate': 0.0,
         }
 
+        self.streaming_pipeline = streaming_pipeline
+        self.stream_batch_size = max(1, int(stream_batch_size))
+        self._stream_last_timestamp: Optional[pd.Timestamp] = None
+        self._stream_rows_appended = 0
+        self._base_columns: List[str] = []
+
+        base_df = df
+        if base_df is None:
+            base_df = self._fetch_streaming_snapshot(required_rows=self.stream_batch_size)
+            if base_df.empty:
+                raise ValueError("Streaming pipeline did not provide initial data")
+
         # データの前処理
-        self.df = self._preprocess_data(df)
+        self.df = self._preprocess_data(base_df)
         self.n_steps = len(self.df)
+        self._base_columns = list(self.df.columns)
 
         # 特徴量の選択（除外する列を指定）
-        exclude_cols = ['ts', 'exchange', 'pair', 'episode_id']
+        exclude_cols = ['ts', 'timestamp', 'exchange', 'pair', 'episode_id']
         self.features = [c for c in self.df.columns if c not in exclude_cols]
+        if not self.features:
+            # 全特徴量が除外された場合は全列を利用
+            self.features = list(self.df.columns)
 
         # 状態空間: 特徴量ベクトル
-        self.observation_space = spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(len(self.features),),
-            dtype=np.float32
-        )
+        self._refresh_features()
 
         # 行動空間: hold, buy, sell
         self.action_space = spaces.Discrete(3)
@@ -58,6 +83,12 @@ class HeavyTradingEnv(gym.Env):
         self.entry_price = 0.0
         self.total_pnl = 0.0
         self.trades_count = 0
+
+        # ストリーミング関連
+        self._timestamp_column = 'timestamp' if 'timestamp' in self.df.columns else None
+        self._episode_id_column = 'episode_id' if 'episode_id' in self.df.columns else None
+        if not self._timestamp_column:
+            self._stream_rows_appended = len(self.df)
 
         # 報酬計算用の履歴
         self.reward_history: list[float] = []
@@ -77,6 +108,109 @@ class HeavyTradingEnv(gym.Env):
 
         return df_processed
 
+    def _fetch_streaming_snapshot(self, required_rows: int) -> pd.DataFrame:
+        """ストリーミングパイプラインから初期スナップショットを取得"""
+        if not self.streaming_pipeline:
+            return pd.DataFrame()
+
+        snapshot = self.streaming_pipeline.buffer.to_dataframe(last_n=max(required_rows, self.stream_batch_size))
+        if snapshot.empty:
+            return snapshot
+        return snapshot.reset_index(drop=True)
+
+    def _prepare_stream_batch(self, batch: pd.DataFrame) -> pd.DataFrame:
+        """環境が扱える形式にストリーミングデータを整形"""
+        if batch.empty:
+            return batch
+
+        if not self._base_columns:
+            self._base_columns = list(batch.columns)
+
+        missing = [col for col in self._base_columns if col not in batch.columns]
+        for col in missing:
+            batch[col] = 0.0
+
+        extra = [col for col in batch.columns if col not in self._base_columns]
+        if extra:
+            self._base_columns.extend(extra)
+            self.df = self.df.reindex(columns=self._base_columns, fill_value=0)
+
+        batch = batch[self._base_columns]
+        return self._preprocess_data(batch)
+
+    def _append_streaming_rows(self) -> bool:
+        """ストリーミングバッファから新規行を取り込み"""
+        if not self.streaming_pipeline:
+            return False
+
+        buffer_df = self.streaming_pipeline.buffer.to_dataframe()
+        if buffer_df.empty:
+            return False
+
+        if self._timestamp_column and 'timestamp' in buffer_df.columns:
+            buffer_df = buffer_df.sort_values('timestamp').reset_index(drop=True)
+            if self._stream_last_timestamp is not None:
+                buffer_df = buffer_df[buffer_df['timestamp'] > self._stream_last_timestamp]
+        else:
+            buffer_df = buffer_df.iloc[self._stream_rows_appended:]
+
+        if buffer_df.empty:
+            return False
+
+        if self.stream_batch_size:
+            buffer_df = buffer_df.tail(self.stream_batch_size)
+
+        prepared = self._prepare_stream_batch(buffer_df)
+        if prepared.empty:
+            return False
+
+        self.df = pd.concat([self.df, prepared], ignore_index=True)
+        self.n_steps = len(self.df)
+        self._stream_rows_appended += len(prepared)
+
+        if self._timestamp_column and 'timestamp' in buffer_df.columns:
+            self._stream_last_timestamp = pd.to_datetime(buffer_df['timestamp']).max()
+
+        self._refresh_features()
+        return True
+
+    def _refresh_features(self) -> None:
+        """特徴量と観測空間を更新"""
+        exclude_cols = ['ts', 'timestamp', 'exchange', 'pair', 'episode_id']
+        self.features = [c for c in self.df.columns if c not in exclude_cols]
+        if not self.features:
+            self.features = list(self.df.columns)
+        self.observation_space = spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(len(self.features),),
+            dtype=np.float32,
+        )
+
+    def _ensure_data_available(self, index: int) -> None:
+        """必要なインデックスまでデータを拡張"""
+        if index < self.n_steps:
+            return
+        if not self.streaming_pipeline:
+            return
+        self.streaming_pipeline.prefetch_async()
+        attempts = 0
+        while index >= self.n_steps:
+            if self._append_streaming_rows():
+                attempts = 0
+                continue
+            attempts += 1
+            if attempts >= 5:
+                break
+            time.sleep(0.01)
+
+    def _prime_streaming_data(self) -> None:
+        """リセット時にストリーミングデータを確保"""
+        if not self.streaming_pipeline:
+            return
+        self._append_streaming_rows()
+        self._ensure_data_available(self.current_step)
+
     def reset(self, *, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         """環境のリセット"""
         super().reset(seed=seed)
@@ -88,6 +222,8 @@ class HeavyTradingEnv(gym.Env):
         self.trades_count = 0
         self.reward_history = []
         self.position_history = []
+
+        self._prime_streaming_data()
 
         return self._get_observation(), self._get_info()
 
@@ -108,21 +244,18 @@ class HeavyTradingEnv(gym.Env):
 
         # 次のステップへ
         self.current_step += 1
-        
+        self._ensure_data_available(self.current_step)
+
         # エピソード終了判定
         done = self.current_step >= self.n_steps - 1
-        if not done and self.current_step < self.n_steps:
-            # episode_id が変わったらエピソード終了
-            current_episode = self.df.iloc[self.current_step - 1]['episode_id']
-            next_episode = self.df.iloc[self.current_step]['episode_id']
+        if not done and self._episode_id_column and self.current_step < self.n_steps:
+            current_episode = self.df.iloc[self.current_step - 1][self._episode_id_column]
+            next_episode = self.df.iloc[self.current_step][self._episode_id_column]
             if current_episode != next_episode:
                 done = True
 
         # 次の状態
-        if done:
-            next_obs = self._get_observation()  # 最後の状態を維持
-        else:
-            next_obs = self._get_observation()
+        next_obs = self._get_observation()
 
         # 情報
         info = self._get_info()
@@ -267,14 +400,15 @@ class HeavyTradingEnv(gym.Env):
 
     def _get_observation(self) -> np.ndarray:
         """現在の状態を取得"""
+        self._ensure_data_available(self.current_step)
+
         if self.current_step >= self.n_steps:
-            # 最後のステップの場合は最後のデータを返す
             step_data = self.df.iloc[-1]
         else:
             step_data = self.df.iloc[self.current_step]
 
         # 特徴量ベクトルの作成
-        obs = step_data[self.features].values.astype(np.float32)
+        obs = step_data[self.features].to_numpy(dtype=np.float32, copy=False)
 
         return obs
 

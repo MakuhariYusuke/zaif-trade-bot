@@ -19,6 +19,20 @@ import yaml
 # プロジェクトルートをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
+
+
+def evaluate_experimental_features(df, experimental_features, baseline_sharpe=None):
+    """
+    Stub implementation for experimental features evaluation
+    TODO: Implement proper evaluation logic
+    """
+    return {
+        "status": "not_implemented",
+        "experimental_features": experimental_features,
+        "baseline_sharpe": baseline_sharpe
+    }
+
 from ztb.utils.metrics.trading_metrics import sharpe_ratio, sharpe_with_stats, calculate_delta_sharpe, validate_ablation_results
 
 

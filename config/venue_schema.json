@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Venue Configuration Schema",
+  "description": "Schema for validating trading venue configurations",
+  "type": "object",
+  "properties": {
+    "venue": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["zaif", "bitflyer", "coincheck", "liquid"],
+          "description": "Trading venue name"
+        },
+        "api_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "API endpoint URL"
+        },
+        "websocket_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "WebSocket endpoint URL"
+        },
+        "api_key": {
+          "type": "string",
+          "minLength": 10,
+          "description": "API key for authentication"
+        },
+        "api_secret": {
+          "type": "string",
+          "minLength": 10,
+          "description": "API secret for authentication"
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 30,
+          "description": "Request timeout in seconds"
+        },
+        "rate_limit": {
+          "type": "object",
+          "properties": {
+            "requests_per_minute": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "description": "Maximum requests per minute"
+            },
+            "burst_limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Burst request limit"
+            }
+          },
+          "required": ["requests_per_minute"]
+        },
+        "pairs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{3,4}_[A-Z]{3,4}$",
+            "description": "Trading pair in format BASE_QUOTE"
+          },
+          "minItems": 1,
+          "description": "Supported trading pairs"
+        },
+        "fees": {
+          "type": "object",
+          "properties": {
+            "maker_fee_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Maker fee as percentage"
+            },
+            "taker_fee_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Taker fee as percentage"
+            }
+          },
+          "required": ["maker_fee_percent", "taker_fee_percent"]
+        },
+        "features": {
+          "type": "object",
+          "properties": {
+            "supports_margin": {
+              "type": "boolean",
+              "description": "Whether margin trading is supported"
+            },
+            "supports_short": {
+              "type": "boolean",
+              "description": "Whether short selling is supported"
+            },
+            "supports_stop_orders": {
+              "type": "boolean",
+              "description": "Whether stop orders are supported"
+            },
+            "supports_oco": {
+              "type": "boolean",
+              "description": "Whether one-cancels-other orders are supported"
+            }
+          }
+        },
+        "risk_limits": {
+          "type": "object",
+          "properties": {
+            "max_position_size": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Maximum position size in base currency"
+            },
+            "max_daily_volume": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Maximum daily trading volume"
+            },
+            "max_open_orders": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "description": "Maximum number of open orders"
+            }
+          }
+        }
+      },
+      "required": ["name", "api_url", "pairs", "fees"]
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to enable configuration validation"
+        },
+        "strict_mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to enforce strict validation (fail on warnings)"
+        },
+        "check_connectivity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to test API connectivity during validation"
+        }
+      }
+    }
+  },
+  "required": ["venue"],
+  "additionalProperties": false
+}

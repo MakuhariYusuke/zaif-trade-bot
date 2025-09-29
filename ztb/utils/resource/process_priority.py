@@ -2,7 +2,11 @@
 Process Priority and Resource Control Utilities
 プロセス優先度とリソース制御ユーティリティ
 
-This module provides utilities for controlling process priority, CPU affinity,
+This module provides utilities for controlling p                    try:
+                        os.nice(-current_nice)
+                        logger.info("Process priority reset to default")
+                    except PermissionError:
+                        logger.warning("Insufficient permissions to decrease nice value (increase priority). Run as root/administrator if needed.")s priority, CPU affinity,
 and other resource management features for parallel training.
 """
 
@@ -84,10 +88,10 @@ class ProcessPriorityManager:
         """Set process nice value"""
         try:
             if hasattr(os, 'nice'):
-                current_nice = os.nice(0)  # type: ignore
+                current_nice = os.nice(0)
                 increment = nice_value - current_nice
                 if increment != 0:
-                    new_nice = os.nice(increment)  # type: ignore
+                    new_nice = os.nice(increment)
                     logger.info(f"Nice value changed: {current_nice} -> {new_nice}")
                 else:
                     logger.info(f"Nice value unchanged: {current_nice}")
@@ -112,7 +116,7 @@ class ProcessPriorityManager:
                     # Aggressive model: second half of physical cores
                     cores = list(range(cpu_count // 2, cpu_count))
 
-                os.sched_setaffinity(0, cores)  # type: ignore
+                os.sched_setaffinity(0, cores)
                 logger.info(f"CPU affinity set to physical cores: {cores}")
             else:
                 logger.info("CPU affinity setting: not supported on this platform")

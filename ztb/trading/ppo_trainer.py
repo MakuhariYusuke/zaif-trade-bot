@@ -9,7 +9,7 @@ from pathlib import Path
 import torch
 import pickle
 import zlib
-from typing import Optional, Any, Dict, Union, cast
+from typing import Optional, Any, Dict, Union, cast, Callable, TYPE_CHECKING
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.monitor import Monitor
@@ -26,12 +26,25 @@ import json
 import logging
 from logging.handlers import BufferingHandler
 
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    psutil = None
+    HAS_PSUTIL = False
+
 # ローカルモジュールのインポート
 # sys.path.append(str(Path(__file__).parent.parent.parent.parent))  # プロジェクトルートを追加
+from ztb.training import TrainingCheckpointManager, TrainingCheckpointConfig, ResumeHandler
+
+if TYPE_CHECKING:
+    from ztb.data.streaming_pipeline import StreamingPipeline
+
 from .environment import HeavyTradingEnv
 from ..utils.perf.cpu_tune import apply_cpu_tuning
 from ..utils.cache.feature_cache import FeatureCache
 from ..utils.memory.dtypes import downcast_df
+from ztb.utils.observability import setup_observability
 
 def save_checkpoint_async(model: BaseAlgorithm, path: str, notifier: Optional[Any] = None, light_mode: bool = False, compressor: str = "auto") -> None:
     """非同期チェックポイント保存（圧縮対応）"""
@@ -182,53 +195,62 @@ class TensorBoardCallback(BaseCallback):
 
 
 class CheckpointCallback(BaseCallback):
-    """チェックポイント保存用コールバック（非同期・世代管理）"""
+    """Checkpoint callback supporting async saves and training state snapshots."""
 
-    def __init__(self, save_freq: int, save_path: str, name_prefix: str = "checkpoint",
-                 verbose: int = 0, notifier: Optional[Any] = None, session_id: Optional[str] = None, light_mode: bool = False) -> None:
+    def __init__(
+        self,
+        save_freq: int,
+        save_path: Optional[str],
+        name_prefix: str = "checkpoint",
+        verbose: int = 0,
+        notifier: Optional[Any] = None,
+        session_id: Optional[str] = None,
+        light_mode: bool = False,
+        training_manager: Optional[TrainingCheckpointManager] = None,
+        stream_state_provider: Optional[Callable[[], Dict[str, Any]]] = None,
+    ) -> None:
         super().__init__(verbose)
         self.save_freq = save_freq
-        self.save_path = Path(save_path)
-        self.save_path.mkdir(parents=True, exist_ok=True)
+        self.save_path = Path(save_path) if save_path else None
+        if self.save_path:
+            self.save_path.mkdir(parents=True, exist_ok=True)
         self.name_prefix = name_prefix
         self.notifier = notifier
         self.session_id = session_id
         self.light_mode = light_mode
+        self.training_manager = training_manager
+        self.stream_state_provider = stream_state_provider
 
     def _on_step(self) -> bool:
-        """
-        各ステップで呼び出されるメソッド。定期的にモデルのチェックポイントを保存します。
-
-        Returns:
-            bool: トレーニングを継続する場合はTrue
-        """
         try:
-            if self.n_calls % self.save_freq == 0:
-                checkpoint_path = self.save_path / f"{self.name_prefix}_{self.n_calls}"
-                # 非同期保存
-                save_checkpoint_async(self.model, str(checkpoint_path), self.notifier)
-                
-                total_timesteps = getattr(self.model, "_total_timesteps", 1000000)
-                progress_percent = (self.n_calls / total_timesteps) * 100
-                progress_msg = f"Step {self.n_calls:,} / {total_timesteps:,} ({progress_percent:.1f}%)"
+            current_step = int(self.num_timesteps)
+            saved = False
 
-                # INFOログ
-                logging.info(progress_msg)
+            if self.training_manager and self.training_manager.should_checkpoint(current_step):
+                stream_state = self.stream_state_provider() if self.stream_state_provider else {}
+                self.training_manager.save(
+                    step=current_step,
+                    model=self.model,
+                    metrics=self._collect_metrics(),
+                    extra={
+                        'session_id': self.session_id,
+                        'name_prefix': self.name_prefix,
+                    },
+                    stream_state=stream_state,
+                )
+                saved = True
+            elif self.save_path and self.save_freq > 0 and self.n_calls % self.save_freq == 0:
+                checkpoint_path = self.save_path / f"{self.name_prefix}_{current_step}"
+                save_checkpoint_async(
+                    self.model,
+                    str(checkpoint_path),
+                    self.notifier,
+                    light_mode=self.light_mode,
+                )
+                saved = True
 
-                # Discord通知（10%ごと）
-                if int(progress_percent) % 10 == 0 and self.notifier:
-                    self.notifier.send_custom_notification(
-                        f"📊 Training Progress ({self.session_id})",
-                        progress_msg,
-                        color=0x00ff00
-                    )
-
-                if self.verbose > 0:
-                    print(progress_msg)
-
-                # メモリ効率化: ガーベジコレクション
-                import gc
-                gc.collect()
+            if saved:
+                self._log_progress(current_step)
 
         except Exception as e:
             logging.error(f"Error in checkpoint callback: {e}")
@@ -236,6 +258,48 @@ class CheckpointCallback(BaseCallback):
                 self.notifier.send_error_notification("Checkpoint Error", str(e))
 
         return True
+
+    def _collect_metrics(self) -> Dict[str, Any]:
+        metrics: Dict[str, Any] = {
+            'num_timesteps': int(self.num_timesteps),
+            'callback_calls': int(self.n_calls),
+        }
+
+        infos = None
+        if isinstance(self.locals, dict):
+            infos = self.locals.get('infos')
+
+        if infos:
+            episode_rewards = [info['episode']['r'] for info in infos if isinstance(info, dict) and 'episode' in info]
+            episode_lengths = [info['episode']['l'] for info in infos if isinstance(info, dict) and 'episode' in info]
+            if episode_rewards:
+                metrics['episode_reward_mean'] = float(np.mean(episode_rewards))
+                metrics['episode_reward_max'] = float(np.max(episode_rewards))
+                metrics['episode_reward_min'] = float(np.min(episode_rewards))
+            if episode_lengths:
+                metrics['episode_length_mean'] = float(np.mean(episode_lengths))
+        return metrics
+
+    def _log_progress(self, current_step: int) -> None:
+        total_timesteps = getattr(self.model, '_total_timesteps', None) or current_step
+        progress_percent = (current_step / total_timesteps * 100) if total_timesteps else 0.0
+        progress_msg = f"Step {current_step:,} / {total_timesteps:,} ({progress_percent:.1f}%)"
+
+        logging.info(progress_msg)
+
+        if int(progress_percent) % 10 == 0 and self.notifier:
+            self.notifier.send_custom_notification(
+                f"📊 Training Progress ({self.session_id})",
+                progress_msg,
+                color=0x00FF00,
+            )
+
+        if self.verbose > 0:
+            print(progress_msg)
+
+        import gc
+
+        gc.collect()
 
 
 class SafetyCallback(BaseCallback):
@@ -288,49 +352,94 @@ class PPOTrainer:
     """PPOトレーニングマネージャー"""
 
     def __init__(
-            self, 
-            data_path: str, 
-            config: Optional[Dict[str, Any]] = None, 
-            checkpoint_interval: int = 10000, 
-            checkpoint_dir: str = 'models/checkpoints'
-        ) -> None:
-        """
-        コンストラクタ
-
-        Args:
-            data_path (str): トレーニングデータのパス
-            config (Optional[dict]): トレーニング設定
-            checkpoint_interval (int): チェックポイント保存の間隔（ステップ数）
-            checkpoint_dir (str): チェックポイント保存ディレクトリ
-        """
-        # CPU最適化を最初に適用
+        self,
+        data_path: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+        checkpoint_interval: int = 10000,
+        checkpoint_dir: str = 'models/checkpoints',
+        streaming_pipeline: Optional['StreamingPipeline'] = None,
+        stream_batch_size: int = 256,
+    ) -> None:
+        """PPOトレーニングマネージャー"""
         apply_cpu_tuning()
-        
-        self.data_path = Path(data_path)
-        self.data_path = Path(data_path)
-        self.config = config or self._get_default_config()
-        
-        # CPU最適化設定
+
+        if data_path is None and streaming_pipeline is None:
+            raise ValueError('Either data_path or streaming_pipeline must be provided')
+
+        self.streaming_pipeline = streaming_pipeline
+        self.stream_batch_size = stream_batch_size
+        self.data_path = Path(data_path) if data_path is not None else None
+
+        base_config = self._get_default_config()
+        if config:
+            training_section = config.get('training')
+            if training_section:
+                base_config.update(training_section)
+                base_config['training'] = training_section
+            else:
+                base_config.update(config)
+        self.config = base_config
+
         self._setup_cpu_optimization()
-        
-        # config をフラット化（training セクションをトップレベルに）
+
         if 'training' in self.config:
             self.config.update(self.config['training'])
+
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_dir = Path(checkpoint_dir)
+        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-        # ログディレクトリの設定
         self.log_dir = Path(self.config['log_dir'])
-        self.log_dir.mkdir(exist_ok=True)
-        # モデルの保存ディレクトリ
+        self.log_dir.mkdir(parents=True, exist_ok=True)
         self.model_dir = Path(self.config['model_dir'])
-        self.model_dir.mkdir(exist_ok=True)
+        self.model_dir.mkdir(parents=True, exist_ok=True)
+        self.observability = setup_observability(
+            f"ppo_trainer_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            self.log_dir / 'observability'
+        )
 
-        # データの読み込み
-        self.df = self._load_data()
+        # Track initial system resources
+        self._initial_memory_mb = 0.0
+        self._peak_memory_mb = 0.0
+        self._initial_cpu_percent = 0.0
+        if HAS_PSUTIL:
+            process = psutil.Process()
+            self._initial_memory_mb = process.memory_info().rss / (1024 * 1024)
+            self._initial_cpu_percent = process.cpu_percent(interval=0.1)
 
-        # 環境の作成
+        if self.streaming_pipeline:
+            self.streaming_pipeline.observability = self.observability
+
+        if self.data_path is not None:
+            self.df = self._load_data()
+        elif self.streaming_pipeline is not None:
+            self.df = self.streaming_pipeline.buffer.to_dataframe()
+            if self.df.empty:
+                logging.warning('Streaming pipeline buffer is empty during trainer initialization.')
+        else:
+            self.df = pd.DataFrame()
+
         self.env = self._create_env()
+
+        checkpoint_cfg = self.config.get('checkpoint', {})
+        self.training_checkpoint_config = TrainingCheckpointConfig(
+            interval_steps=checkpoint_interval,
+            keep_last=checkpoint_cfg.get('keep_last', 5),
+            compress=checkpoint_cfg.get('compress', 'zlib'),
+            async_save=checkpoint_cfg.get('async_save', True),
+            include_optimizer=checkpoint_cfg.get('include_optimizer', True),
+            include_replay_buffer=checkpoint_cfg.get('include_replay_buffer', True),
+            include_rng_state=checkpoint_cfg.get('include_rng_state', True),
+        )
+        self.training_checkpoint_manager = TrainingCheckpointManager(
+            save_dir=str(self.checkpoint_dir),
+            config=self.training_checkpoint_config,
+            observability=self.observability,
+        )
+        self.resume_handler = ResumeHandler(
+            self.training_checkpoint_manager,
+            streaming_pipeline=self.streaming_pipeline,
+        )
 
     def _setup_cpu_optimization(self) -> None:
         """CPU最適化設定"""
@@ -385,6 +494,34 @@ class PPOTrainer:
             'tensorboard_log': './tensorboard/',
             'verbose': 1,
             'seed': 42,
+            'stream': {'batch_size': 256},
+            'checkpoint': {
+                'keep_last': 5,
+                'compress': 'zlib',
+                'async_save': True,
+                'include_optimizer': True,
+                'include_replay_buffer': True,
+                'include_rng_state': True,
+            },
+        }
+
+    def _stream_state_snapshot(self) -> Dict[str, Any]:
+        if not self.streaming_pipeline:
+            return {}
+
+        buffer_df = self.streaming_pipeline.buffer.to_dataframe(
+            last_n=self.streaming_pipeline.lookback_rows
+        )
+        stats = self.streaming_pipeline.stats()
+        return {
+            'buffer': buffer_df,
+            'stats': {
+                'rows': stats.buffer.rows,
+                'capacity': stats.buffer.capacity,
+                'total_rows_streamed': stats.total_rows_streamed,
+                'last_batch_at': stats.last_batch_at.isoformat() if stats.last_batch_at else None,
+                'last_batch_rows': stats.last_batch_rows,
+            },
         }
 
     def _load_data(self) -> pd.DataFrame:
@@ -399,6 +536,9 @@ class PPOTrainer:
             FileNotFoundError: データファイルが見つからない場合
             ValueError: サポートされていないファイル形式または有効なデータファイルがない場合
         """
+        if self.data_path is None:
+            raise RuntimeError('Data path is required when loading static data')
+
         data_path = Path(self.data_path)
 
         # メモリ効率化: FeatureCacheチェック
@@ -536,7 +676,14 @@ class PPOTrainer:
             'risk_free_rate': 0.0,
         }
 
-        env: Union[HeavyTradingEnv, Monitor[HeavyTradingEnv, Any]] = HeavyTradingEnv(self.df, env_config)
+        base_df = self.df if isinstance(self.df, pd.DataFrame) and not self.df.empty else None
+        stream_batch = self.config.get('stream', {}).get('batch_size', self.stream_batch_size)
+        env: Union[HeavyTradingEnv, Monitor[HeavyTradingEnv, Any]] = HeavyTradingEnv(
+            base_df,
+            env_config,
+            streaming_pipeline=self.streaming_pipeline,
+            stream_batch_size=stream_batch,
+        )
         env = Monitor(env, str(self.log_dir / 'monitor.csv'))
 
         return env
@@ -562,6 +709,15 @@ class PPOTrainer:
         buffer_handler.setFormatter(formatter)
         logging.getLogger().addHandler(buffer_handler)
         
+        if hasattr(self, 'observability') and self.observability:
+            self.observability.log_event(
+                'training_start',
+                {
+                    'total_timesteps': self.config.get('total_timesteps', 0),
+                    'session_id': session_id,
+                },
+            )
+
         logging.info("Starting PPO training...")
 
         # モデルの作成
@@ -582,6 +738,20 @@ class PPOTrainer:
             verbose=self.config['verbose'],
             seed=self.config['seed'],
         )
+
+        resume_state = self.resume_handler.resume(model)
+        if resume_state:
+            logging.info("Resumed training from checkpoint at step %s", resume_state.step)
+            if self.observability:
+                self.observability.log_event(
+                    'checkpoint_resume',
+                    {
+                        'step': resume_state.step,
+                        'metrics': resume_state.metrics,
+                    },
+                )
+            if resume_state.metrics:
+                logging.info("Checkpoint metrics snapshot: %s", resume_state.metrics)
 
         # コールバックの設定
         eval_callback = EvalCallback(
@@ -604,14 +774,15 @@ class PPOTrainer:
             verbose=1,
             notifier=notifier,
             session_id=session_id,
-            light_mode=self.config.get('training', {}).get('checkpoint_light', False)
+            light_mode=self.config.get('training', {}).get('checkpoint_light', False),
+            training_manager=self.training_checkpoint_manager,
+            stream_state_provider=self._stream_state_snapshot,
         )
 
         # 安全策コールバックの設定
         safety_callback = SafetyCallback(max_zero_trades=1000, verbose=1)
 
         try:
-            # トレーニングの実行
             logging.info(f"Training started with total_timesteps: {self.config['total_timesteps']}")
             model.learn(
                 total_timesteps=self.config['total_timesteps'],
@@ -619,12 +790,9 @@ class PPOTrainer:
                 progress_bar=True,
             )
 
-            # 最終モデルの保存
             model.save(str(self.model_dir / 'final_model'))
             logging.info(f"Model saved to {self.model_dir / 'final_model'}")
 
-            # トレーニング完了時のキャッシュ統計出力
-            memory_config = self.config.get('memory', {})
             memory_config = self.config.get('memory', {})
             if memory_config.get('enable_cache', False):
                 cache = FeatureCache(
@@ -636,7 +804,6 @@ class PPOTrainer:
                             f"{stats['hit_rate']:.1f}% hit rate, {stats['evictions']} evictions, "
                             f"{stats['compression_ratio']:.1f}% compression ratio")
 
-                # キャッシュ健全性チェック
                 health = cache.monitor_cache_health()
                 if health['warnings']:
                     for warning in health['warnings']:
@@ -644,18 +811,53 @@ class PPOTrainer:
                 else:
                     logging.info(f"[CACHE] Health check passed - {health['size_mb']:.1f}MB used")
 
-            # I/O最適化: バッファをフラッシュ
-            buffer_handler.flush()
-            
+            if hasattr(self, 'observability') and self.observability:
+                final_timesteps = getattr(model, 'num_timesteps', self.config.get('total_timesteps', 0))
+
+                # Collect final system resource usage
+                final_memory_mb = 0.0
+                final_cpu_percent = 0.0
+                if HAS_PSUTIL:
+                    process = psutil.Process()
+                    final_memory_mb = process.memory_info().rss / (1024 * 1024)
+                    final_cpu_percent = process.cpu_percent(interval=0.1)
+                    self._peak_memory_mb = max(self._peak_memory_mb, final_memory_mb)
+
+                summary = {
+                    'total_timesteps': self.config.get('total_timesteps', 0),
+                    'final_timesteps': final_timesteps,
+                    'resume_step': resume_state.step if resume_state else None,
+                    'initial_memory_mb': self._initial_memory_mb,
+                    'final_memory_mb': final_memory_mb,
+                    'peak_memory_mb': self._peak_memory_mb,
+                    'initial_cpu_percent': self._initial_cpu_percent,
+                    'final_cpu_percent': final_cpu_percent,
+                }
+                self.observability.log_event('training_complete', summary)
+                self.observability.record_metrics({
+                    'training_total_timesteps': float(final_timesteps),
+                    'training_peak_memory_mb': self._peak_memory_mb,
+                    'training_final_memory_mb': final_memory_mb,
+                })
+                self.observability.export_artifact('training_summary', summary)
+
             return model
 
         except Exception as e:
             logging.exception(f"Training failed: {e}")
-            # I/O最適化: エラー時もバッファをフラッシュ
-            buffer_handler.flush()
+            if self.observability:
+                self.observability.log_event('training_failed', {'error': repr(e)})
             if notifier:
                 notifier.send_error_notification("Training Failed", f"Session {session_id}: {str(e)}")
             raise
+        finally:
+            buffer_handler.flush()
+            logging.getLogger().removeHandler(buffer_handler)
+            if hasattr(self, 'observability') and self.observability:
+                self.observability.close()
+        finally:
+            buffer_handler.flush()
+            logging.getLogger().removeHandler(buffer_handler)
 
     def evaluate(self, model_path: Optional[str] = None, n_episodes: int = 10) -> Dict[str, Any]:
         """

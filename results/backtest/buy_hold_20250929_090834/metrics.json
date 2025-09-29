@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "timestamp": "2025-09-29T09:08:34.299567",
+    "strategy": "buy_hold",
+    "dataset": "btc_usd_1m",
+    "slippage_bps": 5.0,
+    "initial_capital": 10000.0
+  },
+  "metrics": {
+    "sharpe_ratio": 0.8786896055792537,
+    "sortino_ratio": 1.5816308334764595,
+    "calmar_ratio": 1.0231900748228095,
+    "total_return": 0.5809274676041556,
+    "cagr": 0.371926947911688,
+    "annualized_return": 0.371926947911688,
+    "max_drawdown": -0.3634974156449827,
+    "volatility": 0.45328341334013644,
+    "total_trades": 1,
+    "win_rate": 0.0,
+    "avg_win": 0.0,
+    "avg_loss": 0.0,
+    "profit_factor": Infinity,
+    "turnover": 252.0,
+    "estimated_slippage_bps": 5.0
+  },
+  "equity_curve": [
+    {
+      "timestamp": 

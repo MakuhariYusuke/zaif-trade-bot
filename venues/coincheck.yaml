@@ -1,0 +1,104 @@
+# Coincheck Venue Configuration Template
+# This file defines trading venue-specific settings for Coincheck exchange
+
+venue:
+  name: coincheck
+  exchange_id: coincheck
+  base_url: https://coincheck.com/api
+  websocket_url: wss://ws-api.coincheck.com
+
+  # API credentials (set via environment variables)
+  api_key_env: COINCHECK_API_KEY
+  api_secret_env: COINCHECK_API_SECRET
+
+  # Rate limiting
+  rate_limit:
+    requests_per_minute: 300
+    burst_limit: 10
+
+  # Trading pairs configuration
+  symbols:
+    - symbol: btc_jpy
+      base_asset: BTC
+      quote_asset: JPY
+      min_order_size: 0.001
+      max_order_size: 10.0
+      price_precision: 0
+      quantity_precision: 8
+      min_price: 1.0
+      max_price: 10000000.0
+      maker_fee: 0.0000  # 0%
+      taker_fee: 0.0000  # 0%
+
+    - symbol: eth_jpy
+      base_asset: ETH
+      quote_asset: JPY
+      min_order_size: 0.01
+      max_order_size: 100.0
+      price_precision: 0
+      quantity_precision: 8
+      min_price: 1.0
+      max_price: 1000000.0
+      maker_fee: 0.0000
+      taker_fee: 0.0000
+
+    - symbol: xrp_jpy
+      base_asset: XRP
+      quote_asset: JPY
+      min_order_size: 1.0
+      max_order_size: 100000.0
+      price_precision: 0
+      quantity_precision: 8
+      min_price: 0.1
+      max_price: 1000.0
+      maker_fee: 0.0000
+      taker_fee: 0.0000
+
+  # Risk management settings
+  risk:
+    max_position_size_btc: 1.0
+    max_daily_loss_percent: 2.0
+    max_open_orders: 10
+    circuit_breaker_threshold: 0.05  # 5% price movement triggers circuit breaker
+
+  # Market data settings
+  market_data:
+    update_interval_ms: 1000
+    depth_levels: 20
+    use_websocket: true
+    fallback_to_rest: true
+
+  # Order types supported
+  order_types:
+    - market
+    - limit
+    - stop_loss
+    - stop_loss_limit
+
+  # Features
+  features:
+    margin_trading: false
+    futures: false
+    options: false
+    spot_trading: true
+    testnet_available: false
+
+  # Compliance and regulations
+  compliance:
+    kyc_required: true
+    restricted_countries: []
+    sanctions_screening: true
+
+  # Monitoring and alerts
+  monitoring:
+    health_check_interval_seconds: 30
+    alert_on_disconnect: true
+    alert_on_high_latency: true
+    latency_threshold_ms: 5000
+
+# Template notes:
+# - Copy this file and customize for your specific venue
+# - Set API credentials in environment variables
+# - Adjust risk parameters based on your risk tolerance
+# - Test thoroughly in paper trading mode before live deployment
+# - Monitor latency and adjust rate limits as needed

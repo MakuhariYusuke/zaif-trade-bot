@@ -1,0 +1,2 @@
+action,notional,pnl,position_after,position_before,price,shares,timestamp
+buy,10000.0,0.0,1,0,30496.0961791181,0.3279108231186456,2023-01-01 00:00:00

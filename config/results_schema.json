@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trading Results Schema",
+  "description": "Schema for validating trading strategy backtest results",
+  "type": "object",
+  "properties": {
+    "strategy": {
+      "type": "string",
+      "enum": ["rl", "sma_fast_slow", "buy_hold"]
+    },
+    "dataset": {
+      "type": "string"
+    },
+    "slippage_bps": {
+      "type": "number",
+      "minimum": 0
+    },
+    "initial_capital": {
+      "type": "number",
+      "minimum": 0
+    },
+    "total_pnl": {
+      "type": "number"
+    },
+    "sharpe_ratio": {
+      "type": "number"
+    },
+    "deflated_sharpe_ratio": {
+      "type": ["number", "null"]
+    },
+    "pvalue_bootstrap": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "max_drawdown": {
+      "type": "number"
+    },
+    "win_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "total_trades": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "trades_per_day": {
+      "type": "number",
+      "minimum": 0
+    },
+    "duration_minutes": {
+      "type": "number",
+      "minimum": 0
+    },
+    "budget_analysis": {
+      "type": "object",
+      "properties": {
+        "annual_pnl": {
+          "type": "number"
+        },
+        "trading_costs": {
+          "type": "number"
+        },
+        "net_profit": {
+          "type": "number"
+        },
+        "break_even_trades": {
+          "type": "number"
+        },
+        "payback_period_months": {
+          "type": "number"
+        },
+        "roi_percentage": {
+          "type": "number"
+        },
+        "total_investment": {
+          "type": "number"
+        }
+      },
+      "required": ["annual_pnl", "trading_costs", "net_profit", "break_even_trades", "payback_period_months", "roi_percentage", "total_investment"]
+    },
+    "equity_curve": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "equity": {
+            "type": "number"
+          }
+        },
+        "required": ["timestamp", "equity"]
+      }
+    },
+    "orders": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["buy", "sell"]
+          },
+          "price": {
+            "type": "number"
+          },
+          "shares": {
+            "type": "number"
+          },
+          "notional": {
+            "type": "number"
+          },
+          "position_before": {
+            "type": "number"
+          },
+          "position_after": {
+            "type": "number"
+          },
+          "sizing_reason": {
+            "type": "string"
+          },
+          "pnl": {
+            "type": "number"
+          }
+        },
+        "required": ["timestamp", "action", "price", "shares", "notional", "position_before", "position_after", "sizing_reason", "pnl"]
+      }
+    },
+    "run_metadata": {
+      "type": "object",
+      "properties": {
+        "python_version": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "cpu_model": {
+          "type": "string"
+        },
+        "package_hashes": {
+          "type": "object"
+        },
+        "git_sha": {
+          "type": "string"
+        },
+        "random_seed": {
+          "type": "integer"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": ["python_version", "os", "cpu_model", "git_sha", "random_seed", "timestamp"]
+    }
+  },
+  "required": ["strategy", "dataset", "slippage_bps", "initial_capital", "total_pnl", "sharpe_ratio", "max_drawdown", "win_rate", "total_trades", "equity_curve", "orders"]
+}

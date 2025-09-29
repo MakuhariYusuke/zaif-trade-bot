@@ -3,12 +3,13 @@ import pandas as pd
 from pathlib import Path
 from ztb.utils.memory.dtypes import downcast_df
 
+
 def csv_to_parquet_streaming(
     csv_path: str,
     parquet_path: str,
     chunksize: int = 200_000,
     compression: str = "zstd"
-):
+) -> None:
     """
     CSVファイルをチャンク単位で読み込み、Parquet形式で保存します。
 
@@ -22,8 +23,8 @@ def csv_to_parquet_streaming(
         2回目以降のチャンクはappendできないため、全データを1つのParquetファイルにまとめる場合は
         pyarrow.dataset等の利用や、チャンク毎に一時ファイルを作成して後で結合する必要があります。
     """
-    import pyarrow as pa
-    import pyarrow.parquet as pq
+    import pyarrow as pa  # type: ignore[import-untyped]
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
     parquet_path_obj = Path(parquet_path)
     parquet_path_obj.parent.mkdir(parents=True, exist_ok=True)

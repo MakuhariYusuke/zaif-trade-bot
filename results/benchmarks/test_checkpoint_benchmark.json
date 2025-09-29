@@ -1,0 +1,16 @@
+{
+  "saves": 2,
+  "save_duration_seconds": 0.03321300004608929,
+  "loads": 2,
+  "load_duration_seconds": 0.03094449988566339,
+  "rss_before_mb": 270.9609375,
+  "rss_after_mb": 271.2421875,
+  "rss_delta_mb": 0.28125,
+  "snapshot_metrics": {
+    "timestamp": "2025-09-28T23:38:19.202427+00:00",
+    "schema_version": 1,
+    "metrics": {
+      "reward": 1.0
+    }
+  }
+}
