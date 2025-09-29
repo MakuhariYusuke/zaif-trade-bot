@@ -9,6 +9,9 @@ import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
+import json
+from .circuit_breakers import get_global_kill_switch, KillSwitchActivatedError
 
 
 class SizingMethod(Enum):
@@ -26,6 +29,7 @@ class PositionSize:
     sizing_reason: str
     target_vol_contribution: float
     current_portfolio_vol: float
+    sizing_chain: Dict[str, Any]  # Chain of sizing calculations
 
 
 class PositionSizer:
@@ -146,14 +150,59 @@ class PositionSizer:
             # Apply signal and volatility scaling
             allocation = base_allocation * signal * vol_scaling
 
-            quantity = allocation / price
+            # Build sizing chain
+            sizing_chain = {
+                'raw_size': allocation,
+                'vol_target': allocation,  # Already applied
+                'kelly': allocation * 0.5,  # Half Kelly
+                'decimal_rounded': None,
+                'validated': None,
+                'circuit_breaker_veto': None,
+                'final_quantity': None,
+                'skip_reason': None
+            }
+
+            # Kelly adjustment (0.5)
+            allocation = sizing_chain['kelly']
+
+            # Decimal rounding (price/qty)
+            price_dec = Decimal(str(price))
+            allocation_dec = Decimal(str(allocation))
+            quantity_dec = allocation_dec / price_dec
+            # Round down to avoid over-sizing
+            quantity_rounded = float(quantity_dec.quantize(Decimal('0.00000001'), rounding=ROUND_DOWN))
+            sizing_chain['decimal_rounded'] = quantity_rounded
+
+            # Min notional/step validation (placeholder - need symbol config)
+            # Assume min_order_size = 0.0001, min_price = 1, etc.
+            min_order_size = 0.0001
+            if quantity_rounded < min_order_size:
+                sizing_chain['skip_reason'] = f"Quantity {quantity_rounded} below minimum {min_order_size}"
+                quantity_rounded = 0
+
+            sizing_chain['validated'] = quantity_rounded
+
+            # Circuit breaker veto
+            try:
+                kill_switch = get_global_kill_switch()
+                if kill_switch.is_active():
+                    sizing_chain['circuit_breaker_veto'] = 0
+                    sizing_chain['skip_reason'] = "Circuit breaker active"
+                    quantity_rounded = 0
+            except KillSwitchActivatedError:
+                sizing_chain['circuit_breaker_veto'] = 0
+                sizing_chain['skip_reason'] = "Kill switch activated"
+                quantity_rounded = 0
+
+            sizing_chain['final_quantity'] = quantity_rounded
 
             positions.append(PositionSize(
                 symbol=symbol,
-                quantity=quantity,
-                sizing_reason=f"Vol targeting: target {self.target_volatility:.1%}, current {portfolio_vol:.1%}",
+                quantity=quantity_rounded,
+                sizing_reason=f"Vol targeting: target {self.target_volatility:.1%}, current {portfolio_vol:.1%}" + (f" - Skipped: {sizing_chain['skip_reason']}" if sizing_chain['skip_reason'] else ""),
                 target_vol_contribution=self.target_volatility / len(signals),
-                current_portfolio_vol=portfolio_vol
+                current_portfolio_vol=portfolio_vol,
+                sizing_chain=sizing_chain
             ))
 
         return positions
