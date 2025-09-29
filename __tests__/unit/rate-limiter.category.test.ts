@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RateLimiter, setRateLimiter } from '../../src/application/rate-limiter';
-import { withRetry } from '../../src/adapters/base-service';
+import { RateLimiter, setRateLimiter } from '../../ztb/application/rate-limiter';
+import { withRetry } from '../../ztb/adapters/base-service';
 
 function sleep(ms: number){ return new Promise(r => setTimeout(r, ms)); }
 
