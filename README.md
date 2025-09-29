@@ -57,6 +57,194 @@ python ztb/experiments/ml_reinforcement_1k.py
 
 ---
 
+## 🛡️ Operational Safety (Paper/Live-Lite)
+
+Zaif Trade Bot includes comprehensive safety mechanisms for responsible trading system operation.
+
+### Risk Management Features
+
+- **Kill Switch**: Emergency shutdown via file (`/tmp/ztb.stop`), environment variable (`ZTB_KILL=1`), or HTTP endpoint
+- **Circuit Breakers**: Automatic failure detection with configurable thresholds
+- **Order Idempotency**: Duplicate order prevention with client order ID generation
+- **Rate Limiting**: API call throttling to prevent abuse
+- **Position Limits**: Maximum exposure controls per trade and portfolio
+
+### Safety-First Defaults
+
+All safety features are **disabled by default** in development. Enable explicitly for production use:
+
+```bash
+# Enable risk management for paper trading
+python -m ztb.live.paper_trader --enable-risk --risk-profile balanced
+
+# Enable risk management for backtesting
+python -m ztb.backtest.runner --enable-risk --policy sma_fast_slow
+```
+
+### Risk Profiles
+
+- **Conservative**: Strict limits, early intervention
+- **Balanced**: Moderate risk controls (default)
+- **Aggressive**: Relaxed thresholds for high-frequency strategies
+
+### Emergency Procedures
+
+1. **Immediate Stop**: Create kill file or set environment variable
+2. **Graceful Shutdown**: System stops new orders but allows position unwinding
+3. **Post-Incident Review**: Check logs for trigger conditions
+4. **Reset and Resume**: Clear kill switch after issue resolution
+
+See **[Runbook](docs/runbook.md)** for detailed operational procedures and incident response.
+
+---
+
+## � Documentation
+
+### Developer Guides
+
+- **[Setup Guide](docs/contributing/setup.md)** - Development environment setup
+- **[Architecture Overview](docs/contributing/architecture.md)** - System architecture and design
+- **[Testing Guide](docs/contributing/testing.md)** - Testing strategy and practices
+
+### Module Documentation
+
+- **[Data Management](ztb/data/README.md)** - Streaming pipelines and external data sources
+- **[Trading Engine](ztb/trading/README.md)** - PPO training and checkpoint management
+- **[Test Utilities](ztb/util/README.md)** - Test isolation and performance monitoring
+
+### Operational Guides
+
+- **[Runbook](docs/runbook.md)** - Experiment management and troubleshooting
+- **[Configuration](docs/configuration.md)** - Environment variables and config files
+
+---
+
+## �🚀 Getting Started for New Contributors
+
+新規コントリビューター向けの開発環境セットアップと基本ワークフローです。
+
+### 環境セットアップ
+
+#### オプション1: Dev Container (推奨)
+
+VS Code で一貫した開発環境を確保する場合:
+
+1. **VS Code Dev Containers 拡張機能インストール**
+   - VS Code 拡張機能: "Dev Containers"
+
+2. **コンテナ起動**
+   ```bash
+   # Command Palette (Ctrl+Shift+P) → "Dev Containers: Reopen in Container"
+   # または: "Dev Containers: Open Folder Locally" → フォルダ選択
+   ```
+
+3. **自動セットアップ完了**
+   - Python 3.11, Node.js LTS, 必要な拡張機能が自動インストール
+   - `make setup` が自動実行され、依存関係がインストールされます
+
+#### オプション2: ローカル環境
+
+手動セットアップの場合:
+
+1. **リポジトリクローン**
+
+   ```bash
+   git clone https://github.com/MakuhariYusuke/zaif-trade-bot.git
+   cd zaif-trade-bot
+   ```
+
+2. **依存関係インストール**
+
+   ```bash
+   # Node.js/TypeScript 環境
+   npm install
+
+   # Python/ML 環境
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt  # 開発ツール用
+   ```
+
+3. **開発ツールインストール**
+
+   ```bash
+   # 型チェック・リント用
+   pip install mypy ruff pre-commit
+
+   # pre-commit フック有効化
+   pre-commit install
+   ```
+
+### 基本テスト実行
+
+1. **ユニットテスト実行**
+
+   ```bash
+   # TypeScript/Node.js テスト
+   npm run test:unit
+
+   # Python テスト (pytest)
+   python -m pytest ztb/tests/ -v
+   ```
+
+2. **統合テスト実行**
+
+   ```bash
+   # 高速統合テスト
+   npm run test:int-fast
+
+   # 完全統合テスト
+   npm run test:integration
+   ```
+
+3. **スモークテスト実行**
+
+   ```bash
+   # 最小ライブテスト (モック環境推奨)
+   npm run live:minimal
+
+   # ペーパートレーディングテスト
+   npm run paper:smoke
+   ```
+
+### 開発ワークフロー
+
+1. **ブランチ作成**
+
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **コード変更・テスト**
+
+   ```bash
+   # 変更後、テスト実行
+   npm run test:unit
+   python -m pytest ztb/tests/
+
+   # 型チェック
+   mypy ztb/
+
+   # リント
+   ruff check ztb/
+   ```
+
+3. **コミット・プッシュ**
+
+   ```bash
+   git add .
+   git commit -m "feat: add your feature"
+   git push origin feature/your-feature-name
+   ```
+
+### トラブルシューティング
+
+- **テスト失敗**: `npm run test:unit` で詳細確認
+- **型エラー**: `mypy ztb/` でエラー箇所特定
+- **環境問題**: `python --version` と `node --version` を確認
+- **メモリ不足**: `ZTB_MAX_MEMORY_GB=8` 環境変数で制限
+
+---
+
 ## アーキテクチャ概要
 
 ### TypeScript/Node.js レイヤー
@@ -2024,6 +2212,33 @@ npm start
 - **技術的問題**: GitHub Issues
 - **運用相談**: Discord/Slack通知
 - **緊急連絡**: 設定済みwebhook経由
+
+---
+
+## Stakeholder Bundle (v2)
+
+ステークホルダー向け実トレード準備完了証拠パッケージを生成します。バックテスト結果、ペーパートレーディング、展開検証を含む包括的なエビデンスを提供します。
+
+### 生成コマンド
+
+```bash
+# 完全なステークホルダーバンドル生成 (v2)
+./scripts/make_stakeholder_bundle.sh
+```
+
+### バンドル内容
+
+- **バックテスト結果**: SMAベースライン + RLポリシー比較
+- **ペーパートレーディング**: リプレイ + ライブライトモード検証
+- **展開検証**: カナリアスクリプトによるデプロイ準備チェック
+- **統計的有意性**: DSR、ブートストラップp値、OOS性能
+- **実行メタデータ**: 環境情報、再現性保証
+- **設定ファイル**: 使用されたvenue.yamlと構成
+
+### 出力
+
+- `artifacts/stakeholder_bundle_YYYYMMDD_HHMMSS/`: 完全なエビデンスパッケージ
+- `artifacts/stakeholder_bundle_YYYYMMDD_HHMMSS.zip`: 配布用ZIPアーカイブ
 
 ---
 

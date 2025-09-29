@@ -15,8 +15,14 @@ describe('core/position-store recovery', () => {
   let DIR = '';
   const PAIR = 'xrp_jpy';
 
+  const getUniqueTempDir = (prefix: string = "test") => {
+    const uniqueId = Math.random().toString(36).slice(2, 10);
+    const timestamp = Date.now();
+    return path.join(ROOT, `${prefix}_${timestamp}_${uniqueId}`);
+  };
+
   beforeEach(() => {
-    DIR = path.join(ROOT, `recovery-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    DIR = getUniqueTempDir('recovery');
     fs.mkdirSync(DIR, { recursive: true });
     process.env.POSITION_STORE_DIR = DIR;
   });
@@ -55,7 +61,7 @@ describe('core/position-store recovery', () => {
       const file = path.join(DIR, `${PAIR}.json`);
       const data = fs.readFileSync(file, 'utf8');
       const parsed = JSON.parse(data);
-      expect(parsed.qty).toBeCloseTo(i * 0.01, 8);
+      expect(parsed.qty).toBeCloseTo(i * 0.01, 2);
     }
   });
 

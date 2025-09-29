@@ -47,7 +47,7 @@ def analyze_column_dependencies(features_config: Dict[str, Any],
     Returns:
         Set of required column names
     """
-    required_columns = set()
+    required_columns: Set[str] = set()
     
     # Base OHLCV columns that are always needed
     base_columns = {'open', 'high', 'low', 'close', 'volume', 'timestamp'}

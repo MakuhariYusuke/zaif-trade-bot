@@ -1,0 +1,22 @@
+{
+  "steps": 5,
+  "rows_streamed": 80,
+  "duration_seconds": 0.027256800094619393,
+  "rows_per_second": 2935.047390826788,
+  "batches_per_second": 183.44046192667426,
+  "rss_before_mb": 129.16796875,
+  "rss_after_mb": 129.265625,
+  "rss_delta_mb": 0.09765625,
+  "pipeline_stats": {
+    "total_rows_streamed": 96,
+    "last_batch_rows": 16,
+    "health": {
+      "status": "ok",
+      "consecutive_failures": 0,
+      "last_error": null,
+      "last_error_at": null,
+      "last_success_at": "2025-09-28T23:33:08.114339"
+    }
+  },
+  "timestamp": "2025-09-28T23:33:08.116339"
+}

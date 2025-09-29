@@ -18,7 +18,7 @@ from typing import Dict, List, Any, Union
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 from ztb.experiments.base import ScalingExperiment, ExperimentResult
-from ztb.utils.error_handler import catch_and_notify  # type: ignore[import-not-found]
+from ztb.utils.error_handler import catch_and_notify
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.parallel_experiments import ResourceMonitor
 from ztb.utils import LoggerManager
