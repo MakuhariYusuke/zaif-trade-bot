@@ -1,8 +1,6 @@
-import pytest
 import os
 import tempfile
-import time
-from pathlib import Path
+
 from src.utils.cache.feature_cache import FeatureCache
 
 
@@ -16,6 +14,7 @@ class TestFeatureCache:
     def teardown_method(self):
         # クリーンアップ
         import shutil
+
         if os.path.exists(self.test_cache_dir):
             shutil.rmtree(self.test_cache_dir)
 
@@ -31,7 +30,9 @@ class TestFeatureCache:
 
     def test_select_compressor_frequent_access(self):
         """頻繁アクセス時はlz4が優先"""
-        result = self.cache._select_compressor(500 * 1024, "frequent")  # 500KB, frequent
+        result = self.cache._select_compressor(
+            500 * 1024, "frequent"
+        )  # 500KB, frequent
         assert result == "lz4"
 
     def test_select_compressor_fixed_setting(self):

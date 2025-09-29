@@ -12,9 +12,10 @@ Usage:
     corr = correlation(a, b)
 """
 
-import pandas as pd
+from typing import Dict, List, Union, cast
+
 import numpy as np
-from typing import Union, cast, List, Dict
+import pandas as pd
 
 
 def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
@@ -79,19 +80,37 @@ def get_feature_category(feature_name: str) -> str:
     name_lower = feature_name.lower()
 
     # Trend indicators
-    if any(keyword in name_lower for keyword in ['ema', 'sma', 'wma', 'kama', 'tema', 'dema', 'ichimoku', 'trend']):
-        return 'trend'
+    if any(
+        keyword in name_lower
+        for keyword in [
+            "ema",
+            "sma",
+            "wma",
+            "kama",
+            "tema",
+            "dema",
+            "ichimoku",
+            "trend",
+        ]
+    ):
+        return "trend"
 
     # Oscillators
-    if any(keyword in name_lower for keyword in ['rsi', 'stoch', 'macd', 'cci', 'williams', 'oscillator']):
-        return 'oscillator'
+    if any(
+        keyword in name_lower
+        for keyword in ["rsi", "stoch", "macd", "cci", "williams", "oscillator"]
+    ):
+        return "oscillator"
 
     # Volume indicators
-    if any(keyword in name_lower for keyword in ['volume', 'obv', 'vwap', 'vpt']):
-        return 'volume'
+    if any(keyword in name_lower for keyword in ["volume", "obv", "vwap", "vpt"]):
+        return "volume"
 
     # Channel indicators
-    if any(keyword in name_lower for keyword in ['bollinger', 'donchian', 'channel', 'envelope']):
-        return 'channel'
+    if any(
+        keyword in name_lower
+        for keyword in ["bollinger", "donchian", "channel", "envelope"]
+    ):
+        return "channel"
 
-    return 'other'
+    return "other"

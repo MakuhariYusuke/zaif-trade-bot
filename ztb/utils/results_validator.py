@@ -6,12 +6,12 @@ and live trading operations against the unified results schema.
 """
 
 import json
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -36,7 +36,9 @@ class ResultsValidator:
             schema_path: Path to schema file. Defaults to results_schema.json
         """
         if not HAS_JSONSCHEMA:
-            raise ImportError("jsonschema package is required for validation. Install with: pip install jsonschema")
+            raise ImportError(
+                "jsonschema package is required for validation. Install with: pip install jsonschema"
+            )
 
         self.schema_path = schema_path or RESULTS_SCHEMA_PATH
         self.schema = self._load_schema()
@@ -44,7 +46,7 @@ class ResultsValidator:
     def _load_schema(self) -> Dict[str, Any]:
         """Load schema from file."""
         try:
-            with open(self.schema_path, 'r', encoding='utf-8') as f:
+            with open(self.schema_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except FileNotFoundError:
             logger.warning(f"Schema file not found: {self.schema_path}")
@@ -85,7 +87,9 @@ class ResultsValidator:
                 raise
             return False
 
-    def validate_file(self, file_path: Union[str, Path], raise_on_error: bool = True) -> bool:
+    def validate_file(
+        self, file_path: Union[str, Path], raise_on_error: bool = True
+    ) -> bool:
         """Validate JSON file against schema.
 
         Args:
@@ -96,7 +100,7 @@ class ResultsValidator:
             True if valid, False otherwise
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             return self.validate(data, raise_on_error)
         except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -182,7 +186,9 @@ def validate_results(data: Dict[str, Any], raise_on_error: bool = True) -> bool:
     return get_validator().validate(data, raise_on_error)
 
 
-def validate_results_file(file_path: Union[str, Path], raise_on_error: bool = True) -> bool:
+def validate_results_file(
+    file_path: Union[str, Path], raise_on_error: bool = True
+) -> bool:
     """Validate results file using default validator.
 
     Args:

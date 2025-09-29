@@ -5,10 +5,9 @@ This module provides reconciliation functionality to verify trading positions,
 balances, and order states against external sources for consistency and accuracy.
 """
 
-import asyncio
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ztb.utils.observability import get_logger
 
@@ -18,6 +17,7 @@ logger = get_logger(__name__)
 @dataclass
 class PositionRecord:
     """Position record for reconciliation."""
+
     symbol: str
     quantity: float
     average_price: float
@@ -30,6 +30,7 @@ class PositionRecord:
 @dataclass
 class BalanceRecord:
     """Balance record for reconciliation."""
+
     asset: str
     free: float
     locked: float
@@ -40,6 +41,7 @@ class BalanceRecord:
 @dataclass
 class OrderRecord:
     """Order record for reconciliation."""
+
     order_id: str
     symbol: str
     side: str
@@ -52,6 +54,7 @@ class OrderRecord:
 @dataclass
 class ReconciliationResult:
     """Result of reconciliation process."""
+
     timestamp: float
     positions_match: bool
     balances_match: bool
@@ -62,6 +65,7 @@ class ReconciliationResult:
 
 class ReconciliationError(Exception):
     """Exception raised when reconciliation fails."""
+
     pass
 
 
@@ -110,9 +114,12 @@ class PositionReconciler(BaseReconciler):
         super().__init__(name)
         self._last_result: Optional[ReconciliationResult] = None
 
-    async def reconcile(self, local_positions: List[PositionRecord],
-                       external_positions: List[PositionRecord],
-                       tolerance: float = 0.001) -> ReconciliationResult:
+    async def reconcile(
+        self,
+        local_positions: List[PositionRecord],
+        external_positions: List[PositionRecord],
+        tolerance: float = 0.001,
+    ) -> ReconciliationResult:
         """Reconcile local vs external positions.
 
         Args:
@@ -144,14 +151,14 @@ class PositionReconciler(BaseReconciler):
             if local_pos is None:
                 discrepancies[f"missing_local_{symbol}"] = {
                     "external": external_pos,
-                    "difference": "missing locally"
+                    "difference": "missing locally",
                 }
                 continue
 
             if external_pos is None:
                 discrepancies[f"missing_external_{symbol}"] = {
                     "local": local_pos,
-                    "difference": "missing externally"
+                    "difference": "missing externally",
                 }
                 continue
 
@@ -161,7 +168,7 @@ class PositionReconciler(BaseReconciler):
                 discrepancies[f"quantity_{symbol}"] = {
                     "local": local_pos.quantity,
                     "external": external_pos.quantity,
-                    "difference": qty_diff
+                    "difference": qty_diff,
                 }
 
             # Compare market values
@@ -170,7 +177,7 @@ class PositionReconciler(BaseReconciler):
                 discrepancies[f"value_{symbol}"] = {
                     "local": local_pos.market_value,
                     "external": external_pos.market_value,
-                    "difference": value_diff
+                    "difference": value_diff,
                 }
 
             if qty_diff <= tolerance and value_diff <= tolerance:
@@ -182,20 +189,22 @@ class PositionReconciler(BaseReconciler):
             timestamp=self.last_reconciliation,
             positions_match=positions_match,
             balances_match=True,  # Not checking balances here
-            orders_match=True,    # Not checking orders here
+            orders_match=True,  # Not checking orders here
             discrepancies=discrepancies,
             summary={
                 "total_positions": total,
                 "matching_positions": matches,
                 "discrepancies": len(discrepancies),
-                "match_rate": matches / total if total > 0 else 0
-            }
+                "match_rate": matches / total if total > 0 else 0,
+            },
         )
 
         self._last_result = result
 
         if not positions_match:
-            logger.warning(f"Position reconciliation found {len(discrepancies)} discrepancies")
+            logger.warning(
+                f"Position reconciliation found {len(discrepancies)} discrepancies"
+            )
         else:
             logger.info("Position reconciliation passed")
 
@@ -214,9 +223,12 @@ class BalanceReconciler(BaseReconciler):
         super().__init__(name)
         self._last_result: Optional[ReconciliationResult] = None
 
-    async def reconcile(self, local_balances: List[BalanceRecord],
-                       external_balances: List[BalanceRecord],
-                       tolerance: float = 0.001) -> ReconciliationResult:
+    async def reconcile(
+        self,
+        local_balances: List[BalanceRecord],
+        external_balances: List[BalanceRecord],
+        tolerance: float = 0.001,
+    ) -> ReconciliationResult:
         """Reconcile local vs external balances.
 
         Args:
@@ -248,14 +260,14 @@ class BalanceReconciler(BaseReconciler):
             if local_bal is None:
                 discrepancies[f"missing_local_{asset}"] = {
                     "external": external_bal,
-                    "difference": "missing locally"
+                    "difference": "missing locally",
                 }
                 continue
 
             if external_bal is None:
                 discrepancies[f"missing_external_{asset}"] = {
                     "local": external_bal,
-                    "difference": "missing externally"
+                    "difference": "missing externally",
                 }
                 continue
 
@@ -265,7 +277,7 @@ class BalanceReconciler(BaseReconciler):
                 discrepancies[f"total_{asset}"] = {
                     "local": local_bal.total,
                     "external": external_bal.total,
-                    "difference": total_diff
+                    "difference": total_diff,
                 }
 
             # Compare free balances
@@ -274,7 +286,7 @@ class BalanceReconciler(BaseReconciler):
                 discrepancies[f"free_{asset}"] = {
                     "local": local_bal.free,
                     "external": external_bal.free,
-                    "difference": free_diff
+                    "difference": free_diff,
                 }
 
             if total_diff <= tolerance and free_diff <= tolerance:
@@ -286,20 +298,22 @@ class BalanceReconciler(BaseReconciler):
             timestamp=self.last_reconciliation,
             positions_match=True,  # Not checking positions here
             balances_match=balances_match,
-            orders_match=True,    # Not checking orders here
+            orders_match=True,  # Not checking orders here
             discrepancies=discrepancies,
             summary={
                 "total_balances": total,
                 "matching_balances": matches,
                 "discrepancies": len(discrepancies),
-                "match_rate": matches / total if total > 0 else 0
-            }
+                "match_rate": matches / total if total > 0 else 0,
+            },
         )
 
         self._last_result = result
 
         if not balances_match:
-            logger.warning(f"Balance reconciliation found {len(discrepancies)} discrepancies")
+            logger.warning(
+                f"Balance reconciliation found {len(discrepancies)} discrepancies"
+            )
         else:
             logger.info("Balance reconciliation passed")
 
@@ -318,8 +332,9 @@ class OrderReconciler(BaseReconciler):
         super().__init__(name)
         self._last_result: Optional[ReconciliationResult] = None
 
-    async def reconcile(self, local_orders: List[OrderRecord],
-                       external_orders: List[OrderRecord]) -> ReconciliationResult:
+    async def reconcile(
+        self, local_orders: List[OrderRecord], external_orders: List[OrderRecord]
+    ) -> ReconciliationResult:
         """Reconcile local vs external orders.
 
         Args:
@@ -350,24 +365,26 @@ class OrderReconciler(BaseReconciler):
             if local_order is None:
                 discrepancies[f"missing_local_{order_id}"] = {
                     "external": external_order,
-                    "difference": "missing locally"
+                    "difference": "missing locally",
                 }
                 continue
 
             if external_order is None:
                 discrepancies[f"missing_external_{order_id}"] = {
                     "local": local_order,
-                    "difference": "missing externally"
+                    "difference": "missing externally",
                 }
                 continue
 
             # Compare filled quantities
-            fill_diff = abs(local_order.filled_quantity - external_order.filled_quantity)
+            fill_diff = abs(
+                local_order.filled_quantity - external_order.filled_quantity
+            )
             if fill_diff > 0.001:  # Small tolerance for fills
                 discrepancies[f"fill_{order_id}"] = {
                     "local": local_order.filled_quantity,
                     "external": external_order.filled_quantity,
-                    "difference": fill_diff
+                    "difference": fill_diff,
                 }
 
             # Compare statuses
@@ -375,7 +392,7 @@ class OrderReconciler(BaseReconciler):
                 discrepancies[f"status_{order_id}"] = {
                     "local": local_order.status,
                     "external": external_order.status,
-                    "difference": "status mismatch"
+                    "difference": "status mismatch",
                 }
 
             if fill_diff <= 0.001 and local_order.status == external_order.status:
@@ -386,21 +403,23 @@ class OrderReconciler(BaseReconciler):
         result = ReconciliationResult(
             timestamp=self.last_reconciliation,
             positions_match=True,  # Not checking positions here
-            balances_match=True,   # Not checking balances here
+            balances_match=True,  # Not checking balances here
             orders_match=orders_match,
             discrepancies=discrepancies,
             summary={
                 "total_orders": total,
                 "matching_orders": matches,
                 "discrepancies": len(discrepancies),
-                "match_rate": matches / total if total > 0 else 0
-            }
+                "match_rate": matches / total if total > 0 else 0,
+            },
         )
 
         self._last_result = result
 
         if not orders_match:
-            logger.warning(f"Order reconciliation found {len(discrepancies)} discrepancies")
+            logger.warning(
+                f"Order reconciliation found {len(discrepancies)} discrepancies"
+            )
         else:
             logger.info("Order reconciliation passed")
 
@@ -421,13 +440,15 @@ class ComprehensiveReconciler:
         self.order_reconciler = OrderReconciler()
         self._last_result: Optional[ReconciliationResult] = None
 
-    async def reconcile_all(self,
-                          local_positions: List[PositionRecord] = None,
-                          external_positions: List[PositionRecord] = None,
-                          local_balances: List[BalanceRecord] = None,
-                          external_balances: List[BalanceRecord] = None,
-                          local_orders: List[OrderRecord] = None,
-                          external_orders: List[OrderRecord] = None) -> ReconciliationResult:
+    async def reconcile_all(
+        self,
+        local_positions: List[PositionRecord] = None,
+        external_positions: List[PositionRecord] = None,
+        local_balances: List[BalanceRecord] = None,
+        external_balances: List[BalanceRecord] = None,
+        local_orders: List[OrderRecord] = None,
+        external_orders: List[OrderRecord] = None,
+    ) -> ReconciliationResult:
         """Perform comprehensive reconciliation.
 
         Args:
@@ -449,13 +470,19 @@ class ComprehensiveReconciler:
         order_result = None
 
         if local_positions is not None and external_positions is not None:
-            position_result = await self.position_reconciler.reconcile(local_positions, external_positions)
+            position_result = await self.position_reconciler.reconcile(
+                local_positions, external_positions
+            )
 
         if local_balances is not None and external_balances is not None:
-            balance_result = await self.balance_reconciler.reconcile(local_balances, external_balances)
+            balance_result = await self.balance_reconciler.reconcile(
+                local_balances, external_balances
+            )
 
         if local_orders is not None and external_orders is not None:
-            order_result = await self.order_reconciler.reconcile(local_orders, external_orders)
+            order_result = await self.order_reconciler.reconcile(
+                local_orders, external_orders
+            )
 
         # Combine results
         all_discrepancies = {}
@@ -463,11 +490,15 @@ class ComprehensiveReconciler:
 
         if position_result:
             all_discrepancies.update(position_result.discrepancies)
-            summary.update({f"positions_{k}": v for k, v in position_result.summary.items()})
+            summary.update(
+                {f"positions_{k}": v for k, v in position_result.summary.items()}
+            )
 
         if balance_result:
             all_discrepancies.update(balance_result.discrepancies)
-            summary.update({f"balances_{k}": v for k, v in balance_result.summary.items()})
+            summary.update(
+                {f"balances_{k}": v for k, v in balance_result.summary.items()}
+            )
 
         if order_result:
             all_discrepancies.update(order_result.discrepancies)
@@ -475,18 +506,22 @@ class ComprehensiveReconciler:
 
         comprehensive_result = ReconciliationResult(
             timestamp=timestamp,
-            positions_match=position_result.positions_match if position_result else True,
+            positions_match=position_result.positions_match
+            if position_result
+            else True,
             balances_match=balance_result.balances_match if balance_result else True,
             orders_match=order_result.orders_match if order_result else True,
             discrepancies=all_discrepancies,
-            summary=summary
+            summary=summary,
         )
 
         self._last_result = comprehensive_result
 
         total_discrepancies = len(all_discrepancies)
         if total_discrepancies > 0:
-            logger.warning(f"Comprehensive reconciliation found {total_discrepancies} total discrepancies")
+            logger.warning(
+                f"Comprehensive reconciliation found {total_discrepancies} total discrepancies"
+            )
         else:
             logger.info("Comprehensive reconciliation passed")
 
@@ -504,3 +539,31 @@ _reconciler = ComprehensiveReconciler()
 def get_reconciler() -> ComprehensiveReconciler:
     """Get global reconciler instance."""
     return _reconciler
+
+
+# Coincheck-specific hooks for future integration
+def coincheck_position_reconciliation_hook(
+    local_positions: List[PositionRecord], broker_positions: List[PositionRecord]
+) -> List[PositionRecord]:
+    """Position reconciliation hook for Coincheck (placeholder for future implementation)."""
+    # TODO: Implement Coincheck-specific position reconciliation
+    logger.debug("Coincheck position reconciliation hook called")
+    return broker_positions
+
+
+def coincheck_balance_reconciliation_hook(
+    local_balances: List[BalanceRecord], broker_balances: List[BalanceRecord]
+) -> List[BalanceRecord]:
+    """Balance reconciliation hook for Coincheck (placeholder for future implementation)."""
+    # TODO: Implement Coincheck-specific balance reconciliation
+    logger.debug("Coincheck balance reconciliation hook called")
+    return broker_balances
+
+
+def coincheck_order_reconciliation_hook(
+    local_orders: List[OrderRecord], broker_orders: List[OrderRecord]
+) -> Tuple[List[OrderRecord], List[str]]:
+    """Order reconciliation hook for Coincheck (placeholder for future implementation)."""
+    # TODO: Implement Coincheck-specific order reconciliation
+    logger.debug("Coincheck order reconciliation hook called")
+    return broker_orders, []

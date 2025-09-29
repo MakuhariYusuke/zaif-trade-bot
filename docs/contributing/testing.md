@@ -264,6 +264,6 @@ When adding new features:
 
 ## Resources
 
-- [Test Utilities Guide](../util/README.md)
+- [Test Utilities Guide](../../ztb/util/README.md)
 - [Development Setup](setup.md)
 - [Architecture Overview](architecture.md)

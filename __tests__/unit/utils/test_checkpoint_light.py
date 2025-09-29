@@ -1,10 +1,10 @@
-import pytest
 import os
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch
 import sys
-sys.path.insert(0, 'src')
+import tempfile
+from unittest.mock import Mock
+
+sys.path.insert(0, "src")
+
 
 class TestCheckpointLight:
     def setup_method(self):
@@ -17,6 +17,7 @@ class TestCheckpointLight:
 
     def teardown_method(self):
         import shutil
+
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
 
@@ -26,18 +27,18 @@ class TestCheckpointLight:
 
         # 完全チェックポイント相当のデータ
         full_data = {
-            'policy': self.model.policy.state_dict(),
-            'value_net': self.model.value_net.state_dict(),
-            'scaler': self.model.scaler,
-            'optimizer': {'state': 'large_optimizer_data' * 1000},  # 大きなデータ
-            'replay_buffer': {'buffer': 'large_buffer_data' * 1000}
+            "policy": self.model.policy.state_dict(),
+            "value_net": self.model.value_net.state_dict(),
+            "scaler": self.model.scaler,
+            "optimizer": {"state": "large_optimizer_data" * 1000},  # 大きなデータ
+            "replay_buffer": {"buffer": "large_buffer_data" * 1000},
         }
 
         # 軽量チェックポイントのデータ
         light_data = {
-            'policy': self.model.policy.state_dict(),
-            'value_net': self.model.value_net.state_dict(),
-            'scaler': self.model.scaler
+            "policy": self.model.policy.state_dict(),
+            "value_net": self.model.value_net.state_dict(),
+            "scaler": self.model.scaler,
         }
 
         # サイズ比較

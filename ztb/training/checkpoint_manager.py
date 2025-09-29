@@ -1,4 +1,4 @@
-﻿"""Training checkpoint management utilities."""
+"""Training checkpoint management utilities."""
 
 from __future__ import annotations
 
@@ -51,7 +51,12 @@ class TrainingCheckpointManager:
 
     SCHEMA_VERSION = 1
 
-    def __init__(self, save_dir: str, config: Optional[TrainingCheckpointConfig] = None, observability: Optional[ObservabilityClient] = None) -> None:
+    def __init__(
+        self,
+        save_dir: str,
+        config: Optional[TrainingCheckpointConfig] = None,
+        observability: Optional[ObservabilityClient] = None,
+    ) -> None:
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.config = config or TrainingCheckpointConfig()
@@ -110,31 +115,37 @@ class TrainingCheckpointManager:
                     "metrics": metrics or {},
                 },
             )
-            self.observability.record_metrics({
-                "checkpoint_step": float(step),
-            })
+            self.observability.record_metrics(
+                {
+                    "checkpoint_step": float(step),
+                }
+            )
 
     def load_latest(self) -> Optional[TrainingCheckpointSnapshot]:
         try:
             payload, step, metadata = self._manager.load_latest()
         except FileNotFoundError:
             if self.observability:
-                self.observability.log_event('checkpoint_load_missing')
+                self.observability.log_event("checkpoint_load_missing")
             return None
 
         self._validate_payload(payload)  # type: ignore[arg-type]
-        snapshot = TrainingCheckpointSnapshot(step=step, payload=payload, metadata=metadata)  # type: ignore[arg-type]
+        snapshot = TrainingCheckpointSnapshot(
+            step=step, payload=payload, metadata=metadata
+        )  # type: ignore[arg-type]
         if self.observability:
             self.observability.log_event(
-                'checkpoint_load',
+                "checkpoint_load",
                 {
-                    'step': step,
-                    'metrics': snapshot.metrics,
+                    "step": step,
+                    "metrics": snapshot.metrics,
                 },
             )
         return snapshot
 
-    def apply_snapshot(self, model: BaseAlgorithm, snapshot: TrainingCheckpointSnapshot) -> None:
+    def apply_snapshot(
+        self, model: BaseAlgorithm, snapshot: TrainingCheckpointSnapshot
+    ) -> None:
         payload = snapshot.payload
         model.policy.load_state_dict(payload["policy_state"], strict=False)
 
@@ -143,27 +154,31 @@ class TrainingCheckpointManager:
             if optimizer is not None:
                 optimizer.load_state_dict(payload["optimizer_state"])
             else:
-                logger.warning("Optimizer state present in checkpoint but optimizer not found on model")
+                logger.warning(
+                    "Optimizer state present in checkpoint but optimizer not found on model"
+                )
 
         if self.config.include_replay_buffer:
-            self._restore_buffer(model, payload.get("buffer_kind"), payload.get("buffer_bytes"))
+            self._restore_buffer(
+                model, payload.get("buffer_kind"), payload.get("buffer_bytes")
+            )
 
         if self.config.include_rng_state:
             self._restore_rng_state(payload.get("rng_state"))
 
         if self.observability:
             self.observability.log_event(
-                'checkpoint_apply',
+                "checkpoint_apply",
                 {
-                    'step': snapshot.step,
-                    'metrics': snapshot.metrics,
+                    "step": snapshot.step,
+                    "metrics": snapshot.metrics,
                 },
             )
 
     def shutdown(self) -> None:
         self._manager.shutdown()
         if self.observability:
-            self.observability.log_event('checkpoint_manager_shutdown')
+            self.observability.log_event("checkpoint_manager_shutdown")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -195,7 +210,9 @@ class TrainingCheckpointManager:
                 try:
                     payload["optimizer_state"] = optimizer.state_dict()
                 except Exception:
-                    logger.exception("Failed to serialize optimizer state; continuing without it")
+                    logger.exception(
+                        "Failed to serialize optimizer state; continuing without it"
+                    )
 
         if self.config.include_replay_buffer:
             kind, buffer_bytes = self._capture_buffer(model)
@@ -222,29 +239,40 @@ class TrainingCheckpointManager:
         except Exception as exc:
             logger.warning("Failed to recompute checkpoint checksum: %s", exc)
             if self.observability:
-                self.observability.log_event('checkpoint_checksum_error', {'error': repr(exc)})
+                self.observability.log_event(
+                    "checkpoint_checksum_error", {"error": repr(exc)}
+                )
             return
         if actual != expected:
             # Compute additional diagnostic information
             payload_size = len(pickle.dumps(payload, protocol=pickle.HIGHEST_PROTOCOL))
-            payload_copy_size = len(pickle.dumps({k: v for k, v in payload.items() if k != "checksum"}, protocol=pickle.HIGHEST_PROTOCOL))
+            payload_copy_size = len(
+                pickle.dumps(
+                    {k: v for k, v in payload.items() if k != "checksum"},
+                    protocol=pickle.HIGHEST_PROTOCOL,
+                )
+            )
             diagnostics = {
-                'expected': expected,
-                'actual': actual,
-                'payload_size_bytes': payload_size,
-                'payload_without_checksum_size_bytes': payload_copy_size,
-                'schema_version': payload.get('schema_version'),
-                'timestamp': payload.get('timestamp')
+                "expected": expected,
+                "actual": actual,
+                "payload_size_bytes": payload_size,
+                "payload_without_checksum_size_bytes": payload_copy_size,
+                "schema_version": payload.get("schema_version"),
+                "timestamp": payload.get("timestamp"),
             }
             logger.warning("Checkpoint checksum mismatch: %s", diagnostics)
             if self.observability:
-                self.observability.log_event('checkpoint_checksum_mismatch', diagnostics)
+                self.observability.log_event(
+                    "checkpoint_checksum_mismatch", diagnostics
+                )
             return
         schema = payload.get("schema_version")
         if schema != self.SCHEMA_VERSION:
             raise ValueError(f"Unsupported checkpoint schema version: {schema}")
 
-    def _capture_buffer(self, model: BaseAlgorithm) -> Tuple[Optional[str], Optional[bytes]]:
+    def _capture_buffer(
+        self, model: BaseAlgorithm
+    ) -> Tuple[Optional[str], Optional[bytes]]:
         if not self.config.include_replay_buffer:
             return None, None
 
@@ -257,7 +285,10 @@ class TrainingCheckpointManager:
                 data = tmp_path.read_bytes()
                 return "replay_buffer_file", data
             except Exception:
-                logger.debug("Failed to save replay buffer using save_replay_buffer", exc_info=True)
+                logger.debug(
+                    "Failed to save replay buffer using save_replay_buffer",
+                    exc_info=True,
+                )
             finally:
                 if tmp_path and tmp_path.exists():
                     tmp_path.unlink(missing_ok=True)
@@ -272,7 +303,9 @@ class TrainingCheckpointManager:
                     logger.debug("Buffer %s could not be pickled", attr, exc_info=True)
         return None, None
 
-    def _restore_buffer(self, model: BaseAlgorithm, kind: Optional[str], data: Optional[bytes]) -> None:
+    def _restore_buffer(
+        self, model: BaseAlgorithm, kind: Optional[str], data: Optional[bytes]
+    ) -> None:
         if not kind or not data:
             return
 

@@ -6,12 +6,14 @@ Output columns:
   - kama
 """
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import Any
 from numba import jit  # type: ignore
 from numpy.typing import NDArray
-from ztb.features.base import MovingAverageFeature, ComputableFeature
+
+from ztb.features.base import ComputableFeature, MovingAverageFeature
 
 
 class KAMA(MovingAverageFeature, ComputableFeature):
@@ -28,10 +30,10 @@ class KAMA(MovingAverageFeature, ComputableFeature):
         df columns must include: ['close'].
         Returns a DataFrame with KAMA values.
         """
-        close = df['close'].astype(float).to_numpy()
+        close = df["close"].astype(float).to_numpy()
         kama = self._calculate_kama(close)
 
-        return pd.DataFrame({'kama': kama})
+        return pd.DataFrame({"kama": kama})
 
     @staticmethod
     @jit(nopython=True)  # type: ignore
@@ -50,10 +52,10 @@ class KAMA(MovingAverageFeature, ComputableFeature):
             #   - change: 直近10期間の価格変化量 = abs(close[i] - close[i-10])
             #   - volatility: 直近10期間の価格変動合計 = sum(abs(close[j] - close[j-1]) for j in i-9 to i)
             #   - ER = change / volatility (volatilityが0の場合は0)
-            change = abs(close[i] - close[i-10])
+            change = abs(close[i] - close[i - 10])
             volatility = 0.0
-            for j in range(i-9, i+1):
-                volatility += abs(close[j] - close[j-1])
+            for j in range(i - 9, i + 1):
+                volatility += abs(close[j] - close[j - 1])
             er = change / volatility if volatility != 0 else 0
 
             # Smoothing constant: ER * (fast SC - slow SC) + slow SC
@@ -61,8 +63,8 @@ class KAMA(MovingAverageFeature, ComputableFeature):
             fast_sc = 2.0 / (2.0 + 1.0)
             slow_sc = 2.0 / (30.0 + 1.0)
             sc = er * (fast_sc - slow_sc) + slow_sc
-            sc = sc ** 2  # Square for faster adaptation
+            sc = sc**2  # Square for faster adaptation
 
-            kama[i] = kama[i-1] + sc * (close[i] - kama[i-1])
+            kama[i] = kama[i - 1] + sc * (close[i] - kama[i - 1])
 
         return kama

@@ -1,191 +1,356 @@
-﻿"""Benchmark harness for checkpoint save/load performance."""
+#!/usr/bin/env python3
+"""
+Checkpoint performance benchmark for Zaif Trade Bot.
 
-from __future__ import annotations
+Measures model checkpoint save/load performance with soft performance gates.
+"""
 
-import argparse
 import json
-import os
-import sys
+import pickle
+import tempfile
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from typing import Any, Dict, List
 
 import numpy as np
-import psutil
-
-from ztb.training.checkpoint_manager import TrainingCheckpointConfig, TrainingCheckpointManager
-from ztb.utils.observability import setup_observability, generate_correlation_id
+import pandas as pd
 
 
 @dataclass
-class CheckpointBenchmarkResult:
-    saves: int
-    save_duration_seconds: float
-    loads: int
-    load_duration_seconds: float
-    rss_before_mb: float
-    rss_after_mb: float
-    rss_delta_mb: float
-    snapshot_metrics: Dict[str, Any]
+class CheckpointResult:
+    """Result of a checkpoint benchmark."""
 
-    def to_json(self) -> str:
-        return json.dumps(asdict(self), indent=2)
+    name: str
+    duration_seconds: float
+    throughput_mb_per_second: float
+    file_size_mb: float
+    passed_gates: bool
+    gate_violations: List[str]
 
 
-class _DummyOptimizer:
-    def __init__(self, size: int) -> None:
-        self.state = {"momentum": np.zeros(size, dtype=np.float32)}
+class CheckpointBenchmark:
+    """Benchmark for checkpoint save/load operations."""
 
-    def state_dict(self) -> Dict[str, Any]:
-        return {"state": {"momentum": self.state["momentum"].copy()}}
-
-    def load_state_dict(self, state: Dict[str, Any]) -> None:
-        momentum = state.get("state", {}).get("momentum")
-        if momentum is not None:
-            self.state["momentum"] = momentum.copy()
-
-
-class _DummyPolicy:
-    def __init__(self, size: int) -> None:
-        self.weights = np.random.randn(size).astype(np.float32)
-        self.optimizer = _DummyOptimizer(size)
-
-    def state_dict(self) -> Dict[str, Any]:
-        return {
-            "weights": self.weights.copy(),
-            "optimizer_state": self.optimizer.state_dict(),
+    def __init__(self):
+        self.perf_gates = {
+            "max_save_time_seconds": 30,  # Maximum time to save checkpoint
+            "max_load_time_seconds": 15,  # Maximum time to load checkpoint
+            "min_save_throughput_mb_s": 10,  # Minimum save throughput
+            "min_load_throughput_mb_s": 20,  # Minimum load throughput
+            "max_checkpoint_size_mb": 1000,  # Maximum checkpoint size
         }
 
-    def load_state_dict(self, state: Dict[str, Any], strict: bool = False) -> None:
-        self.weights = state["weights"].copy()
-        if "optimizer_state" in state:
-            self.optimizer.load_state_dict(state["optimizer_state"])
+    def create_test_model(self, size: str = "medium") -> Dict[str, Any]:
+        """Create a test model/checkpoint data structure."""
+        if size == "small":
+            # Small model: ~10MB
+            data = {
+                "weights": np.random.normal(0, 1, (1000, 1000)).astype(np.float32),
+                "biases": np.random.normal(0, 0.1, 1000).astype(np.float32),
+                "metadata": {"layers": 3, "activation": "relu"},
+                "optimizer_state": {
+                    "lr": 0.001,
+                    "momentum": np.random.normal(0, 0.01, 1000),
+                },
+            }
+        elif size == "medium":
+            # Medium model: ~50MB
+            data = {
+                "weights": np.random.normal(0, 1, (5000, 2000)).astype(np.float32),
+                "biases": np.random.normal(0, 0.1, 2000).astype(np.float32),
+                "metadata": {"layers": 5, "activation": "relu", "dropout": 0.2},
+                "optimizer_state": {
+                    "lr": 0.001,
+                    "beta1": 0.9,
+                    "beta2": 0.999,
+                    "momentum": np.random.normal(0, 0.01, (5000, 2000)),
+                },
+                "training_history": pd.DataFrame(
+                    {
+                        "epoch": range(100),
+                        "loss": np.random.exponential(0.1, 100),
+                        "val_loss": np.random.exponential(0.15, 100),
+                    }
+                ),
+            }
+        else:  # large
+            # Large model: ~200MB
+            data = {
+                "weights": np.random.normal(0, 1, (10000, 5000)).astype(np.float32),
+                "biases": np.random.normal(0, 0.1, 5000).astype(np.float32),
+                "metadata": {"layers": 8, "activation": "relu", "batch_norm": True},
+                "optimizer_state": {
+                    "lr": 0.0001,
+                    "beta1": 0.9,
+                    "beta2": 0.999,
+                    "momentum": np.random.normal(0, 0.01, (10000, 5000)),
+                    "velocity": np.random.normal(0, 0.01, (10000, 5000)),
+                },
+                "training_history": pd.DataFrame(
+                    {
+                        "epoch": range(500),
+                        "loss": np.random.exponential(0.05, 500),
+                        "val_loss": np.random.exponential(0.08, 500),
+                        "accuracy": np.random.beta(2, 1, 500),
+                    }
+                ),
+                "feature_importance": np.random.exponential(1, 1000),
+            }
 
+        return data
 
-class _DummyModel:
-    def __init__(self, size: int) -> None:
-        self.policy = _DummyPolicy(size)
-        self.replay_buffer = {"states": np.random.randn(size, 4).astype(np.float32)}
+    def get_data_size_mb(self, data: Dict[str, Any]) -> float:
+        """Estimate size of data in MB."""
+        # Rough estimation
+        total_elements = 0
+        for key, value in data.items():
+            if isinstance(value, np.ndarray):
+                total_elements += value.size
+            elif isinstance(value, pd.DataFrame):
+                total_elements += value.memory_usage(deep=True).sum()
+            elif isinstance(value, dict):
+                # Rough estimate for nested dicts
+                total_elements += len(str(value)) * 2  # Rough char to bytes
 
-    def save_replay_buffer(self, path: str) -> None:
-        with open(path, "wb") as fh:
-            np.save(fh, self.replay_buffer["states"], allow_pickle=False)
+        # Assume 4 bytes per float32 element, 8 bytes per float64
+        estimated_bytes = total_elements * 4
+        return estimated_bytes / (1024 * 1024)
 
-    def load_replay_buffer(self, path: str) -> None:
-        with open(path, "rb") as fh:
-            self.replay_buffer["states"] = np.load(fh, allow_pickle=False)
+    def benchmark_pickle_save(
+        self, data: Dict[str, Any], file_path: Path
+    ) -> CheckpointResult:
+        """Benchmark pickle-based checkpoint saving."""
+        print(f"Benchmarking pickle save to {file_path}...")
 
+        start_time = time.time()
+        with open(file_path, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-def run_benchmark(args: argparse.Namespace) -> CheckpointBenchmarkResult:
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    for file in args.output_dir.glob('checkpoint*.pkl*'):
-        try:
-            file.unlink()
-        except OSError:
-            pass
+        duration = time.time() - start_time
+        file_size = file_path.stat().st_size / (1024 * 1024)  # MB
+        throughput = file_size / duration
 
-    correlation_id = generate_correlation_id()
-    observability = setup_observability(
-        'checkpoint_benchmark',
-        args.output_dir / 'observability',
-        correlation_id
-    )
+        violations = []
+        if duration > self.perf_gates["max_save_time_seconds"]:
+            violations.append(".2f")
+        if throughput < self.perf_gates["min_save_throughput_mb_s"]:
+            violations.append(".2f")
+        if file_size > self.perf_gates["max_checkpoint_size_mb"]:
+            violations.append(".2f")
 
-    manager = TrainingCheckpointManager(
-        save_dir=str(args.output_dir),
-        config=TrainingCheckpointConfig(
-            interval_steps=args.interval_steps,
-            compress=args.compression,
-            async_save=False,
-            include_replay_buffer=True,
-            include_rng_state=False,
-        ),
-        observability=observability,
-    )
-
-    model = _DummyModel(args.model_size)
-    process = psutil.Process(os.getpid())
-    rss_before = process.memory_info().rss / (1024 * 1024)
-
-    start = time.perf_counter()
-    for step in range(args.saves):
-        manager.save(
-            step=step + 1,
-            model=model,
-            metrics={"reward": float(step)},
-            stream_state={},
-            async_save=False,
+        return CheckpointResult(
+            name="pickle_save",
+            duration_seconds=duration,
+            throughput_mb_per_second=throughput,
+            file_size_mb=file_size,
+            passed_gates=len(violations) == 0,
+            gate_violations=violations,
         )
-    save_duration = time.perf_counter() - start
 
-    snapshot = manager.load_latest()
-    load_start = time.perf_counter()
-    for _ in range(args.loads):
-        if snapshot is None:
-            snapshot = manager.load_latest()
-        manager.apply_snapshot(model, snapshot)
-    load_duration = time.perf_counter() - load_start
+    def benchmark_pickle_load(self, file_path: Path) -> CheckpointResult:
+        """Benchmark pickle-based checkpoint loading."""
+        print(f"Benchmarking pickle load from {file_path}...")
 
-    rss_after = process.memory_info().rss / (1024 * 1024)
+        start_time = time.time()
+        with open(file_path, "rb") as f:
+            data = pickle.load(f)
 
-    result = CheckpointBenchmarkResult(
-        saves=args.saves,
-        save_duration_seconds=save_duration,
-        loads=args.loads,
-        load_duration_seconds=load_duration,
-        rss_before_mb=rss_before,
-        rss_after_mb=rss_after,
-        rss_delta_mb=rss_after - rss_before,
-        snapshot_metrics=snapshot.metadata if snapshot else {},
+        duration = time.time() - start_time
+        file_size = file_path.stat().st_size / (1024 * 1024)  # MB
+        throughput = file_size / duration
+
+        violations = []
+        if duration > self.perf_gates["max_load_time_seconds"]:
+            violations.append(".2f")
+        if throughput < self.perf_gates["min_load_throughput_mb_s"]:
+            violations.append(".2f")
+
+        return CheckpointResult(
+            name="pickle_load",
+            duration_seconds=duration,
+            throughput_mb_per_second=throughput,
+            file_size_mb=file_size,
+            passed_gates=len(violations) == 0,
+            gate_violations=violations,
+        )
+
+    def benchmark_json_save(
+        self, data: Dict[str, Any], file_path: Path
+    ) -> CheckpointResult:
+        """Benchmark JSON-based checkpoint saving (metadata only)."""
+        print(f"Benchmarking JSON save to {file_path}...")
+
+        # Convert numpy arrays to lists for JSON serialization
+        json_data = {}
+        for key, value in data.items():
+            if isinstance(value, np.ndarray):
+                json_data[key] = value.tolist()
+            elif isinstance(value, pd.DataFrame):
+                json_data[key] = value.to_dict("records")
+            else:
+                json_data[key] = value
+
+        start_time = time.time()
+        with open(file_path, "w") as f:
+            json.dump(json_data, f, indent=2)
+
+        duration = time.time() - start_time
+        file_size = file_path.stat().st_size / (1024 * 1024)  # MB
+        throughput = file_size / duration
+
+        violations = []
+        if duration > self.perf_gates["max_save_time_seconds"]:
+            violations.append(".2f")
+
+        return CheckpointResult(
+            name="json_save",
+            duration_seconds=duration,
+            throughput_mb_per_second=throughput,
+            file_size_mb=file_size,
+            passed_gates=len(violations) == 0,
+            gate_violations=violations,
+        )
+
+    def benchmark_numpy_save(
+        self, data: Dict[str, Any], file_path: Path
+    ) -> CheckpointResult:
+        """Benchmark numpy .npz save."""
+        print(f"Benchmarking numpy save to {file_path}...")
+
+        # Extract arrays for .npz
+        arrays = {}
+        metadata = {}
+
+        for key, value in data.items():
+            if isinstance(value, np.ndarray):
+                arrays[key] = value
+            else:
+                metadata[key] = value
+
+        start_time = time.time()
+        np.savez(file_path, **arrays)
+
+        # Save metadata separately
+        metadata_file = file_path.with_suffix(".metadata.json")
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2, default=str)
+
+        duration = time.time() - start_time
+        file_size = (file_path.stat().st_size + metadata_file.stat().st_size) / (
+            1024 * 1024
+        )
+        throughput = file_size / duration
+
+        violations = []
+        if duration > self.perf_gates["max_save_time_seconds"]:
+            violations.append(".2f")
+        if throughput < self.perf_gates["min_save_throughput_mb_s"]:
+            violations.append(".2f")
+
+        return CheckpointResult(
+            name="numpy_save",
+            duration_seconds=duration,
+            throughput_mb_per_second=throughput,
+            file_size_mb=file_size,
+            passed_gates=len(violations) == 0,
+            gate_violations=violations,
+        )
+
+    def print_result(self, result: CheckpointResult):
+        """Print checkpoint benchmark result."""
+        status = "✓ PASS" if result.passed_gates else "✗ FAIL"
+
+        print(f"\n{result.name.upper()} BENCHMARK - {status}")
+        print(f"Duration: {result.duration_seconds:.2f}s")
+        print(f"Throughput: {result.throughput_mb_per_second:.1f} MB/s")
+        print(f"File Size: {result.file_size_mb:.1f} MB")
+
+        if result.gate_violations:
+            print("Gate Violations:")
+            for violation in result.gate_violations:
+                print(f"  - {violation}")
+
+    def run_checkpoint_benchmarks(
+        self, model_size: str = "medium"
+    ) -> List[CheckpointResult]:
+        """Run all checkpoint benchmarks."""
+        print(f"Running Checkpoint Performance Benchmarks ({model_size} model)...")
+        print("=" * 60)
+
+        results = []
+
+        # Create test data
+        test_data = self.create_test_model(model_size)
+        estimated_size = self.get_data_size_mb(test_data)
+        print(f"Test model estimated size: {estimated_size:.1f} MB")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            # Pickle benchmarks
+            pickle_file = temp_path / "checkpoint.pkl"
+            save_result = self.benchmark_pickle_save(test_data, pickle_file)
+            self.print_result(save_result)
+            results.append(save_result)
+
+            load_result = self.benchmark_pickle_load(pickle_file)
+            self.print_result(load_result)
+            results.append(load_result)
+
+            # JSON benchmark (metadata only)
+            json_file = temp_path / "checkpoint.json"
+            json_result = self.benchmark_json_save(test_data, json_file)
+            self.print_result(json_result)
+            results.append(json_result)
+
+            # Numpy benchmark
+            npz_file = temp_path / "checkpoint.npz"
+            numpy_result = self.benchmark_numpy_save(test_data, npz_file)
+            self.print_result(numpy_result)
+            results.append(numpy_result)
+
+        # Summary
+        passed = sum(1 for r in results if r.passed_gates)
+        total = len(results)
+
+        print(f"\n{'=' * 60}")
+        print(
+            f"SUMMARY: {passed}/{total} checkpoint benchmarks passed performance gates"
+        )
+
+        if passed < total:
+            print("⚠️  Some checkpoint benchmarks failed performance gates.")
+            print("   Consider optimizing checkpoint format or storage.")
+        else:
+            print("✅ All checkpoint benchmarks passed performance gates!")
+
+        return results
+
+
+def main():
+    """Main benchmark runner."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Run checkpoint performance benchmarks"
+    )
+    parser.add_argument(
+        "--model-size",
+        choices=["small", "medium", "large"],
+        default="medium",
+        help="Size of test model",
     )
 
-    manager.shutdown()
-    observability.log_event(
-        'checkpoint_benchmark_complete',
-        {
-            'saves': args.saves,
-            'loads': args.loads,
-            'save_duration_seconds': save_duration,
-            'load_duration_seconds': load_duration,
-        },
-    )
-    observability.record_metrics({
-        'benchmark_checkpoint_save_seconds': save_duration,
-        'benchmark_checkpoint_load_seconds': load_duration,
-        'benchmark_checkpoint_rss_delta_mb': rss_after - rss_before,
-    })
-    observability.export_artifact('checkpoint_benchmark', asdict(result))
-    observability.close()
+    args = parser.parse_args()
 
-    return result
+    benchmark = CheckpointBenchmark()
+    results = benchmark.run_checkpoint_benchmarks(args.model_size)
+
+    # Exit with code based on results
+    all_passed = all(r.passed_gates for r in results)
+    exit(0 if all_passed else 1)
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Checkpoint performance benchmark")
-    parser.add_argument("--saves", type=int, default=5, help="Number of save operations to benchmark")
-    parser.add_argument("--loads", type=int, default=5, help="Number of load/apply operations")
-    parser.add_argument("--model-size", type=int, default=100_000, help="Synthetic model parameter count")
-    parser.add_argument("--interval-steps", type=int, default=1000)
-    parser.add_argument("--compression", default="zlib")
-    parser.add_argument("--output", type=Path, default=Path("results/benchmarks/checkpoint_benchmark.json"))
-    parser.add_argument("--output-dir", type=Path, default=Path("results/benchmarks/checkpoints"))
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-
-    result = run_benchmark(args)
-    args.output.write_text(result.to_json(), encoding="utf-8")
-    print(result.to_json())
-
-
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

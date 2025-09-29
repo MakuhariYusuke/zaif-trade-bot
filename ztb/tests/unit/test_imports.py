@@ -6,8 +6,8 @@ This module tests that all major modules can be imported without errors,
 validating the package structure and dependencies.
 """
 
-import unittest
 import sys
+import unittest
 from pathlib import Path
 
 # Add project root to path for testing
@@ -23,7 +23,10 @@ class TestImports(unittest.TestCase):
         """Test experiments module imports"""
         try:
             from ztb.experiments.base import ExperimentResult
-            from ztb.experiments.ml_reinforcement_1k import MLReinforcement100KExperiment
+            from ztb.experiments.ml_reinforcement_1k import (
+                MLReinforcement100KExperiment,
+            )
+
             self.assertIsNotNone(ExperimentResult)
             self.assertIsNotNone(MLReinforcement100KExperiment)
             print("✅ Experiments imports: OK")
@@ -34,6 +37,7 @@ class TestImports(unittest.TestCase):
         """Test utils module imports"""
         try:
             from ztb.utils.parallel_experiments import run_parallel_experiments
+
             self.assertIsNotNone(run_parallel_experiments)
             print("✅ Utils imports: OK")
         except ImportError as e:
@@ -42,9 +46,9 @@ class TestImports(unittest.TestCase):
     def test_all_major_modules_importable(self):
         """Test that all major modules are importable without exceptions"""
         modules_to_test = [
-            'ztb.experiments.base',
-            'ztb.experiments.ml_reinforcement_1k',
-            'ztb.utils.parallel_experiments',
+            "ztb.experiments.base",
+            "ztb.experiments.ml_reinforcement_1k",
+            "ztb.utils.parallel_experiments",
         ]
 
         failed_imports = []
@@ -65,11 +69,11 @@ class TestImports(unittest.TestCase):
     def test_package_structure(self):
         """Test that package __init__.py files exist"""
         required_init_files = [
-            project_root / 'ztb' / '__init__.py',
-            project_root / 'ztb' / 'experiments' / '__init__.py',
-            project_root / 'ztb' / 'utils' / '__init__.py',
-            project_root / 'ztb' / 'tests' / '__init__.py',
-            project_root / 'ztb' / 'tests' / 'unit' / '__init__.py',
+            project_root / "ztb" / "__init__.py",
+            project_root / "ztb" / "experiments" / "__init__.py",
+            project_root / "ztb" / "utils" / "__init__.py",
+            project_root / "ztb" / "tests" / "__init__.py",
+            project_root / "ztb" / "tests" / "unit" / "__init__.py",
         ]
 
         missing_files = []
@@ -82,5 +86,6 @@ class TestImports(unittest.TestCase):
 
         print(f"✅ All {len(required_init_files)} __init__.py files present")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

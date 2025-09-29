@@ -4,10 +4,11 @@ Backtest metrics calculation module.
 Provides comprehensive performance metrics for trading strategy evaluation.
 """
 
+from dataclasses import dataclass
+from typing import Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
 
 
 @dataclass
@@ -48,9 +49,9 @@ class MetricsCalculator:
     """Calculates comprehensive trading performance metrics."""
 
     @staticmethod
-    def calculate_returns(equity_curve: pd.Series, freq: str = 'D') -> pd.Series:
+    def calculate_returns(equity_curve: pd.Series, freq: str = "D") -> pd.Series:
         """Calculate periodic returns from equity curve."""
-        if freq == 'D':
+        if freq == "D":
             # Daily returns
             returns = equity_curve.pct_change().fillna(0)
         else:
@@ -60,7 +61,9 @@ class MetricsCalculator:
         return returns
 
     @staticmethod
-    def calculate_sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.02) -> float:
+    def calculate_sharpe_ratio(
+        returns: pd.Series, risk_free_rate: float = 0.02
+    ) -> float:
         """Calculate Sharpe ratio (annualized)."""
         if len(returns) < 2:
             return 0.0
@@ -73,7 +76,9 @@ class MetricsCalculator:
         return float(sharpe)
 
     @staticmethod
-    def calculate_sortino_ratio(returns: pd.Series, risk_free_rate: float = 0.02) -> float:
+    def calculate_sortino_ratio(
+        returns: pd.Series, risk_free_rate: float = 0.02
+    ) -> float:
         """Calculate Sortino ratio (downside deviation only)."""
         if len(returns) < 2:
             return 0.0
@@ -129,7 +134,9 @@ class MetricsCalculator:
         return float(cagr)
 
     @staticmethod
-    def calculate_trade_metrics(orders: pd.DataFrame) -> Tuple[int, float, float, float, float]:
+    def calculate_trade_metrics(
+        orders: pd.DataFrame,
+    ) -> Tuple[int, float, float, float, float]:
         """
         Calculate trade-level metrics.
 
@@ -139,10 +146,10 @@ class MetricsCalculator:
             return 0, 0.0, 0.0, 0.0, 0.0
 
         # Assume orders has 'pnl' column with profit/loss per trade
-        if 'pnl' not in orders.columns:
+        if "pnl" not in orders.columns:
             return len(orders), 0.0, 0.0, 0.0, 0.0
 
-        pnls = orders['pnl'].dropna()
+        pnls = orders["pnl"].dropna()
         if len(pnls) == 0:
             return len(orders), 0.0, 0.0, 0.0, 0.0
 
@@ -156,18 +163,20 @@ class MetricsCalculator:
 
         total_win = winning_trades.sum()
         total_loss = abs(losing_trades.sum())
-        profit_factor = total_win / total_loss if total_loss > 0 else float('inf')
+        profit_factor = total_win / total_loss if total_loss > 0 else float("inf")
 
         return total_trades, win_rate, avg_win, avg_loss, profit_factor
 
     @staticmethod
-    def estimate_turnover(orders: pd.DataFrame, initial_capital: float = 10000) -> float:
+    def estimate_turnover(
+        orders: pd.DataFrame, initial_capital: float = 10000
+    ) -> float:
         """Estimate portfolio turnover (annualized)."""
-        if orders.empty or 'notional' not in orders.columns:
+        if orders.empty or "notional" not in orders.columns:
             return 0.0
 
         # Sum of absolute notional values
-        total_turnover = orders['notional'].abs().sum()
+        total_turnover = orders["notional"].abs().sum()
 
         # Annualize (assuming daily data)
         days = len(orders) if len(orders) > 0 else 1
@@ -189,7 +198,7 @@ class MetricsCalculator:
         orders: pd.DataFrame,
         initial_capital: float = 10000,
         risk_free_rate: float = 0.02,
-        slippage_bps: float = 5.0
+        slippage_bps: float = 5.0,
     ) -> BacktestMetrics:
         """Calculate all performance metrics."""
 
@@ -201,15 +210,23 @@ class MetricsCalculator:
         calmar = cls.calculate_calmar_ratio(returns, max_dd)
         cagr = cls.calculate_cagr(equity_curve)
 
-        total_return = (equity_curve.iloc[-1] / equity_curve.iloc[0] - 1) if len(equity_curve) > 1 else 0.0
+        total_return = (
+            (equity_curve.iloc[-1] / equity_curve.iloc[0] - 1)
+            if len(equity_curve) > 1
+            else 0.0
+        )
         volatility = returns.std() * np.sqrt(252)  # Annualized
 
-        total_trades, win_rate, avg_win, avg_loss, profit_factor = cls.calculate_trade_metrics(orders)
+        total_trades, win_rate, avg_win, avg_loss, profit_factor = (
+            cls.calculate_trade_metrics(orders)
+        )
         turnover = cls.estimate_turnover(orders, initial_capital)
         estimated_slippage = cls.estimate_slippage_bps(orders, slippage_bps)
 
         deflated_sharpe = cls.calculate_deflated_sharpe_ratio(returns)
-        pvalue_bootstrap = cls.calculate_bootstrap_pvalue(returns, benchmark_returns=returns * 0.5)
+        pvalue_bootstrap = cls.calculate_bootstrap_pvalue(
+            returns, benchmark_returns=returns * 0.5
+        )
 
         return BacktestMetrics(
             sharpe_ratio=sharpe,
@@ -228,11 +245,13 @@ class MetricsCalculator:
             turnover=turnover,
             estimated_slippage_bps=estimated_slippage,
             deflated_sharpe_ratio=deflated_sharpe,
-            pvalue_bootstrap=pvalue_bootstrap
+            pvalue_bootstrap=pvalue_bootstrap,
         )
 
     @staticmethod
-    def calculate_deflated_sharpe_ratio(returns: pd.Series, num_strategies: int = 1000) -> float:
+    def calculate_deflated_sharpe_ratio(
+        returns: pd.Series, num_strategies: int = 1000
+    ) -> float:
         """Calculate deflated Sharpe ratio to account for multiple testing."""
         sharpe = MetricsCalculator.calculate_sharpe_ratio(returns)
 
@@ -242,9 +261,11 @@ class MetricsCalculator:
         return sharpe * deflation_factor
 
     @staticmethod
-    def calculate_bootstrap_pvalue(strategy_returns: pd.Series,
-                                 benchmark_returns: pd.Series,
-                                 num_bootstrap: int = 1000) -> float:
+    def calculate_bootstrap_pvalue(
+        strategy_returns: pd.Series,
+        benchmark_returns: pd.Series,
+        num_bootstrap: int = 1000,
+    ) -> float:
         """Calculate bootstrap p-value for strategy vs benchmark comparison."""
         if len(strategy_returns) != len(benchmark_returns):
             raise ValueError("Strategy and benchmark returns must have same length")

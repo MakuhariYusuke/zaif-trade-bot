@@ -5,18 +5,20 @@ Stakeholder bundle creation script.
 Creates a complete evidence package for trading readiness demonstration.
 """
 
-import os
-import sys
-import subprocess
 import shutil
-from pathlib import Path
+import subprocess
+import sys
 from datetime import datetime
+from pathlib import Path
+
 
 def run_command(cmd, description):
     """Run a command and print status."""
     print(f"Running: {description}")
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, shell=True, check=True, capture_output=True, text=True
+        )
         print(f"✓ {description} completed")
         return True
     except subprocess.CalledProcessError as e:
@@ -24,12 +26,13 @@ def run_command(cmd, description):
         print(f"Error output: {e.stderr}")
         return False
 
+
 def main():
     """Main bundle creation logic."""
     print("Creating stakeholder evidence bundle...")
 
     # Create bundle directory
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     bundle_dir = Path(f"stakeholder_bundle_{timestamp}")
     bundle_dir.mkdir(parents=True, exist_ok=True)
 
@@ -39,12 +42,12 @@ def main():
     total_count = 0
 
     # Run backtest validations
-    strategies = ['sma_fast_slow', 'buy_hold', 'rl']
+    strategies = ["sma_fast_slow", "buy_hold", "rl"]
     for strategy in strategies:
         total_count += 1
         if run_command(
             f"python -m ztb.backtest.runner --policy {strategy} --output-dir {bundle_dir}/backtest_results",
-            f"Backtest validation ({strategy})"
+            f"Backtest validation ({strategy})",
         ):
             success_count += 1
 
@@ -52,7 +55,7 @@ def main():
     total_count += 1
     if run_command(
         f"python -m ztb.live.paper_trader --mode replay --policy sma_fast_slow --output-dir {bundle_dir}/paper_results",
-        "Paper trading simulation"
+        "Paper trading simulation",
     ):
         success_count += 1
 
@@ -60,7 +63,7 @@ def main():
     docs_dir = bundle_dir / "docs"
     docs_dir.mkdir(exist_ok=True)
 
-    doc_files = ['README.md']
+    doc_files = ["README.md"]
     for doc_file in doc_files:
         if Path(doc_file).exists():
             shutil.copy2(doc_file, docs_dir)
@@ -72,9 +75,10 @@ def main():
     tests_dir = bundle_dir / "tests"
     tests_dir.mkdir(exist_ok=True)
 
-    test_patterns = ['vitest-report*.json', 'pytest.ini']
+    test_patterns = ["vitest-report*.json", "pytest.ini"]
     for pattern in test_patterns:
         import glob
+
         matches = glob.glob(pattern)
         for match in matches:
             shutil.copy2(match, tests_dir)
@@ -109,8 +113,8 @@ This bundle contains comprehensive evidence demonstrating trading system readine
 
 ## Validation Summary
 
-- **Backtest Validations**: {success_count-1}/3 strategies completed successfully
-- **Paper Trading**: {'✓' if success_count >= 4 else '✗'} completed
+- **Backtest Validations**: {success_count - 1}/3 strategies completed successfully
+- **Paper Trading**: {"✓" if success_count >= 4 else "✗"} completed
 - **Total Success Rate**: {success_count}/{total_count} operations
 
 ## Key Validation Points
@@ -142,11 +146,11 @@ python -m pytest tests/ -v
 4. **Alerting**: Set up risk threshold notifications
 
 ---
-Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
 
     readme_path = bundle_dir / "README.md"
-    with open(readme_path, 'w') as f:
+    with open(readme_path, "w") as f:
         f.write(readme_content)
 
     print("✓ Summary report created")
@@ -154,7 +158,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     # Show bundle contents
     print("\nBundle created successfully!")
     print("Contents:")
-    for item in sorted(bundle_dir.rglob('*')):
+    for item in sorted(bundle_dir.rglob("*")):
         if item.is_file():
             print(f"  {item.relative_to(bundle_dir)}")
 
@@ -168,5 +172,6 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         print("⚠️ Some validations failed - check output above")
         return 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

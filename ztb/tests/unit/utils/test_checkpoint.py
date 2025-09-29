@@ -5,14 +5,12 @@ Unit tests for checkpoint management with negative path testing
 """
 
 import os
-import pickle
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, mock_open
 
 import pytest
 
-from ztb.utils.checkpoint import CheckpointManager, CheckpointData
+from ztb.utils.checkpoint import CheckpointManager
 
 
 class TestCheckpointNegativePaths:
@@ -33,7 +31,7 @@ class TestCheckpointNegativePaths:
 
             # Create a corrupted checkpoint file
             corrupt_path = Path(tmpdir) / "checkpoint_100.pkl.zst"
-            with open(corrupt_path, 'wb') as f:
+            with open(corrupt_path, "wb") as f:
                 f.write(b"this is not a valid compressed pickle")
 
             with pytest.raises(Exception):  # Should raise some unpickling error
@@ -52,7 +50,7 @@ class TestCheckpointNegativePaths:
             invalid_pickle_data = b"not pickle data"
             compressed_data = manager._compress_data(invalid_pickle_data)
 
-            with open(checkpoint_path, 'wb') as f:
+            with open(checkpoint_path, "wb") as f:
                 f.write(compressed_data)
 
             with pytest.raises(Exception):  # Should raise unpickling error
@@ -111,7 +109,7 @@ class TestCheckpointNegativePaths:
                 # Restore permissions for cleanup
                 try:
                     os.chmod(checkpoint_path, 0o644)
-                except:
+                except Exception:
                     pass  # Ignore if already cleaned up
 
     def test_cleanup_old_checkpoints_invalid_directory(self):
