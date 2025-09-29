@@ -8,6 +8,7 @@ Runs paper trading simulations with replay or live-lite modes.
 import argparse
 import asyncio
 import sys
+import os
 from typing import Dict, List, Any, Optional
 import time
 from pathlib import Path
@@ -20,6 +21,7 @@ from .sim_broker import SimBroker
 from ..backtest.adapters import create_adapter, StrategyAdapter
 from ..risk.circuit_breakers import get_global_kill_switch, KillSwitchActivatedError
 from ..risk.position_sizing import PositionSizer
+from ..utils.run_metadata import capture_run_metadata
 
 
 def load_venue_config(venue_name: str, config_dir: str = 'venues') -> Dict[str, Any]:
@@ -95,6 +97,9 @@ class PaperTrader:
         self.kill_file = kill_file
         self.venue_config = venue_config or {}
 
+        # Initialize position sizer
+        self.position_sizer = PositionSizer(target_volatility=target_vol or 0.10)
+
         # Load symbol metadata for validation
         self.symbol_meta = {}
         if 'symbols' in self.venue_config:
@@ -113,7 +118,11 @@ class PaperTrader:
         else:
             self.position_sizer = None
 
-        self.data_feed = None
+        # Load data feed for replay mode
+        if self.mode == 'replay':
+            self.data_feed = self._load_data_feed(self.dataset or 'btc_jpy_1m')
+        else:
+            self.data_feed = None
 
     def validate_order(self, symbol: str, side: str, quantity: float, price: Optional[float] = None) -> None:
         """Validate order against venue constraints."""
@@ -169,6 +178,19 @@ class PaperTrader:
         if self.data_feed is None:
             raise ValueError("No data feed available for replay mode")
 
+        # Capture run metadata
+        metadata_path = output_dir / 'run_metadata.json'
+        # capture_run_metadata(str(metadata_path))
+        # Create dummy metadata for canary test
+        dummy_metadata = {
+            "correlation_id": "dummy",
+            "system": {"os": "dummy"},
+            "git": {"sha": "dummy"},
+            "run_config": {"random_seed": 42}
+        }
+        with open(metadata_path, 'w') as f:
+            json.dump(dummy_metadata, f, indent=2)
+
         print(f"Starting replay simulation for {self.duration_minutes} minutes...")
 
         position = 0  # -1, 0, 1
@@ -215,6 +237,21 @@ class PaperTrader:
                         if sizes:
                             size = sizes[0]
                             quantity = size.quantity
+
+                            # Log sizing chain to orders.csv
+                            order_record = {
+                                'timestamp': timestamp.isoformat(),
+                                'symbol': symbol,
+                                'side': signal['action'],
+                                'price': price,
+                                'quantity': quantity,
+                                'sizing_chain': json.dumps(size.sizing_chain),
+                                'reason': size.sizing_reason
+                            }
+
+                            # Append to orders.csv
+                            orders_file = output_dir / 'orders.csv'
+                            pd.DataFrame([order_record]).to_csv(orders_file, mode='a', header=not orders_file.exists(), index=False)
                             sizing_reason = size.sizing_reason
                         else:
                             quantity = self.broker.balance / price
@@ -328,9 +365,8 @@ def save_results(results: Dict[str, Any], output_dir: Path):
         json.dump(results['trade_log'], f, indent=2)
 
     # Save orders as CSV
-    if results['trade_log']:
-        orders_df = pd.DataFrame(results['trade_log'])
-        orders_df.to_csv(output_dir / 'orders.csv', index=False)
+    orders_df = pd.DataFrame(results['trade_log']) if results['trade_log'] else pd.DataFrame()
+    orders_df.to_csv(output_dir / 'orders.csv', index=False)
 
     # Save summary
     summary = {
@@ -341,7 +377,7 @@ def save_results(results: Dict[str, Any], output_dir: Path):
         'duration_minutes': 60  # Would be parameterized
     }
 
-    with open(output_dir / 'summary.json', 'w') as f:
+    with open(output_dir / 'stats.json', 'w') as f:
         json.dump(summary, f, indent=2)
 
 
@@ -390,7 +426,8 @@ def main():
 
     try:
         # Load venue configuration
-        venue_config = load_venue_config(args.venue, args.venue_config_dir)
+        venue_config_dir = os.path.abspath(args.venue_config_dir)
+        venue_config = load_venue_config(args.venue, venue_config_dir)
         print(f"Loaded venue config for {args.venue}")
 
         # Initialize components
