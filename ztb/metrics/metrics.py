@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 
 from ztb.utils.metrics.trading_metrics import sharpe_ratio as _sharpe_ratio
-
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
 
 class MetricsResult(TypedDict):
     """Type definition for metrics calculation results"""
@@ -28,7 +29,7 @@ class MetricsResult(TypedDict):
 
 
 def sharpe_ratio(
-    returns: Union[pd.Series, np.ndarray], rf: float = 0.0, period_per_year: int = 252
+    returns: Union[pd.Series, np.ndarray], rf: float = 0.0, period_per_year: int = TRADING_DAYS_PER_YEAR
 ) -> float:
     """
     Calculate Sharpe ratio with robust error handling
@@ -125,7 +126,7 @@ def max_drawdown(equity_curve: Union[pd.Series, np.ndarray]) -> float:
 
 
 def calmar_ratio(
-    returns: Union[pd.Series, np.ndarray], rf: float = 0.0, period_per_year: int = 252
+    returns: Union[pd.Series, np.ndarray], rf: float = 0.0, period_per_year: int = TRADING_DAYS_PER_YEAR
 ) -> float:
     """
     Calculate Calmar ratio (Annual return / Max Drawdown)
@@ -220,7 +221,7 @@ def profit_factor(returns: Union[pd.Series, np.ndarray]) -> float:
 
 
 def calculate_all_metrics(
-    returns: Union[pd.Series, np.ndarray], rf: float = 0.0, period_per_year: int = 252
+    returns: Union[pd.Series, np.ndarray], rf: float = 0.0, period_per_year: int = TRADING_DAYS_PER_YEAR
 ) -> MetricsResult:
     """
     Calculate all performance metrics at once

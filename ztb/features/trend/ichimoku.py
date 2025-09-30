@@ -14,8 +14,8 @@ class Ichimoku(ChannelFeature, ComputableFeature):
         self._required_calculations: set[str] = set()  # Internal calculation only
 
     @staticmethod
-    @jit(nopython=True)
-    def _compute_ichimoku(high: np.ndarray[Any, np.dtype[Any]], low: np.ndarray[Any, np.dtype[Any]], close: np.ndarray[Any, np.dtype[Any]]) -> Tuple[np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]]]:  # type: ignore[misc]  # type: ignore[no-untyped-def]
+    @jit(nopython=True)  # type: ignore[misc]
+    def _compute_ichimoku(high: np.ndarray[Any, np.dtype[Any]], low: np.ndarray[Any, np.dtype[Any]], close: np.ndarray[Any, np.dtype[Any]]) -> Tuple[np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]]]:
         if len(high) != len(low) or len(high) != len(close):
             raise ValueError(
                 "Input arrays 'high', 'low', and 'close' must have the same length."
@@ -56,7 +56,7 @@ class Ichimoku(ChannelFeature, ComputableFeature):
         low = df["low"].values
         close = df["close"].values
 
-        tenkan, kijun, _, _, _ = self._compute_ichimoku(high, low, close)  # type: ignore[arg-type]
+        tenkan, kijun, _, _, _ = self._compute_ichimoku(high, low, close)
 
         # 差分正規化
         diff = tenkan - kijun
