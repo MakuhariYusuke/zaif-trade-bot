@@ -5,13 +5,13 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from ztb.backtest.adapters import (
+from ztb.trading.backtest.adapters import (
     BuyAndHoldAdapter,
     RLPolicyAdapter,
     SMACrossoverAdapter,
 )
-from ztb.backtest.metrics import MetricsCalculator
-from ztb.backtest.runner import BacktestEngine
+from ztb.trading.backtest.metrics import MetricsCalculator
+from ztb.trading.backtest.runner import BacktestEngine
 
 
 class TestBacktestEngine:

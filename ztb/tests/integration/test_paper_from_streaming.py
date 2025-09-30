@@ -6,9 +6,9 @@ from unittest.mock import patch
 
 import pytest
 
-from ztb.backtest.adapters import create_adapter
-from ztb.live.paper_trader import PaperTrader
-from ztb.live.sim_broker import SimBroker
+from ztb.trading.backtest.adapters import create_adapter
+from ztb.trading.live.paper_trader import PaperTrader
+from ztb.trading.live.sim_broker import SimBroker
 
 
 class MockStreamingPipeline:
