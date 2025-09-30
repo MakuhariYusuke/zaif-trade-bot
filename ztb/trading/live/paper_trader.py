@@ -23,7 +23,7 @@ from ztb.utils.cli_common import (
     create_standard_parser,
 )
 
-from ..backtest.adapters import StrategyAdapter, create_adapter
+from ...backtest.adapters import StrategyAdapter, create_adapter
 from ..risk.circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 from ..risk.position_sizing import PositionSizer
 from .sim_broker import SimBroker

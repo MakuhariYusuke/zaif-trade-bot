@@ -224,24 +224,3 @@ export function setEventBus(bus: EventBus) {
   }
   _bus = bus;
 }
-/**
- * Sets a global error handler for the EventBus.
- * This handler will be called whenever an event handler throws an error or returns a rejected promise.
- * Only works with the default InMemoryEventBus implementation.
- */
-export function setEventBusErrorHandler(handler: EventBusErrorHandler) {
-  const bus = getEventBus();
-  if (bus instanceof InMemoryEventBus) bus.setErrorHandler(handler);
-}
-  }
-  _bus = bus;
-}
-/**
- * Sets a global error handler for the EventBus.
- * This handler will be called whenever an event handler throws an error or returns a rejected promise.
- * Only works with the default InMemoryEventBus implementation.
- */
-export function setEventBusErrorHandler(handler: EventBusErrorHandler) {
-  const bus = getEventBus();
-  if (bus instanceof InMemoryEventBus) bus.setErrorHandler(handler);
-}

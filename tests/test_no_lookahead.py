@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ztb.backtest.adapters import StrategyAdapter
-from ztb.backtest.runner import BacktestEngine
+from ztb.trading.backtest.adapters import StrategyAdapter
+from ztb.trading.backtest.runner import BacktestEngine
 
 
 class MockStrategy(StrategyAdapter):

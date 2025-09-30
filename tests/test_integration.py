@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from ztb.backtest.adapters import BuyAndHoldAdapter, SMACrossoverAdapter
-from ztb.backtest.runner import BacktestEngine
+from ztb.trading.backtest.adapters import BuyAndHoldAdapter, SMACrossoverAdapter
+from ztb.trading.backtest.runner import BacktestEngine
 
 
 class TestBacktestRiskIntegration:

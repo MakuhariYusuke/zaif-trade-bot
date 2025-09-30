@@ -45,7 +45,7 @@ def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
 
     df = pd.DataFrame(
         {
-            "ts": dates.view("int64") // 10**9,
+            "ts": dates.view("int64") // 10**9,  # type: ignore[no-untyped-call]
             "close": close,
             "high": high,
             "low": low,
@@ -59,37 +59,43 @@ def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
     return df
 
 
-def evaluate_policy(model, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, float]:
+def evaluate_policy(model: PPO, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, float]:
     """ポリシーを評価"""
 
-    def make_env():
+    def make_env():  # type: ignore[no-untyped-def]
         env = HeavyTradingEnv(df)
-        env = Monitor(env)
+        env = Monitor(env)  # type: ignore[assignment]
         return env
 
     env = DummyVecEnv([make_env])
 
     episode_rewards = []
     episode_lengths = []
+    episode_wins = []
+    episode_pnl = []
     total_trades = []
     win_rates = []
     profit_factors = []
 
     for _ in range(n_episodes):
         obs, _ = env.reset()
-        done = False
+        done = np.array([False])
         episode_reward = 0
         episode_length = 0
         trades = 0
         wins = 0
         pnl = 0
 
-        while not done:
-            action, _ = model.predict(obs, deterministic=True)
+        while not done[0]:
+            action, _ = model.predict(obs, deterministic=True)  # type: ignore[arg-type]
             obs, reward, done, info = env.step(action)
 
-            episode_reward += reward
+            episode_reward += reward[0]
             episode_length += 1
+
+            if reward[0] > 0:
+                wins += 1
+            pnl += reward[0]
 
             if "trades" in info[0]:
                 trades = info[0]["trades"]
@@ -98,6 +104,8 @@ def evaluate_policy(model, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, 
 
         episode_rewards.append(episode_reward)
         episode_lengths.append(episode_length)
+        episode_wins.append(wins)
+        episode_pnl.append(pnl)
         total_trades.append(trades)
 
         # win_rate: 仮定
@@ -123,11 +131,13 @@ def evaluate_policy(model, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, 
         "profit_factor": float(profit_factor),
         "sharpe_like": float(sharpe_like),
         "trades_per_episode": float(trades_per_episode),
+        "wins": float(np.mean(episode_wins)),
+        "pnl": float(np.mean(episode_pnl)),
     }
 
 
 def permutation_importance(
-    model, df: pd.DataFrame, feature_cols: List[str], n_episodes: int = 10
+    model: PPO, df: pd.DataFrame, feature_cols: List[str], n_episodes: int = 10
 ) -> pd.DataFrame:
     """Permutation importance計算"""
     # ベースライン評価
@@ -163,7 +173,7 @@ def permutation_importance(
     return pd.DataFrame(results)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Permutation importance analysis")
     parser.add_argument(
         "--checkpoint", type=str, required=True, help="Model checkpoint path"
@@ -194,7 +204,7 @@ def main():
         all_features.extend(manager.get_enabled_features(wave))
 
     # 特徴量計算
-    df_with_features = manager.compute_features(df, wave=None)
+    df_with_features = manager.compute_features(df)
 
     # 特徴量列取得
     exclude_cols = ["ts", "exchange", "pair", "episode_id"]
