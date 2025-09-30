@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased - 2025-09-30
+
+### Fixed
+
+- Fixed mypy strict mode errors in ztb/features/ directory
+  - Added type annotations for PPO model parameters in permutation importance evaluation
+  - Fixed VecEnv step handling for proper array indexing in policy evaluation
+  - Added type ignores for untyped numba jit decorators and stable_baselines3 assignments
+
 ## 3.1.0 - 2025-09-29
 
 ### Added
