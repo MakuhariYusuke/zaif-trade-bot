@@ -20,7 +20,7 @@ class TestStatisticalSignificance:
         np.random.seed(42)
         return 42
 
-    def test_iid_gaussian_returns_dsr_near_zero(self, fixed_seed):
+    def test_iid_gaussian_returns_dsr_near_zero(self, fixed_seed) -> None:
         """Test that IID Gaussian returns produce DSR near zero."""
         # Generate IID Gaussian returns
         n_periods = 1000
