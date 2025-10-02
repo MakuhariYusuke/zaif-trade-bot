@@ -1,6 +1,36 @@
 # Changelog
 
-## Unreleased - 2025-09-30
+## 3.2.0 - 2025-10-02
+
+### Added
+
+- **Unified Training Runner**: Integrated multiple training approaches into a single interface
+  - Created `ztb/training/unified_trainer.py` with support for PPO, Base ML, and Iterative training
+  - Added unified configuration system with JSON-based config files
+  - Implemented algorithm selection via command-line arguments
+  - Created comprehensive documentation in `UNIFIED_TRAINING_README.md`
+  - Added example configuration file `unified_training_config.json`
+  - Maintains backward compatibility with existing training scripts
+
+### Performance
+
+- **Memory Optimization for Training**: Comprehensive memory usage reduction and PyTorch optimization
+  - Reduced batch_size from 64 to 8 and n_steps from 2048 to 128 for minimal memory footprint
+  - Added PyTorch CUDA memory allocation optimization (max_split_size_mb: 128-256)
+  - Implemented CPU thread restrictions (OMP_NUM_THREADS=1, MKL_NUM_THREADS=1)
+  - Added conditional scipy import to avoid memory-intensive library loading during validation
+  - Successfully achieved stable training with base_ml algorithm avoiding PyTorch memory issues
+
+- **Scalping Feature Set Support**: Enhanced feature set handling for scalping strategies
+  - Fixed "scalping" feature set recognition and validation
+  - Improved feature set selection logic in training configuration
+  - Added proper feature set validation and fallback mechanisms
+
+- **Run_1M Training Execution Path Analysis & Optimization**: Comprehensive analysis of `run_1m.py` execution bottlenecks and prioritized optimization roadmap
+  - Identified 12 critical execution paths with priority rankings
+  - Key bottlenecks: feature computation (sequential processing), memory usage, checkpoint I/O
+  - Planned optimizations: parallel feature computation, memory optimization, async checkpoint I/O
+  - Performance improvement targets: 50-80% reduction in feature computation time, 30-50% memory reduction
 
 ### Fixed
 
@@ -8,6 +38,11 @@
   - Added type annotations for PPO model parameters in permutation importance evaluation
   - Fixed VecEnv step handling for proper array indexing in policy evaluation
   - Added type ignores for untyped numba jit decorators and stable_baselines3 assignments
+
+- **Conditional Import Fixes**: Resolved import-related memory and stability issues
+  - Added conditional scipy import in run_1m.py validation to prevent memory exhaustion
+  - Implemented fallback import handling for PPO trainer components
+        - Fixed PyTorch initialization failures by avoiding unnecessary library loading
 
 ## 3.1.0 - 2025-09-29
 
@@ -47,13 +82,9 @@
   - Verified `noxfile.py` supports Python 3.13 testing
   - All code uses compatible syntax and patterns
 
-### Performance
-
 - **Benchmark Results**: Suite completion in <90s with memory efficiency
 - **Async Checkpoint I/O**: Compression benchmarks showing performance metrics
 - **Zero-copy Buffers**: Memory usage tracking and performance counters
-
-### Documentation
 
 - Updated `docs/deployment/canary.md` with fault injection usage and examples
 - Fixed all markdown lint errors (MD031, MD040, MD047, MD029)
@@ -62,17 +93,17 @@
 ## 2.5.2 - 2025-09-28
 
 ### Added
+
 - **Part1 System Hardening Complete**: Test isolation, observability hooks, config management, CI guardrails
 - **Part2 Infrastructure Preparation**: Streaming pipeline and checkpoint resume work package handed off to Codex AI agent
 
 ### Fixed
+
 - **Type Safety**: Resolved 41 of 50 mypy errors, remaining 9 require architectural changes
 - **Test Stability**: Fixed float precision issues in position store recovery tests
 - **CI Reliability**: Added smoke test integration with configurable memory profiling
 
 ## 2.5.1 - 2025-09-28
-
-### Fixed
 
 - **Type Safety Improvements**: Comprehensive mypy error reduction from 28 to 9 errors across 14 files
   - Fixed type annotations in feature modules, evaluation scripts, and utility classes
@@ -81,8 +112,6 @@
   - Improved type safety in RL experiments and data processing
 
 ## 2.5.0 - 2025-09-27
-
-### Added
 
 - **Feature Determinism (Task 6)**: Parallel processing seed management for reproducible feature engineering
   - Enhanced `ztb/features/registry.py` with worker-specific seed management
@@ -125,8 +154,6 @@
 
 ## 2.4.1 - 2025-09-26
 
-### Added
-
 - **New Utility Modules**: Comprehensive utility extraction and consolidation
   - `ztb/utils/data_generation.py`: Synthetic market data generation with realistic latent factors
   - `ztb/utils/trading_metrics.py`: Advanced trading performance metrics (Sharpe, Sortino, Calmar ratios)
@@ -142,8 +169,6 @@
   - LoggerManager, ErrorHandler, Stats, ReportGenerator, and CI utilities examples
   - "Standard flow for running 100k tests" documentation
   - Enhanced README with practical code examples
-
-### Improved
 
 - **Code Organization**: Extracted reusable utilities from experimental scripts
   - Removed duplicate `load_sample_data()` and `calculate_feature_metrics()` functions
@@ -181,22 +206,16 @@
   - Organized tools in `ztb/tools/`
   - Updated README.md with comprehensive Python/ML layer documentation
 
-### Added
-
 - **ztb/experiments/**: New directory for experimental code including:
   - `ml_reinforcement_1k.py`: 1k-step reinforcement learning evaluation
   - Future scaling tests (100k, 1M steps) will be placed here
 - **ztb/utils/notify/notify_1k_test_results.py**: Dedicated test result notification script
 - **ztb/tools/archive_coverage.py**: Coverage data archival utility
 
-### Improved
-
 - **Code Organization**: Clear separation between TypeScript (src/) and Python (ztb/) codebases
 - **Discoverability**: Consistent directory structure improves code navigation
 - **CI/CD Preparation**: Better organization for automated testing and deployment pipelines
 - **Documentation**: Enhanced README with Python/ML architecture overview
-
-### Technical Details
 
 - **File Movements**:
   - `scripts/test_all_features.py` → `ztb/features/test_all_features.py`
@@ -209,13 +228,9 @@
 
 ## 2.3.0 - 2025-09-24
 
-### Added
-
 - feature_sets.yaml に Minimal / Balanced / Medium / Large / Extended のセットを定義
 - harmful.md を追加し harmful 特徴量の基準と再評価条件を明文化
 - experimental_evaluator.py / ablation_runner.py を追加し experimental 特徴量の定期評価をCIに統合
-
-### Changed
 
 - wave4.py を experimental.py にリネーム、役割を「次期候補モジュール」として整理
 - features.yaml を再編成、harmful 特徴量は registry から除外
@@ -228,8 +243,6 @@
 
 ## 2.2.3 - 2025-09-23
 
-### Added
-
 - **Operational Improvements for Feature Evaluation System**
   - Externalized evaluation thresholds in `config/evaluation.yaml` for maintainability
   - Implemented Slack/Discord notification system (`scripts/notifier.py`) for automated alerts
@@ -240,8 +253,6 @@
 - **Configuration Management**: Centralized evaluation parameters (thresholds, min_samples) in external config file
 - **Notification System**: Added support for Slack and Discord webhook notifications with structured summaries
 - **CI/CD Integration**: Automated notification delivery in GitHub Actions workflows
-
-### Performance
 
 - **Operational Efficiency**: Streamlined feature evaluation workflow with automated notifications and tracking
 - **Maintainability**: Externalized configuration reduces hard-coded values and improves deployment flexibility
@@ -281,15 +292,15 @@ Patch: 安定化と不要コード整理のみ（後方互換）。
 ## 2.1.0 - 2025-09-18
 
 - Errors: エラーコードを統一し、`EVENT/ERROR` を全レイヤで発火
-	- BaseService: `CIRCUIT_OPEN`/`RATE_LIMITED`/最終失敗で `EVENT/ERROR` を publish
-	- price-cache: 讀み書き失敗で `CACHE_ERROR` を publish
-	- zaif-private: `NONCE`/`SIGNATURE`/`API_ERROR`/`NETWORK` を publish（必須メタ付き）
+  - BaseService: `CIRCUIT_OPEN`/`RATE_LIMITED`/最終失敗で `EVENT/ERROR` を publish
+  - price-cache: 讀み書き失敗で `CACHE_ERROR` を publish
+  - zaif-private: `NONCE`/`SIGNATURE`/`API_ERROR`/`NETWORK` を publish（必須メタ付き）
 - CI/Artifacts: マージ後の別名 `coverage-merged/coverage-merged.json` を出力
 - ts-prune: 結果を日付付き `ci/reports/ts-prune-YYYYMMDD.json` として永続化
 - Cleanups (Batch 4): モジュール内専用の型 export を非公開化
-	- adapters/indicator-service: `IndicatorSnapshot`, `IndicatorServiceOptions` を非公開化
-	- adapters/execution-service: `OrderBookLevel`, `OrderSnapshot`, `SubmitParams`, `SubmitRetryParams` を非公開化
-	- adapters/market-service: `MarketOverview` を非公開化
+  - adapters/indicator-service: `IndicatorSnapshot`, `IndicatorServiceOptions` を非公開化
+  - adapters/execution-service: `OrderBookLevel`, `OrderSnapshot`, `SubmitParams`, `SubmitRetryParams` を非公開化
+  - adapters/market-service: `MarketOverview` を非公開化
 - Tests: `unit`/`integration-fast`/`cb-rate`/`event-metrics` 全てグリーン
 - Deps: axios / vite / vitest / coverage-v8 を最新安定版へ更新（アドバイザリ 0）
 
@@ -301,8 +312,8 @@ Patch: 安定化と不要コード整理のみ（後方互換）。
 - Logging: 必須メタ（requestId, pair, side, amount, price, retries, cause.code）を API/EXEC/ORDER カテゴリに付与。
 - Tools: `report-summary` を同期化しテスト安定化。
 - Tests: 参照更新とスモールテスト追加。カバレッジ閾値（Statements ≥ 70%）維持。
-	- テストユーティリティを `__tests__/helpers/*` に集約。`src/tools/tests/*` は削除。
-	- 旧 `src/strategies/*` のエイリアスシムを削除（アプリ層の `@application/strategies/*` を利用）。
+  - テストユーティリティを `__tests__/helpers/*` に集約。`src/tools/tests/*` は削除。
+  - 旧 `src/strategies/*` のエイリアスシムを削除（アプリ層の `@application/strategies/*` を利用）。
 
 ### Migration
 
