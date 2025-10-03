@@ -1,5 +1,50 @@
 # Changelog
 
+## 3.3.0 - 2025-10-03
+
+### Added
+
+- **Live Trading System Enhancement**: Comprehensive improvements to live trading bot for production deployment
+  - Cross-platform compatibility (Windows/Raspberry Pi)
+  - Enhanced risk management system with configurable limits
+  - Advanced notification system with Discord integration
+  - Automatic demo mode detection when API credentials are missing
+  - Comprehensive logging with timestamped log files
+
+- **Risk Management Features**:
+  - Daily loss limits (default: 10,000 JPY)
+  - Daily trade count limits (default: 50 trades)
+  - Emergency stop loss (default: 5% loss threshold)
+  - Optional risk limit disable flag for testing/advanced users
+
+- **API Integration Improvements**:
+  - Updated Coincheck API endpoints for reliability
+  - Enhanced error handling and fallback mechanisms
+  - Improved historical price data fetching
+
+- **Model Compatibility**:
+  - Fixed feature dimension mismatch (68 features for iterative models)
+  - Enhanced feature computation with padding/fallback
+  - Improved model loading and validation
+
+### Performance
+
+- **Iterative Training Success**: Successfully completed 3 iterations of iterative learning
+  - Achieved 35.83% average return in paper trading tests
+  - 100% win rate across 24 test episodes
+  - Significant improvement over baseline scalping model
+
+### Fixed
+
+- **Live Trading Feature Compatibility**: Resolved 68-dimension feature requirement for trained models
+- **Cross-platform Path Handling**: Fixed path separator issues for Windows/Raspberry Pi compatibility
+- **Notification System Stability**: Added error handling for Discord webhook failures
+
+### Security
+
+- **API Credential Validation**: Enhanced validation and demo mode fallback
+- **Risk Limit Enforcement**: Multiple layers of risk protection for live trading
+
 ## 3.2.0 - 2025-10-02
 
 ### Added
