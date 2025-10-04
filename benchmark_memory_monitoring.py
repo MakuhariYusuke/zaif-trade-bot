@@ -108,9 +108,9 @@ class MemoryMonitoringBenchmark:
             "avg_gc_time_sec": np.mean(gc_times) if gc_times else 0,
             "max_gc_time_sec": max(gc_times) if gc_times else 0,
             "gc_time_percentage": (sum(gc_times) / total_time) * 100,
-            "avg_step_time_with_monitoring": np.mean(step_times_total)
-            if step_times_total
-            else 0,
+            "avg_step_time_with_monitoring": (
+                np.mean(step_times_total) if step_times_total else 0
+            ),
             "memory_history": memory_history[-10:],  # Last 10 measurements
             "object_counts": object_counts[-10:] if object_counts else [],
         }
@@ -169,13 +169,13 @@ class MemoryMonitoringBenchmark:
             "std_memory_mb": std_memory,
             "dynamic_threshold_mb": dynamic_threshold,
             "fixed_threshold_mb": fixed_threshold,
-            "threshold_ratio": dynamic_threshold / fixed_threshold
-            if fixed_threshold > 0
-            else 0,
+            "threshold_ratio": (
+                dynamic_threshold / fixed_threshold if fixed_threshold > 0 else 0
+            ),
             "trend_increase_percent": trend_increase,
-            "recommendation": "dynamic"
-            if dynamic_threshold < fixed_threshold
-            else "fixed",
+            "recommendation": (
+                "dynamic" if dynamic_threshold < fixed_threshold else "fixed"
+            ),
         }
 
     def save_results(

@@ -146,7 +146,9 @@ def smart_column_detection(
         return []
 
 
-def write_parquet(df: pd.DataFrame, path: Path, config: Optional[Dict] = None) -> None:
+def write_parquet(
+    df: pd.DataFrame, path: Path, config: Optional[Dict[str, Any]] = None
+) -> None:
     """Write DataFrame to Parquet with configuration"""
     if config is None:
         config = load_config()
@@ -171,7 +173,9 @@ def write_parquet(df: pd.DataFrame, path: Path, config: Optional[Dict] = None) -
 
 
 def read_parquet(
-    path: Path, config: Optional[Dict] = None, columns: Optional[List[str]] = None
+    path: Path,
+    config: Optional[Dict[str, Any]] = None,
+    columns: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """Read Parquet to DataFrame with memory monitoring"""
     if config is None:
@@ -214,7 +218,7 @@ def read_parquet(
 
 def read_parquet_with_features(
     path: Path,
-    config: Optional[Dict] = None,
+    config: Optional[Dict[str, Any]] = None,
     target_features: Optional[List[str]] = None,
     features_config_path: Optional[Path] = None,
 ) -> pd.DataFrame:
@@ -238,12 +242,12 @@ def read_parquet_with_features(
 
     # Determine required columns based on target features
     if target_features:
-        required_columns = set()
+        required_columns_set = set[str]()
         for feature in target_features:
             if feature in features_config:
                 deps = features_config[feature].get("dependencies", [])
-                required_columns.update(deps)
-        required_columns = cast(List[str], list(required_columns))
+                required_columns_set.update(deps)
+        required_columns = list(required_columns_set)
     else:
         required_columns = None
 

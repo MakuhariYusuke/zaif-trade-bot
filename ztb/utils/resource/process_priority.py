@@ -135,7 +135,7 @@ class ProcessPriorityManager:
                 current_nice = os.nice(0)
                 if current_nice != 0:
                     try:
-                        os.nice(-current_nice)  # type: ignore  # type: ignore
+                        os.nice(-current_nice)
                         logger.info("Process priority reset to default")
                     except PermissionError:
                         logger.warning(

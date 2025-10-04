@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 
-def run_script(script_name: str, args: list) -> int:
+def run_script(script_name: str, args: list[str]) -> int:
     """Run a script with given arguments."""
     script_path = Path("scripts") / script_name
     if not script_path.exists():
@@ -30,7 +30,7 @@ def run_script(script_name: str, args: list) -> int:
         return 1
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Zaif Trade Bot operations wrapper",
         usage="%(prog)s <command> [args...]\n\nAvailable commands:\n"

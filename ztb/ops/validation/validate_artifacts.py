@@ -9,7 +9,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 try:
     import jsonschema
@@ -31,7 +31,7 @@ def load_expectations() -> Dict[str, Any]:
         }
 
     with open(schema_path, "r") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def validate_file_presence(
@@ -151,7 +151,7 @@ def validate_artifacts(correlation_id: str, strict: bool) -> Dict[str, Any]:
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Validate artifacts for Zaif Trade Bot session"
     )

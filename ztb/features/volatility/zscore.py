@@ -11,7 +11,7 @@ from ztb.features.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("ZScore")
-def compute_zscore(df: pd.DataFrame, window: int = 20) -> pd.Series[float]:
+def compute_zscore(df: pd.DataFrame, window: int = 20) -> pd.Series:
     """Compute Z-Score of returns - Optimized version"""
     if not FeatureRegistry.is_cache_enabled():
         return _compute_zscore_numpy(df, window)
@@ -24,7 +24,7 @@ def compute_zscore(df: pd.DataFrame, window: int = 20) -> pd.Series[float]:
     return feature_cache.get_or_compute(cache_key, compute)
 
 
-def _compute_zscore_numpy(df: pd.DataFrame, window: int = 20) -> pd.Series[float]:
+def _compute_zscore_numpy(df: pd.DataFrame, window: int = 20) -> pd.Series:
     """Optimized Z-Score computation using pandas rolling"""
     returns = df["close"].pct_change().fillna(0)
 

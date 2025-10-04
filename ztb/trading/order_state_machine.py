@@ -8,9 +8,9 @@ to prevent duplicate orders and ensure reliable execution.
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
-from ztb.utils.observability import get_logger
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,9 +52,9 @@ class OrderData:
     quantity: float
     price: Optional[float] = None
     order_type: str = "market"
-    timestamp: float = None
+    timestamp: Optional[float] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.timestamp is None:
             self.timestamp = time.time()
 
@@ -97,6 +97,7 @@ class OrderStateMachine:
         Args:
             order_data: Order data
         """
+        super().__init__()
         self.order_data = order_data
         self.current_state = OrderState.PENDING
         self.state_history: list[tuple[OrderState, float]] = [
@@ -104,7 +105,7 @@ class OrderStateMachine:
         ]
         self.idempotency_key = f"{order_data.client_order_id}_{order_data.symbol}"
 
-    def transition(self, event: OrderEvent, **kwargs) -> bool:
+    def transition(self, event: OrderEvent, **kwargs: Any) -> bool:
         """
         Attempt state transition.
 
@@ -151,8 +152,9 @@ class OrderStateMachine:
 class IdempotencyManager:
     """Manages order idempotency to prevent duplicates."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize idempotency manager."""
+        super().__init__()
         self._processed_keys: set[str] = set()
         self._order_states: dict[str, OrderStateMachine] = {}
 
@@ -171,7 +173,7 @@ class IdempotencyManager:
             return False
         return True
 
-    def mark_processed(self, idempotency_key: str):
+    def mark_processed(self, idempotency_key: str) -> None:
         """Mark operation as processed."""
         self._processed_keys.add(idempotency_key)
 
@@ -179,11 +181,11 @@ class IdempotencyManager:
         """Get state machine for order."""
         return self._order_states.get(order_id)
 
-    def register_order(self, state_machine: OrderStateMachine):
+    def register_order(self, state_machine: OrderStateMachine) -> None:
         """Register order state machine."""
         self._order_states[state_machine.order_data.order_id] = state_machine
 
-    def cleanup_expired(self, max_age_seconds: float = 3600):
+    def cleanup_expired(self, max_age_seconds: float = 3600) -> None:
         """Clean up expired state machines."""
         cutoff = time.time() - max_age_seconds
         expired_orders = []

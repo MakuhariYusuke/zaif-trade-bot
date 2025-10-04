@@ -6,16 +6,27 @@ Real trading implementation is stubbed for future development.
 """
 
 import asyncio
+import logging
 import random
 import time
 from typing import Dict, List, Optional
 
-from ..utils.rate_limiter import RateLimitConfig, RateLimiter
+import requests
+
+from ztb.utils.rate_limiter import RateLimitConfig, RateLimiter
+
 from .broker_interfaces import Balance, IBroker, Order, Position
+
+logger = logging.getLogger(__name__)
 
 
 class CoincheckAdapter(IBroker):
-    """Coincheck exchange adapter with dry-run simulation."""
+    """
+    Coincheck exchange adapter (dry-run simulation only).
+
+    Real trading is not implemented; all operations are simulated for testing.
+    Real trading support may be added in the future.
+    """
 
     def __init__(
         self,
@@ -23,7 +34,9 @@ class CoincheckAdapter(IBroker):
         api_secret: Optional[str] = None,
         dry_run: bool = True,
         rate_limiter: Optional[RateLimiter] = None,
-    ):
+        fixed_price: Optional[float] = None,
+        random_seed: Optional[int] = None,
+    ) -> None:
         """Initialize Coincheck adapter.
 
         Args:
@@ -31,10 +44,15 @@ class CoincheckAdapter(IBroker):
             api_secret: API secret (ignored in dry-run)
             dry_run: If True, simulate all operations without real API calls
             rate_limiter: Rate limiter for API calls
+            fixed_price: If set, always return this price in get_current_price (for testing)
+            random_seed: If set, seed the random number generator for reproducibility
         """
         self.api_key = api_key
         self.api_secret = api_secret
         self.dry_run = dry_run
+        self.fixed_price = fixed_price
+        if random_seed is not None:
+            random.seed(random_seed)
         if rate_limiter is None:
             config = RateLimitConfig(
                 requests_per_second=5.0
@@ -51,21 +69,19 @@ class CoincheckAdapter(IBroker):
             "BTC": Balance(currency="BTC", free=0.1, locked=0.0, total=0.1),
         }
         self._order_counter = 0
-        self._current_prices: Dict[str, float] = {
-            "btc_jpy": 5000000.0  # Sample price
-        }
+        self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}  # Sample price
 
-    async def _simulate_delay(self):
+    async def _simulate_delay(self) -> None:
         """Simulate API call delay."""
         if not self.dry_run:
             await asyncio.sleep(random.uniform(0.1, 0.5))
         else:
             await asyncio.sleep(0.01)  # Minimal delay for dry-run
 
-    async def _check_rate_limit(self):
+    async def _check_rate_limit(self) -> None:
         """Check rate limit before API call."""
         if self.rate_limiter:
-            await self.rate_limiter.wait_if_needed()
+            await self.rate_limiter.wait()
 
     def _generate_order_id(self) -> str:
         """Generate unique order ID."""
@@ -100,7 +116,7 @@ class CoincheckAdapter(IBroker):
                 1 + random.uniform(-0.001, 0.001)
             )  # Small slippage
         else:
-            exec_price = price
+            exec_price = price if price is not None else current_price
 
         # Simulate partial fills for realism
         fill_probability = random.random()
@@ -111,7 +127,7 @@ class CoincheckAdapter(IBroker):
                 cost = exec_price * quantity
                 if self._balances["JPY"].free >= cost:
                     self._balances["JPY"].free -= cost
-                    self._balances["JPY"].locked += cost
+                    self._balances["JPY"].total -= cost
                     # Add to position
                     if symbol in self._positions:
                         pos = self._positions[symbol]
@@ -123,7 +139,7 @@ class CoincheckAdapter(IBroker):
                         pos.quantity = total_qty
                         pos.avg_price = new_avg
                         pos.current_price = exec_price
-                        pos.pnl = (exec_price - new_avg) * total_qty
+                        pos.pnl = (exec_price - pos.avg_price) * total_qty
                     else:
                         self._positions[symbol] = Position(
                             symbol=symbol,
@@ -233,7 +249,25 @@ class CoincheckAdapter(IBroker):
         if not self.dry_run:
             raise NotImplementedError("Real Coincheck trading not implemented")
 
-        # Simulate price movement
+        # For dry-run, try to get real price first, then simulate if needed
+        try:
+            # Try to get real price from Coincheck API
+            response = requests.get("https://coincheck.com/api/ticker", timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            if isinstance(data, dict) and "last" in data:
+                real_price = float(data["last"])
+                # Update our simulated price with real price
+                self._current_prices[symbol] = real_price
+                return real_price
+        except Exception as e:
+            logger.warning(
+                f"Failed to get real price from Coincheck API: {e}, using simulated price"
+            )
+
+        # Fallback to simulated price
+        if self.fixed_price is not None:
+            return self.fixed_price
         base_price = self._current_prices.get(symbol, 5000000.0)
         self._current_prices[symbol] = base_price * (1 + random.uniform(-0.005, 0.005))
         return self._current_prices[symbol]

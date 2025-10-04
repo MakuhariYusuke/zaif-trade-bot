@@ -24,11 +24,14 @@ class SimBroker(IBroker):
         slippage_bps: float = 5.0,
         commission_bps: float = 0.0,
         price_feed: Optional[pd.DataFrame] = None,
+        venue_config: Optional[Dict[str, Any]] = None,
     ):
         """Initialize simulated broker."""
         self.initial_balance = initial_balance
         self.slippage_bps = slippage_bps
         self.commission_bps = commission_bps
+        self.venue_config = venue_config
+        self.symbols = venue_config.get("symbols", []) if venue_config else []
 
         # Account state
         self.balance = {"JPY": initial_balance, "BTC": 0.0}
@@ -45,6 +48,10 @@ class SimBroker(IBroker):
 
         # Order state management
         self.order_state_machine = OrderStateMachine()
+
+    def _is_symbol_configured(self, symbol: str) -> bool:
+        """Check if symbol is configured in venue."""
+        return any(s.get("symbol") == symbol for s in self.symbols)
 
     def _generate_idempotency_key(
         self, symbol: str, side: str, quantity: float, price: Optional[float]
@@ -96,6 +103,9 @@ class SimBroker(IBroker):
         """Place a simulated order."""
         await asyncio.sleep(0.01)  # Simulate network latency
 
+        if not self._is_symbol_configured(symbol):
+            raise ValueError(f"Symbol {symbol} not configured in venue")
+
         # Generate or use client_order_id
         if client_order_id is None:
             import time
@@ -112,7 +122,8 @@ class SimBroker(IBroker):
         if existing_order and not existing_order.is_terminal_state():
             raise ValueError(f"Duplicate order detected: {client_order_id}")
 
-        order_id = self._generate_order_id()
+        order_id = f"sim_{self.order_counter}"
+        self.order_counter += 1
 
         # For market orders, use current price
         if order_type == "market" or price is None:
@@ -159,7 +170,7 @@ class SimBroker(IBroker):
 
         return order
 
-    async def _execute_trade(self, order: Order):
+    async def _execute_trade(self, order: Order) -> None:
         """Execute the trade and update account state."""
         symbol = order.symbol
         side = order.side

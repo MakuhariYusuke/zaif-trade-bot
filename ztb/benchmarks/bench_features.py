@@ -12,51 +12,35 @@ import time
 import tracemalloc
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
+
+from ztb.features.registry import FeatureRegistry
+from ztb.features import get_feature_manager
+from ztb.utils.data.data_generation import generate_synthetic_data
+from ztb.utils.errors import safe_operation
 
 project_root = Path(__file__).resolve().parent.parent
 if project_root.exists():
     sys.path.append(str(project_root))
 
-from ztb.features import get_feature_manager
-
-
-def generate_synthetic_data(n_rows: int = 100000) -> pd.DataFrame:
-    """合成データを生成"""
-    np.random.seed(42)
-    dates = pd.date_range("2024-01-01", periods=n_rows, freq="1min")
-
-    # 価格データ生成（ランダムウォーク）
-    returns = np.random.normal(0, 0.01, n_rows)
-    price = 100 * np.exp(np.cumsum(returns))
-
-    # OHLCV生成
-    high = price * (1 + np.random.uniform(0, 0.02, n_rows))
-    low = price * (1 - np.random.uniform(0, 0.02, n_rows))
-    close = price
-    volume = np.random.uniform(100, 1000, n_rows)
-
-    df = pd.DataFrame(
-        {
-            "ts": dates.view("int64") // 10**9,  # unix timestamp
-            "close": close,
-            "high": high,
-            "low": low,
-            "volume": volume,
-            "exchange": "synthetic",
-            "pair": "BTC/USD",
-            "episode_id": 0,
-        }
-    )
-
-    return df
-
 
 def load_real_data(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFrame:
     """実データを読み込み"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _load_real_data_impl(sample_path, n_rows),
+        context="real_data_loading",
+        default_result=generate_synthetic_data(
+            n_rows or 1000, freq="1min", episode_length=None, volume_range=(100, 1000)
+        ),  # Fallback to synthetic data
+    )
+
+
+def _load_real_data_impl(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFrame:
+    """Implementation of real data loading."""
     if sample_path.exists():
         df = pd.read_parquet(sample_path)
         # Check if required columns exist
@@ -71,11 +55,13 @@ def load_real_data(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFr
             )
     else:
         print(f"Warning: {sample_path} not found, using synthetic data")
-    return generate_synthetic_data(n_rows or 1000)
+    return generate_synthetic_data(
+        n_rows or 1000, freq="1min", episode_length=None, volume_range=(100, 1000)
+    )
 
 
 def benchmark_feature(
-    feature_name: str, manager, df: pd.DataFrame, n_runs: int = 5
+    feature_name: str, manager: FeatureRegistry, df: pd.DataFrame, n_runs: int = 5
 ) -> Dict[str, float]:
     """単一特徴量のベンチマーク"""
     times = []
@@ -112,7 +98,7 @@ def benchmark_feature(
 
 
 def benchmark_bundle(
-    manager, df: pd.DataFrame, waves, n_runs: int = 5
+    manager: FeatureRegistry, df: pd.DataFrame, waves: Any, n_runs: int = 5
 ) -> Dict[str, float]:
     """バンドルのベンチマーク（指定されたwavesで実行）"""
     times = []
@@ -135,7 +121,7 @@ def benchmark_bundle(
     return {"ms_real": float(np.median(times)), "peak_MB": float(np.max(memories))}
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Benchmark trading features")
     parser.add_argument(
         "--sample",

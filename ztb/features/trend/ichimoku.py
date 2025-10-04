@@ -1,9 +1,27 @@
+from typing import Any, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from numba import jit  # type: ignore[import-untyped]
-from typing import Any, Tuple
+from numpy.typing import NDArray
 
 from ztb.features.base import ChannelFeature, ComputableFeature
+from ztb.features.registry import FeatureRegistry
+
+
+@FeatureRegistry.register("Ichimoku_Diff_Norm")
+def compute_ichimoku_diff_norm(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Cloud Normalized Difference (Tenkan - Kijun)"""
+    feature = Ichimoku()
+    result_df = feature.compute(df)
+    return result_df["ichimoku_diff_norm"]
+
+
+@FeatureRegistry.register("Ichimoku_Cross")
+def compute_ichimoku_cross(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Cloud Cross Signal (1 if Tenkan > Kijun, 0 otherwise)"""
+    feature = Ichimoku()
+    result_df = feature.compute(df)
+    return result_df["ichimoku_cross"]
 
 
 class Ichimoku(ChannelFeature, ComputableFeature):
@@ -14,8 +32,12 @@ class Ichimoku(ChannelFeature, ComputableFeature):
         self._required_calculations: set[str] = set()  # Internal calculation only
 
     @staticmethod
-    @jit(nopython=True)  # type: ignore[misc]
-    def _compute_ichimoku(high: np.ndarray[Any, np.dtype[Any]], low: np.ndarray[Any, np.dtype[Any]], close: np.ndarray[Any, np.dtype[Any]]) -> Tuple[np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]]]:
+    def _compute_ichimoku(
+        high: Any,
+        low: Any,
+        close: Any,
+    ) -> Tuple[Any, Any, Any, Any, Any]:
+        """Compute Ichimoku components using pure numpy (no numba)"""
         if len(high) != len(low) or len(high) != len(close):
             raise ValueError(
                 "Input arrays 'high', 'low', and 'close' must have the same length."
@@ -27,25 +49,25 @@ class Ichimoku(ChannelFeature, ComputableFeature):
         senkou_b = np.zeros(n)
         chikou = np.zeros(n)
 
+        # Calculate Tenkan-sen (Conversion Line): (9-period high + 9-period low) / 2
         for i in range(9, n):
             tenkan[i] = (np.max(high[i - 9 : i + 1]) + np.min(low[i - 9 : i + 1])) / 2
 
+        # Calculate Kijun-sen (Base Line): (26-period high + 26-period low) / 2
         for i in range(26, n):
-            # tenkan[i-26] および kijun[i-26] の初期値はゼロであり、i < 26 の場合は senkou_a の計算に使われません。
-            # そのため、senkou_a の初期値はゼロとなります。
-            if i >= 26:
-                senkou_a[i] = (tenkan[i - 26] + kijun[i - 26]) / 2
-            if i >= 26:
-                senkou_a[i] = (tenkan[i - 26] + kijun[i - 26]) / 2
+            kijun[i] = (np.max(high[i - 26 : i + 1]) + np.min(low[i - 26 : i + 1])) / 2
 
+        # Calculate Senkou Span A (Leading Span A): (Tenkan + Kijun) / 2, plotted 26 periods ahead
+        for i in range(26, n):
+            senkou_a[i] = (tenkan[i - 26] + kijun[i - 26]) / 2
+
+        # Calculate Senkou Span B (Leading Span B): (52-period high + 52-period low) / 2, plotted 26 periods ahead
         for i in range(52, n):
-            if i >= 52:
-                senkou_b[i] = (
-                    np.max(high[i - 52 : i - 26 + 1]) + np.min(low[i - 52 : i - 26 + 1])
-                ) / 2
+            senkou_b[i] = (
+                np.max(high[i - 52 : i - 26 + 1]) + np.min(low[i - 52 : i - 26 + 1])
+            ) / 2
 
-        # chikou[i] は i >= 26 の場合のみ計算されます。
-        # i < 26 の場合、chikou の初期値はゼロとなります。
+        # Calculate Chikou Span (Lagging Span): Current close plotted 26 periods back
         for i in range(26, n):
             chikou[i] = close[i - 26]
 
@@ -60,11 +82,13 @@ class Ichimoku(ChannelFeature, ComputableFeature):
 
         # 差分正規化
         diff = tenkan - kijun
-        atr = (
-            df["ATR_simplified"].to_numpy(dtype=float)
-            if "ATR_simplified" in df.columns
-            else np.ones(len(close))
-        )
+        if "ATR_simplified" not in df.columns:
+            from ztb.features.volatility.atr import compute_atr_simplified
+
+            atr_series = compute_atr_simplified(df)
+            df = df.copy()
+            df["ATR_simplified"] = atr_series
+        atr = df["ATR_simplified"].to_numpy(dtype=float)
         normalized_diff = np.where(atr != 0, diff / atr, 0)
         # クロスシグナル
         cross = (tenkan > kijun).astype(float)

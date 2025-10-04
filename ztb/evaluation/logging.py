@@ -246,9 +246,11 @@ class EvaluationLogger:
             "total_evaluations": total_evaluations,
             "successful_evaluations": successful_evaluations,
             "failed_evaluations": failed_evaluations,
-            "success_rate": successful_evaluations / total_evaluations
-            if total_evaluations > 0
-            else 0,
+            "success_rate": (
+                successful_evaluations / total_evaluations
+                if total_evaluations > 0
+                else 0
+            ),
             "avg_computation_time_ms": avg_computation_time,
             "avg_nan_rate": avg_nan_rate,
             "avg_baseline_sharpe": avg_sharpe,

@@ -4,11 +4,13 @@ Nox configuration for multi-Python testing.
 Provides isolated testing environments for Python 3.11, 3.12, and 3.13.
 """
 
-import nox
+from typing import Any
+
+import nox  # type: ignore[import-not-found]
 
 
-@nox.session(python=["3.11", "3.12", "3.13"])
-def test(session):
+@nox.session(python=["3.11", "3.12", "3.13"])  # type: ignore
+def test(session: nox.Session) -> None:
     """Run tests with specific Python version."""
     session.install("-r", "requirements.txt", "-r", "requirements-dev.txt")
     session.install("-e", ".")
@@ -25,8 +27,8 @@ def test(session):
     )
 
 
-@nox.session(python=["3.11", "3.12", "3.13"])
-def lint(session):
+@nox.session(python=["3.11", "3.12", "3.13"])  # type: ignore
+def lint(session: Any) -> None:
     """Run linting checks."""
     session.install("-r", "requirements-dev.txt")
 
@@ -40,8 +42,8 @@ def lint(session):
     session.run("python", "-m", "flake8", "ztb/", "ztb/scripts/")
 
 
-@nox.session(python=["3.11", "3.12", "3.13"])
-def type_check(session):
+@nox.session(python=["3.11", "3.12", "3.13"])  # type: ignore
+def type_check(session: Any) -> None:
     """Run type checking."""
     session.install("-r", "requirements-dev.txt")
     session.install("-e", ".")
@@ -49,8 +51,8 @@ def type_check(session):
     session.run("python", "-m", "mypy", "ztb/", "ztb/scripts/")
 
 
-@nox.session(python="3.11")
-def benchmark(session):
+@nox.session(python="3.11")  # type: ignore
+def benchmark(session: Any) -> None:
     """Run performance benchmarks."""
     session.install("-r", "requirements.txt")
     session.install("-e", ".")
@@ -60,8 +62,8 @@ def benchmark(session):
     session.run("python", "benchmark_compression.py")
 
 
-@nox.session
-def docs(session):
+@nox.session  # type: ignore
+def docs(session: Any) -> None:
     """Build documentation."""
     session.install("-r", "requirements-dev.txt")
 
@@ -69,8 +71,8 @@ def docs(session):
     # session.run("sphinx-build", "docs/", "docs/_build/")
 
 
-@nox.session(python="3.11")
-def safety(session):
+@nox.session(python="3.11")  # type: ignore
+def safety(session: Any) -> None:
     """Run security checks."""
     session.install("-r", "requirements-dev.txt")
 
@@ -81,8 +83,8 @@ def safety(session):
     session.run("python", "-m", "bandit", "-r", "ztb/")
 
 
-@nox.session(python=["3.11", "3.12", "3.13"])
-def integration_test(session):
+@nox.session(python=["3.11", "3.12", "3.13"])  # type: ignore
+def integration_test(session: Any) -> None:
     """Run integration tests."""
     session.install("-r", "requirements.txt", "-r", "requirements-dev.txt")
     session.install("-e", ".")

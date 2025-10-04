@@ -9,9 +9,9 @@ import asyncio
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union, cast
 
-from ztb.utils.observability import get_logger
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -53,9 +53,11 @@ class TokenBucketRateLimiter:
             time_passed = now - self.last_update
 
             # Add tokens based on time passed
-            self.tokens = min(
-                self.config.burst_limit,
-                self.tokens + time_passed * self.config.requests_per_second,
+            self.tokens = int(
+                min(
+                    self.config.burst_limit,
+                    self.tokens + time_passed * self.config.requests_per_second,
+                )
             )
 
             if self.tokens >= tokens:
@@ -87,10 +89,10 @@ class SlidingWindowRateLimiter:
             config: Rate limit configuration
         """
         self.config = config
-        self.requests = deque()
+        self.requests: deque[float] = deque()
         self._lock = asyncio.Lock()
 
-    async def acquire(self) -> bool:
+    async def acquire(self, tokens: int = 1) -> bool:
         """Check if request can be made within rate limit.
 
         Returns:
@@ -138,9 +140,15 @@ class RateLimiter:
         self.strategy = strategy
 
         if strategy == "token_bucket":
-            self._limiter = TokenBucketRateLimiter(self.config)
+            self._limiter = cast(
+                Union[TokenBucketRateLimiter, SlidingWindowRateLimiter],
+                TokenBucketRateLimiter(self.config),
+            )
         elif strategy == "sliding_window":
-            self._limiter = SlidingWindowRateLimiter(self.config)
+            self._limiter = cast(
+                Union[TokenBucketRateLimiter, SlidingWindowRateLimiter],
+                SlidingWindowRateLimiter(self.config),
+            )
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
@@ -164,9 +172,9 @@ class RateLimiter:
         Args:
             tokens: Number of tokens needed
         """
-        if self.strategy == "token_bucket":
+        if isinstance(self._limiter, TokenBucketRateLimiter):
             await self._limiter.wait_for_tokens(tokens)
-        else:  # sliding_window
+        else:
             await self._limiter.wait_for_slot()
 
     def is_allowed(self, tokens: int = 1) -> bool:
@@ -264,7 +272,9 @@ def get_file_limiter() -> MultiRateLimiter:
     return _file_limiter
 
 
-async def rate_limited_api_call(key: str, func: callable, *args, **kwargs) -> Any:
+async def rate_limited_api_call(
+    key: str, func: Callable[..., Any], *args: Any, **kwargs: Any
+) -> Any:
     """Make a rate-limited API call.
 
     Args:

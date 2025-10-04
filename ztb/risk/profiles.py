@@ -6,7 +6,7 @@ Defines conservative, balanced, and aggressive risk profiles.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
+from typing import Any, Dict
 
 
 class RiskProfile(Enum):
@@ -95,7 +95,7 @@ def get_risk_profile(profile_name: str) -> RiskLimits:
         )
 
 
-def create_custom_risk_profile(**kwargs) -> RiskLimits:
+def create_custom_risk_profile(**kwargs: Any) -> RiskLimits:
     """Create a custom risk profile from parameters."""
     defaults = {
         "max_position_notional": 100000.0,
@@ -113,4 +113,15 @@ def create_custom_risk_profile(**kwargs) -> RiskLimits:
     # Update defaults with provided values
     config = {**defaults, **kwargs}
 
-    return RiskLimits(**config)
+    return RiskLimits(
+        max_position_notional=float(config["max_position_notional"]),
+        max_single_trade_pct=float(config["max_single_trade_pct"]),
+        daily_loss_limit_pct=float(config["daily_loss_limit_pct"]),
+        max_drawdown_pct=float(config["max_drawdown_pct"]),
+        max_trades_per_hour=int(config["max_trades_per_hour"]),
+        min_trade_interval_sec=int(config["min_trade_interval_sec"]),
+        max_volatility_pct=float(config["max_volatility_pct"]),
+        required_sharpe_ratio=float(config["required_sharpe_ratio"]),
+        stop_loss_pct=float(config["stop_loss_pct"]),
+        take_profit_pct=float(config["take_profit_pct"]),
+    )

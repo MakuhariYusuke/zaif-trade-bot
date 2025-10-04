@@ -48,7 +48,7 @@ class RiskChecker:
         current_value: float,
         volatility: float,
         trade_data: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Post-trade state update.
 
@@ -62,7 +62,7 @@ class RiskChecker:
         if trade_data:
             self.engine.record_trade(trade_data)
 
-    def update_trailing_stop(self, current_price: float, position_side: str):
+    def update_trailing_stop(self, current_price: float, position_side: str) -> None:
         """Update trailing stop level."""
         self.engine.update_trailing_stop(current_price, position_side)
 
@@ -108,11 +108,11 @@ class RiskManager:
 
     def validate_and_execute_trade(
         self,
-        trade_func: Callable,
+        trade_func: Callable[..., Any],
         trade_notional: float,
         position_notional: float,
         peak_value: float,
-        **trade_kwargs,
+        **trade_kwargs: Any,
     ) -> Tuple[bool, Any, str]:
         """
         Validate trade and execute if allowed.

@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 
 from ztb.data.marketdata_registry import MarketDataSource
+from ztb.utils.data_utils import load_csv_data
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 class ReplayMarket(MarketDataSource):
     """Market data source that replays historical data."""
 
-    def __init__(self, data_path: str, **kwargs):
+    def __init__(self, data_path: str, **kwargs: Any) -> None:
         self.data_path = Path(data_path)
         self.speed_multiplier = kwargs.get("speed_multiplier", 1.0)
         self.loop = kwargs.get("loop", False)
@@ -31,7 +32,7 @@ class ReplayMarket(MarketDataSource):
         """Load market data from file."""
         if self._data is None:
             if self.data_path.suffix == ".csv":
-                self._data = pd.read_csv(self.data_path)
+                self._data = load_csv_data(self.data_path)
             elif self.data_path.suffix == ".json":
                 self._data = pd.read_json(self.data_path)
             else:
@@ -48,7 +49,7 @@ class ReplayMarket(MarketDataSource):
 
         return self._data
 
-    def get_data(self, **kwargs) -> pd.DataFrame:
+    def get_data(self, **kwargs: Any) -> pd.DataFrame:
         """Get market data for replay."""
         data = self.load_data()
 
@@ -56,7 +57,15 @@ class ReplayMarket(MarketDataSource):
         batch_size = kwargs.get("batch_size", 100)
         if self._current_index + batch_size > len(data):
             if self.loop:
-                self._current_index = 0
+                remaining = len(data) - self._current_index
+                if remaining > 0:
+                    batch = data.iloc[self._current_index :].copy()
+                    self._current_index = 0
+                    return batch
+                else:
+                    self._current_index = 0
+                    if batch_size > len(data):
+                        batch_size = len(data)
             else:
                 # Return remaining data
                 batch_size = len(data) - self._current_index
@@ -69,7 +78,7 @@ class ReplayMarket(MarketDataSource):
 
         return batch
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset replay to beginning."""
         self._current_index = 0
 
@@ -81,6 +90,6 @@ class ReplayMarket(MarketDataSource):
 
 
 # Factory function for registry
-def create_replay_market(data_path: str, **kwargs) -> ReplayMarket:
+def create_replay_market(data_path: str, **kwargs: Any) -> ReplayMarket:
     """Factory function to create replay market data source."""
     return ReplayMarket(data_path, **kwargs)

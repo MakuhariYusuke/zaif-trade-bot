@@ -20,6 +20,8 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+from ztb.utils.errors import safe_operation
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
@@ -27,37 +29,42 @@ if str(PROJECT_ROOT) not in sys.path:
 
 def run_evaluation() -> Dict[str, Any]:
     """Run feature evaluation."""
-    print("🔍 Running feature evaluation...")
-    from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
+    def perform_evaluation() -> Dict[str, Any]:
+        print("🔍 Running feature evaluation...")
+        from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
 
-    evaluator = ComprehensiveFeatureReEvaluator()
-    ohlc_data = evaluator.prepare_ohlc_data()
-    if ohlc_data is None:
-        print("Failed to load OHLC data")
-        return {}
-    results = evaluator.evaluate_experimental_features(ohlc_data)
+        evaluator = ComprehensiveFeatureReEvaluator()
+        ohlc_data = evaluator.prepare_ohlc_data()
+        if ohlc_data is None:
+            print("Failed to load OHLC data")
+            return {}
+        results = evaluator.evaluate_experimental_features(ohlc_data)
 
-    # Count statuses
-    success_count = sum(
-        1
-        for r in results.values()
-        if isinstance(r, dict) and r.get("status") == "success"
-    )
-    error_count = sum(
-        1
-        for r in results.values()
-        if isinstance(r, dict) and r.get("status") == "error"
-    )
-    insufficient_count = sum(
-        1
-        for r in results.values()
-        if isinstance(r, dict) and r.get("status") == "insufficient"
-    )
+        # Count statuses
+        success_count = sum(
+            1
+            for r in results.values()
+            if isinstance(r, dict) and r.get("status") == "success"
+        )
+        error_count = sum(
+            1
+            for r in results.values()
+            if isinstance(r, dict) and r.get("status") == "error"
+        )
+        insufficient_count = sum(
+            1
+            for r in results.values()
+            if isinstance(r, dict) and r.get("status") == "insufficient"
+        )
 
-    print(
-        f" Evaluation complete: {len(results)} features, {success_count} success, {error_count} errors, {insufficient_count} insufficient"
-    )
-    return results
+        print(
+            f" Evaluation complete: {len(results)} features, {success_count} success, {error_count} errors, {insufficient_count} insufficient"
+        )
+        return results
+
+    import logging
+    logger = logging.getLogger(__name__)
+    return safe_operation(logger, perform_evaluation, "run_evaluation()", {})
 
 
 def run_correlation_analysis() -> Optional[Dict[str, Any]]:

@@ -1,0 +1,12 @@
+{
+  "correlation_id": "dummy",
+  "system": {
+    "os": "dummy"
+  },
+  "git": {
+    "sha": "dummy"
+  },
+  "run_config": {
+    "random_seed": 42
+  }
+}

@@ -7,11 +7,12 @@ including KAMA, ADX, and Kalman filters.
 
 import time
 from functools import lru_cache
-from typing import Any, Callable, Dict, Optional, Union, cast
+from typing import Any, Callable, Dict, Optional, Tuple, Union, cast
 
 import numba as nb  # type: ignore
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 
 def optimize_kama(
@@ -19,7 +20,7 @@ def optimize_kama(
     fast_period: int = 2,
     slow_period: int = 30,
     efficiency_ratio_period: int = 10,
-) -> pd.Series:
+) -> pd.Series[Any]:
     """
     Optimized Kaufman Adaptive Moving Average (KAMA)
 
@@ -33,10 +34,13 @@ def optimize_kama(
         KAMA values
     """
 
-    @nb.jit(nopython=True)
+    @nb.jit(nopython=True)  # type: ignore
     def _calculate_kama_numba(
-        price_array, fast_period, slow_period, efficiency_ratio_period
-    ):  # type: ignore
+        price_array: NDArray[np.float64],
+        fast_period: int,
+        slow_period: int,
+        efficiency_ratio_period: int,
+    ) -> NDArray[np.float64]:
         n = len(price_array)
         kama = np.full(n, np.nan)
 
@@ -70,15 +74,12 @@ def optimize_kama(
 
         return kama
 
-    price_array = prices.values
-    kama_values = cast(
-        np.ndarray,
-        _calculate_kama_numba(
-            price_array, fast_period, slow_period, efficiency_ratio_period
-        ),
+    price_array = cast(NDArray[np.float64], prices.values)
+    kama_values = _calculate_kama_numba(
+        price_array, fast_period, slow_period, efficiency_ratio_period
     )
 
-    return pd.Series(kama_values, index=prices.index, name="KAMA")
+    return pd.Series(kama_values, index=prices.index, name="KAMA")  # type: ignore
 
 
 def optimize_adx(
@@ -97,8 +98,13 @@ def optimize_adx(
         DataFrame with ADX, +DI, -DI
     """
 
-    @nb.jit(nopython=True)
-    def _calculate_adx_numba(high_array, low_array, close_array, period):  # type: ignore
+    @nb.jit(nopython=True)  # type: ignore
+    def _calculate_adx_numba(
+        high_array: NDArray[np.float64],
+        low_array: NDArray[np.float64],
+        close_array: NDArray[np.float64],
+        period: int,
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         n = len(high_array)
         adx = np.full(n, np.nan)
         plus_di = np.full(n, np.nan)
@@ -168,9 +174,9 @@ def optimize_adx(
 
         return adx, plus_di, minus_di
 
-    high_array = high.values
-    low_array = low.values
-    close_array = close.values
+    high_array = cast(NDArray[np.float64], high.values)
+    low_array = cast(NDArray[np.float64], low.values)
+    close_array = cast(NDArray[np.float64], close.values)
 
     adx_values, plus_di_values, minus_di_values = _calculate_adx_numba(
         high_array, low_array, close_array, period
@@ -184,7 +190,7 @@ def optimize_adx(
 
 def optimize_kalman_filter(
     prices: pd.Series, process_noise: float = 1e-5, measurement_noise: float = 1e-3
-) -> pd.Series:
+) -> pd.Series[Any]:
     """
     Optimized Kalman filter for price smoothing
 
@@ -197,8 +203,12 @@ def optimize_kalman_filter(
         Smoothed price series
     """
 
-    @nb.jit(nopython=True)
-    def _kalman_filter_numba(price_array, process_noise, measurement_noise):  # type: ignore
+    @nb.jit(nopython=True)  # type: ignore
+    def _kalman_filter_numba(
+        price_array: NDArray[np.float64],
+        process_noise: float,
+        measurement_noise: float,
+    ) -> NDArray[np.float64]:
         n = len(price_array)
         filtered = np.full(n, np.nan)
 
@@ -229,12 +239,12 @@ def optimize_kalman_filter(
 
         return filtered
 
-    price_array = prices.values
-    filtered_values = cast(
-        np.ndarray, _kalman_filter_numba(price_array, process_noise, measurement_noise)
+    price_array = cast(NDArray[np.float64], prices.values)
+    filtered_values = _kalman_filter_numba(
+        price_array, process_noise, measurement_noise
     )
 
-    return pd.Series(filtered_values, index=prices.index, name="Kalman_Filter")
+    return pd.Series(filtered_values, index=prices.index, name="Kalman_Filter")  # type: ignore
 
 
 @lru_cache(maxsize=128)
@@ -254,7 +264,7 @@ def cached_computation(func: Callable[..., Any], *args: Any, **kwargs: Any) -> A
 
 
 def vectorized_rolling_computation(
-    data: pd.Series, window: int, func: Callable
+    data: pd.Series, window: int, func: Callable[[pd.Series, int], Any]
 ) -> pd.Series:
     """
     Vectorized rolling computation for better performance

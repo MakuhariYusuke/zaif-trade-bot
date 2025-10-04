@@ -2,6 +2,7 @@
 # 外れ値検出と詳細な分布分析
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Union
@@ -11,6 +12,14 @@ import numpy.ma as ma
 import pandas as pd
 from scipy import stats
 
+from ztb.utils.data.outlier_detection import (
+    detect_outliers_iqr,
+    detect_outliers_zscore,
+)
+from ztb.utils.errors import safe_operation
+
+logger = logging.getLogger(__name__)
+
 # プロジェクトルートをパスに追加
 # sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -19,36 +28,46 @@ def detect_outliers_iqr(
     data: pd.DataFrame, column: str
 ) -> tuple[pd.DataFrame, float, float]:
     """IQR法による外れ値検出"""
-    Q1 = data[column].quantile(0.25)
-    Q3 = data[column].quantile(0.75)
-    IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-
-    outliers = data[(data[column] < lower_bound) | (data[column] > upper_bound)]
-    return outliers, lower_bound, upper_bound
+    from ztb.utils.data.outlier_detection import detect_outliers_iqr as _detect_outliers_iqr
+    return _detect_outliers_iqr(data, column)
 
 
 def detect_outliers_zscore(
     data: pd.DataFrame, column: str, threshold: float = 3
 ) -> pd.DataFrame:
     """Z-score法による外れ値検出"""
-    series = data[column]
-    # stats.zscoreはMaskedArrayを返すことがあるため、通常のnumpy配列に変換
-    z_scores_raw = stats.zscore(series, nan_policy="omit")
-
-    # MaskedArrayをnumpy配列に変換し、マスクされた値をNaNで埋める
-    # np.ma.filledはMaskedArrayと通常のndarrayの両方を処理できる
-    z_scores_unmasked = ma.filled(z_scores_raw, np.nan)
-
-    # NaNをそのまま除外（0に変換しない）
-    z_scores_series = pd.Series(np.abs(z_scores_unmasked), index=series.index)
-    outliers = data[z_scores_series > threshold]
-    return outliers  # type: ignore[no-any-return]
+    from ztb.utils.data.outlier_detection import detect_outliers_zscore as _detect_outliers_zscore
+    return _detect_outliers_zscore(data, column, threshold)
 
 
 def get_project_root() -> Path:
-    """プロジェクトルートのパスを取得"""
+    """プロジェクトルートのパスを取得（環境変数や設定ファイルで上書き可能）"""
+    return safe_operation(
+        logger,
+        _get_project_root_impl,
+        "get_project_root",
+        Path(__file__).parent.parent.parent  # Default fallback
+    )
+
+
+def _get_project_root_impl() -> Path:
+    """Implementation of getting project root."""
+    # 環境変数があればそれを使う
+    env_root = os.environ.get("PROJECT_ROOT")
+    if env_root:
+        return Path(env_root).resolve()
+    # 設定ファイル（config/rl_config.json）にproject_rootキーがあればそれを使う
+    config_path = Path(__file__).parent.parent.parent / "config" / "rl_config.json"
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            project_root = config.get("project_root")
+            if project_root:
+                return Path(project_root).resolve()
+        except Exception:
+            pass
+    # デフォルト
     return Path(__file__).parent.parent.parent
 
 
@@ -110,14 +129,14 @@ def analyze_feature_distributions(
 
     if total_nulls > 0:
         print("欠損値のある列:")
-        non_zero_nulls = null_counts[null_counts > 0]
-        for col, count in non_zero_nulls.items():
-            null_ratio = count / len(combined_df) * 100
-            print(f"{col}: {count}件 ({null_ratio:.2f}%)")
-    else:
-        print("✅ 欠損値なし - データ品質良好")
-
-    # 外れ値検出
+        price_changes = combined_df["price"].pct_change().shift(-1)
+        extreme_changes = combined_df[price_changes.abs() > outlier_threshold]
+        print(f"価格変動 ±{outlier_threshold * 100}% 超: {len(extreme_changes)} 件")
+        if len(extreme_changes) > 0:
+            print("極端変動サンプル:")
+            for idx, _ in extreme_changes.head(3).iterrows():
+                change_pct = price_changes.at[idx] * 100
+                print(f"  Index {idx}: 変動率 {change_pct:.2f}%")
     print("\n=== 外れ値検出 ===")
     numeric_cols = combined_df.select_dtypes(include=[np.number]).columns
     key_features = ["price", "volume", "sma_5", "sma_10", "rsi_14", "macd"]
@@ -192,8 +211,8 @@ def analyze_feature_distributions(
             print(f"  尖度: {kurtosis:.4f}")  # type: ignore[str-bytes-safe]
 
             # 正規性検定
-            if len(data) > 5000:  # サンプルサイズが十分な場合のみ
-                sample_size = min(len(data), 5000)
+            if len(data) >= 3 and len(data) <= 5000:  # Shapiro-Wilk検定の公式推奨範囲
+                sample_size = len(data)
                 _, p_value = stats.shapiro(
                     data.sample(sample_size, random_state=42, replace=False)
                 )
@@ -294,7 +313,8 @@ def main() -> None:
 
         traceback.print_exc()
         # エラーログをファイルに記録
-        with open("data_quality_error.log", "a", encoding="utf-8") as log_file:
+        error_log_path = project_path("data_quality_error.log")
+        with open(error_log_path, "a", encoding="utf-8") as log_file:
             log_file.write(f"エラー: {e}\n")
             traceback.print_exc(file=log_file)
         # エラーコードで終了

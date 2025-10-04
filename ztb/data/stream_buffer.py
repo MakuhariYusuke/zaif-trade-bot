@@ -26,6 +26,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 import numpy as np
@@ -121,18 +122,18 @@ class _Chunk:
         return self.materialize().copy()
 
 
-def _compress_df(df: pd.DataFrame, compression: str) -> bytes:  # type: ignore[no-any-return]
+def _compress_df(df: pd.DataFrame, compression: str) -> bytes:
     payload = pickle.dumps(df, protocol=pickle.HIGHEST_PROTOCOL)
     if compression == "zstd" and HAS_ZSTD and zstd is not None:
-        return zstd.ZstdCompressor(level=3).compress(payload)
+        return zstd.ZstdCompressor(level=3).compress(payload)  # type: ignore[no-any-return]
     if compression == "lz4" and HAS_LZ4 and lz4_frame is not None:
-        return lz4_frame.compress(payload)
+        return lz4_frame.compress(payload)  # type: ignore[no-any-return]
     if compression == "gzip":
-        return gzip.compress(payload, compresslevel=6)
-    return zlib.compress(payload, level=6)
+        return gzip.compress(payload, compresslevel=6)  # type: ignore[no-any-return]
+    return zlib.compress(payload, level=6)  # type: ignore[no-any-return]
 
 
-def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:  # type: ignore[no-any-return]
+def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:
     if compression == "zstd" and HAS_ZSTD and zstd is not None:
         payload = zstd.ZstdDecompressor().decompress(data)
     elif compression == "lz4" and HAS_LZ4 and lz4_frame is not None:
@@ -141,7 +142,7 @@ def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:  # 
         payload = gzip.decompress(data)
     else:
         payload = zlib.decompress(data)
-    return pickle.loads(payload)
+    return cast(pd.DataFrame, pickle.loads(payload))
 
 
 class StreamBuffer:
@@ -310,7 +311,7 @@ class StreamBuffer:
             self._chunks.clear()
             self._rows = 0
 
-    def memory_usage(self, deep: bool = True) -> int:
+    def memory_usage(self, _deep: bool = True) -> int:
         with self._lock:
             return sum(chunk.memory_bytes() for chunk in self._chunks)
 
@@ -320,7 +321,7 @@ class StreamBuffer:
                 rows=self._rows,
                 chunks=len(self._chunks),
                 capacity=self.capacity,
-                memory_bytes=self.memory_usage(deep=True),
+                memory_bytes=self.memory_usage(),
             )
 
     def iter_batches(
@@ -401,7 +402,7 @@ class StreamBuffer:
             df = chunk.materialize()
             chunk_len = len(df)
             if chunk_len <= excess:
-                removed = self._chunks.popleft()
+                _ = self._chunks.popleft()
                 self._rows -= chunk_len
                 excess -= chunk_len
                 if self._on_trim is not None:

@@ -6,9 +6,10 @@ Compare two effective-config JSON files and show differences.
 import argparse
 import json
 import sys
+from typing import Any, List
 
 
-def load_json(file_path):
+def load_json(file_path: str) -> Any:
     """Load JSON file."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -18,7 +19,7 @@ def load_json(file_path):
         sys.exit(1)
 
 
-def deep_diff(a, b, path=""):
+def deep_diff(a: Any, b: Any, path: str = "") -> List[Any]:
     """Recursively compare two dicts."""
     diffs = []
 
@@ -46,13 +47,13 @@ def deep_diff(a, b, path=""):
     return diffs
 
 
-def is_major_key(path):
+def is_major_key(path: str) -> bool:
     """Check if the path contains a major configuration key."""
     major_keys = ["model", "policy", "learning_rate", "batch_size"]
     return any(key in path for key in major_keys)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Compare two effective-config JSON files"
     )

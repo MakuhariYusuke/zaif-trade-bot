@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ztb.utils.data_utils import load_csv_data_iter
 from ztb.utils.memory.dtypes import downcast_df
 
 
@@ -26,13 +27,13 @@ def csv_to_parquet_streaming(
         2回目以降のチャンクはappendできないため、全データを1つのParquetファイルにまとめる場合は
         pyarrow.dataset等の利用や、チャンク毎に一時ファイルを作成して後で結合する必要があります。
     """
-    import pyarrow as pa  # type: ignore[import-untyped]
-    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+    import pyarrow as pa
+    import pyarrow.parquet as pq
 
     parquet_path_obj = Path(parquet_path)
     parquet_path_obj.parent.mkdir(parents=True, exist_ok=True)
     writer = None
-    for chunk in pd.read_csv(csv_path, chunksize=chunksize):
+    for chunk in load_csv_data_iter(csv_path, chunksize=chunksize):
         chunk = downcast_df(chunk)
         table = pa.Table.from_pandas(chunk)
         if writer is None:

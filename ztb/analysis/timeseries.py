@@ -5,6 +5,8 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
+from ztb.utils.errors import safe_operation
+
 
 def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
     """Compute lag correlations for feature pairs.
@@ -12,6 +14,16 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, 
     Lags: [1, 5, 10, 20]
     Returns top 10 pairs by absolute correlation.
     """
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _compute_lag_correlations_impl(frames),
+        context="lag_correlation_analysis",
+        default_result=[],  # Return empty list on error
+    )
+
+
+def _compute_lag_correlations_impl(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
+    """Implementation of lag correlation computation."""
     if not frames:
         return []
 
@@ -58,5 +70,5 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, 
                         )
 
     # Sort by absolute correlation, take top 10
-    results.sort(key=lambda x: abs(x["correlation"]), reverse=True)
+    results.sort(key=lambda x: abs(x["correlation"]), reverse=True)  # type: ignore
     return results[:10]

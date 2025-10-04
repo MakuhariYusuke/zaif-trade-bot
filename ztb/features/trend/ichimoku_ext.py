@@ -9,6 +9,71 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
+from ztb.features.registry import FeatureRegistry
+
+
+@FeatureRegistry.register("Ichimoku_Tenkan")
+def compute_ichimoku_tenkan(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Tenkan-sen (Conversion Line)"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_tenkan"]
+
+
+@FeatureRegistry.register("Ichimoku_Kijun")
+def compute_ichimoku_kijun(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Kijun-sen (Base Line)"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_kijun"]
+
+
+@FeatureRegistry.register("Ichimoku_Senkou_A")
+def compute_ichimoku_senkou_a(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Senkou Span A (Leading Span A)"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_senkou_a"]
+
+
+@FeatureRegistry.register("Ichimoku_Senkou_B")
+def compute_ichimoku_senkou_b(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Senkou Span B (Leading Span B)"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_senkou_b"]
+
+
+@FeatureRegistry.register("Ichimoku_Chikou")
+def compute_ichimoku_chikou(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Chikou Span (Lagging Span)"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_chikou"]
+
+
+@FeatureRegistry.register("Ichimoku_Cloud_Thickness")
+def compute_ichimoku_cloud_thickness(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Cloud Thickness (volatility measure)"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_cloud_thickness"]
+
+
+@FeatureRegistry.register("Ichimoku_Price_Cloud_Distance")
+def compute_ichimoku_price_cloud_distance(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Price-Cloud Distance"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_price_cloud_distance"]
+
+
+@FeatureRegistry.register("Ichimoku_Composite_Signal")
+def compute_ichimoku_composite_signal(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Composite Signal"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_composite_signal"]
+
+
+@FeatureRegistry.register("Ichimoku_Trend")
+def compute_ichimoku_trend(df: pd.DataFrame) -> pd.Series:
+    """Ichimoku Trend Determination (1=bullish, -1=bearish, 0=neutral)"""
+    extended_features = calculate_ichimoku_extended(df)
+    return extended_features["ichimoku_trend"]
+
 
 def calculate_ichimoku_extended(
     df: pd.DataFrame,
@@ -127,6 +192,25 @@ def calculate_ichimoku_extended(
         + result["ichimoku_chikou_confirmation"]
     ) / 3
 
+    # 10. Trend determination based on Ichimoku signals
+    # Bullish trend: price above cloud, tenkan > kijun, chikou above price
+    bullish_signals = (
+        (result["ichimoku_price_position"] == 1)  # Price above cloud
+        & (result["ichimoku_tenkan"] > result["ichimoku_kijun"])  # Tenkan > Kijun
+        & (result["ichimoku_chikou_confirmation"] == 1)  # Chikou bullish
+    )
+
+    # Bearish trend: price below cloud, tenkan < kijun, chikou below price
+    bearish_signals = (
+        (result["ichimoku_price_position"] == -1)  # Price below cloud
+        & (result["ichimoku_tenkan"] < result["ichimoku_kijun"])  # Tenkan < Kijun
+        & (result["ichimoku_chikou_confirmation"] == -1)  # Chikou bearish
+    )
+
+    result["ichimoku_trend"] = np.where(
+        bullish_signals, 1, np.where(bearish_signals, -1, 0)
+    )
+
     # Handle NaN values - forward fill for the first few rows where calculations aren't possible
     result = result.bfill(limit=max(tenkan_period, kijun_period, senkou_span_b_period))
 
@@ -165,6 +249,7 @@ def ichimoku_feature_summary() -> Dict[str, str]:
         "ichimoku_tenkan_ratio": "Tenkan distance ratio to price",
         "ichimoku_kijun_ratio": "Kijun distance ratio to price",
         "ichimoku_composite_signal": "Composite signal combining multiple Ichimoku elements",
+        "ichimoku_trend": "Trend determination based on Ichimoku signals (1=bullish, -1=bearish, 0=neutral)",
     }
 
 

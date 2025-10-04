@@ -6,7 +6,7 @@ Implements hard stops, trailing stops, and cooldown rules.
 
 import time
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .profiles import RiskLimits
 
@@ -28,17 +28,17 @@ class RiskRuleEngine:
         self.portfolio_value = 0.0
         self.portfolio_volatility = 0.0
 
-        self.last_trade_time = 0
+        self.last_trade_time = 0.0
         self.trades_this_hour = 0
         self.hour_start_time = time.time()
 
-        self.trailing_stop_level = None
+        self.trailing_stop_level: Optional[float] = None
         self.trailing_stop_distance = 0.0
 
         # Trade history for analysis
-        self.trade_history: List[Dict] = []
+        self.trade_history: List[Dict[str, Any]] = []
 
-    def reset_daily_tracking(self):
+    def reset_daily_tracking(self) -> None:
         """Reset daily loss tracking at start of new day."""
         now = datetime.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -48,7 +48,7 @@ class RiskRuleEngine:
             self.daily_start_capital = self.portfolio_value
             self.daily_loss = 0.0
 
-    def update_portfolio_state(self, current_value: float, volatility: float):
+    def update_portfolio_state(self, current_value: float, volatility: float) -> None:
         """Update current portfolio state."""
         self.portfolio_value = current_value
         self.portfolio_volatility = volatility
@@ -153,7 +153,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def update_trailing_stop(self, current_price: float, position_side: str):
+    def update_trailing_stop(self, current_price: float, position_side: str) -> None:
         """Update trailing stop level."""
         if position_side not in ["long", "short"]:
             return
@@ -217,7 +217,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def record_trade(self, trade_data: Dict):
+    def record_trade(self, trade_data: Dict[str, Any]) -> None:
         """Record a completed trade."""
         self.trade_history.append({**trade_data, "timestamp": time.time()})
 

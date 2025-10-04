@@ -4,6 +4,8 @@ from typing import Dict, Optional
 
 import pandas as pd
 
+from ztb.utils.errors import safe_operation
+
 
 def compute_correlations(
     frames: Dict[str, pd.DataFrame],
@@ -19,6 +21,20 @@ def compute_correlations(
     Returns:
         Dict with 'pearson' and 'spearman' DataFrames or None if not computable.
     """
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _compute_correlations_impl(frames, nan_strategy, fill_value),
+        context="correlation_analysis",
+        default_result={"pearson": None, "spearman": None},
+    )
+
+
+def _compute_correlations_impl(
+    frames: Dict[str, pd.DataFrame],
+    nan_strategy: str,
+    fill_value: float,
+) -> Dict[str, Optional[pd.DataFrame]]:
+    """Implementation of correlation computation."""
     if not frames:
         return {"pearson": None, "spearman": None}
 

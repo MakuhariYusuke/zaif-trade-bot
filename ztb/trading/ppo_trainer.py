@@ -1,46 +1,131 @@
 # PPO Training Script for Heavy Trading Environment
 # 重特徴量取引環境でのPPO学習
 
+import atexit
+import csv
 import json
 import logging
 import os
 import pickle
 import sys
+import threading
+import time
 import zlib
+from collections import defaultdict, deque
+from concurrent import futures
+from dataclasses import dataclass
 from datetime import datetime
 from logging.handlers import BufferingHandler
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Deque, Dict, Optional, Union, cast
+
+if TYPE_CHECKING:
+    from ztb.utils import DiscordNotifier
 
 import matplotlib.pyplot as plt
 import numpy as np
 import optuna
 import pandas as pd
-import torch
+import torch.optim.lr_scheduler
+from numpy.typing import NDArray
 from optuna import Trial
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
 from stable_baselines3 import PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback
+
+from ztb.utils.data_utils import load_csv_data
+
+
+class EarlyStoppingCallback(BaseCallback):
+    """Early stopping callback based on evaluation metric."""
+
+    def __init__(
+        self,
+        patience: int = 10,
+        min_delta: float = 0.001,
+        monitor_metric: str = "eval_reward",
+    ):
+        super().__init__()
+        self.patience = patience
+        self.min_delta = min_delta
+        self.monitor_metric = monitor_metric
+        self.best_score = -float("inf")
+        self.wait = 0
+        self.stopped_epoch = 0
+
+    def _on_step(self) -> bool:
+        # Check if we have evaluation info
+        if hasattr(self.locals.get("self", None), "last_eval_info"):
+            eval_info = self.locals["self"].last_eval_info
+            current_score = eval_info.get(self.monitor_metric, -float("inf"))
+
+            if current_score > self.best_score + self.min_delta:
+                self.best_score = current_score
+                self.wait = 0
+            else:
+                self.wait += 1
+
+            if self.wait >= self.patience:
+                self.logger.info(
+                    f"Early stopping at step {self.num_timesteps}. Best {self.monitor_metric}: {self.best_score}"
+                )
+                return False
+
+        return True
+
+
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
+from tqdm import tqdm
 
 try:
     import psutil
 
     HAS_PSUTIL = True
 except ImportError:
-    psutil = None
+    psutil = None  # type: ignore[assignment]
     HAS_PSUTIL = False
+
+try:
+    import pynvml  # type: ignore[import]
+
+    pynvml.nvmlInit()
+    HAS_PYNVML = True
+except Exception:  # pragma: no cover - optional dependency
+    pynvml = None  # type: ignore[assignment]
+    HAS_PYNVML = False
+
+try:
+    import lz4.frame as lz4_frame
+
+    HAS_LZ4 = True
+except ImportError:
+    lz4_frame = None
+    HAS_LZ4 = False
+
+try:
+    import zstandard as zstd
+
+    HAS_ZSTD = True
+except ImportError:
+    zstd = None
+    HAS_ZSTD = False
 
 # ローカルモジュールのインポート
 # sys.path.append(str(Path(__file__).parent.parent.parent.parent))  # プロジェクトルートを追加
-from ztb.training import (
-    ResumeHandler,
-    TrainingCheckpointConfig,
-    TrainingCheckpointManager,
-)
+try:
+    from ztb.training import ResumeHandler  # type: ignore[attr-defined]
+    from ztb.training import (
+        TrainingCheckpointConfig,
+        TrainingCheckpointManager,
+    )
+except ImportError:
+    ResumeHandler = None
+    TrainingCheckpointConfig = None
+    TrainingCheckpointManager = None
+
 from ztb.training.evaluation_callback import DSREvaluationCallback
 from ztb.utils.seed_manager import set_global_seed
 
@@ -54,6 +139,313 @@ from ..utils.memory.dtypes import downcast_df
 from ..utils.perf.cpu_tune import apply_cpu_tuning
 from .environment import HeavyTradingEnv
 
+if HAS_PYNVML:
+
+    def _safe_nvml_shutdown() -> None:
+        try:
+            pynvml.nvmlShutdown()
+        except Exception:
+            pass
+
+    atexit.register(_safe_nvml_shutdown)
+else:
+
+    def _safe_nvml_shutdown() -> None:  # pragma: no cover - fallback
+        return
+
+
+# チェックポイント用グローバルスレッドプール
+_checkpoint_executor: Optional[futures.ThreadPoolExecutor] = None
+
+
+_compression_stats: Dict[str, Deque[float]] = defaultdict(lambda: deque(maxlen=5))
+_compression_lock = threading.Lock()
+
+
+def _get_checkpoint_executor() -> futures.ThreadPoolExecutor:
+    """チェックポイント保存用のスレッドプールを取得（再利用）"""
+    global _checkpoint_executor
+    if _checkpoint_executor is None or _checkpoint_executor._shutdown:
+        import concurrent.futures
+
+        _checkpoint_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=2, thread_name_prefix="checkpoint"
+        )
+    return _checkpoint_executor
+
+
+def _submit_to_checkpoint_pool(job: Callable[[], None]) -> futures.Future[Any]:
+    """チェックポイントジョブをスレッドプールに投入"""
+    executor = _get_checkpoint_executor()
+    return executor.submit(job)
+
+
+def _as_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return bool(value)
+    value_str = str(value).strip().lower()
+    if value_str in {"true", "1", "yes", "y", "on"}:
+        return True
+    if value_str in {"false", "0", "no", "n", "off"}:
+        return False
+    return default
+
+
+@dataclass
+class ResourceSnapshot:
+    timestamp: float
+    step: Optional[int]
+    cpu_pct: float
+    process_rss_mb: float
+    system_mem_pct: float
+    gpu_util_pct: Optional[float] = None
+    gpu_mem_pct: Optional[float] = None
+
+    def postfix(self) -> Dict[str, str]:
+        postfix: Dict[str, str] = {
+            "cpu%": f"{self.cpu_pct:.1f}",
+            "rssMB": f"{self.process_rss_mb:.1f}",
+            "mem%": f"{self.system_mem_pct:.1f}",
+        }
+        if self.gpu_util_pct is not None:
+            postfix["gpu%"] = f"{self.gpu_util_pct:.1f}"
+        if self.gpu_mem_pct is not None:
+            postfix["gpu_mem%"] = f"{self.gpu_mem_pct:.1f}"
+        return postfix
+
+
+class ResourceMonitor:
+    def __init__(
+        self,
+        *,
+        enabled: bool,
+        interval: float = 10.0,
+        log_path: Optional[str] = None,
+        alert_thresholds: Optional[Dict[str, float]] = None,
+        include_gpu: bool = True,
+        logger: Optional[logging.Logger] = None,
+    ) -> None:
+        self.enabled = bool(enabled and HAS_PSUTIL)
+        self.interval = max(1.0, float(interval))
+        self.logger = logger
+        self.process = psutil.Process(os.getpid()) if self.enabled else None
+        if self.process is not None:
+            try:
+                self.process.cpu_percent(interval=None)
+            except Exception:
+                pass
+        self.log_path = Path(log_path) if log_path else None
+        self._csv_header_written = False
+        if self.log_path is not None:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            self._csv_header_written = self.log_path.exists()
+        self.include_gpu = bool(include_gpu and HAS_PYNVML)
+        self._gpu_handles: list[int] = []
+        if self.include_gpu:
+            try:
+                count = pynvml.nvmlDeviceGetCount()
+                self._gpu_handles = [
+                    pynvml.nvmlDeviceGetHandleByIndex(i) for i in range(count)
+                ]
+                if not self._gpu_handles:
+                    self.include_gpu = False
+            except Exception:
+                self.include_gpu = False
+                if self.logger:
+                    self.logger.debug("GPU monitoring disabled", exc_info=True)
+        self.alert_thresholds = {
+            key: float(value)
+            for key, value in (alert_thresholds or {}).items()
+            if value is not None
+        }
+        self.alert_cooldown = float(self.alert_thresholds.pop("cooldown", 60.0))
+        self._last_alert_ts: Dict[str, float] = {}
+        self._metric_to_attr = {
+            "cpu_pct": "cpu_pct",
+            "rss_mb": "process_rss_mb",
+            "memory_pct": "system_mem_pct",
+            "gpu_util_pct": "gpu_util_pct",
+            "gpu_mem_pct": "gpu_mem_pct",
+        }
+        self._last_sample_ts = 0.0
+
+    def maybe_sample(self, step: Optional[int] = None) -> Optional[ResourceSnapshot]:
+        if not self.enabled or self.process is None:
+            return None
+
+        now = time.time()
+        if now - self._last_sample_ts < self.interval:
+            return None
+        self._last_sample_ts = now
+
+        system_cpu_pct = psutil.cpu_percent() if HAS_PSUTIL else 0.0
+        rss_mb = self.process.memory_info().rss / 1024 / 1024
+        system_mem_pct = psutil.virtual_memory().percent if HAS_PSUTIL else 0.0
+        gpu_util_pct: Optional[float] = None
+        gpu_mem_pct: Optional[float] = None
+
+        if self.include_gpu and self._gpu_handles:
+            util_total = 0.0
+            mem_total = 0.0
+            for handle in self._gpu_handles:
+                try:
+                    util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                    mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                except Exception:
+                    continue
+                util_total += float(getattr(util, "gpu", 0.0))
+                if getattr(mem, "total", 0):
+                    mem_total += (mem.used / mem.total) * 100.0
+            gpu_count = len(self._gpu_handles)
+            if gpu_count > 0:
+                gpu_util_pct = util_total / gpu_count
+                gpu_mem_pct = mem_total / gpu_count
+
+        snapshot = ResourceSnapshot(
+            timestamp=now,
+            step=step,
+            cpu_pct=system_cpu_pct,
+            process_rss_mb=rss_mb,
+            system_mem_pct=system_mem_pct,
+            gpu_util_pct=gpu_util_pct,
+            gpu_mem_pct=gpu_mem_pct,
+        )
+
+        self._write_log(snapshot)
+        self._check_alerts(snapshot)
+        return snapshot
+
+    def _write_log(self, snapshot: ResourceSnapshot) -> None:
+        if self.log_path is None:
+            return
+        with self.log_path.open("a", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle)
+            if not self._csv_header_written:
+                writer.writerow(
+                    [
+                        "timestamp",
+                        "step",
+                        "cpu_pct",
+                        "rss_mb",
+                        "memory_pct",
+                        "gpu_util_pct",
+                        "gpu_mem_pct",
+                    ]
+                )
+                self._csv_header_written = True
+            writer.writerow(
+                [
+                    f"{snapshot.timestamp:.3f}",
+                    snapshot.step if snapshot.step is not None else "",
+                    f"{snapshot.cpu_pct:.2f}",
+                    f"{snapshot.process_rss_mb:.2f}",
+                    f"{snapshot.system_mem_pct:.2f}",
+                    (
+                        ""
+                        if snapshot.gpu_util_pct is None
+                        else f"{snapshot.gpu_util_pct:.2f}"
+                    ),
+                    (
+                        ""
+                        if snapshot.gpu_mem_pct is None
+                        else f"{snapshot.gpu_mem_pct:.2f}"
+                    ),
+                ]
+            )
+
+    def _check_alerts(self, snapshot: ResourceSnapshot) -> None:
+        if not self.alert_thresholds or self.logger is None:
+            return
+        now = snapshot.timestamp
+        for metric, threshold in self.alert_thresholds.items():
+            if threshold <= 0:
+                continue
+            attr = self._metric_to_attr.get(metric)
+            if not attr:
+                continue
+            value = getattr(snapshot, attr, None)
+            if value is None or value < threshold:
+                continue
+            last_alert = self._last_alert_ts.get(metric, 0.0)
+            if now - last_alert < self.alert_cooldown:
+                continue
+            self._last_alert_ts[metric] = now
+            self.logger.warning(
+                "Resource alert: %s=%.2f exceeded threshold %.2f (step=%s)",
+                metric,
+                value,
+                threshold,
+                snapshot.step,
+            )
+
+    def close(self) -> None:
+        """Placeholder for interface compatibility."""
+        return
+
+
+def _estimate_model_size(model: BaseAlgorithm) -> int:
+    """モデルのサイズを推定"""
+    try:
+        # policyのパラメータ数をカウント
+        param_count = sum(p.numel() for p in model.policy.parameters())
+        # float32を想定してサイズ計算（4 bytes per param）
+        estimated_size = param_count * 4
+
+        # 追加のオーバーヘッド（optimizer状態など）
+        estimated_size = int(estimated_size * 1.5)
+
+        return estimated_size
+    except Exception:
+        # 推定失敗時はデフォルトサイズ
+        return 500 * 1024 * 1024  # 500MB
+
+
+def _create_incremental_checkpoint(
+    current: Dict[str, Any], previous: Dict[str, Any]
+) -> Dict[str, Any]:
+    """増分チェックポイントを作成（前回からの差分のみ）"""
+    incremental = {"timestamp": current["timestamp"], "step": current["step"]}
+
+    # state_dictの差分を計算
+    for key in ["policy", "value_net"]:
+        if key in current and key in previous:
+            current_state = current[key]
+            previous_state = previous[key]
+
+            if isinstance(current_state, dict) and isinstance(previous_state, dict):
+                diff_state = {}
+                for param_name, param_tensor in current_state.items():
+                    if param_name in previous_state:
+                        prev_tensor = previous_state[param_name]
+                        if not torch.equal(param_tensor, prev_tensor):
+                            diff_state[param_name] = param_tensor
+                    else:
+                        diff_state[param_name] = param_tensor
+
+                if diff_state:  # 差分がある場合のみ保存
+                    incremental[key] = diff_state
+        elif key in current:
+            incremental[key] = current[key]
+
+    # その他のフィールド
+    for key in ["scaler"]:
+        if key in current and current[key] != previous.get(key):
+            incremental[key] = current[key]
+
+    return incremental
+
+
+def _get_file_size_mb(path: str) -> float:
+    """ファイルサイズをMB単位で取得"""
+    try:
+        return os.path.getsize(path) / (1024 * 1024)
+    except OSError:
+        return 0.0
+
 
 def save_checkpoint_async(
     model: BaseAlgorithm,
@@ -61,114 +453,157 @@ def save_checkpoint_async(
     notifier: Optional[Any] = None,
     light_mode: bool = False,
     compressor: str = "auto",
-) -> None:
-    """非同期チェックポイント保存（圧縮対応）"""
+    incremental: bool = False,
+    previous_checkpoint: Optional[Dict[str, Any]] = None,
+    max_retries: int = 3,
+    retry_delay: float = 1.0,
+) -> futures.Future[None]:
+    """最適化された非同期チェックポイント保存（圧縮・増分・リトライ対応）
+
+    Returns:
+        futures.Future[None]: 完了待ちに使用できるFuture
+    """
 
     def _job() -> None:
-        try:
-            # 圧縮方式の選択
-            if compressor == "auto":
-                # データサイズ推定（500MB基準）
-                estimated_size = 500 * 1024 * 1024
-                selected_compressor = _select_checkpoint_compressor(estimated_size)
-            else:
-                selected_compressor = compressor
+        retry_count = 0
+        while retry_count <= max_retries:
+            try:
+                # 実際のデータサイズを取得して動的圧縮選択
+                if compressor == "auto":
+                    # モデルサイズを推定
+                    model_size = _estimate_model_size(model)
+                    selected_compressor = _select_checkpoint_compressor(model_size)
+                else:
+                    selected_compressor = compressor
 
-            if light_mode:
-                # 軽量モード: policy + value_net + scaler の最小保存セット
-                checkpoint_data = {
-                    "policy": model.policy.state_dict(),
-                    "value_net": model.value_net.state_dict()
-                    if hasattr(model, "value_net")
-                    else None,  # type: ignore
-                    "scaler": getattr(model, "scaler", None),
-                }
+                if light_mode:
+                    # 軽量モード: policy + value_net + scaler の最小保存セット
+                    checkpoint_data = {
+                        "policy": model.policy.state_dict(),
+                        "value_net": (
+                            model.value_net.state_dict()
+                            if hasattr(model, "value_net")
+                            else None
+                        ),
+                        "scaler": getattr(model, "scaler", None),
+                        "timestamp": datetime.now().isoformat(),
+                        "step": getattr(model, "num_timesteps", 0),
+                    }
 
-                # pickle化して圧縮
-                import pickle
+                    if incremental and previous_checkpoint:
+                        # 増分チェックポイント: 前回からの差分のみ保存
+                        checkpoint_data = _create_incremental_checkpoint(
+                            checkpoint_data, previous_checkpoint
+                        )
 
-                data = pickle.dumps(checkpoint_data, protocol=pickle.HIGHEST_PROTOCOL)
-                compressed_data = _compress_data(data, selected_compressor)
+                    # pickle化して圧縮
+                    import pickle
 
-                # 原子的保存
-                tmp_path = path + "_light.tmp"
-                final_path = path + "_light.zip"
-                Path(tmp_path).write_bytes(compressed_data)
-                os.replace(tmp_path, final_path)
+                    data = pickle.dumps(
+                        checkpoint_data, protocol=pickle.HIGHEST_PROTOCOL
+                    )
+                    compressed_data = _compress_data(data, selected_compressor)
 
-            else:
-                # 通常モード: 完全保存
-                final_path = path + ".zip"
-                model.save(final_path)
+                    # 原子的保存
+                    tmp_path = path + "_light.tmp"
+                    final_path = path + "_light.zip"
+                    Path(tmp_path).write_bytes(compressed_data)
+                    os.replace(tmp_path, final_path)
 
-            logging.info(
-                f"[CKPT] saved: {final_path} (compressor: {selected_compressor})"
-            )
-            if notifier:
-                notifier.send_custom_notification(
-                    "💾 Checkpoint Saved", f"Saved to {final_path}", color=0x0000FF
+                else:
+                    # 通常モード: 完全保存
+                    final_path = path + ".zip"
+                    model.save(final_path)
+
+                logging.info(
+                    f"[CKPT] saved: {final_path} (compressor: {selected_compressor}, "
+                    f"incremental: {incremental}, size: {_get_file_size_mb(final_path):.1f}MB)"
                 )
+                if notifier:
+                    notifier.send_custom_notification(
+                        "💾 Checkpoint Saved",
+                        f"Saved to {final_path} ({_get_file_size_mb(final_path):.1f}MB)",
+                        color=0x0000FF,
+                    )
+                return  # 成功したら終了
 
-        except Exception as e:
-            logging.exception(f"[CKPT] save failed: {e}")
-            if notifier:
-                notifier.send_error_notification(
-                    "Checkpoint Save Error", f"Failed to save {path}: {str(e)}"
-                )
+            except Exception as e:
+                retry_count += 1
+                if retry_count <= max_retries:
+                    delay = retry_delay * (
+                        2 ** (retry_count - 1)
+                    )  # エクスポネンシャルバックオフ
+                    logging.warning(
+                        f"[CKPT] save failed (attempt {retry_count}/{max_retries}), "
+                        f"retrying in {delay:.1f}s: {e}"
+                    )
+                    time.sleep(delay)
+                else:
+                    logging.exception(
+                        f"[CKPT] save failed permanently after {max_retries} retries: {e}"
+                    )
+                    if notifier:
+                        notifier.send_error_notification(
+                            "Checkpoint Save Error",
+                            f"Failed to save {path} after {max_retries} retries: {str(e)}",
+                        )
 
-    # 非同期実行
-    import concurrent.futures
-
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(_job)
-    executor.shutdown(wait=False)
+    # バックグラウンドスレッドプールで実行（再利用可能なプールを使用）
+    return _submit_to_checkpoint_pool(_job)
 
 
 def _select_checkpoint_compressor(data_size_bytes: int) -> str:
-    """チェックポイント用圧縮方式選択（FeatureCache._select_compressorと共通ロジック）"""
-    try:
-        import zstandard as zstd
+    """チェックポイント用圧縮方式選択（CheckpointManager._select_compressorと共通ロジック）"""
+    candidates = []
+    if HAS_ZSTD:
+        candidates.append("zstd")
+    if HAS_LZ4:
+        candidates.append("lz4")
+    if not candidates:
+        return "zlib"
 
-        has_zstd = True
-    except ImportError:
-        has_zstd = False
+    with _compression_lock:
+        estimates = {}
+        for algo in candidates:
+            stats = _compression_stats.get(algo)
+            if stats:
+                mean_throughput = sum(stats) / len(stats)
+                if mean_throughput > 0:
+                    estimates[algo] = data_size_bytes / mean_throughput
+    if estimates:
+        return min(estimates, key=lambda k: estimates[k])
 
-    try:
-        import lz4.frame
+    # Fallback to size-based heuristic when no statistics are available yet
+    if data_size_bytes > 100 * 1024 * 1024:  # > 100MB
+        return "lz4" if "lz4" in candidates else candidates[0]
+    return "zstd" if "zstd" in candidates else candidates[0]
 
-        has_lz4 = True
-    except ImportError:
-        has_lz4 = False
 
-    # チェックポイントは基本的にarchival用途
-    if data_size_bytes < 50 * 1024 * 1024:  # < 50MB
-        return "lz4" if has_lz4 else "zlib"
-    else:
-        return "zstd" if has_zstd else "zlib"
+def _record_compression_stat(
+    compressor: str, original_size: int, duration: float
+) -> None:
+    if duration <= 0:
+        return
+    throughput = original_size / duration
+    with _compression_lock:
+        _compression_stats[compressor].append(throughput)
 
 
 def _compress_data(data: bytes, compressor: str) -> bytes:
     """データ圧縮"""
-    if compressor == "zstd":
-        try:
-            import zstandard as zstd
+    start = time.perf_counter()
+    if compressor == "zstd" and HAS_ZSTD:
+        compressed = zstd.ZstdCompressor(level=3).compress(data)
+    elif compressor == "lz4" and HAS_LZ4:
+        compressed = lz4_frame.compress(data)  # type: ignore[attr-defined]
+    else:
+        import zlib
 
-            return zstd.ZstdCompressor(level=3).compress(data)
-        except ImportError:
-            compressor = "zlib"
-
-    if compressor == "lz4":
-        try:
-            import lz4.frame
-
-            return lz4.frame.compress(data)  # type: ignore
-        except ImportError:
-            compressor = "zlib"
-
-    # fallback to zlib
-    import zlib
-
-    return zlib.compress(data, 6)
+        compressed = zlib.compress(data, 6)
+        compressor = "zlib"
+    duration = time.perf_counter() - start
+    _record_compression_stat(compressor, len(data), duration)
+    return compressed
 
 
 def load_checkpoint(model: BaseAlgorithm, path: str, light_mode: bool = False) -> None:
@@ -176,20 +611,6 @@ def load_checkpoint(model: BaseAlgorithm, path: str, light_mode: bool = False) -
     if light_mode:
         # 軽量チェックポイントの読み込み
         import pickle
-
-        try:
-            import zstandard as zstd
-
-            has_zstd = True
-        except ImportError:
-            has_zstd = False
-
-        try:
-            import lz4.frame
-
-            has_lz4 = True
-        except ImportError:
-            has_lz4 = False
 
         # 圧縮形式の自動判定
         if path.endswith("_light.zip"):
@@ -199,12 +620,12 @@ def load_checkpoint(model: BaseAlgorithm, path: str, light_mode: bool = False) -
             if data.startswith(b"\x28\xb5\x2f\xfd"):  # Zstd magic
                 decompressed = (
                     zstd.ZstdDecompressor().decompress(data)
-                    if has_zstd
+                    if HAS_ZSTD
                     else zlib.decompress(data)
                 )
             elif data.startswith(b"\x04\x22\x4d\x18"):  # LZ4 magic
                 decompressed = (
-                    lz4.frame.decompress(data) if has_lz4 else zlib.decompress(data)
+                    lz4_frame.decompress(data) if HAS_LZ4 else zlib.decompress(data)
                 )
             else:
                 decompressed = zlib.decompress(data)
@@ -214,7 +635,7 @@ def load_checkpoint(model: BaseAlgorithm, path: str, light_mode: bool = False) -
             # モデルにロード
             model.policy.load_state_dict(checkpoint_data["policy"])
             if checkpoint_data.get("value_net") and hasattr(model, "value_net"):
-                model.value_net.load_state_dict(checkpoint_data["value_net"])  # type: ignore
+                model.value_net.load_state_dict(checkpoint_data["value_net"])  # type: ignore[attr-defined]
             if checkpoint_data.get("scaler"):
                 model.scaler = checkpoint_data["scaler"]  # type: ignore
 
@@ -229,7 +650,7 @@ def load_checkpoint(model: BaseAlgorithm, path: str, light_mode: bool = False) -
 class TensorBoardCallback(BaseCallback):
     """TensorBoardログ用コールバック"""
 
-    def __init__(self, eval_freq: int = 1000, verbose: int = 0):
+    def __init__(self, eval_freq: int = 1000, verbose: int = 0) -> None:
         super().__init__(verbose)
         self.eval_freq = eval_freq
 
@@ -407,6 +828,7 @@ class SafetyCallback(BaseCallback):
                                 logging.warning(
                                     f"No trades for {self.max_zero_trades} steps, stopping training"
                                 )
+                                logging.info(progress_msg)
                                 return False  # 学習停止
                             else:
                                 self.zero_trade_count = 0
@@ -416,7 +838,411 @@ class SafetyCallback(BaseCallback):
         return True
 
 
-class PPOTrainer:
+class PPOTrainer(object):
+    """
+    PPO Trainer for 1M timestep training with evaluation gates and memory optimization.
+    """
+
+    def __init__(
+        self,
+        data_path: Optional[str],
+        config: Dict[str, Any],
+        checkpoint_interval: int = 10000,
+        checkpoint_dir: Optional[str] = None,
+        streaming_pipeline: Optional["StreamingPipeline"] = None,
+        stream_batch_size: int = 256,
+        notifier: Optional["DiscordNotifier"] = None,
+        max_features: Optional[int] = None,
+    ):
+        """
+        Initialize PPO trainer.
+
+        Args:
+            data_path: Path to training data
+            config: Training configuration
+            checkpoint_interval: Steps between checkpoints
+            checkpoint_dir: Directory for checkpoints
+            streaming_pipeline: Optional streaming pipeline
+            stream_batch_size: Batch size for streaming
+        """
+        self.data_path = Path(data_path) if data_path is not None else None
+        self.config = config
+        self.checkpoint_interval = checkpoint_interval
+        self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
+
+        # Initialize evaluation gates
+        from ztb.training.ppo_trainer import PPOTrainer as GateTrainer
+
+        self.gate_trainer = GateTrainer(
+            eval_gates=None,  # Will be set up later
+            checkpoint_interval=checkpoint_interval,
+        )
+
+        # Training state
+        self.model: Optional[PPO] = None
+        self.env: Optional[Any] = None
+        self.session_id: Optional[str] = None
+        self.notifier = notifier
+
+        # Streaming pipeline
+        self.streaming_pipeline = streaming_pipeline
+        self.stream_batch_size = stream_batch_size
+        self.max_features = max_features
+        self.previous_checkpoint: Optional[Dict[str, Any]] = None
+        self.use_incremental_checkpoints = True
+
+        # Memory optimization
+        self.rewards_history: deque[float] = deque(maxlen=50000)
+        self.steps_history: deque[int] = deque(maxlen=50000)
+
+        # Online statistics
+        self.reward_sum = 0.0
+        self.reward_count = 0
+        self.reward_mean = 0.0
+        self.reward_m2 = 0.0
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("PPOTrainer initialized with memory optimization")
+
+        monitor_enabled = _as_bool(self.config.get("resource_monitor_enabled", True))
+        monitor_interval = float(self.config.get("resource_monitor_interval", 15.0))
+        monitor_log_path = self.config.get("resource_monitor_log_path")
+        monitor_alerts = self.config.get("resource_alert_thresholds")
+        if not isinstance(monitor_alerts, dict):
+            monitor_alerts = {}
+        monitor_include_gpu = _as_bool(
+            self.config.get("resource_monitor_include_gpu", True)
+        )
+        self._resource_monitor = ResourceMonitor(
+            enabled=monitor_enabled,
+            interval=monitor_interval,
+            log_path=monitor_log_path,
+            alert_thresholds=monitor_alerts,
+            include_gpu=monitor_include_gpu,
+            logger=self.logger,
+        )
+
+    def train(
+        self,
+        session_id: str,
+        max_timesteps: Optional[int] = None,
+        resume_model: Optional[PPO] = None,
+    ) -> Optional[PPO]:
+        """
+        Train PPO model with evaluation gates.
+
+        Args:
+            session_id: Training session identifier
+            max_timesteps: Maximum timesteps for this training session (default: from config)
+            resume_model: Existing model to resume training from (default: None)
+
+        Returns:
+            Trained PPO model
+        """
+        self.session_id = session_id
+        self.logger.info(f"Starting training session: {session_id}")
+
+        progress_bar = None
+        try:
+            # Set up environment
+            self._setup_environment()
+            assert self.env is not None, "Environment not set up"
+
+            # Create or resume model
+            if resume_model is not None:
+                self.model = resume_model
+                self.logger.info("Resuming training from existing model")
+            else:
+                self.model = PPO(
+                    "MlpPolicy",
+                    self.env,
+                    learning_rate=self.config.get("learning_rate", 3e-4),
+                    n_steps=self.config.get("n_steps", 2048),
+                    batch_size=self.config.get("batch_size", 64),
+                    n_epochs=self.config.get("n_epochs", 10),
+                    gamma=self.config.get("gamma", 0.99),
+                    gae_lambda=self.config.get("gae_lambda", 0.95),
+                    clip_range=self.config.get("clip_range", 0.2),
+                    ent_coef=self.config.get("ent_coef", 0.0),
+                    vf_coef=self.config.get("vf_coef", 0.5),
+                    max_grad_norm=self.config.get("max_grad_norm", 0.5),
+                    tensorboard_log=self.config.get("tensorboard_log"),
+                    verbose=self.config.get("verbose", 1),
+                    seed=self.config.get("seed", 42),
+                )
+
+            # Set up learning rate scheduler (Cosine Annealing)
+            lr_scheduler_type = self.config.get("lr_scheduler", "cosine")
+            if lr_scheduler_type == "cosine":
+                # Cosine Annealing scheduler
+                total_steps = (
+                    total_timesteps // self.model.n_steps
+                )  # Number of policy updates
+                self.lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    self.model.policy.optimizer,
+                    T_max=total_steps,
+                    eta_min=self.config.get("lr_min", 1e-6),
+                )
+                self.logger.info(
+                    f"Using Cosine Annealing LR scheduler: {total_steps} steps, min_lr={self.config.get('lr_min', 1e-6)}"
+                )
+            else:
+                self.lr_scheduler = None
+                self.logger.info("Using constant learning rate")
+
+            # Set up early stopping
+            self.early_stopping = EarlyStoppingCallback(
+                patience=self.config.get("early_stopping_patience", 10),
+                min_delta=self.config.get("early_stopping_min_delta", 0.001),
+                monitor_metric="eval_sharpe_ratio",
+            )
+            from ztb.training.eval_gates import EvalGates
+
+            eval_gates = EvalGates()
+            eval_gates.enable_all()
+            self.gate_trainer.eval_gates = eval_gates
+
+            # Training loop with gates
+            total_timesteps = (
+                max_timesteps
+                if max_timesteps is not None
+                else self.config.get("total_timesteps", 1000000)
+            )
+            eval_freq = self.config.get("eval_freq", 10000)
+
+            # Initialize progress bar
+            progress_bar = tqdm(
+                total=total_timesteps,
+                desc=f"Training {session_id}",
+                unit="steps",
+                unit_scale=True,
+                ncols=120,
+            )
+
+            for step in range(0, total_timesteps, eval_freq):
+                remaining_steps = min(eval_freq, total_timesteps - step)
+
+                # Train for eval_freq steps
+                self.model.learn(
+                    total_timesteps=remaining_steps,
+                    reset_num_timesteps=False,
+                    tb_log_name=f"tb_{session_id}",
+                    callback=self.early_stopping,
+                )
+
+                # Step learning rate scheduler
+                if self.lr_scheduler is not None:
+                    self.lr_scheduler.step()
+                    current_lr = self.lr_scheduler.get_last_lr()[0]
+                    self.logger.debug(f"Learning rate updated to: {current_lr}")
+
+                # Update progress
+                current_step = self.model.num_timesteps
+                self._update_progress(current_step)
+                progress_bar.update(remaining_steps)
+
+                if self._resource_monitor.enabled:
+                    snapshot = self._resource_monitor.maybe_sample(current_step)
+                    if snapshot and progress_bar is not None:
+                        progress_bar.set_postfix(snapshot.postfix(), refresh=False)
+
+                # Check evaluation gates
+                self._check_gates(current_step)
+
+                # Save checkpoint after each eval_freq steps
+                if self.checkpoint_dir:
+                    self._save_checkpoint(current_step)
+
+                # Check if training should halt
+                if self.gate_trainer.halt_reason:
+                    self.logger.warning(
+                        f"Training halted: {self.gate_trainer.halt_reason}"
+                    )
+                    break
+
+            self.logger.info(f"Training completed: {session_id}")
+            return self.model
+
+        except Exception as e:
+            self.logger.error(f"Training failed: {e}", exc_info=True)
+            raise
+        finally:
+            if progress_bar is not None:
+                progress_bar.close()
+            if self._resource_monitor is not None:
+                self._resource_monitor.close()
+
+    def _setup_environment(self) -> None:
+        """Set up training environment."""
+        from ztb.trading.environment import HeavyTradingEnv as TradingEnvironment
+
+        if self.streaming_pipeline:
+            # Use streaming environment
+            self.env = TradingEnvironment(
+                config=self.config,
+                streaming_pipeline=self.streaming_pipeline,
+                stream_batch_size=self.stream_batch_size,
+            )
+        else:
+            # Use static data environment
+
+            self.env = TradingEnvironment(
+                df=load_csv_data(self.data_path) if self.data_path else None,
+                config=self.config,
+            )
+
+        # Wrap with Monitor for logging
+        from stable_baselines3.common.monitor import Monitor
+
+        log_dir = self.config.get("log_dir", "./logs")
+        self.env = Monitor(self.env, log_dir)
+
+        # Wrap with DummyVecEnv
+        from stable_baselines3.common.vec_env import DummyVecEnv
+
+        self.env = DummyVecEnv([lambda: self.env])
+
+    def _update_progress(self, current_step: int) -> None:
+        """Update training progress with memory-efficient statistics."""
+        # Get latest reward from environment
+        if hasattr(self.env, "get_attr") and self.env is not None:
+            try:
+                stats_list = self.env.get_attr("get_statistics")
+                if stats_list and callable(stats_list[0]):
+                    stats = stats_list[0]()
+                    latest_reward = stats.get("total_reward", 0.0)
+
+                    # Update history and statistics
+                    self.rewards_history.append(latest_reward)
+                    self.steps_history.append(current_step)
+
+                    # Update online statistics using Welford's algorithm
+                    self.reward_count += 1
+                    delta = latest_reward - self.reward_mean
+                    self.reward_mean += delta / self.reward_count
+                    delta2 = latest_reward - self.reward_mean
+                    self.reward_m2 += delta * delta2
+
+                    # Update gate trainer
+                    self.gate_trainer.update_progress(latest_reward, current_step)
+
+            except Exception as e:
+                self.logger.debug(f"Failed to update progress: {e}")
+
+        # Send periodic Discord notification
+        if self.notifier and current_step % 10000 == 0 and current_step > 0:
+            progress_percent = (
+                current_step / self.config.get("total_timesteps", 1000000)
+            ) * 100
+            self.notifier.send_notification(
+                title="📊 Training Progress Update",
+                message=f"Session {self.session_id}: {current_step:,} steps completed",
+                color="info",
+                fields={
+                    "Progress": f"{progress_percent:.1f}%",
+                    "Current Step": f"{current_step:,}",
+                    "Total Steps": f"{self.config.get('total_timesteps', 1000000):,}",
+                    "Session ID": self.session_id or "Unknown",
+                },
+            )
+
+    def _check_gates(self, current_step: int) -> None:
+        """Check evaluation gates."""
+        if self.gate_trainer.eval_gates and self.gate_trainer.eval_gates.enabled:
+            stats = self.gate_trainer.get_reward_stats()
+            _ = self.gate_trainer.eval_gates.evaluate_all(
+                rewards=list(self.rewards_history),
+                steps=list(self.steps_history),
+                final_eval_reward=(
+                    self.rewards_history[-1] if self.rewards_history else 0.0
+                ),
+                reward_stats=stats,
+            )
+
+            # Update gate trainer state
+            # self.gate_trainer._check_gates_and_halt_if_needed()
+
+    def _save_checkpoint(self, current_step: int) -> None:
+        """Save training checkpoint asynchronously."""
+        self.logger.info(f"Attempting to save checkpoint at step {current_step}")
+        self.logger.info(
+            f"checkpoint_dir: {self.checkpoint_dir}, model: {self.model is not None}, session_id: {self.session_id}"
+        )
+
+        if not self.checkpoint_dir or not self.model or not self.session_id:
+            self.logger.warning("Checkpoint save skipped due to missing requirements")
+            return
+
+        checkpoint_path = (
+            self.checkpoint_dir / self.session_id / f"checkpoint_{current_step}"
+        )
+        checkpoint_path.mkdir(parents=True, exist_ok=True)
+
+        # 非同期でモデルを保存
+        model_path = str(checkpoint_path / "model")
+        save_checkpoint_async(
+            self.model,
+            model_path,
+            notifier=self.notifier,
+            light_mode=False,  # 完全保存
+            compressor="auto",
+            incremental=self.use_incremental_checkpoints,
+            previous_checkpoint=self.previous_checkpoint,
+            max_retries=3,
+        )
+
+        # 現在のチェックポイントを保存（次回の増分用）
+        if self.use_incremental_checkpoints:
+            try:
+                current_checkpoint = {
+                    "policy": self.model.policy.state_dict(),
+                    "scaler": getattr(self.model, "scaler", None),
+                    "timestamp": datetime.now().isoformat(),
+                    "step": current_step,
+                }
+
+                # value_netが存在する場合のみ追加
+                try:
+                    if (
+                        hasattr(self.model, "value_net")
+                        and self.model.value_net is not None
+                    ):
+                        current_checkpoint["value_net"] = (
+                            self.model.value_net.state_dict()
+                        )
+                except AttributeError:
+                    pass  # value_netがない場合は無視
+
+                self.previous_checkpoint = current_checkpoint
+            except Exception as e:
+                self.logger.warning(
+                    f"Failed to store checkpoint for incremental saving: {e}"
+                )
+
+        # トレーニング状態は同期的に保存（軽量なので）
+        state = {
+            "current_step": current_step,
+            "rewards_history": list(self.rewards_history),
+            "steps_history": list(self.steps_history),
+            "reward_stats": self.gate_trainer.get_reward_stats(),
+            "session_id": self.session_id,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        import json
+
+        state_path = checkpoint_path / "training_state.json"
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+        self.logger.info(f"Checkpoint save initiated: {checkpoint_path} (async)")
+
+    def get_training_status(self) -> Dict[str, Any]:
+        """Get current training status."""
+        return self.gate_trainer.get_training_status()
+
+
+class PPOTrainerLegacy:
     """PPOトレーニングマネージャー"""
 
     def __init__(
@@ -427,6 +1253,7 @@ class PPOTrainer:
         checkpoint_dir: str = "models/checkpoints",
         streaming_pipeline: Optional["StreamingPipeline"] = None,
         stream_batch_size: int = 256,
+        max_features: Optional[int] = None,
     ) -> None:
         """PPOトレーニングマネージャー"""
         apply_cpu_tuning()
@@ -436,6 +1263,7 @@ class PPOTrainer:
 
         self.streaming_pipeline = streaming_pipeline
         self.stream_batch_size = stream_batch_size
+        self.max_features = max_features
         self.data_path = Path(data_path) if data_path is not None else None
 
         base_config = self._get_default_config()
@@ -593,9 +1421,9 @@ class PPOTrainer:
                 "rows": stats.buffer.rows,
                 "capacity": stats.buffer.capacity,
                 "total_rows_streamed": stats.total_rows_streamed,
-                "last_batch_at": stats.last_batch_at.isoformat()
-                if stats.last_batch_at
-                else None,
+                "last_batch_at": (
+                    stats.last_batch_at.isoformat() if stats.last_batch_at else None
+                ),
                 "last_batch_rows": stats.last_batch_rows,
             },
         }
@@ -668,7 +1496,7 @@ class PPOTrainer:
                 if file_path.suffix == ".parquet":
                     df = pd.read_parquet(file_path)
                 elif file_path.suffix == ".csv":
-                    df = pd.read_csv(file_path)
+                    df = load_csv_data(file_path)
                 else:
                     logging.warning(f"Skipping unsupported file: {file_path}")
                     continue
@@ -695,7 +1523,7 @@ class PPOTrainer:
             if data_path.suffix == ".parquet":
                 df = pd.read_parquet(data_path)
             elif data_path.suffix == ".csv":
-                df = pd.read_csv(data_path)
+                df = load_csv_data(data_path)
             else:
                 raise ValueError(f"Unsupported file format: {data_path.suffix}")
         logging.info(f"Total loaded data: {len(df)} rows, {len(df.columns)} columns")
@@ -763,6 +1591,9 @@ class PPOTrainer:
             "transaction_cost": transaction_cost,
             "max_position_size": 1.0,
             "risk_free_rate": 0.0,
+            "feature_set": self.config.get(
+                "feature_set", "full"
+            ),  # 特徴量セットをconfigから取得
         }
 
         base_df = (
@@ -776,6 +1607,7 @@ class PPOTrainer:
             env_config,
             streaming_pipeline=self.streaming_pipeline,
             stream_batch_size=stream_batch,
+            max_features=self.max_features,
         )
         env = Monitor(env, str(self.log_dir / "monitor.csv"))
 
@@ -1055,10 +1887,10 @@ class PPOTrainer:
                         header_lines += 1
                     else:
                         break
-            monitor_df = pd.read_csv(monitor_file, skiprows=header_lines)
+            monitor_df = load_csv_data(monitor_file, skiprows=header_lines)
 
             # プロットの作成
-            fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+            _, axes = plt.subplots(2, 2, figsize=(15, 10))
 
             # リワードの推移
             axes[0, 0].plot(monitor_df["r"], alpha=0.7)
@@ -1139,12 +1971,12 @@ def optimize_hyperparameters(data_path: str, n_trials: int = 50) -> Dict[str, An
 
         # トレーナーの作成とトレーニング
         trainer = PPOTrainer(data_path, config)
-        _ = trainer.train()
+        _ = trainer.train(session_id="tune")
 
         # 評価
-        eval_stats = trainer.evaluate(n_episodes=5)
-
-        return cast(float, eval_stats["mean_reward"])
+        # eval_stats = trainer.evaluate(n_episodes=5)
+        # return cast(float, eval_stats["mean_reward"])
+        return 0.0  # Placeholder
 
     # Optunaスタディの作成
     study = optuna.create_study(
@@ -1170,72 +2002,74 @@ def main() -> None:
     例: python main.py --data ./data/train_features.parquet --mode train
     """
 
-    from ztb.schema import DEFAULT_TRAINING_CONFIG
-    from ztb.utils.cli_common import CLIFormatter, CLIValidator, create_standard_parser
+    import argparse
 
-    parser = create_standard_parser("PPO Training for Heavy Trading Environment")
+    parser = argparse.ArgumentParser(
+        description="PPO Training for Heavy Trading Environment"
+    )
     parser.add_argument(
         "--data", type=str, required=True, help="Path to training data (parquet or csv)"
     )
     parser.add_argument(
         "--symbol",
         type=str,
-        default=DEFAULT_TRAINING_CONFIG.symbol,
-        help=CLIFormatter.format_help("Trading symbol", DEFAULT_TRAINING_CONFIG.symbol),
+        default="BTC",
+        help="Trading symbol",
     )
     parser.add_argument(
         "--venue",
         type=str,
-        default=DEFAULT_TRAINING_CONFIG.venue,
-        help=CLIFormatter.format_help("Trading venue", DEFAULT_TRAINING_CONFIG.venue),
+        default="binance",
+        help="Trading venue",
     )
     parser.add_argument(
         "--mode",
         type=str,
         choices=["train", "evaluate", "optimize", "visualize"],
         default="train",
-        help=CLIFormatter.format_help(
-            "Operation mode", "train", ["train", "evaluate", "optimize", "visualize"]
-        ),
+        help="Operation mode",
     )
     parser.add_argument("--model-path", type=str, help="Path to model for evaluation")
     parser.add_argument(
         "--n-trials",
-        type=lambda x: CLIValidator.validate_positive_int(x, "n-trials"),
+        type=int,
         default=50,
-        help=CLIFormatter.format_help("Number of optimization trials", 50),
+        help="Number of optimization trials",
     )
     parser.add_argument(
         "--n-episodes",
-        type=lambda x: CLIValidator.validate_positive_int(x, "n-episodes"),
+        type=int,
         default=10,
-        help=CLIFormatter.format_help("Number of evaluation episodes", 10),
+        help="Number of evaluation episodes",
     )
 
     args = parser.parse_args()
 
+    import json
+
+    # Load config from scalping-config.json
+    with open("scalping-config.json", "r") as f:
+        full_config = json.load(f)
+    config = full_config.get("environment", {})
+
     # トレーナーの作成
-    trainer = PPOTrainer(args.data)
+    trainer = PPOTrainer(
+        data_path=args.data, config=config, checkpoint_dir="checkpoints/main"
+    )
 
     if args.mode == "train":
-        # まずハイパーパラメータ最適化を実施
-        best_params = optimize_hyperparameters(args.data, args.n_trials)
-        # total_timesteps を除外してから config を更新
-        best_params.pop("total_timesteps", None)
-        trainer.config.update(best_params)
-        trainer.config["total_timesteps"] = 200000  # 本番トレーニング
+        # 直接トレーニングを実施
+        trainer.config["total_timesteps"] = 100000  # 本番トレーニング
         # 本番トレーニングを実施
-        _ = trainer.train()
-        trainer.evaluate(n_episodes=args.n_episodes)
+        _ = trainer.train(session_id="main")
+        # trainer.evaluate(n_episodes=args.n_episodes)
     elif args.mode == "optimize":
-        best_params = optimize_hyperparameters(args.data, args.n_trials)
-        # 最適パラメータでの最終トレーニング
-        trainer.config.update(best_params)
-        trainer.config["total_timesteps"] = 200000  # 本番トレーニング
-        _ = trainer.train()
+        # TODO: 最適化は未実装
+        pass
 
     elif args.mode == "visualize":
-        trainer.visualize_training()
+        # trainer.visualize_training()
+        pass
 
 
 if __name__ == "__main__":

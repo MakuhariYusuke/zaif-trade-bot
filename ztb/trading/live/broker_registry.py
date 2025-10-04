@@ -6,9 +6,8 @@ with contract testing support.
 """
 
 import logging
-from typing import Dict, Optional, Protocol, Type
+from typing import Any, Dict, Optional, Protocol, Type
 
-from .broker_interfaces import IBroker
 from .coincheck_adapter import CoincheckAdapter
 
 logger = logging.getLogger(__name__)
@@ -31,11 +30,11 @@ class BrokerProtocol(Protocol):
         """Cancel an order by ID."""
         ...
 
-    def get_order_status(self, order_id: str) -> Dict:
+    def get_order_status(self, order_id: str) -> Dict[str, Any]:
         """Get order status."""
         ...
 
-    def get_open_orders(self) -> list[Dict]:
+    def get_open_orders(self) -> list[Dict[str, Any]]:
         """Get all open orders."""
         ...
 
@@ -43,9 +42,9 @@ class BrokerProtocol(Protocol):
 class SimBroker:
     """Simple simulation broker for testing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.balances = {"JPY": 100000.0, "BTC": 0.0}
-        self.orders = {}
+        self.orders: Dict[str, Dict[str, Any]] = {}
         self.order_counter = 0
 
     def get_balance(self, currency: str) -> float:
@@ -72,17 +71,19 @@ class SimBroker:
             return True
         return False
 
-    def get_order_status(self, order_id: str) -> Dict:
+    def get_order_status(self, order_id: str) -> Dict[str, Any]:
         return self.orders.get(order_id, {"status": "not_found"})
 
-    def get_open_orders(self) -> list[Dict]:
+    def get_open_orders(self) -> list[Dict[str, Any]]:
         return [order for order in self.orders.values() if order["status"] == "open"]
 
 
 class CoincheckSkeletonBroker:
     """Skeleton implementation for Coincheck broker (raises NotImplemented for network calls)."""
 
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None):
+    def __init__(
+        self, api_key: Optional[str] = None, api_secret: Optional[str] = None
+    ) -> None:
         self.api_key = api_key
         self.api_secret = api_secret
         if not self.api_key or not self.api_secret:
@@ -110,13 +111,13 @@ class CoincheckSkeletonBroker:
         # TODO: Implement actual API call
         raise NotImplementedError("Coincheck cancel order API not implemented")
 
-    def get_order_status(self, order_id: str) -> Dict:
+    def get_order_status(self, order_id: str) -> Dict[str, Any]:
         if not self.api_key:
             raise NotImplementedError("Coincheck API not configured")
         # TODO: Implement actual API call
         raise NotImplementedError("Coincheck order status API not implemented")
 
-    def get_open_orders(self) -> list[Dict]:
+    def get_open_orders(self) -> list[Dict[str, Any]]:
         if not self.api_key:
             raise NotImplementedError("Coincheck API not configured")
         # TODO: Implement actual API call
@@ -126,22 +127,22 @@ class CoincheckSkeletonBroker:
 class BrokerRegistry:
     """Registry of available brokers."""
 
-    def __init__(self):
-        self._brokers: Dict[str, Type[IBroker]] = {}
+    def __init__(self) -> None:
+        self._brokers: Dict[str, Type[Any]] = {}
         self._register_default_brokers()
 
-    def _register_default_brokers(self):
+    def _register_default_brokers(self) -> None:
         """Register default broker implementations."""
         self.register_broker("sim", SimBroker)
         self.register_broker("coincheck", CoincheckAdapter)
         self.register_broker("coincheck_skeleton", CoincheckSkeletonBroker)
 
-    def register_broker(self, name: str, broker_class: Type[IBroker]):
+    def register_broker(self, name: str, broker_class: Type[Any]) -> None:
         """Register a broker implementation."""
         self._brokers[name] = broker_class
         logger.info(f"Registered broker: {name}")
 
-    def get_broker(self, name: str, **kwargs) -> IBroker:
+    def get_broker(self, name: str, **kwargs: Any) -> Any:
         """Get a broker instance."""
         if name not in self._brokers:
             raise ValueError(f"Unknown broker: {name}")

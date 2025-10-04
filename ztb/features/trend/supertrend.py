@@ -2,9 +2,26 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from numba import jit  # type: ignore[import-untyped]
+from numpy.typing import NDArray
 
 from ztb.features.base import ParameterizedFeature
+from ztb.features.registry import FeatureRegistry
+
+
+@FeatureRegistry.register("Supertrend")
+def compute_supertrend(df: pd.DataFrame) -> pd.Series:
+    """Supertrend Indicator"""
+    feature = Supertrend()
+    result_df = feature.compute(df)
+    return result_df["supertrend"]
+
+
+@FeatureRegistry.register("Supertrend_Direction")
+def compute_supertrend_direction(df: pd.DataFrame) -> pd.Series:
+    """Supertrend Direction (1 for uptrend, -1 for downtrend)"""
+    feature = Supertrend()
+    result_df = feature.compute(df)
+    return result_df["supertrend_direction"]
 
 
 class Supertrend(ParameterizedFeature):
@@ -25,7 +42,7 @@ class Supertrend(ParameterizedFeature):
       - You should compute and add the ATR column beforehand, for example using an ATR feature or function.
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(
             "Supertrend",
             deps=["high", "low", "close"],
@@ -42,15 +59,18 @@ class Supertrend(ParameterizedFeature):
         atr_col = f"atr_{period}"
 
         if atr_col not in df.columns:
-            raise ValueError(
-                f"ATR column '{atr_col}' not found in DataFrame. Please compute ATR first."
-            )
+            # Compute ATR if not present
+            from ztb.features.volatility.atr import compute_atr_simplified
+
+            atr_series = compute_atr_simplified(df, period)
+            df = df.copy()
+            df[atr_col] = atr_series
 
         supertrend_df = pd.DataFrame(index=df.index)
-        high = df["high"].values
-        low = df["low"].values
-        close = df["close"].values
-        atr = df[atr_col].values
+        high = np.asarray(df["high"])
+        low = np.asarray(df["low"])
+        close = np.asarray(df["close"])
+        atr = np.asarray(df[atr_col])
 
         supertrend, direction = self._compute_supertrend(
             high, low, close, atr, multiplier
@@ -62,11 +82,16 @@ class Supertrend(ParameterizedFeature):
         return supertrend_df
 
     @staticmethod
-    @jit(nopython=True)
-    def _compute_supertrend(high, low, close, atr, multiplier):  # type: ignore[no-untyped-def]
+    def _compute_supertrend(
+        high: NDArray[np.floating[Any]],
+        low: NDArray[np.floating[Any]],
+        close: NDArray[np.floating[Any]],
+        atr: NDArray[np.floating[Any]],
+        multiplier: float
+    ) -> tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
+        """Compute Supertrend using pure numpy (no numba)"""
         n = len(close)
-        # Numba's nopython mode does not support np.nan in np.full, so use a sentinel value (e.g., -1.0)
-        supertrend = np.full(n, -1.0)
+        supertrend = np.full(n, np.nan, dtype=np.float64)
         direction = np.zeros(n, dtype=np.float64)
 
         for i in range(n):

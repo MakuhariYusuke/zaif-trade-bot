@@ -1,0 +1,19 @@
+{
+  "current_step": 20480,
+  "rewards_history": [
+    -121.23016091235694,
+    422.2978818798019
+  ],
+  "steps_history": [
+    10240,
+    20480
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "scalping_iterative_v1_iter_01",
+  "timestamp": "2025-10-03T05:16:06.533920"
+}

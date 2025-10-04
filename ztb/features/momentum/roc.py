@@ -3,6 +3,8 @@ ROC (Rate of Change) implementation.
 ROCの実装
 """
 
+from __future__ import annotations
+
 import pandas as pd
 
 from ztb.features.feature_cache import feature_cache
@@ -10,7 +12,7 @@ from ztb.features.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("ROC")
-def compute_roc(df: pd.DataFrame, period: int = 10) -> pd.Series[float]:
+def compute_roc(df: pd.DataFrame, period: int = 10) -> pd.Series:
     """Compute ROC (Rate of Change)"""
     if not FeatureRegistry.is_cache_enabled():
         roc = (

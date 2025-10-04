@@ -10,6 +10,9 @@ import pytest
 
 from ztb.trading.backtest.metrics import MetricsCalculator
 
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
+
 
 class TestStatisticalSignificance:
     """Test statistical significance calculations."""
@@ -20,7 +23,7 @@ class TestStatisticalSignificance:
         np.random.seed(42)
         return 42
 
-    def test_iid_gaussian_returns_dsr_near_zero(self, fixed_seed) -> None:
+    def test_iid_gaussian_returns_dsr_near_zero(self, fixed_seed: int) -> None:
         """Test that IID Gaussian returns produce DSR near zero."""
         # Generate IID Gaussian returns
         n_periods = 1000
@@ -33,7 +36,7 @@ class TestStatisticalSignificance:
         assert dsr is not None
         assert -0.5 <= dsr <= 0.5, f"DSR {dsr} should be near zero for IID returns"
 
-    def test_iid_gaussian_bootstrap_p_near_half(self, fixed_seed):
+    def test_iid_gaussian_bootstrap_p_near_half(self, fixed_seed: int) -> None:
         """Test that bootstrap p-value is near 0.5 for identical strategies."""
         # Generate two identical IID return series
         n_periods = 500
@@ -45,11 +48,11 @@ class TestStatisticalSignificance:
 
         # For identical distributions, p-value should be around 0.5
         assert p_value is not None
-        assert 0.3 <= p_value <= 0.7, (
-            f"Bootstrap p-value {p_value} should be near 0.5 for identical distributions"
-        )
+        assert (
+            0.3 <= p_value <= 0.7
+        ), f"Bootstrap p-value {p_value} should be near 0.5 for identical distributions"
 
-    def test_dominant_rl_series_low_p_value(self, fixed_seed):
+    def test_dominant_rl_series_low_p_value(self, fixed_seed: int) -> None:
         """Test that dominant RL series produces p < 0.05."""
         # Generate returns: RL with consistent outperformance
         n_periods = 500
@@ -66,11 +69,11 @@ class TestStatisticalSignificance:
 
         # RL should significantly outperform
         assert p_value is not None
-        assert p_value < 0.05, (
-            f"Bootstrap p-value {p_value} should be < 0.05 for dominant RL"
-        )
+        assert (
+            p_value < 0.05
+        ), f"Bootstrap p-value {p_value} should be < 0.05 for dominant RL"
 
-    def test_bootstrap_p_value_consistency(self, fixed_seed):
+    def test_bootstrap_p_value_consistency(self, fixed_seed: int) -> None:
         """Test that bootstrap p-values are consistent with fixed seed."""
         # Generate test data
         n_periods = 300
@@ -85,11 +88,11 @@ class TestStatisticalSignificance:
             p_values.append(p_val)
 
         # All p-values should be identical with fixed seed
-        assert all(p == p_values[0] for p in p_values), (
-            f"P-values not consistent: {p_values}"
-        )
+        assert all(
+            p == p_values[0] for p in p_values
+        ), f"P-values not consistent: {p_values}"
 
-    def test_dsr_with_extreme_skewness(self, fixed_seed):
+    def test_dsr_with_extreme_skewness(self, fixed_seed: int) -> None:
         """Test DSR calculation with skewed returns."""
         # Generate returns with negative skewness (crash-like)
         n_periods = 1000
@@ -106,12 +109,16 @@ class TestStatisticalSignificance:
         # DSR should account for skewness
         assert dsr is not None
         # With negative skewness, DSR should be lower than regular Sharpe
-        regular_sharpe = np.mean(skewed_returns) / np.std(skewed_returns) * np.sqrt(252)
-        assert dsr < regular_sharpe, (
-            f"DSR {dsr} should be lower than regular Sharpe {regular_sharpe} for negatively skewed returns"
+        regular_sharpe = (
+            np.mean(skewed_returns)
+            / np.std(skewed_returns)
+            * np.sqrt(TRADING_DAYS_PER_YEAR)
         )
+        assert (
+            dsr < regular_sharpe
+        ), f"DSR {dsr} should be lower than regular Sharpe {regular_sharpe} for negatively skewed returns"
 
-    def test_bootstrap_with_small_sample(self, fixed_seed):
+    def test_bootstrap_with_small_sample(self, fixed_seed: int) -> None:
         """Test bootstrap with small sample sizes."""
         # Small sample for fast CI testing
         n_periods = 50
@@ -136,7 +143,7 @@ class TestStatisticalSignificance:
         # With zero volatility, higher moments are undefined, but should not crash
         assert isinstance(dsr, (int, float))
 
-    def test_bootstrap_identical_returns(self, fixed_seed):
+    def test_bootstrap_identical_returns(self, fixed_seed: int) -> None:
         """Test bootstrap with identical return series."""
         returns = np.random.normal(0.001, 0.02, 200)
 
@@ -144,9 +151,9 @@ class TestStatisticalSignificance:
 
         # Identical series should give p-value very close to 0.5
         assert p_value is not None
-        assert 0.4 <= p_value <= 0.6, (
-            f"P-value {p_value} should be near 0.5 for identical series"
-        )
+        assert (
+            0.4 <= p_value <= 0.6
+        ), f"P-value {p_value} should be near 0.5 for identical series"
 
 
 if __name__ == "__main__":

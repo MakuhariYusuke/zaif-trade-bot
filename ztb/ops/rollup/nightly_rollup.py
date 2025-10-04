@@ -6,26 +6,28 @@ Runs index_sessions, aggregate_trends, make_trends_md, and budget_rollup in sequ
 """
 
 import argparse
-import subprocess
 import sys
+
+from ztb.utils.compat_wrapper import run_command_safely
 
 
 def run_command(command: list[str]) -> int:
     """Run command and return exit code."""
     try:
-        print(f"Running: {' '.join(command)}")
-        result = subprocess.run(command, capture_output=True, text=True)
-        if result.stdout:
-            print(result.stdout.rstrip())
-        if result.stderr:
-            print(result.stderr.rstrip(), file=sys.stderr)
-        return result.returncode
+        cmd_str = " ".join(command)
+        print(f"Running: {cmd_str}")
+        result = run_command_safely(cmd_str)
+        if result["stdout"]:
+            print(result["stdout"].rstrip())
+        if result["stderr"]:
+            print(result["stderr"].rstrip(), file=sys.stderr)
+        return int(result["returncode"])
     except Exception as e:
         print(f"Command failed: {e}", file=sys.stderr)
         return 1
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Run nightly rollup operations")
     parser.add_argument(
         "--dry-run", action="store_true", help="Show commands without executing"

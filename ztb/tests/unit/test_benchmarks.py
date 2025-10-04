@@ -191,9 +191,9 @@ class TestPerformanceBenchmarks:
             memory_increase = final_memory - initial_memory
 
             # Memory increase should be reasonable (< 500MB)
-            assert memory_increase < 500, (
-                f"Excessive memory usage: {memory_increase:.2f} MB"
-            )
+            assert (
+                memory_increase < 500
+            ), f"Excessive memory usage: {memory_increase:.2f} MB"
 
         except ImportError:
             # psutil not available, skip memory test
@@ -240,9 +240,9 @@ class TestPerformanceBenchmarks:
         elapsed = time.time() - start_time
 
         # Should complete within reasonable time
-        assert elapsed < 30, (
-            f"Concurrent evaluation took too long: {elapsed:.2f} seconds"
-        )
+        assert (
+            elapsed < 30
+        ), f"Concurrent evaluation took too long: {elapsed:.2f} seconds"
 
     def test_regression_detection(self, medium_ohlc_data):
         """Test for performance regression detection"""
@@ -266,9 +266,9 @@ class TestPerformanceBenchmarks:
         current_time = time.time() - start
 
         # Should not be more than 2x slower than baseline
-        assert current_time <= avg_time * 2, (
-            f"Performance regression: {current_time:.3f}s vs baseline {avg_time:.3f}s"
-        )
+        assert (
+            current_time <= avg_time * 2
+        ), f"Performance regression: {current_time:.3f}s vs baseline {avg_time:.3f}s"
         assert len(result) == 1
         assert "auto_ema_cross_5_20" in result
 
@@ -308,9 +308,9 @@ class TestPerformanceBenchmarks:
         # Time for 2000 points should be less than 10x time for 100 points
         if len(times) >= 2:
             scaling_factor = times[-1] / times[0] if times[0] > 0 else 1
-            assert scaling_factor < 10, (
-                f"Poor scaling: {scaling_factor:.2f}x slower for 20x more data"
-            )
+            assert (
+                scaling_factor < 10
+            ), f"Poor scaling: {scaling_factor:.2f}x slower for 20x more data"
 
     def test_indicators_performance_comparison(self, medium_ohlc_data):
         """Compare performance of different indicator calculations"""
@@ -322,9 +322,9 @@ class TestPerformanceBenchmarks:
         kalman_time = time.time() - start
 
         # Kalman should complete within reasonable time and return features
-        assert kalman_time < 5, (
-            f"Kalman calculation took too long: {kalman_time:.2f} seconds"
-        )
+        assert (
+            kalman_time < 5
+        ), f"Kalman calculation took too long: {kalman_time:.2f} seconds"
         assert isinstance(kalman_result, pd.DataFrame)
         assert len(kalman_result) > 0
 
@@ -348,6 +348,6 @@ class TestPerformanceBenchmarks:
             values = data.values.flatten()
             values = values[~np.isnan(values)]  # Remove NaN
             if len(values) > 0:
-                assert np.all(np.abs(values) <= 2), (
-                    f"Unreasonable values in {name}: {values[:5]}"
-                )
+                assert np.all(
+                    np.abs(values) <= 2
+                ), f"Unreasonable values in {name}: {values[:5]}"

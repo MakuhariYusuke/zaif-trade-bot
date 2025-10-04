@@ -5,13 +5,12 @@ ATR (Average True Range) implementation.
 
 import numpy as np
 import pandas as pd
-from typing import cast
 
 from ztb.features.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("ATR")
-def compute_atr(df: pd.DataFrame, period: int = 14) -> "pd.Series[float]":
+def compute_atr(df: pd.DataFrame, period: int = 14) -> "pd.Series":
     """Compute Average True Range (ATR)"""
     tr = np.maximum(
         df["high"] - df["low"],
@@ -21,4 +20,10 @@ def compute_atr(df: pd.DataFrame, period: int = 14) -> "pd.Series[float]":
         ),
     )
     atr = pd.Series(tr).rolling(period).mean()
-    return cast("pd.Series[float]", atr)  # 初期値はNaNのまま返す
+    return atr  # 初期値はNaNのまま返す
+
+
+@FeatureRegistry.register("ATR_simplified")
+def compute_atr_simplified(df: pd.DataFrame, period: int = 10) -> "pd.Series":
+    """Compute Simplified ATR (period=10)"""
+    return compute_atr(df, period)

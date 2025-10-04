@@ -4,11 +4,13 @@ kalman_ext.py
 Extended Kalman Filter analysis with residuals and autocorrelation
 """
 
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 import pandas as pd
-from scipy.stats import pearsonr
+from numpy.typing import NDArray
+
+from ztb.features.registry import FeatureRegistry
 
 
 class SimpleKalmanFilter:
@@ -19,6 +21,7 @@ class SimpleKalmanFilter:
     def __init__(
         self, process_variance: float = 0.01, measurement_variance: float = 0.1
     ):
+        super().__init__()
         self.process_variance = process_variance
         self.measurement_variance = measurement_variance
         # Declare instance variables with type annotations
@@ -71,6 +74,39 @@ class SimpleKalmanFilter:
         return float(self.posterior_estimate), float(self.posterior_error_estimate)
 
 
+@FeatureRegistry.register("Kalman_Estimate")
+def compute_kalman_estimate(df: pd.DataFrame) -> pd.Series:
+    """Kalman Filter Price Estimate"""
+    extended_features = calculate_kalman_extended(df)
+    return (
+        extended_features["kalman_estimate"]
+        if "kalman_estimate" in extended_features.columns
+        else pd.Series([0.0] * len(df), index=df.index)
+    )
+
+
+@FeatureRegistry.register("Kalman_Residual")
+def compute_kalman_residual(df: pd.DataFrame) -> pd.Series:
+    """Kalman Filter Residual (Price - Estimate)"""
+    extended_features = calculate_kalman_extended(df)
+    return (
+        extended_features["kalman_residual"]
+        if "kalman_residual" in extended_features.columns
+        else pd.Series([0.0] * len(df), index=df.index)
+    )
+
+
+@FeatureRegistry.register("Kalman_Residual_Norm")
+def compute_kalman_residual_norm(df: pd.DataFrame) -> pd.Series:
+    """Kalman Filter Normalized Residual"""
+    extended_features = calculate_kalman_extended(df)
+    return (
+        extended_features["kalman_residual_normalized"]
+        if "kalman_residual_normalized" in extended_features.columns
+        else pd.Series([0.0] * len(df), index=df.index)
+    )
+
+
 def calculate_kalman_extended(
     data: pd.DataFrame,
     process_variance: float = 0.01,
@@ -92,23 +128,32 @@ def calculate_kalman_extended(
     if len(data) < 10:
         return pd.DataFrame(index=data.index)
 
-    # Initialize Kalman filter
-    kf = SimpleKalmanFilter(process_variance, measurement_variance)
+    close_prices = cast(NDArray[np.float64], data["close"].values)
+    n = len(close_prices)
 
-    # Apply filter to close prices
-    estimates: List[float] = []
-    error_estimates: List[float] = []
+    # Vectorized Kalman filter implementation
+    estimates = np.zeros(n, dtype=np.float64)
+    error_estimates = np.zeros(n, dtype=np.float64)
 
-    for price in data["close"]:
-        estimate, error_est = kf.update(price)
-        estimates.append(estimate)
-        error_estimates.append(error_est)
+    # Initialize first values
+    estimates[0] = close_prices[0]
+    error_estimates[0] = 1.0
 
-    estimates_array = np.array(estimates)
-    error_estimates_array = np.array(error_estimates)
+    # Vectorized Kalman filter update
+    for i in range(1, n):
+        # Prediction step
+        prior_estimate = estimates[i - 1]
+        prior_error_estimate = error_estimates[i - 1] + process_variance
+
+        # Update step
+        kalman_gain = prior_error_estimate / (
+            prior_error_estimate + measurement_variance
+        )
+        estimates[i] = prior_estimate + kalman_gain * (close_prices[i] - prior_estimate)
+        error_estimates[i] = (1 - kalman_gain) * prior_error_estimate
 
     # Calculate residuals
-    residuals = data["close"].values - estimates_array
+    residuals = close_prices - estimates
 
     features = {}
 
@@ -121,115 +166,111 @@ def calculate_kalman_extended(
     features["kalman_residual_abs"] = np.abs(residuals)
     features["kalman_residual_squared"] = residuals**2
 
-    # Rolling residual statistics
+    # Rolling residual statistics - vectorized
     residual_series = pd.Series(residuals, index=data.index)
-    features["kalman_residual_mean"] = residual_series.rolling(
-        window=residual_window
-    ).mean()
-    features["kalman_residual_std"] = residual_series.rolling(
-        window=residual_window
-    ).std()
-    features["kalman_residual_skew"] = residual_series.rolling(
-        window=residual_window
-    ).skew()
-    features["kalman_residual_kurt"] = residual_series.rolling(
-        window=residual_window
-    ).kurt()
+    features["kalman_residual_mean"] = np.asarray(
+        residual_series.rolling(window=residual_window).mean()
+    )
+    features["kalman_residual_std"] = np.asarray(
+        residual_series.rolling(window=residual_window).std()
+    )
+    features["kalman_residual_skew"] = np.asarray(
+        residual_series.rolling(window=residual_window).skew()
+    )
+    features["kalman_residual_kurt"] = np.asarray(
+        residual_series.rolling(window=residual_window).kurt()
+    )
 
-    # Residual percentiles
-    features["kalman_residual_percentile"] = residual_series.rolling(
-        window=residual_window * 2
-    ).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1])
+    # Residual percentiles - vectorized
+    features["kalman_residual_percentile"] = np.asarray(
+        residual_series.rolling(window=residual_window * 2)
+        .apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1])
+    )
 
-    # Normalized residuals
-    residual_std = residual_series.rolling(window=residual_window).std()
+    # Normalized residuals - vectorized
+    residual_std = np.asarray(residual_series.rolling(window=residual_window).std())
     epsilon = 1e-8  # Small value to prevent division by zero
-    features["kalman_residual_normalized"] = residual_series / (residual_std + epsilon)
+    features["kalman_residual_normalized"] = residuals / (residual_std + epsilon)
 
-    # Residual autocorrelation
+    # Residual autocorrelation - optimized vectorized implementation
     autocorr_lags = [1, 2, 3, 5, 10]
     for lag in autocorr_lags:
         if len(residual_series) > lag + residual_window:
-            autocorr_values = []
+            # Vectorized autocorrelation calculation
+            autocorr_values = np.zeros(len(residual_series), dtype=np.float64)
+
+            # Calculate autocorrelation for each window position
             for i in range(lag + residual_window, len(residual_series)):
-                window_data = residual_series.iloc[i - residual_window : i]
-                if len(window_data) >= lag + 5:  # Minimum data for correlation
-                    corr, _ = pearsonr(
-                        window_data.iloc[:-lag].values, window_data.iloc[lag:].values
-                    )
-                    # Fix: Check if corr is valid float and not NaN to avoid type errors
-                    if isinstance(corr, (int, float)) and not pd.isna(corr):
-                        autocorr_values.append(corr)
-                    else:
-                        autocorr_values.append(0.0)
-                else:
-                    autocorr_values.append(0.0)
+                window_start = i - residual_window
+                window_end = i
 
-            # Pad with zeros for initial values
-            padded_autocorr = [0.0] * (lag + residual_window) + autocorr_values
-            features[f"kalman_autocorr_lag{lag}"] = padded_autocorr
+                if window_end - window_start >= lag + 5:
+                    window_data = residuals[window_start:window_end]
+                    # Use numpy's correlate for autocorrelation
+                    autocorr = np.corrcoef(window_data[:-lag], window_data[lag:])[0, 1]
+                    if np.isfinite(autocorr):
+                        autocorr_values[i] = autocorr
 
-    # Filter confidence
-    confidence = 1.0 / (1.0 + error_estimates_array)
-    features["kalman_confidence"] = confidence.tolist()
+            features[f"kalman_autocorr_lag{lag}"] = autocorr_values
+
+    # Filter confidence - vectorized
+    confidence = 1.0 / (1.0 + error_estimates)
+    features["kalman_confidence"] = confidence
 
     # Tracking error (deviation from estimate)
-    tracking_error = np.abs(data["close"] - estimates_array) / data["close"]
-    features["kalman_tracking_error"] = tracking_error.tolist()
+    close_values = np.asarray(data["close"])
+    tracking_error = np.abs(close_values - estimates) / close_values
+    features["kalman_tracking_error"] = tracking_error
 
     # Innovation (prediction error)
     innovation = np.diff(residuals, prepend=residuals[0])
-    features["kalman_innovation"] = innovation.tolist()
-    features["kalman_innovation_abs"] = np.abs(innovation).tolist()
+    features["kalman_innovation"] = innovation
+    features["kalman_innovation_abs"] = np.abs(innovation)
 
     # Filter adaptation signals
-    adaptation_signal = error_estimates_array / np.mean(error_estimates_array)
-    features["kalman_adaptation_signal"] = adaptation_signal.tolist()
+    adaptation_signal = error_estimates / np.mean(error_estimates)
+    features["kalman_adaptation_signal"] = adaptation_signal
 
     # High residual periods (potential regime changes)
     residual_threshold = np.percentile(np.abs(residuals), 90)
-    features["kalman_high_residual"] = pd.Series(
-        (np.abs(residuals) > residual_threshold).astype(int), index=data.index
-    )
+    features["kalman_high_residual"] = (
+        np.abs(residuals) > residual_threshold
+    ).astype(int)
 
     # Trend consistency with filter
     price_values = np.asarray(data["close"])
     price_trend = np.sign(np.diff(price_values, prepend=price_values[0]))
-    filter_trend = np.sign(np.diff(estimates_array, prepend=estimates_array[0]))
+    filter_trend = np.sign(np.diff(estimates, prepend=np.array([estimates[0]])))
     # Ensure both arrays are the same length as data
     min_len = min(len(price_trend), len(filter_trend), len(data))
     price_trend = price_trend[:min_len]
     filter_trend = filter_trend[:min_len]
     trend_agreement = (price_trend == filter_trend).astype(int)
-    features["kalman_trend_agreement"] = trend_agreement.tolist()
+    features["kalman_trend_agreement"] = trend_agreement
 
     # Filter divergence
     price_change = data["close"].pct_change()
-    estimate_change = pd.Series(estimates_array.tolist(), index=data.index).pct_change()
+    estimate_change = pd.Series(estimates, index=data.index).pct_change()
     divergence = price_change - estimate_change
-    features["kalman_divergence"] = (
-        divergence.tolist() if hasattr(divergence, "tolist") else list(divergence)
-    )
-    features["kalman_divergence_abs"] = np.abs(divergence).tolist()
+    features["kalman_divergence"] = np.asarray(divergence)
+    features["kalman_divergence_abs"] = np.abs(np.asarray(divergence))
 
     # Multi-step ahead prediction error
     if len(data) > 5:
         # Simple 5-step ahead prediction using current estimate + trend
-        trend_5step = pd.Series(estimates_array.tolist(), index=data.index).diff(5)
-        prediction_5step = (
-            pd.Series(estimates_array.tolist(), index=data.index) + trend_5step
-        )
+        trend_5step = np.asarray(pd.Series(estimates, index=data.index).diff(5).values)
+        prediction_5step = pd.Series(estimates, index=data.index) + trend_5step
         actual_5step = data["close"].shift(-5)
         prediction_error_5step = actual_5step - prediction_5step
-        features["kalman_prediction_error_5step"] = prediction_error_5step.tolist()
+        features["kalman_prediction_error_5step"] = np.asarray(prediction_error_5step)
 
     # Volatility-adjusted residuals
     volatility = data["close"].rolling(window=residual_window).std()
-    features["kalman_residual_vol_adj"] = residual_series / volatility
+    features["kalman_residual_vol_adj"] = residual_series / np.asarray(volatility)
 
     # Residual momentum
     residual_momentum = residual_series.diff(5)
-    features["kalman_residual_momentum"] = residual_momentum
+    features["kalman_residual_momentum"] = np.asarray(residual_momentum)
 
     # Create result DataFrame
     result_df = pd.DataFrame(features, index=data.index)

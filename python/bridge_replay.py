@@ -370,9 +370,9 @@ class BridgeReplay:
         summary = {
             "total_trades": len(replay_results),
             "executed_trades": len(executed_trades),
-            "execution_rate": len(executed_trades) / len(replay_results)
-            if replay_results
-            else 0.0,
+            "execution_rate": (
+                len(executed_trades) / len(replay_results) if replay_results else 0.0
+            ),
             "avg_slippage": np.mean(slippage_values) if slippage_values else 0.0,
             "max_slippage": np.max(slippage_values) if slippage_values else 0.0,
             "median_slippage": np.median(slippage_values) if slippage_values else 0.0,

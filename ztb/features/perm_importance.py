@@ -59,7 +59,9 @@ def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
     return df
 
 
-def evaluate_policy(model: PPO, df: pd.DataFrame, n_episodes: int = 10) -> Dict[str, float]:
+def evaluate_policy(
+    model: PPO, df: pd.DataFrame, n_episodes: int = 10
+) -> Dict[str, float]:
     """ポリシーを評価"""
 
     def make_env():  # type: ignore[no-untyped-def]

@@ -7,11 +7,28 @@ Output columns:
   - ema_above_sma: Binary indicator (1 if EMA > SMA, 0 otherwise)
 """
 
-from typing import Any, Dict, Optional, List, cast
+from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 
 from ..base import ParameterizedFeature
+from ..registry import FeatureRegistry
+
+
+@FeatureRegistry.register("EMACross_Diff")
+def compute_ema_cross_diff(df: pd.DataFrame) -> pd.Series:
+    """EMA/SMA Cross Difference (normalized)"""
+    feature = EMACross()
+    result_df = feature.compute(df)
+    return result_df["ema_sma_cross"]
+
+
+@FeatureRegistry.register("EMACross_Signal")
+def compute_ema_cross_signal(df: pd.DataFrame) -> pd.Series:
+    """EMA/SMA Cross Signal (1 if EMA > SMA, 0 otherwise)"""
+    feature = EMACross()
+    result_df = feature.compute(df)
+    return result_df["ema_above_sma"]
 
 
 class EMACross(ParameterizedFeature):
@@ -39,8 +56,12 @@ class EMACross(ParameterizedFeature):
         """
         Compute EMA/SMA cross signals with configurable periods.
         """
-        fast_period = cast(int, params.get("fast_period", self.default_params["fast_period"]))
-        slow_period = cast(int, params.get("slow_period", self.default_params["slow_period"]))
+        fast_period = cast(
+            int, params.get("fast_period", self.default_params["fast_period"])
+        )
+        slow_period = cast(
+            int, params.get("slow_period", self.default_params["slow_period"])
+        )
         fast_col = f"ema_{fast_period}"
         slow_col = f"rolling_mean_{slow_period}"
 

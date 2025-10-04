@@ -37,7 +37,7 @@ class ConfigLinter:
         # Load schemas
         self._load_schemas()
 
-    def _load_schemas(self):
+    def _load_schemas(self) -> None:
         """Load JSON schemas from schema directory."""
         for schema_file in self.schema_dir.glob("*.json"):
             with open(schema_file, "r", encoding="utf-8") as f:
@@ -62,7 +62,7 @@ class ConfigLinter:
             ValidationResult with validation outcome
         """
         errors = []
-        warnings = []
+        warnings: List[str] = []
 
         # Load config
         try:
@@ -209,7 +209,7 @@ class ConfigLinter:
         return results
 
 
-def main():
+def main() -> None:
     """CLI entry point for config linting."""
     parser = argparse.ArgumentParser(description="Lint trading bot configurations")
     parser.add_argument(

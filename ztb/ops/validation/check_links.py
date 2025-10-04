@@ -44,7 +44,7 @@ def extract_links(content: str) -> list[tuple[str, str]]:
     return re.findall(pattern, content)
 
 
-def extract_headers(content: str):
+def extract_headers(content: str) -> list[tuple[int, str]]:
     """Extract headers and their anchors from content."""
     headers = []
     for line in content.split("\n"):
@@ -113,7 +113,7 @@ def main() -> int:
         links = extract_links(content)
         headers = extract_headers(content)
 
-        for text, link in links:
+        for _, link in links:
             if not check_link(file_path, link, headers):
                 broken.append((str(file_path), link))
 

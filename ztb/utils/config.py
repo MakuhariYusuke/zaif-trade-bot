@@ -4,8 +4,11 @@ config.py
 Central configuration management for ZTB system
 """
 
+import logging
 import os
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class ZTBConfig:
@@ -30,8 +33,8 @@ class ZTBConfig:
         try:
             return int(value)
         except ValueError:
-            print(
-                f"Warning: Invalid integer value for {key}: {value}, using default {default}"
+            logger.warning(
+                f"Invalid integer value for {key}: {value}, using default {default}"
             )
             return default
 
@@ -43,8 +46,8 @@ class ZTBConfig:
         try:
             return float(value)
         except ValueError:
-            print(
-                f"Warning: Invalid float value for {key}: {value}, using default {default}"
+            logger.warning(
+                f"Invalid float value for {key}: {value}, using default {default}"
             )
             return default
 
@@ -59,11 +62,11 @@ class ZTBConfig:
             "ZTB_TEST_ISOLATION",
             "ZTB_FLOAT_TOLERANCE",
         ]
-        print("Current ZTB Configuration:")
+        logger.info("Current ZTB Configuration:")
         for var in config_vars:
             value = os.getenv(var)
             if value is not None:
-                print(f"  {var}={value}")
+                logger.info(f"  {var}={value}")
 
 
 # Global instance

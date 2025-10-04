@@ -16,9 +16,10 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.ppo_trainer import PPOTrainer
+from ztb.utils import DiscordNotifier
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Run canonical 1M timestep training")
     parser.add_argument(
         "--correlation-id",
@@ -42,6 +43,11 @@ def main():
         help="Dry run mode - validate setup without training",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force execution without confirmation",
+    )
+    parser.add_argument(
         "--checkpoint-dir",
         default="checkpoints",
         help="Checkpoint directory (default: checkpoints)",
@@ -54,6 +60,11 @@ def main():
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument(
+        "--offline-mode",
+        action="store_true",
+        help="Offline mode - disable Discord notifications and internet-dependent features",
+    )
+    parser.add_argument(
         "--enable-streaming",
         action="store_true",
         help="Enable streaming pipeline (default: disabled)",
@@ -63,6 +74,77 @@ def main():
         type=int,
         default=256,
         help="Streaming batch size (default: 256)",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=10,
+        help="Number of training iterations (default: 10)",
+    )
+    parser.add_argument(
+        "--steps-per-iteration",
+        type=int,
+        default=100000,
+        help="Steps per iteration (default: 100000)",
+    )
+    parser.add_argument(
+        "--feature-set",
+        default="full",
+        choices=["basic", "scalping", "trend", "momentum", "full"],
+        help="Feature set to use (default: full)",
+    )
+    parser.add_argument(
+        "--timeframe",
+        default="1m",
+        help="Trading timeframe (default: 1m)",
+    )
+    parser.add_argument(
+        "--reward-trade-frequency-penalty",
+        type=float,
+        default=0.3,
+        help="Penalty for frequent trading (default: 0.3)",
+    )
+    parser.add_argument(
+        "--reward-trade-frequency-halflife",
+        type=float,
+        default=12.0,
+        help="Halflife for trade frequency penalty decay (default: 12.0)",
+    )
+    parser.add_argument(
+        "--reward-trade-cooldown-steps",
+        type=int,
+        default=3,
+        help="Cooldown steps between trades (default: 3)",
+    )
+    parser.add_argument(
+        "--reward-trade-cooldown-penalty",
+        type=float,
+        default=0.5,
+        help="Penalty for trading during cooldown (default: 0.5)",
+    )
+    parser.add_argument(
+        "--reward-max-consecutive-trades",
+        type=int,
+        default=3,
+        help="Maximum consecutive trades allowed (default: 3)",
+    )
+    parser.add_argument(
+        "--reward-consecutive-trade-penalty",
+        type=float,
+        default=0.4,
+        help="Penalty for exceeding consecutive trade limit (default: 0.4)",
+    )
+    parser.add_argument(
+        "--transaction-cost",
+        type=float,
+        default=0.001,
+        help="Transaction cost per trade (default: 0.001)",
+    )
+    parser.add_argument(
+        "--max-position-size",
+        type=float,
+        default=1.0,
+        help="Maximum position size (default: 1.0)",
     )
 
     args = parser.parse_args()
@@ -74,6 +156,13 @@ def main():
     )
 
     logger = logging.getLogger(__name__)
+
+    # Initialize Discord notifier (disabled in offline mode)
+    if args.offline_mode:
+        logger.info("Offline mode enabled - Discord notifications disabled")
+        notifier = DiscordNotifier(webhook_url=None)  # Explicitly disable
+    else:
+        notifier = DiscordNotifier()
 
     # Validate data path
     data_path = Path(args.data_path)
@@ -104,6 +193,16 @@ def main():
             "tensorboard_log": args.log_dir,
             "verbose": 1 if args.verbose else 0,
             "seed": 42,
+            # Trading environment settings
+            "transaction_cost": getattr(args, "transaction_cost", 0.001),
+            "max_position_size": getattr(args, "max_position_size", 1.0),
+            "reward_trade_frequency_penalty": args.reward_trade_frequency_penalty,
+            "reward_trade_frequency_halflife": args.reward_trade_frequency_halflife,
+            "reward_trade_cooldown_steps": args.reward_trade_cooldown_steps,
+            "reward_trade_cooldown_penalty": args.reward_trade_cooldown_penalty,
+            "reward_max_consecutive_trades": args.reward_max_consecutive_trades,
+            "reward_consecutive_trade_penalty": args.reward_consecutive_trade_penalty,
+            "features": args.feature_set,  # PPOTrainer expects 'features' key
             # PPO hyperparameters (conservative defaults)
             "learning_rate": 3e-4,
             "n_steps": 2048,

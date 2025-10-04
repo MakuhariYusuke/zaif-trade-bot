@@ -1,27 +1,49 @@
 """Custom evaluation callback with DSR trials and bootstrap resampling."""
 
 import json
-import logging
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
 import numpy as np
-from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 
 from .eval_gates import EvalGates
 
-logger = logging.getLogger(__name__)
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
+
+
+class FunctionCallback(BaseCallback):
+    """Wrapper to make a function callable as a BaseCallback."""
+
+    def __init__(self, func: Optional[Callable[[], None]]):
+        super().__init__()
+        self.func = func
+
+    def _on_step(self) -> bool:
+        if self.func:
+            self.func()
+        return True
+
+    def __call__(self, *args: Any, **kwargs: Any):
+        if self.func:
+            self.func()
 
 
 class DSREvaluationCallback(EvalCallback):
     """Evaluation callback with Deflated Sharpe Ratio and bootstrap resampling."""
 
+    best_mean_reward: Optional[float] = None
+    callback_on_new_best: Optional[BaseCallback] = None
+    callback_after_eval: Optional[BaseCallback] = None
+
     def __init__(
         self,
-        eval_env,
-        callback_on_new_best: Optional[Callable] = None,
-        callback_after_eval: Optional[Callable] = None,
+        eval_env: Any,
+        callback_on_new_best: Optional[Callable[[], None]] = None,
+        callback_after_eval: Optional[Callable[[], None]] = None,
         n_eval_episodes: int = 5,
         eval_freq: int = 10000,
         log_path: Optional[str] = None,
@@ -36,8 +58,8 @@ class DSREvaluationCallback(EvalCallback):
     ):
         super().__init__(
             eval_env=eval_env,
-            callback_on_new_best=callback_on_new_best,
-            callback_after_eval=callback_after_eval,
+            callback_on_new_best=FunctionCallback(callback_on_new_best) if callback_on_new_best else None,
+            callback_after_eval=FunctionCallback(callback_after_eval) if callback_after_eval else None,
             n_eval_episodes=n_eval_episodes,
             eval_freq=eval_freq,
             log_path=log_path,
@@ -51,7 +73,7 @@ class DSREvaluationCallback(EvalCallback):
         self.dsr_trials = dsr_trials
         self.eval_returns_history: List[float] = []
         self.eval_gates = EvalGates(enabled=gates_enabled)
-        self.gate_results_history: List[Dict] = []
+        self.gate_results_history: List[Dict[str, Any]] = []
 
     def _on_step(self) -> bool:
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
@@ -65,6 +87,9 @@ class DSREvaluationCallback(EvalCallback):
                 return_episode_rewards=True,
                 warn=self.warn,
             )
+
+            episode_rewards = cast(List[float], episode_rewards)
+            episode_lengths = cast(List[int], episode_lengths)
 
             if self.log_path is not None:
                 self.evaluations_timesteps.append(self.num_timesteps)
@@ -94,9 +119,11 @@ class DSREvaluationCallback(EvalCallback):
                     gate_results = self.eval_gates.evaluate_all(
                         final_eval_reward=mean_return,
                         rewards=self.eval_returns_history,
-                        steps=self.evaluations_timesteps
-                        if hasattr(self, "evaluations_timesteps")
-                        else [],
+                        steps=(
+                            self.evaluations_timesteps
+                            if hasattr(self, "evaluations_timesteps")
+                            else []
+                        ),
                         baseline=0.0,
                     )
                     self.gate_results_history.append(
@@ -156,7 +183,7 @@ class DSREvaluationCallback(EvalCallback):
 
             # Check if best model
             if len(episode_rewards) > 0:
-                mean_reward = np.mean(episode_rewards)
+                mean_reward = cast(float, np.mean(episode_rewards))
                 if self.best_mean_reward is None or mean_reward > self.best_mean_reward:
                     if self.verbose >= 1:
                         print(
@@ -167,15 +194,23 @@ class DSREvaluationCallback(EvalCallback):
                     self.best_mean_reward = mean_reward
                     # Trigger callback on new best
                     if self.callback_on_new_best is not None:
-                        self.callback_on_new_best(self)
+                        if callable(self.callback_on_new_best):
+                            self.callback_on_new_best()
+                        else:
+                            self.callback_on_new_best._on_step()
 
             # Trigger callback after eval
             if self.callback_after_eval is not None:
-                self.callback_after_eval(self)
+                if callable(self.callback_after_eval):
+                    self.callback_after_eval()
+                else:
+                    self.callback_after_eval._on_step()
 
         return True
 
-    def _bootstrap_resample(self, data: List[float], n_samples: int) -> np.ndarray:
+    def _bootstrap_resample(
+        self, data: List[float], n_samples: int
+    ) -> np.ndarray[Any, np.dtype[Any]]:
         """Perform bootstrap resampling to estimate confidence intervals."""
         bootstrap_means = []
         n = len(data)
@@ -211,4 +246,4 @@ class DSREvaluationCallback(EvalCallback):
         else:
             dsr = 0.0
 
-        return dsr
+        return cast(float, dsr)

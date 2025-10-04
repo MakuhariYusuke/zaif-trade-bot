@@ -42,14 +42,14 @@ def generate_test_data(n_rows: int = 100000) -> pd.DataFrame:
 
     # Ensure high >= close >= low, etc.
     for i in range(n_rows):
-        data["high"][i] = max(data["open"][i], data["high"][i], data["close"][i])
-        data["low"][i] = min(data["open"][i], data["low"][i], data["close"][i])
+        data["high"][i] = max(data["open"][i], data["high"][i], data["close"][i])  # type: ignore
+        data["low"][i] = min(data["open"][i], data["low"][i], data["close"][i])  # type: ignore
 
     return pd.DataFrame(data)
 
 
 def measure_io_performance(
-    df: pd.DataFrame, config: Dict, temp_dir: Path
+    df: pd.DataFrame, config: Dict[str, Any], temp_dir: Path
 ) -> Dict[str, Any]:
     """Measure I/O performance for given config"""
     process = psutil.Process(os.getpid())
@@ -405,7 +405,7 @@ def update_weekly_report(
     print(f"Weekly report updated with I/O benchmark results: {weekly_report_path}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="I/O Benchmarking Tool")
     parser.add_argument(
         "--rows", "-r", type=int, default=100000, help="Number of test rows"
@@ -439,4 +439,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore

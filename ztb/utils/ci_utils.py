@@ -79,9 +79,11 @@ def notify_ci_results(
                 },
                 {
                     "name": "Coverage",
-                    "value": f"{metrics.get('coverage_percent', 0):.1f}%"
-                    if "coverage_percent" in metrics
-                    else "N/A",
+                    "value": (
+                        f"{metrics.get('coverage_percent', 0):.1f}%"
+                        if "coverage_percent" in metrics
+                        else "N/A"
+                    ),
                     "inline": True,
                 },
                 {

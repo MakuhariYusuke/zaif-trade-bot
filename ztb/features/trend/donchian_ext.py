@@ -7,6 +7,52 @@ Extended Donchian Channel analysis with breakout distance and channel width
 import numpy as np
 import pandas as pd
 
+from ztb.features.registry import FeatureRegistry
+
+
+@FeatureRegistry.register("Donchian_Width")
+def compute_donchian_width(df: pd.DataFrame) -> pd.Series:
+    """Donchian Channel Width"""
+    extended_features = calculate_donchian_extended(df)
+    return (
+        extended_features["donchian_width"]
+        if "donchian_width" in extended_features.columns
+        else pd.Series([0.0] * len(df), index=df.index)
+    )
+
+
+@FeatureRegistry.register("Donchian_Price_Position")
+def compute_donchian_price_position(df: pd.DataFrame) -> pd.Series:
+    """Donchian Channel Price Position (0-1)"""
+    extended_features = calculate_donchian_extended(df)
+    return (
+        extended_features["donchian_price_position"]
+        if "donchian_price_position" in extended_features.columns
+        else pd.Series([0.0] * len(df), index=df.index)
+    )
+
+
+@FeatureRegistry.register("Donchian_Breakout_Strength")
+def compute_donchian_breakout_strength(df: pd.DataFrame) -> pd.Series:
+    """Donchian Channel Breakout Strength"""
+    extended_features = calculate_donchian_extended(df)
+    return (
+        extended_features["donchian_breakout_strength"]
+        if "donchian_breakout_strength" in extended_features.columns
+        else pd.Series([0.0] * len(df), index=df.index)
+    )
+
+
+@FeatureRegistry.register("Donchian_Squeeze_Ratio")
+def compute_donchian_squeeze_ratio(df: pd.DataFrame) -> pd.Series:
+    """Donchian Channel Squeeze Ratio"""
+    extended_features = calculate_donchian_extended(df)
+    return (
+        extended_features["donchian_squeeze_ratio"]
+        if "donchian_squeeze_ratio" in extended_features.columns
+        else pd.Series([0.0] * len(df), index=df.index)
+    )
+
 
 def calculate_donchian_extended(
     data: pd.DataFrame, periods: int = 20, include_basic: bool = True

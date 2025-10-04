@@ -4,6 +4,39 @@ import numpy as np
 import pandas as pd
 
 from ..base import BaseFeature
+from ..registry import FeatureRegistry
+
+
+@FeatureRegistry.register("HeikinAshi_Open")
+def compute_heikin_ashi_open(df: pd.DataFrame) -> pd.Series:
+    """Heikin-Ashi Open Price"""
+    feature = HeikinAshi()
+    result_df = feature.compute(df)
+    return result_df["ha_open"]
+
+
+@FeatureRegistry.register("HeikinAshi_High")
+def compute_heikin_ashi_high(df: pd.DataFrame) -> pd.Series:
+    """Heikin-Ashi High Price"""
+    feature = HeikinAshi()
+    result_df = feature.compute(df)
+    return result_df["ha_high"]
+
+
+@FeatureRegistry.register("HeikinAshi_Low")
+def compute_heikin_ashi_low(df: pd.DataFrame) -> pd.Series:
+    """Heikin-Ashi Low Price"""
+    feature = HeikinAshi()
+    result_df = feature.compute(df)
+    return result_df["ha_low"]
+
+
+@FeatureRegistry.register("HeikinAshi_Close")
+def compute_heikin_ashi_close(df: pd.DataFrame) -> pd.Series:
+    """Heikin-Ashi Close Price"""
+    feature = HeikinAshi()
+    result_df = feature.compute(df)
+    return result_df["ha_close"]
 
 
 class HeikinAshi(BaseFeature):

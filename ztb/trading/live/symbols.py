@@ -136,7 +136,7 @@ class SymbolNormalizer:
     def is_supported_symbol(cls, venue: str, symbol: str) -> bool:
         """Check if a symbol is supported for a venue."""
         try:
-            cls.normalize(venue, symbol)
+            cls.normalize(Venue(venue.lower()), symbol)
             return True
         except ValueError:
             return False

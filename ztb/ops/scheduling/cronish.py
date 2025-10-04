@@ -12,6 +12,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from types import FrameType
+from typing import Optional
 
 
 def run_command(command: str) -> int:
@@ -44,7 +46,7 @@ def format_eta(seconds: float) -> str:
         return f"{seconds / 3600:.1f}h"
 
 
-def perform_catchup(args, kill_file: Path):
+def perform_catchup(args: argparse.Namespace, kill_file: Path) -> None:
     """Perform catchup runs for missed intervals."""
     # Assume we track last run time in a file
     last_run_file = Path("cronish_last_run.txt")
@@ -93,7 +95,7 @@ def perform_catchup(args, kill_file: Path):
         print("Warning: Could not update last run time", file=sys.stderr)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run commands periodically with jitter"
     )
@@ -128,7 +130,7 @@ def main():
     kill_file = Path("ztb.stop")
     cycle_count = 0
 
-    def signal_handler(signum, frame):
+    def signal_handler(signum: int, frame: Optional[FrameType]) -> None:
         print("\nStopping cronish...")
         sys.exit(0)
 

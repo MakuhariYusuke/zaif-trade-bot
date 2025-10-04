@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import threading
 import time
 from collections import deque
@@ -13,7 +12,9 @@ from typing import Any, Deque, Dict, Iterator, List, Mapping, Optional, Sequence
 import pandas as pd
 import requests
 
-logger = logging.getLogger(__name__)
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class CoinGeckoStreamError(RuntimeError):
@@ -325,6 +326,9 @@ class CoinGeckoStream:
         return self
 
     def __exit__(
-        self, exc_type: Optional[type], exc: Optional[BaseException], tb: Optional[Any]
+        self,
+        _exc_type: Optional[type],
+        _exc: Optional[BaseException],
+        _tb: Optional[Any],
     ) -> None:
         self.close()

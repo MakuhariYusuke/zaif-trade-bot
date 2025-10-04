@@ -8,7 +8,7 @@ import gzip
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 
 def parse_timestamp(line: str) -> Optional[str]:
@@ -18,7 +18,7 @@ def parse_timestamp(line: str) -> Optional[str]:
         timestamp = data.get("timestamp")
         if timestamp:
             # Assume ISO format, extract date
-            return timestamp.split("T")[0]
+            return cast(str, timestamp).split("T")[0]
     except json.JSONDecodeError:
         pass
     return None

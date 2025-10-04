@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from apscheduler.schedulers.blocking import (
-    BlockingScheduler,  # type: ignore[import-untyped]
+    BlockingScheduler,
 )
-from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
+from apscheduler.triggers.cron import CronTrigger
 
 from ztb.data.binance_data import (
     fetch_historical_klines,

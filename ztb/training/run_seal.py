@@ -183,7 +183,7 @@ class RunSealManager:
 
         return env
 
-    def _save_seal(self, seal: RunSeal):
+    def _save_seal(self, seal: RunSeal) -> None:
         """Save run seal to file."""
         import json
 

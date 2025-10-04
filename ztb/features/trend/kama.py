@@ -10,10 +10,18 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from numba import jit  # type: ignore
 from numpy.typing import NDArray
 
 from ztb.features.base import ComputableFeature, MovingAverageFeature
+from ztb.features.registry import FeatureRegistry
+
+
+@FeatureRegistry.register("KAMA")
+def compute_kama(df: pd.DataFrame) -> pd.Series:
+    """Kaufman's Adaptive Moving Average"""
+    feature = KAMA()
+    result_df = feature.compute(df)
+    return result_df["kama"]
 
 
 class KAMA(MovingAverageFeature, ComputableFeature):
@@ -36,10 +44,9 @@ class KAMA(MovingAverageFeature, ComputableFeature):
         return pd.DataFrame({"kama": kama})
 
     @staticmethod
-    @jit(nopython=True)  # type: ignore
-    def _calculate_kama(close: NDArray[np.float64]) -> NDArray[np.float64]:
+    def _calculate_kama(close: NDArray[np.floating[Any]]) -> NDArray[np.floating[Any]]:
         """
-        Calculate KAMA using numba for performance.
+        Calculate KAMA using pure numpy (no numba).
         """
         n = len(close)
         kama = np.zeros(n)

@@ -1,16 +1,19 @@
 # Zaif Trade Bot Operations
 
 ## 静的ダッシュボード生成
+
 - `scripts/make_dashboard.py` で artifacts/index.json と各 summary.json を集約して HTML ダッシュボード生成
 - セッション一覧（ID/開始時刻/最新step/ETA/ステータス）と主要メトリクス（Sharpe/DSR/p-value/メモリ/RSSピーク）を表形式で表示
 - `--out artifacts/dashboard.html` で出力先指定
 
 ## セッション横断トレンド集計
+
 - `scripts/aggregate_trends.py` で artifacts/*/summary.json から global_step, rl_sharpe, dsr, p_value を CSV 出力
 - 欠損値は空欄扱い、session_id でソート
 - `--out artifacts/trends.csv` で出力先指定
 
 ## "ops doctor"（一次切り分けワンショット）
+
 - `scripts/ops_doctor.py` で validate_artifacts → collect_last_errors → progress_eta → disk_health を順次実行
 - 失敗しても継続、要約（OK/WARN/FAIL数）を1行表示、詳細は artifacts/`<ID>`/reports/doctor.txt に保存
 - `--correlation-id <ID>` で対象セッション指定

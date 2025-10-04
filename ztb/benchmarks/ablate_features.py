@@ -10,11 +10,13 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
 import torch
+
+from ztb.utils.data.data_generation import generate_synthetic_data
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -31,6 +33,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.features import get_feature_manager
 from ztb.trading.environment import HeavyTradingEnv
+from ztb.utils.errors import safe_operation
 
 
 class MetricsCallback(BaseCallback):
@@ -116,6 +119,18 @@ def create_env_with_features(
     df: pd.DataFrame, enabled_features: List[str]
 ) -> HeavyTradingEnv:
     """特徴量を有効化した環境を作成"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _create_env_with_features_impl(df, enabled_features),
+        context="environment_creation_with_features",
+        default_result=None,  # Return None on failure
+    )
+
+
+def _create_env_with_features_impl(
+    df: pd.DataFrame, enabled_features: List[str]
+) -> HeavyTradingEnv:
+    """Implementation of environment creation with features."""
     # 特徴量計算
     manager = get_feature_manager()
     original_enabled = manager.get_enabled_features()
@@ -156,11 +171,23 @@ def run_training(
     seed: int, timesteps: int, enabled_features: List[str], df: pd.DataFrame
 ) -> Dict[str, float]:
     """学習実行"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _run_training_impl(seed, timesteps, enabled_features, df),
+        context="training_execution",
+        default_result={},  # Return empty dict on failure
+    )
+
+
+def _run_training_impl(
+    seed: int, timesteps: int, enabled_features: List[str], df: pd.DataFrame
+) -> Dict[str, float]:
+    """Implementation of training execution."""
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # 環境作成
-    def make_env():
+    def make_env() -> Any:
         env = create_env_with_features(df, enabled_features)
         env = Monitor(env)
         return env
@@ -198,42 +225,7 @@ def run_training(
     return metrics
 
 
-def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
-    """合成データを生成（学習用）"""
-    np.random.seed(42)
-    dates = pd.date_range("2024-01-01", periods=n_rows, freq="1H")
-
-    returns = np.random.normal(0, 0.02, n_rows)
-    price = 100 * np.exp(np.cumsum(returns))
-
-    high = price * (1 + np.random.uniform(0, 0.03, n_rows))
-    low = price * (1 - np.random.uniform(0, 0.03, n_rows))
-    close = price
-    volume = np.random.uniform(1000, 10000, n_rows)
-
-    # エピソードID: 1000ステップごとに変更
-    episode_length = 1000
-    episode_ids = np.repeat(np.arange(n_rows // episode_length + 1), episode_length)[
-        :n_rows
-    ]
-
-    df = pd.DataFrame(
-        {
-            "ts": dates.view("int64") // 10**9,
-            "close": close,
-            "high": high,
-            "low": low,
-            "volume": volume,
-            "exchange": "synthetic",
-            "pair": "BTC/USD",
-            "episode_id": episode_ids,
-        }
-    )
-
-    return df
-
-
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Feature ablation analysis")
     parser.add_argument(
         "--timesteps", type=int, default=10000, help="Training timesteps"

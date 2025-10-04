@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def generate_sample_data(start_date, end_date, filename):
+def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.DataFrame:
     """サンプル取引データを生成"""
     # 日付範囲の作成
     date_range = pd.date_range(start=start_date, end=end_date, freq="1min")
@@ -106,7 +106,7 @@ def generate_sample_data(start_date, end_date, filename):
     return df
 
 
-def main():
+def main() -> None:
     """メイン関数"""
     # 各月のデータ生成
     months_data = [

@@ -32,7 +32,9 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
+
+jsonschema: Optional[Any] = None
 
 try:
     import jsonschema
@@ -50,7 +52,7 @@ from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
 def load_json_file(path: Path) -> Dict[str, Any]:
     """Load JSON file."""
     with open(path) as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def load_cost_estimate(correlation_id: str) -> Optional[Dict[str, Any]]:
@@ -132,7 +134,7 @@ def aggregate_metrics(correlation_id: str) -> Dict[str, Any]:
     # Calculate acceptance from gates if available
     if gates_data:
         # Get latest gate results
-        latest_gates_data = gates_data[-1] if gates_data else {}
+        latest_gates_data = gates_data
         gate_results = {}
         for name, result_dict in latest_gates_data.get("gate_results", {}).items():
             gate_results[name] = GateResult(
@@ -158,9 +160,9 @@ def aggregate_metrics(correlation_id: str) -> Dict[str, Any]:
     }
     summary_dict = dict(
         global_step=global_step,
-        wall_clock_duration_hours=wall_clock_duration / 3600
-        if wall_clock_duration
-        else 0,
+        wall_clock_duration_hours=(
+            wall_clock_duration / 3600 if wall_clock_duration else 0
+        ),
         rss_peak_mb=max(rss_peaks) if rss_peaks else 0,
         vram_peak_mb=max(vram_peaks) if vram_peaks else 0,
         best_sharpe=best_sharpe,
@@ -177,9 +179,9 @@ def aggregate_metrics(correlation_id: str) -> Dict[str, Any]:
         "evaluations": evals,
         "summary": summary_dict,
         "global_step": global_step,
-        "wall_clock_duration_hours": wall_clock_duration / 3600
-        if wall_clock_duration
-        else 0,
+        "wall_clock_duration_hours": (
+            wall_clock_duration / 3600 if wall_clock_duration else 0
+        ),
         "rss_peak_mb": max(rss_peaks) if rss_peaks else 0,
         "vram_peak_mb": max(vram_peaks) if vram_peaks else 0,
         "best_sharpe": best_sharpe,
@@ -263,20 +265,20 @@ def validate_summary(summary: Dict[str, Any]) -> bool:
 
     if HAS_JSONSCHEMA:
         try:
-            jsonschema.validate(instance=summary, schema=schema)
+            jsonschema.validate(instance=summary, schema=schema)  # type: ignore[union-attr]
             return True
-        except jsonschema.ValidationError as e:
+        except jsonschema.ValidationError as e:  # type: ignore[union-attr]
             print(f"Schema validation error: {e}", file=sys.stderr)
             return False
     else:
-        print("jsonschema not available, skipping validation", file=sys.stderr)
+        print("jsonschema not available, skipping validation", file=sys.stderr)  # type: ignore[unreachable]
         return True
 
 
 def redact_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
     """Redact secrets from summary."""
     # Placeholder: remove sensitive fields
-    redacted = json.loads(json.dumps(summary))  # Deep copy
+    redacted = cast(Dict[str, Any], json.loads(json.dumps(summary)))  # Deep copy
     # Remove any fields that might contain secrets
     if "metadata" in redacted and "config" in redacted["metadata"]:
         config = redacted["metadata"]["config"]
@@ -322,7 +324,7 @@ def process_rollup(correlation_id: str) -> int:
     return 0
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Rollup artifacts and generate summary"
     )

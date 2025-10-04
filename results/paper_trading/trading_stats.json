@@ -1,0 +1,19 @@
+{
+  "episodes": 5,
+  "mean_reward": -896.4299998402596,
+  "std_reward": 66.04017426910691,
+  "min_reward": -984.0,
+  "max_reward": -795.4499996304512,
+  "mean_length": 199.0,
+  "total_trades": 27,
+  "final_portfolio_value": 10000.0,
+  "total_return_percent": 0.0,
+  "win_rate": 0.14814814814814814,
+  "avg_win": 47.75924844379415,
+  "avg_loss": -0.08909328397646238,
+  "sharpe_ratio": -13.574010210624213,
+  "action_distribution": {
+    "BUY": 22,
+    "HOLD": 5
+  }
+}

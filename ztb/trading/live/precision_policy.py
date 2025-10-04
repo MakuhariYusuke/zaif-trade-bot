@@ -73,13 +73,13 @@ class PrecisionPolicyManager:
         },
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._policies = self._DEFAULT_POLICIES.copy()
 
     def get_policy(self, venue: str, symbol: str) -> PrecisionPolicy:
         """Get precision policy for a venue and symbol."""
         # Normalize symbol first
-        from ztb.live.symbols import SymbolNormalizer, Venue
+        from ztb.trading.live.symbols import SymbolNormalizer, Venue
 
         try:
             venue_enum = Venue(venue.lower())
@@ -98,7 +98,7 @@ class PrecisionPolicyManager:
             ),
         )
 
-    def set_policy(self, venue: str, symbol: str, policy: PrecisionPolicy):
+    def set_policy(self, venue: str, symbol: str, policy: PrecisionPolicy) -> None:
         """Set precision policy for a venue and symbol."""
         venue = venue.lower()
         symbol = symbol.upper()

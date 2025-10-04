@@ -61,9 +61,9 @@ class BaseFeatureTest:
     ):
         """Assert that feature names follow naming convention"""
         for name in feature_names:
-            assert name.startswith(prefix), (
-                f"Feature name {name} doesn't start with {prefix}"
-            )
+            assert name.startswith(
+                prefix
+            ), f"Feature name {name} doesn't start with {prefix}"
 
 
 class ParameterizedFeatureTestMixin:
@@ -83,9 +83,9 @@ class ParameterizedFeatureTestMixin:
     ):
         """Assert that feature names follow naming convention"""
         for name in feature_names:
-            assert name.startswith(prefix), (
-                f"Feature name {name} doesn't start with {prefix}"
-            )
+            assert name.startswith(
+                prefix
+            ), f"Feature name {name} doesn't start with {prefix}"
 
     def run_parameterized_test(self, generator_method, param_combinations, ohlc_data):
         """Run test with multiple parameter combinations"""
@@ -145,13 +145,13 @@ class TestAutoFeatureGeneration(BaseFeatureTest, ParameterizedFeatureTestMixin):
         features = auto_generator.generate_ema_cross_features(sample_ohlc_data)
 
         for feature_name in features.keys():
-            assert feature_name.startswith("auto_"), (
-                f"Feature {feature_name} doesn't start with 'auto_'"
-            )
+            assert feature_name.startswith(
+                "auto_"
+            ), f"Feature {feature_name} doesn't start with 'auto_'"
             parts = feature_name.split("_")
-            assert len(parts) >= 3, (
-                f"Feature {feature_name} has invalid naming structure"
-            )
+            assert (
+                len(parts) >= 3
+            ), f"Feature {feature_name} has invalid naming structure"
 
     def test_promotion_criteria_validation(self, auto_generator):
         """Test promotion criteria validation"""
@@ -248,9 +248,9 @@ class TestAutoFeatureGeneration(BaseFeatureTest, ParameterizedFeatureTestMixin):
         valid_values = [val for val in unique_values if not np.isnan(val)]
         assert len(valid_values) > 0, "Should have valid numeric values"
         # Check that values are within reasonable bounds (not extreme outliers)
-        assert all(-10 <= val <= 10 for val in valid_values), (
-            f"Values out of reasonable range: {valid_values}"
-        )
+        assert all(
+            -10 <= val <= 10 for val in valid_values
+        ), f"Values out of reasonable range: {valid_values}"
 
     def test_promotion_rules_edge_cases(self, auto_generator):
         """Test promotion rules with edge cases"""
@@ -344,18 +344,18 @@ class TestAutoFeatureGeneration(BaseFeatureTest, ParameterizedFeatureTestMixin):
 
         # All feature names should start with 'auto_'
         for feature_name in ema_features.keys():
-            assert feature_name.startswith("auto_"), (
-                f"Feature name {feature_name} doesn't start with 'auto_'"
-            )
+            assert feature_name.startswith(
+                "auto_"
+            ), f"Feature name {feature_name} doesn't start with 'auto_'"
 
         # Generate KAMA features
         kama_features = auto_generator.generate_kama_features(sample_ohlc_data)
 
         # All feature names should start with 'auto_'
         for feature_name in kama_features.keys():
-            assert feature_name.startswith("auto_"), (
-                f"Feature name {feature_name} doesn't start with 'auto_'"
-            )
+            assert feature_name.startswith(
+                "auto_"
+            ), f"Feature name {feature_name} doesn't start with 'auto_'"
 
     def test_feature_name_uniqueness(self, auto_generator, sample_ohlc_data):
         """Test that generated feature names are unique"""

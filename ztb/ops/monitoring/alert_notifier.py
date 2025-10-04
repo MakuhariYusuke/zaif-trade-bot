@@ -45,7 +45,7 @@ def load_alerts(
                         alert.get("level", "INFO"), 0
                     ) >= level_order.get(min_level, 1):
                         alerts.append(alert)
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, ValueError):
                     continue
     except Exception as e:
         print(f"Error reading JSONL: {e}", file=sys.stderr)
@@ -69,9 +69,11 @@ def send_webhook(
         # Discord webhook format with embeds
         embed = {
             "title": title,
-            "color": 0xFF0000
-            if any(a.get("level") in ["ERROR", "CRITICAL"] for a in alerts)
-            else 0xFFFF00,  # Red for errors, yellow for warnings
+            "color": (
+                0xFF0000
+                if any(a.get("level") in ["ERROR", "CRITICAL"] for a in alerts)
+                else 0xFFFF00
+            ),  # Red for errors, yellow for warnings
             "fields": [
                 {
                     "name": "Correlation ID",
@@ -80,7 +82,7 @@ def send_webhook(
                 },
                 {"name": "Alert Count", "value": str(len(alerts)), "inline": True},
             ],
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
             "footer": {"text": "Zaif Trade Bot"},
         }
 
@@ -88,12 +90,12 @@ def send_webhook(
         for i, alert in enumerate(alerts[:5]):
             level = alert.get("level", "INFO")
             message = alert.get("message", "No message")[:200]  # Truncate long messages
-            embed["fields"].append(
+            embed["fields"].append(  # type: ignore[union-attr]
                 {"name": f"{level} #{i + 1}", "value": message, "inline": False}
             )
 
         if len(alerts) > 5:
-            embed["fields"].append(
+            embed["fields"].append(  # type: ignore[union-attr]
                 {
                     "name": "Additional Alerts",
                     "value": f"... and {len(alerts) - 5} more",
@@ -151,7 +153,7 @@ def send_webhook(
     return False
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Notify alerts via webhook")
     parser.add_argument("--correlation-id", required=True, help="Correlation ID")
     parser.add_argument("--jsonl", type=Path, help="Path to JSONL file")
@@ -199,9 +201,9 @@ def main():
     platform = args.platform
 
     # Auto-detect platform if not specified
-    if platform == "discord" and webhook_url and "discord.com" in webhook_url:
+    if webhook_url and "discord.com" in webhook_url:
         platform = "discord"
-    elif webhook_url and "hooks.slack.com" in webhook_url:
+    if webhook_url and "hooks.slack.com" in webhook_url:
         platform = "slack"
 
     if webhook_url:
@@ -218,6 +220,7 @@ def main():
             "title": title,
             "correlation_id": args.correlation_id,
             "alerts": alerts,
+            "platform": platform,
         }
         print("DRY-RUN PAYLOAD:")
         print(json.dumps(payload, indent=2))
@@ -226,4 +229,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main() or 0)

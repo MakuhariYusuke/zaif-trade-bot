@@ -1,0 +1,23 @@
+{
+  "current_step": 40960,
+  "rewards_history": [
+    396.4265862675444,
+    912.7551064839398,
+    1228.2860445698325,
+    -0.05
+  ],
+  "steps_history": [
+    10240,
+    20480,
+    30720,
+    40960
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "scalping_15s_balance_test4_strong_balance",
+  "timestamp": "2025-10-03T21:03:43.556407"
+}

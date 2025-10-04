@@ -8,10 +8,20 @@ Output columns:
   - tema_{period}
 """
 
-import pandas as pd
 from typing import Any
 
+import pandas as pd
+
 from ztb.features.base import BaseFeature
+from ztb.features.registry import FeatureRegistry
+
+
+@FeatureRegistry.register("TEMA")
+def compute_tema(df: pd.DataFrame) -> pd.Series:
+    """Triple Exponential Moving Average (TEMA)"""
+    feature = TEMA()
+    result_df = feature.compute(df)
+    return result_df["tema_14"]
 
 
 class TEMA(BaseFeature):
@@ -34,8 +44,13 @@ class TEMA(BaseFeature):
                 "Input DataFrame must contain a 'close' column for TEMA calculation."
             )
 
-        # Calculate three EMAs
-        ema1 = df["close"].ewm(span=self.period, adjust=False).mean()
+        # Calculate three EMAs - use pre-computed EMA if available for first EMA
+        ema_col = f"ema_{self.period}"
+        if ema_col in df.columns:
+            ema1 = df[ema_col]
+        else:
+            ema1 = df["close"].ewm(span=self.period, adjust=False).mean()
+
         ema2 = ema1.ewm(span=self.period, adjust=False).mean()
         ema3 = ema2.ewm(span=self.period, adjust=False).mean()
         # TEMA = 3 * EMA1 - 3 * EMA2 + EMA3

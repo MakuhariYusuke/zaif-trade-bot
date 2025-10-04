@@ -17,11 +17,6 @@ def generate_correlation_id() -> str:
     return uuid.uuid4().hex
 
 
-def get_logger(name: str) -> logging.Logger:
-    """Get a configured logger instance."""
-    return logging.getLogger(name)
-
-
 class JsonLogFormatter(logging.Formatter):
     """Formatter that emits records as one-line JSON objects."""
 

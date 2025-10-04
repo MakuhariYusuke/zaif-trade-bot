@@ -70,7 +70,8 @@ class BaseFeature(ABC):
     @property
     def required_calculations(self) -> Set[str]:
         """Required preprocessing calculations for this feature"""
-        return getattr(self, "_required_calculations", set())
+        val = getattr(self, "_required_calculations", None)
+        return val if val is not None else set()
 
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -87,13 +88,12 @@ class ParameterizedFeature(BaseFeature):
         deps: Optional[List[str]] = None,
         default_params: Optional[Dict[str, Any]] = None,
     ):
-        super().__init__(name, deps)
+        self._default_params = default_params or {}
         self.default_params = default_params or {}
 
     def compute(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
-        """Compute with parameter override support"""
         # Merge default params with provided params
-        merged_params = {**self.default_params, **params}
+        merged_params = {**self._default_params, **params}
         return self._compute_with_params(df, **merged_params)
 
     @abstractmethod
@@ -144,45 +144,71 @@ class CommonPreprocessor:
     @staticmethod
     def preprocess(df: pd.DataFrame) -> pd.DataFrame:
         """Preprocess basic columns"""
-        df = df.copy()
+        needs_copy = False
 
         # Rename price to close if needed
+        # Only rename if 'price' exists and 'close' does not, to avoid overwriting an existing 'close' column.
         if "price" in df.columns and "close" not in df.columns:
             df = df.rename(columns={"price": "close"})
-
-        # Check required columns
+            needs_copy = True
+        # List of required columns for feature computation.
+        # This list can be extended in the future if additional columns become necessary for new features.
+        # Keeping this as a separate variable improves maintainability and clarity.
         required_cols = ["close", "high", "low", "volume"]
         for col in required_cols:
             if col not in df.columns:
                 raise ValueError(f"Required column '{col}' not found in data")
-
         # Calculate return
         if "return" not in df.columns:
+            if not needs_copy:
+                df = df.copy()
+                needs_copy = True
+            # Ensure 'close' is float and fill missing values
+            df["close"] = pd.to_numeric(df["close"], errors="coerce").astype(float)
+            df["close"] = df["close"].ffill().bfill()
             df["return"] = df["close"].pct_change().fillna(0)
 
         # abs_return
         if "abs_return" not in df.columns:
+            if not needs_copy:
+                df = df.copy()
+                needs_copy = True
             df["abs_return"] = df["return"].abs()
 
         # rolling mean/std (common)
         windows = [14, 50]
         for w in windows:
             if f"rolling_mean_{w}" not in df.columns:
+                if not needs_copy:
+                    df = df.copy()
+                    needs_copy = True
                 df[f"rolling_mean_{w}"] = df["close"].rolling(w).mean().ffill()
             if f"rolling_std_{w}" not in df.columns:
+                if not needs_copy:
+                    df = df.copy()
+                    needs_copy = True
                 df[f"rolling_std_{w}"] = df["close"].rolling(w).std().ffill()
 
         # rolling max/min
         for w in windows:
             if f"rolling_max_{w}" not in df.columns:
+                if not needs_copy:
+                    df = df.copy()
+                    needs_copy = True
                 df[f"rolling_max_{w}"] = df["close"].rolling(w).max().ffill()
             if f"rolling_min_{w}" not in df.columns:
+                if not needs_copy:
+                    df = df.copy()
+                    needs_copy = True
                 df[f"rolling_min_{w}"] = df["close"].rolling(w).min().ffill()
 
         # EMA (common spans)
         ema_spans = [5, 10, 12, 14, 20, 26]
         for span in ema_spans:
             if f"ema_{span}" not in df.columns:
+                if not needs_copy:
+                    df = df.copy()
+                    needs_copy = True
                 df[f"ema_{span}"] = df["close"].ewm(span=span).mean()
 
         return df

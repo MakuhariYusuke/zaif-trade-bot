@@ -1,0 +1,16 @@
+{
+  "current_step": 6144,
+  "rewards_history": [
+    -5.262769371420532
+  ],
+  "steps_history": [
+    6144
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "test-iterative-basic-071001-091328_iter_01"
+}

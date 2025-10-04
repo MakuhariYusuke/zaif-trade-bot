@@ -277,9 +277,11 @@ def evaluate_feature_class(
             "feature_performances": feature_performances,
             "best_delta_sharpe": best_delta_sharpe,
             "best_feature_name": best_feature_name,
-            "avg_correlation": np.mean([abs(c) for c in feature_correlations.values()])
-            if feature_correlations
-            else 0,
+            "avg_correlation": (
+                np.mean([abs(c) for c in feature_correlations.values()])
+                if feature_correlations
+                else 0
+            ),
         }
 
         # Log successful evaluation

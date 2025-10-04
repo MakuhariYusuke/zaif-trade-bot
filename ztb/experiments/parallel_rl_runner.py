@@ -5,6 +5,7 @@ Runs generalization and aggressive strategies in parallel
 """
 
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -20,15 +21,17 @@ current_dir = Path(__file__).parent.parent
 # project_root: プロジェクトのルートディレクトリ (zaif-trade-bot)
 project_root = current_dir.parent  # Go up one more level to project root
 sys.path.insert(0, str(project_root))
-from ztb.utils import LoggerManager
 from ztb.utils.parallel_experiments import ResourceMonitor
+
+from ztb.utils.errors import safe_operation
 
 
 class ParallelRLExperimentRunner:
     """Parallel runner for reinforcement learning experiments"""
 
     def __init__(self):
-        self.logger_manager = LoggerManager(experiment_id="parallel_rl_experiments")
+        super().__init__()
+        self.logger = logging.getLogger("parallel_rl_experiments")
         self.resource_monitor = ResourceMonitor()
         self.log_dir = Path("results/parallel_runs")
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -55,6 +58,15 @@ class ParallelRLExperimentRunner:
 
     def run_parallel_experiments(self):
         """Run experiments in parallel"""
+        return safe_operation(
+            self.logger,
+            lambda: self._run_parallel_experiments_impl(),
+            "run_parallel_experiments",
+            None  # Return None on failure
+        )
+
+    def _run_parallel_experiments_impl(self):
+        """Implementation of running parallel experiments."""
         self.start_time = time.time()
         total_timeout = 8 * 3600  # 8 hours total timeout
 

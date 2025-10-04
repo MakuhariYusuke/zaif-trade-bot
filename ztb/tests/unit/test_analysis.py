@@ -14,6 +14,8 @@ import pytest
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
+from ztb.utils.data_utils import load_csv_data
+
 from analysis.correlation import compute_correlations
 from analysis.timeseries import compute_lag_correlations
 
@@ -162,6 +164,6 @@ class TestAnalysisIntegration:
         csv_path = reports_dir / "correlation_pearson.csv"
         assert csv_path.exists()
 
-        loaded = pd.read_csv(csv_path, index_col=0)
+        loaded = load_csv_data(csv_path, index_col=0)
         assert loaded.shape == (2, 2)
         assert loaded.loc["feature1", "feature1"] == pytest.approx(1.0, abs=1e-10)

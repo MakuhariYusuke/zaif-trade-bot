@@ -8,6 +8,8 @@ from typing import Dict, Optional, Union
 import numpy as np
 import pandas as pd
 
+from ztb.utils.memory.dtypes import OptimizationReport, optimize_dtypes
+
 
 def rolling_mean(
     series: pd.Series, window: int, min_periods: Optional[int] = None
@@ -50,32 +52,47 @@ def safe_divide(
     return result.fillna(default)
 
 
-def optimize_dataframe_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+def optimize_dataframe_dtypes(
+    df: pd.DataFrame,
+    *,
+    chunk_size: int | None = None,
+    memory_report: bool = False,
+    convert_objects_to_category: bool = True,
+) -> pd.DataFrame:
+    """Return a copy of *df* with memory-efficient dtypes applied.
+
+    The function leverages :func:`ztb.utils.memory.dtypes.optimize_dtypes` to perform
+    safe downcasting of numeric columns, convert low-cardinality object columns to
+    categorical dtype, and optionally report the memory savings. It attaches the
+    resulting :class:`OptimizationReport` to ``df.attrs['memory_optimization']``
+    for downstream diagnostics.
     """
-    Optimize DataFrame dtypes for memory efficiency.
-    Note: Converts float64 columns to float32, which may result in loss of precision.
-    精度が必要な場合はfloat32への変換による精度低下に注意してください。
-    """
-    df_optimized = df.copy()
 
-    # Convert int64 to int32 with overflow check
-    int_cols = df_optimized.select_dtypes(include=["int64"]).columns
-    for col in int_cols:
-        min_val = df_optimized[col].min()
-        max_val = df_optimized[col].max()
-        if min_val >= np.iinfo(np.int32).min and max_val <= np.iinfo(np.int32).max:
-            df_optimized[col] = df_optimized[col].astype("int32")
-        else:
-            # Leave as int64 and optionally log a warning
-            print(
-                f"Warning: Column '{col}' has values outside int32 range and will remain as int64."
-            )
+    effective_chunk = (
+        chunk_size
+        if chunk_size is not None
+        else min(max(1, len(df.columns) // 8 or 1), 64)
+    )
 
-    # Convert int64 to int32
-    int_cols = df_optimized.select_dtypes(include=["int64"]).columns
-    df_optimized[int_cols] = df_optimized[int_cols].astype("int32")
+    optimized, report = optimize_dtypes(
+        df,
+        chunk_size=effective_chunk,
+        convert_objects_to_category=convert_objects_to_category,
+        memory_report=memory_report,
+    )
 
-    return df_optimized
+    if isinstance(report, OptimizationReport):
+        optimized.attrs.setdefault("memory_optimization", {})
+        optimized.attrs["memory_optimization"].update(
+            {
+                "before_bytes": report.memory_before_bytes,
+                "after_bytes": report.memory_after_bytes,
+                "saved_bytes": report.memory_saved_bytes,
+                "percent_reduction": report.percent_reduction,
+            }
+        )
+
+    return optimized
 
 
 def generate_intermediate_report(
@@ -101,11 +118,11 @@ def generate_intermediate_report(
         },
         "summary": {
             "total_features": len(feature_times),
-            "avg_computation_time_ms": sum(feature_times.values())
-            * 1000
-            / len(feature_times)
-            if feature_times
-            else 0,
+            "avg_computation_time_ms": (
+                sum(feature_times.values()) * 1000 / len(feature_times)
+                if feature_times
+                else 0
+            ),
             "max_nan_rate": max(nan_rates.values()) if nan_rates else 0.0,
         },
     }

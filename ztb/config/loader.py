@@ -6,22 +6,38 @@ Supports merging configurations from multiple sources with proper precedence.
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 from pydantic import ValidationError
 
 from .schema import GlobalConfig
 
+from ztb.utils.errors import safe_operation
+
 
 class ConfigLoader:
     """Configuration loader with source priority management."""
 
-    def __init__(self):
-        self.sources = {"defaults": {}, "yaml": {}, "env": {}, "cli": {}}
+    def __init__(self) -> None:
+        self.sources: Dict[str, Dict[str, Any]] = {
+            "defaults": {},
+            "yaml": {},
+            "env": {},
+            "cli": {},
+        }
 
     def load_yaml(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file."""
+        return safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: self._load_yaml_impl(config_path),
+            context="yaml_config_loading",
+            default_result={},  # Return empty dict on failure
+        )
+
+    def _load_yaml_impl(self, config_path: str) -> Dict[str, Any]:
+        """Implementation of YAML config loading."""
         path = Path(config_path)
         if not path.exists():
             raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -34,7 +50,16 @@ class ConfigLoader:
 
     def load_env(self, prefix: str = "ZTB_") -> Dict[str, Any]:
         """Load configuration from environment variables."""
-        config = {}
+        return safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: self._load_env_impl(prefix),
+            context="env_config_loading",
+            default_result={},  # Return empty dict on failure
+        )
+
+    def _load_env_impl(self, prefix: str = "ZTB_") -> Dict[str, Any]:
+        """Implementation of environment config loading."""
+        config: Dict[str, Any] = {}
         for key, value in os.environ.items():
             if key.startswith(prefix):
                 # Remove prefix and convert to nested dict
@@ -47,8 +72,17 @@ class ConfigLoader:
 
     def load_cli(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Load configuration from CLI arguments."""
+        return safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: self._load_cli_impl(args),
+            context="cli_config_loading",
+            default_result={},  # Return empty dict on failure
+        )
+
+    def _load_cli_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Implementation of CLI config loading."""
         # Convert flat CLI args to nested structure
-        config = {}
+        config: Dict[str, Any] = {}
         for key, value in args.items():
             if value is not None:
                 keys = key.split(".")
@@ -57,7 +91,9 @@ class ConfigLoader:
         self.sources["cli"] = config
         return config
 
-    def _set_nested_value(self, config: Dict[str, Any], keys: list, value: Any):
+    def _set_nested_value(
+        self, config: Dict[str, Any], keys: List[str], value: Any
+    ) -> None:
         """Set value in nested dictionary structure."""
         current = config
         for key in keys[:-1]:
@@ -82,7 +118,7 @@ class ConfigLoader:
 
         return merged
 
-    def _deep_merge(self, base: Dict[str, Any], update: Dict[str, Any]):
+    def _deep_merge(self, base: Dict[str, Any], update: Dict[str, Any]) -> None:
         """Deep merge update into base."""
         for key, value in update.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
@@ -91,7 +127,9 @@ class ConfigLoader:
                 base[key] = value
 
     def get_config(
-        self, config_path: Optional[str] = None, cli_args: Optional[Dict] = None
+        self,
+        config_path: Optional[str] = None,
+        cli_args: Optional[Dict[str, Any]] = None,
     ) -> GlobalConfig:
         """Get validated GlobalConfig instance."""
         # Load defaults
@@ -109,13 +147,13 @@ class ConfigLoader:
             self.load_cli(cli_args)
 
         # Merge and validate
-        merged = self.merge_configs()
+        merged: Dict[str, Any] = self.merge_configs()
         try:
             return GlobalConfig(**merged)
         except ValidationError as e:
             raise ValueError(f"Configuration validation failed: {e}") from e
 
-    def dump_schema(self, output_path: str):
+    def dump_schema(self, output_path: str) -> None:
         """Dump JSON schema to file."""
         schema = GlobalConfig.model_json_schema()
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -127,7 +165,7 @@ class ConfigLoader:
 
 # Convenience function
 def load_config(
-    config_path: Optional[str] = None, cli_args: Optional[Dict] = None
+    config_path: Optional[str] = None, cli_args: Optional[Dict[str, Any]] = None
 ) -> GlobalConfig:
     """Load configuration with default loader."""
     loader = ConfigLoader()
@@ -139,9 +177,9 @@ def load_config(
     return config
 
 
-def initialize_risk_profiles(config: GlobalConfig):
+def initialize_risk_profiles(config: GlobalConfig) -> None:
     """Initialize risk profile manager with config presets."""
-    from ztb.live.risk_profiles import get_risk_manager
+    from ztb.trading.live.risk_profiles import get_risk_manager
 
     manager = get_risk_manager()
     for profile in config.risk_profiles.values():

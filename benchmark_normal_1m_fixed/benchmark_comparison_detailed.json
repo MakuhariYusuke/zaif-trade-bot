@@ -1,0 +1,321 @@
+[
+  {
+    "model_name": "single_model",
+    "model_type": "single",
+    "metrics": {
+      "total_return": 0.7141284981250041,
+      "avg_return": 0.07141284981250041,
+      "win_rate": 1.0,
+      "sharpe_ratio": 8.159686401137776e+16,
+      "sortino_ratio": 0.0,
+      "calmar_ratio": 0.0,
+      "max_drawdown": 0.0,
+      "total_trades": 50,
+      "buy_actions": 50,
+      "sell_actions": 0,
+      "hold_actions": 9940,
+      "returns": [
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041,
+        0.07141284981250041
+      ],
+      "cumulative_returns": [
+        0.07141284981250041,
+        0.14282569962500083,
+        0.21423854943750126,
+        0.28565139925000166,
+        0.35706424906250206,
+        0.42847709887500246,
+        0.49988994868750286,
+        0.5713027985000033,
+        0.6427156483125037,
+        0.7141284981250041
+      ],
+      "drawdowns": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "extended_evaluation": {
+        "performance_attribution": {
+          "error": "Analysis failed: Input X contains NaN.\nLinearRegression does not accept missing values encoded as NaN natively. For supervised learning, you might want to consider sklearn.ensemble.HistGradientBoostingClassifier and Regressor which accept missing values encoded as NaNs natively. Alternatively, it is possible to preprocess the data, for instance by using an imputer transformer in a pipeline or drop samples with missing values. See https://scikit-learn.org/stable/modules/impute.html You can find a list of all estimators that handle NaN values at the following page: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values",
+          "attribution_score": 0.0,
+          "factor_contributions": {},
+          "r_squared": 0.0
+        },
+        "monte_carlo": {
+          "error": "Analysis failed: 'MonteCarloResult' object has no attribute 'simulation_paths'",
+          "simulation_score": 0.0,
+          "expected_return": 0.0,
+          "value_at_risk": 0.0,
+          "expected_shortfall": 0.0
+        },
+        "strategy_robustness": {
+          "robustness_score": 1.2239529601706664e+16,
+          "stability_score": 1.0,
+          "volatility": 0.0,
+          "sharpe_ratio": 8.159686401137776e+16,
+          "max_drawdown": 0.0,
+          "avg_drawdown": 0.0,
+          "skewness": NaN,
+          "kurtosis": NaN,
+          "returns_quantiles": {
+            "0.1": 0.07141284981250041,
+            "0.25": 0.07141284981250041,
+            "0.5": 0.07141284981250041,
+            "0.75": 0.07141284981250041,
+            "0.9": 0.07141284981250041
+          },
+          "max_positive_streak": 10,
+          "max_negative_streak": 0,
+          "avg_positive_streak": 10.0,
+          "avg_negative_streak": 0.0,
+          "total_positive_days": 10,
+          "total_negative_days": 0,
+          "win_rate": 1.0
+        },
+        "risk_parity": {
+          "risk_parity_score": 0.5,
+          "diversification_ratio": 1.0,
+          "concentration_index": 1.0,
+          "volatility": 0.0,
+          "total_return": 0.9932809081903435,
+          "sharpe_ratio": 8.159686401137776e+16,
+          "sortino_ratio": 0.0,
+          "downside_volatility": 0.0,
+          "win_rate": 1.0,
+          "loss_rate": 0.0,
+          "avg_win": 0.07141284981250041,
+          "avg_loss": 0.0
+        },
+        "cost_sensitivity": {
+          "cost_sensitivity_score": 0.0,
+          "breakeven_fee": 0.0,
+          "profit_erosion_rate": 0.0,
+          "fee_range": [
+            0.0001,
+            0.0006210526315789474,
+            0.0011421052631578948,
+            0.0016631578947368423,
+            0.0021842105263157894,
+            0.0027052631578947366,
+            0.0032263157894736843,
+            0.0037473684210526316,
+            0.004268421052631579,
+            0.004789473684210527,
+            0.005310526315789474,
+            0.005831578947368421,
+            0.006352631578947369,
+            0.0068736842105263166,
+            0.007394736842105264,
+            0.00791578947368421,
+            0.008436842105263158,
+            0.008957894736842106,
+            0.009478947368421052,
+            0.01
+          ],
+          "sensitivity_scores": {
+            "sharpe_ratio": 3.6182902727615814e+17,
+            "total_return": 17.834352510781404,
+            "volatility": 2.2252833507394713e-13,
+            "max_drawdown": 0.0,
+            "win_rate": 0.0,
+            "profit_factor": NaN
+          },
+          "breakeven_analysis": {
+            "sharpe_ratio": 0.009478947368421052,
+            "total_return": 0.01,
+            "profit_factor": 0.01
+          },
+          "fee_0.0001": {
+            "sharpe_ratio": 0,
+            "total_return": 0.9914212665717004,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0006210526315789474": {
+            "sharpe_ratio": 0,
+            "total_return": 0.9817567954838711,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0011421052631578948": {
+            "sharpe_ratio": 318612833190195.75,
+            "total_return": 0.9721345568640181,
+            "volatility": 2.2030305172320775e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0016631578947368423": {
+            "sharpe_ratio": 0,
+            "total_return": 0.9625543865876882,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0021842105263157894": {
+            "sharpe_ratio": 0,
+            "total_return": 0.9530161210887778,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0027052631578947366": {
+            "sharpe_ratio": 311517344124066.75,
+            "total_return": 0.9435195973579218,
+            "volatility": 2.2030305172320775e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0032263157894736843": {
+            "sharpe_ratio": 309152181102023.9,
+            "total_return": 0.9340646529408814,
+            "volatility": 2.2030305172320775e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0037473684210526316": {
+            "sharpe_ratio": 0,
+            "total_return": 0.9246511259368901,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.004268421052631579": {
+            "sharpe_ratio": 0,
+            "total_return": 0.9152788549970734,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.004789473684210527": {
+            "sharpe_ratio": 302056692035895.06,
+            "total_return": 0.9059476793228063,
+            "volatility": 2.2030305172320775e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.005310526315789474": {
+            "sharpe_ratio": 0,
+            "total_return": 0.8966574386641144,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.005831578947368421": {
+            "sharpe_ratio": 0,
+            "total_return": 0.8874079733180802,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.006352631578947369": {
+            "sharpe_ratio": 0,
+            "total_return": 0.8781991241272209,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.0068736842105263166": {
+            "sharpe_ratio": 292596039947723.06,
+            "total_return": 0.8690307324779012,
+            "volatility": 2.2030305172320775e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.007394736842105264": {
+            "sharpe_ratio": 0,
+            "total_return": 0.8599026402987504,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.00791578947368421": {
+            "sharpe_ratio": 0,
+            "total_return": 0.8508146900590481,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.008436842105263158": {
+            "sharpe_ratio": 285500550881594.25,
+            "total_return": 0.841766724767155,
+            "volatility": 2.2030305172320775e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.008957894736842106": {
+            "sharpe_ratio": 566270775719102.8,
+            "total_return": 0.832758587968937,
+            "volatility": 1.1015152586160387e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.009478947368421052": {
+            "sharpe_ratio": 561540449675016.75,
+            "total_return": 0.8237901237461649,
+            "volatility": 1.1015152586160387e-16,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          },
+          "fee_0.01": {
+            "sharpe_ratio": 0,
+            "total_return": 0.8148611767149645,
+            "volatility": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 1.0,
+            "profit_factor": Infinity
+          }
+        }
+      },
+      "comprehensive_score": 2.447905920341333e+16,
+      "risk_adjusted_score": 4.079843200568888e+16,
+      "robustness_score": 6119764800853332.0
+    },
+    "config": {
+      "model_path": "models\\normal_1m_redesigned_reward_final.zip",
+      "cv_scores": [
+        0.0,
+        0.1306657481250004,
+        0.0,
+        0.0,
+        0.13741575124999975
+      ]
+    }
+  }
+]

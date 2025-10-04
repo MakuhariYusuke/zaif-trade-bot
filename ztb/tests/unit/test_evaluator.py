@@ -13,6 +13,8 @@ import pandas as pd
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
+from ztb.utils.data_utils import load_csv_data
+
 from tools.evaluation.re_evaluate_features import (
     ComprehensiveFeatureReEvaluator,
     generate_benchmark_output,
@@ -106,7 +108,7 @@ class TestEvaluator:
         assert benchmark_json.exists()
 
         # Check CSV content
-        df = pd.read_csv(benchmark_csv)
+        df = load_csv_data(benchmark_csv)
         assert len(df) == 2
         assert "feature_name" in df.columns
         assert "computation_time_ms" in df.columns

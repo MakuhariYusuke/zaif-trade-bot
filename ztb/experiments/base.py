@@ -10,10 +10,13 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
 
-from ztb.utils import LoggerManager
+import numpy as np
+
 from ztb.utils.checkpoint import CheckpointManager
+from ztb.utils.run_metadata import RunMetadata
+from ztb.utils.trading_metrics import sharpe_ratio
 
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import PipelineStats, StreamingPipeline
@@ -86,13 +89,13 @@ class ExperimentBase(ABC):
     """
 
     def __init__(self, config: ExperimentConfig, experiment_name: Optional[str] = None):
+        super().__init__()
         self.config = config
         # 統一された命名規則: サブクラスは experiment_name を明示的に渡すか、クラス名から 'Experiment' を除去して小文字化
         self.experiment_name = experiment_name or self._default_experiment_name()
         self.start_time: Optional[datetime] = None
         self.end_time: Optional[datetime] = None
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger_manager = LoggerManager(experiment_id=self.experiment_name)
 
         # 結果保存ディレクトリ
         self.results_dir = Path("results") / "experiments" / self.experiment_name
@@ -178,29 +181,26 @@ class ExperimentBase(ABC):
         エラーハンドリングと結果保存を含む
         """
         self.start_time = datetime.now()
-        self.logger_manager.start_session("experiment", self.experiment_name)
-        self.logger_manager.log_experiment_start(
-            self.experiment_name, dict(self.config)
-        )
-        self.logger.info(f"Starting experiment: {self.experiment_name}")
+        
+        # 実行メタデータをキャプチャ
+        run_metadata = RunMetadata()
+        metadata = run_metadata.capture_all_metadata()
+        
+        self.logger.info(f"Starting experiment: {self.experiment_name} with config: {dict(self.config)}")
 
         result = None  # result を初期化してバインドされていない問題を回避
         try:
             result = self.run()
-            if not isinstance(result, ExperimentResult):
-                raise TypeError(
-                    f"self.run() must return an ExperimentResult, got {type(result).__name__}"
-                )
             result.status = "success"
+            # 実行メタデータをartifactsに追加
+            result.artifacts["run_metadata"] = json.dumps(metadata, ensure_ascii=False)
             self.logger.info(
                 f"Experiment completed successfully: {self.experiment_name}"
             )
-            self.logger_manager.log_experiment_end(result.to_dict())
         except Exception as e:
             self.logger.error(
                 f"Experiment failed: {self.experiment_name}, error: {str(e)}"
             )
-            self.logger_manager.log_error(str(e), f"Experiment: {self.experiment_name}")
 
             # 致命的なエラーの場合は強制終了
             if isinstance(e, (KeyboardInterrupt, SystemExit, MemoryError, OSError)):
@@ -217,7 +217,7 @@ class ExperimentBase(ABC):
                 status="failed",
                 config=self.config,
                 metrics={},
-                artifacts={},
+                artifacts={"run_metadata": json.dumps(metadata, ensure_ascii=False)},
                 error_message=str(e),
             )
         finally:
@@ -226,7 +226,6 @@ class ExperimentBase(ABC):
                 result.execution_time_seconds = (
                     self.end_time - self.start_time
                 ).total_seconds()
-                self.logger_manager.end_session(result.to_dict())
 
             # Shutdown checkpoint manager
             if hasattr(self, "checkpoint_manager"):
@@ -238,6 +237,9 @@ class ExperimentBase(ABC):
 
         # ストリーミングメトリクスを結果に付与
         self._inject_streaming_metrics(result)
+
+        # リスク調整指標を計算して追加
+        self._add_risk_adjusted_metrics(result)
 
         # 結果保存
         self.save_results(result)
@@ -440,7 +442,7 @@ class ExperimentBase(ABC):
     def notify_results(self, result: ExperimentResult) -> None:
         """実験結果をDiscordに通知"""
         try:
-            self.logger_manager.log_experiment_end(result.to_dict())
+            pass  # Notification removed
         except Exception as e:
             self.logger.warning(f"Failed to send notification: {e}")
 
@@ -471,7 +473,7 @@ class ScalingExperiment(ExperimentBase):
 
         try:
             # チェックポイントから再開
-            checkpoint_data, start_step, metadata = self.checkpoint_load()
+            checkpoint_data, start_step, _ = self.checkpoint_load()
             self.current_step = start_step
 
             if checkpoint_data:
@@ -565,7 +567,7 @@ class ScalingExperiment(ExperimentBase):
             artifacts["results"] = str(self.results_dir)
         return artifacts
 
-    def checkpoint_load(self) -> tuple:
+    def checkpoint_load(self) -> Tuple[Optional[Any], int, Dict[str, Any]]:
         """最新のチェックポイントを読み込み"""
         try:
             return self.checkpoint_manager.load_latest()
@@ -578,3 +580,18 @@ class ScalingExperiment(ExperimentBase):
     ) -> None:
         """チェックポイントを非同期保存"""
         self.checkpoint_manager.save_async(obj, step, metadata)
+
+    def _add_risk_adjusted_metrics(self, result: ExperimentResult) -> None:
+        """実験結果にリスク調整指標を追加"""
+        if "returns" in result.metrics:
+            returns = result.metrics["returns"]
+            if isinstance(returns, list) and len(returns) > 0:
+                try:
+                    # returnsをfloatのリストに変換
+                    returns_float = [float(r) for r in returns]
+                    # Sharpe ratioを計算して追加
+                    sharpe = sharpe_ratio(returns_float)
+                    if not np.isnan(sharpe) and not np.isinf(sharpe):
+                        result.metrics["sharpe_ratio"] = float(sharpe)
+                except Exception as e:
+                    self.logger.warning(f"Failed to calculate Sharpe ratio: {e}")

@@ -7,13 +7,14 @@ Reusable utility for aggregating trade data into OHLCV bars.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 
 class StreamToBarsConverter:
     """Convert streaming trade data to OHLCV bars."""
 
-    def __init__(self, bar_interval: str = "1min"):
+    def __init__(self, bar_interval: str = "1min") -> None:
         """
         Initialize converter.
 
@@ -54,16 +55,22 @@ class StreamToBarsConverter:
         if not self.pending_trades:
             return pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
 
-        # Convert to DataFrame
+        # Convert to DataFrame more efficiently
         df = pd.DataFrame(self.pending_trades)
 
-        # Ensure timestamp is datetime
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        # Ensure timestamp is datetime (vectorized)
+        df["timestamp"] = pd.to_datetime(
+            df["timestamp"],
+            unit="ms" if isinstance(df["timestamp"].iloc[0], (int, float)) else None,
+        )
 
         # Set timestamp as index
         df.set_index("timestamp", inplace=True)
 
-        # Resample to bars
+        # Sort by timestamp for proper resampling
+        df = df.sort_index()
+
+        # Resample to bars with optimized aggregation
         bars = df.resample(self.bar_interval).agg(
             {"price": ["first", "max", "min", "last"], "quantity": "sum"}
         )
@@ -74,8 +81,11 @@ class StreamToBarsConverter:
         # Add symbol column
         bars["symbol"] = symbol
 
-        # Remove any NaN bars (periods with no trades)
-        bars = bars.dropna()
+        # Remove any NaN bars (periods with no trades) - more efficient
+        bars = bars.dropna(subset=["open"])
+
+        # Clear pending trades after conversion
+        self.pending_trades.clear()
 
         return bars
 

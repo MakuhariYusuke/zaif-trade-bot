@@ -16,29 +16,29 @@ def compute_macd(
     signal_period: int = 9,
 ) -> pd.Series:
     """Compute MACD (Moving Average Convergence Divergence) - Optimized version"""
-    # Calculate EMAs efficiently, sharing intermediate results
-    close_series = df["close"]
+    # Use pre-computed EMAs if available, otherwise compute them
+    fast_col = f"ema_{fast_period}"
+    slow_col = f"ema_{slow_period}"
 
-    # Calculate fast EMA
-    if f"ema_{fast_period}" not in df.columns:
-        ema_fast = close_series.ewm(span=fast_period, adjust=False).mean()
+    if fast_col in df.columns:
+        ema_fast = df[fast_col]
     else:
-        ema_fast = df[f"ema_{fast_period}"]
+        ema_fast = df["close"].ewm(span=fast_period, adjust=False).mean()
 
-    # Calculate slow EMA
-    if f"ema_{slow_period}" not in df.columns:
-        ema_slow = close_series.ewm(span=slow_period, adjust=False).mean()
+    if slow_col in df.columns:
+        ema_slow = df[slow_col]
     else:
-        ema_slow = df[f"ema_{slow_period}"]
+        ema_slow = df["close"].ewm(span=slow_period, adjust=False).mean()
 
     # MACD line
     macd = ema_fast - ema_slow
 
     # Signal line (EMA of MACD)
-    if f"ema_{signal_period}" not in df.columns:
-        signal = macd.ewm(span=signal_period, adjust=False).mean()
+    signal_col = f"ema_{signal_period}"
+    if signal_col in df.columns:
+        signal = df[signal_col]
     else:
-        signal = df[f"ema_{signal_period}"]
+        signal = macd.ewm(span=signal_period, adjust=False).mean()
 
     # Return MACD histogram (MACD - Signal) as it's the most useful component
     macd_hist = macd - signal

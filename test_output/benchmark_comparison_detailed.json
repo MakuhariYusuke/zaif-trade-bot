@@ -1,0 +1,61 @@
+[
+  {
+    "model_name": "single_model",
+    "model_type": "single",
+    "metrics": {
+      "total_return": 1461.890129809915,
+      "avg_return": 1461.890129809915,
+      "win_rate": 1.0,
+      "sharpe_ratio": 0.0,
+      "sortino_ratio": 0.0,
+      "calmar_ratio": 0.0,
+      "max_drawdown": 0.0,
+      "total_trades": 272,
+      "buy_actions": 188,
+      "sell_actions": 84,
+      "hold_actions": 727,
+      "returns": [
+        1461.890129809915
+      ],
+      "cumulative_returns": [
+        1461.890129809915
+      ],
+      "drawdowns": [
+        0.0
+      ]
+    },
+    "config": {
+      "model_path": "models\\final_model.zip"
+    }
+  },
+  {
+    "model_name": "single_cv",
+    "model_type": "single",
+    "metrics": {
+      "total_return": 0.0,
+      "avg_return": 0.0,
+      "win_rate": 0.0,
+      "sharpe_ratio": 0.0,
+      "sortino_ratio": 0.0,
+      "calmar_ratio": 0.0,
+      "max_drawdown": 0.0,
+      "total_trades": 0,
+      "buy_actions": 0,
+      "sell_actions": 0,
+      "hold_actions": 0,
+      "returns": [],
+      "cumulative_returns": [],
+      "drawdowns": []
+    },
+    "config": {
+      "n_splits": 5,
+      "cv_scores": [
+        270.1448323811119,
+        347.09631175622314,
+        259.9986664081423,
+        240.28895933431696,
+        304.6255902435792
+      ]
+    }
+  }
+]

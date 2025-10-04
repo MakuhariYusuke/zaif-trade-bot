@@ -8,7 +8,7 @@ Estimates GPU, power, and cloud costs based on run metadata and rates.
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
 # Add the ztb package to the path
@@ -48,7 +48,7 @@ def load_metadata(
 
     try:
         with open(metadata_path, "r") as f:
-            return json.load(f)
+            return cast(Dict[str, Any], json.load(f))
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -63,7 +63,7 @@ def load_summary(
 
     try:
         with open(summary_path, "r") as f:
-            return json.load(f)
+            return cast(Dict[str, Any], json.load(f))
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -135,7 +135,7 @@ def estimate_cost(
     }
 
 
-def save_estimate(estimate: Dict[str, Any], output_path: Path):
+def save_estimate(estimate: Dict[str, Any], output_path: Path) -> None:
     """Save estimate as JSON."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:

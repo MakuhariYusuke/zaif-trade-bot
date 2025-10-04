@@ -124,9 +124,11 @@ class ParquetIntegrityChecker:
                         {
                             "start": str(gap_start),
                             "end": str(gap_start + gap_duration),
-                            "duration_minutes": gap_duration.total_seconds() / 60
-                            if hasattr(gap_duration, "total_seconds")
-                            else float(gap_duration) / 60,
+                            "duration_minutes": (
+                                gap_duration.total_seconds() / 60
+                                if hasattr(gap_duration, "total_seconds")
+                                else float(gap_duration) / 60
+                            ),
                         }
                         for gap_start, gap_duration in zip(gaps.index, gaps.values)
                     ]

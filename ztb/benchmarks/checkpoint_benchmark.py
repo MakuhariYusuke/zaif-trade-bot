@@ -32,7 +32,7 @@ class CheckpointResult:
 class CheckpointBenchmark:
     """Benchmark for checkpoint save/load operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.perf_gates = {
             "max_save_time_seconds": 30,  # Maximum time to save checkpoint
             "max_load_time_seconds": 15,  # Maximum time to load checkpoint
@@ -257,7 +257,7 @@ class CheckpointBenchmark:
             gate_violations=violations,
         )
 
-    def print_result(self, result: CheckpointResult):
+    def print_result(self, result: CheckpointResult) -> None:
         """Print checkpoint benchmark result."""
         status = "✓ PASS" if result.passed_gates else "✗ FAIL"
 
@@ -328,7 +328,7 @@ class CheckpointBenchmark:
         return results
 
 
-def main():
+def main() -> None:
     """Main benchmark runner."""
     import argparse
 

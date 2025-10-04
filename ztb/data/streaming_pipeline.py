@@ -7,10 +7,12 @@ import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterator, List, Optional, Sequence
 
 import pandas as pd
+
+from ztb.utils.errors import NetworkError, safe_operation
 
 try:
     import psutil
@@ -18,7 +20,6 @@ try:
     HAS_PSUTIL = True
 except ImportError:
     psutil = None  # type: ignore[assignment]
-    HAS_PSUTIL = False
 
 from ztb.features import FeatureRegistry
 from ztb.features.feature_engine import compute_features_batch
@@ -27,26 +28,31 @@ from ztb.utils.observability import ObservabilityClient
 from .coin_gecko_stream import CoinGeckoStream, MarketDataBatch, StreamConfig
 from .stream_buffer import BufferStats, StreamBuffer
 
-logger = logging.getLogger(__name__)
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 def _default_validator(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return df
+    def perform_validation() -> pd.DataFrame:
+        if df.empty:
+            return df
 
-    result = df.copy()
-    if "timestamp" not in result.columns:
-        raise ValueError("streamed dataframe must include 'timestamp' column")
+        result = df.copy()
+        if "timestamp" not in result.columns:
+            raise ValueError("streamed dataframe must include 'timestamp' column")
 
-    result["timestamp"] = pd.to_datetime(result["timestamp"], utc=True)
-    numeric_cols = [
-        col for col in ["price", "market_cap", "volume"] if col in result.columns
-    ]
-    for col in numeric_cols:
-        result[col] = pd.to_numeric(result[col], errors="coerce")
-    result = result.dropna(subset=["timestamp", "price"])
-    result = result.drop_duplicates(subset="timestamp").sort_values("timestamp")
-    return result.reset_index(drop=True)
+        result["timestamp"] = pd.to_datetime(result["timestamp"], utc=True)
+        numeric_cols = [
+            col for col in ["price", "market_cap", "volume"] if col in result.columns
+        ]
+        for col in numeric_cols:
+            result[col] = pd.to_numeric(result[col], errors="coerce")
+        result = result.dropna(subset=["timestamp", "price"])
+        result = result.drop_duplicates(subset="timestamp").sort_values("timestamp")
+        return result.reset_index(drop=True)
+
+    return safe_operation(logger, perform_validation, "_default_validator()", df)
 
 
 @dataclass
@@ -73,12 +79,12 @@ class StreamingHealth:
             "status": self.status,
             "consecutive_failures": self.consecutive_failures,
             "last_error": self.last_error,
-            "last_error_at": self.last_error_at.isoformat()
-            if self.last_error_at
-            else None,
-            "last_success_at": self.last_success_at.isoformat()
-            if self.last_success_at
-            else None,
+            "last_error_at": (
+                self.last_error_at.isoformat() if self.last_error_at else None
+            ),
+            "last_success_at": (
+                self.last_success_at.isoformat() if self.last_success_at else None
+            ),
             "memory_usage_mb": self.memory_usage_mb,
             "cpu_usage_percent": self.cpu_usage_percent,
         }
@@ -95,6 +101,10 @@ class PipelineStats:
 
 class StreamingPipeline:
     """Coordinates streaming ingestion, buffering, and feature computation."""
+
+    _shutdown: bool = False
+    _background_stop: threading.Event
+    _background_thread: Optional[threading.Thread] = None
 
     def __init__(
         self,
@@ -115,6 +125,13 @@ class StreamingPipeline:
         max_backoff_seconds: float = 60.0,
         observability: Optional[ObservabilityClient] = None,
     ) -> None:
+        super().__init__()
+        super().__init__()
+
+        self._shutdown = False
+        self._background_stop = threading.Event()
+        self._background_thread = None
+
         if buffer_capacity <= 0:
             raise ValueError("buffer_capacity must be positive")
         if lookback_rows < 0:
@@ -143,6 +160,10 @@ class StreamingPipeline:
             compress_min_rows=buffer_compress_min_rows,
         )
 
+        # Store buffer configuration for resizing
+        self._buffer_compression = buffer_compression
+        self._buffer_compress_min_rows = buffer_compress_min_rows
+
         registry_features = FeatureRegistry.list()
         self.feature_names: List[str] = (
             list(feature_names) if feature_names else registry_features
@@ -153,9 +174,14 @@ class StreamingPipeline:
         self._feature_workers = feature_workers
         self._executor: Optional[ThreadPoolExecutor] = None
         self._prefetch_future: Optional[Future[Any]] = None
-        self._background_thread: Optional[threading.Thread] = None
-        self._background_stop = threading.Event()
-        self._shutdown = False
+        self._connection_monitor_thread: Optional[threading.Thread] = None
+        self._connection_monitor_stop = threading.Event()
+        self._last_connection_check = datetime.now(timezone.utc)
+        self._connection_check_interval = 30.0  # seconds
+        self._max_reconnect_attempts = 10
+        self._reconnect_attempts = 0
+        self._adaptive_buffer = True
+        self._buffer_target_utilization = 0.7  # 70% utilization target
 
         if self._async_features:
             self._executor = ThreadPoolExecutor(
@@ -211,9 +237,22 @@ class StreamingPipeline:
             except Exception as exc:  # pragma: no cover - defensive logging
                 self._record_failure(exc)
                 logger.exception("Streaming client raised error; backing off")
+
+                # Graceful degradation: increase poll interval on repeated failures
+                degradation_factor = min(self._health.consecutive_failures, 10)
+                extended_backoff = (
+                    min(self._backoff_seconds, self._max_backoff_seconds)
+                    * degradation_factor
+                )
+
                 if stop_event and stop_event.is_set():
                     break
-                time.sleep(min(self._backoff_seconds, self._max_backoff_seconds))
+                logger.info(
+                    "Backing off for %.1f seconds (degradation factor: %d)",
+                    extended_backoff,
+                    degradation_factor,
+                )
+                time.sleep(extended_backoff)
                 self._backoff_seconds = min(
                     self._backoff_seconds * 2, self._max_backoff_seconds
                 )
@@ -225,6 +264,11 @@ class StreamingPipeline:
         if rows <= 0:
             raise ValueError("rows must be positive")
         return self._compute_features_for_latest(rows)
+
+    def get_data(self, **kwargs: Any) -> pd.DataFrame:
+        """Get market data from the streaming pipeline."""
+        rows = kwargs.get("rows", 100)
+        return self.latest_features(rows)
 
     def stats(self) -> PipelineStats:
         with self._lock:
@@ -249,7 +293,8 @@ class StreamingPipeline:
 
     def close(self) -> None:
         if self._background_thread and self._background_thread.is_alive():
-            self.stop_background_stream()
+            pass
+        self.stop_connection_monitor()
         if self._executor and not self._shutdown:
             self._executor.shutdown(wait=False, cancel_futures=True)
         self._shutdown = True
@@ -375,24 +420,209 @@ class StreamingPipeline:
             target=_worker, name="streaming-background", daemon=True
         )
         self._background_thread.start()
+
+        # Start connection monitoring
+        self.start_connection_monitor()
+
         return self._background_stop
 
-    def stop_background_stream(self) -> None:
-        self._background_stop.set()
-        if self._background_thread and self._background_thread.is_alive():
-            self._background_thread.join(timeout=1.0)
-        self._background_thread = None
-        self._background_stop = threading.Event()
+    def start_connection_monitor(self) -> None:
+        """Start the connection monitoring thread."""
+        if self._shutdown:
+            return
+        if (
+            self._connection_monitor_thread
+            and self._connection_monitor_thread.is_alive()
+        ):
+            return
 
-    def _record_success(self) -> None:
-        self._health.status = "ok"
-        self._health.consecutive_failures = 0
-        self._health.last_success_at = datetime.now(timezone.utc)
-        self._backoff_seconds = 1.0
-        if self.observability:
-            self.observability.record_metrics(
-                {"stream_failures": float(self._health.consecutive_failures)}
+        self._connection_monitor_stop.clear()
+
+        def _monitor_worker() -> None:
+            while not self._connection_monitor_stop.is_set() and not self._shutdown:
+                try:
+                    self._check_connection_health()
+                    self._adjust_buffer_size()
+                except Exception as exc:
+                    logger.exception("Connection monitor error: %s", exc)
+
+                self._connection_monitor_stop.wait(self._connection_check_interval)
+
+        self._connection_monitor_thread = threading.Thread(
+            target=_monitor_worker, name="connection-monitor", daemon=True
+        )
+        self._connection_monitor_thread.start()
+        logger.info("Connection monitor started")
+
+    def stop_connection_monitor(self) -> None:
+        """Stop the connection monitoring thread."""
+        self._connection_monitor_stop.set()
+        if (
+            self._connection_monitor_thread
+            and self._connection_monitor_thread.is_alive()
+        ):
+            self._connection_monitor_thread.join(timeout=2.0)
+        self._connection_monitor_thread = None
+        logger.info("Connection monitor stopped")
+
+    def _check_connection_health(self) -> None:
+        """Check the health of the streaming connection."""
+        now = datetime.now(timezone.utc)
+        time_since_last_check = (now - self._last_connection_check).total_seconds()
+
+        if time_since_last_check < self._connection_check_interval:
+            return
+
+        self._last_connection_check = now
+
+        try:
+            # Perform a lightweight health check by fetching recent data
+            recent_batch = self.stream_client.fetch_range(
+                self.stream_config.coin_id,
+                self.stream_config.vs_currency,
+                now - timedelta(minutes=5),
+                now,
+                granularity="1m",
+                page_size=1,
             )
+            is_healthy = recent_batch is not None and not recent_batch.dataframe.empty
+
+            if is_healthy:
+                if self._health.status != "ok":
+                    logger.info("Connection health restored")
+                    self._record_success()
+                self._reconnect_attempts = 0
+            else:
+                logger.warning("Connection health check failed")
+                self._handle_connection_failure("Health check failed")
+
+        except Exception as exc:
+            logger.warning("Connection health check error: %s", exc)
+            self._handle_connection_failure(str(exc))
+
+    def _handle_connection_failure(self, reason: str) -> None:
+        """Handle connection failure with reconnection logic."""
+        self._reconnect_attempts += 1
+
+        if self._reconnect_attempts <= self._max_reconnect_attempts:
+            backoff_time = min(
+                self._backoff_seconds * (2 ** (self._reconnect_attempts - 1)),
+                self._max_backoff_seconds,
+            )
+            logger.info(
+                "Attempting reconnection %d/%d in %.1f seconds",
+                self._reconnect_attempts,
+                self._max_reconnect_attempts,
+                backoff_time,
+            )
+
+            # Update health status
+            self._health.status = "reconnecting"
+            self._health.last_error = f"Connection failed: {reason}"
+
+            # Schedule reconnection
+            threading.Timer(backoff_time, self._attempt_reconnect).start()
+        else:
+            logger.error("Max reconnection attempts exceeded, entering degraded mode")
+            self._health.status = "degraded"
+            self._health.last_error = f"Max reconnection attempts exceeded: {reason}"
+
+    def _attempt_reconnect(self) -> None:
+        """Attempt to reconnect to the streaming service."""
+        try:
+            logger.info("Attempting to reconnect...")
+            # Test the connection by fetching recent data
+            now = datetime.now(timezone.utc)
+            test_batch = self.stream_client.fetch_range(
+                self.stream_config.coin_id,
+                self.stream_config.vs_currency,
+                now - timedelta(minutes=5),
+                now,
+                granularity="1m",
+                page_size=1,
+            )
+
+            if test_batch and not test_batch.dataframe.empty:
+                logger.info("Reconnection successful")
+                self._record_success()
+                self._reconnect_attempts = 0
+                # Restart streaming if it was running
+                if self._background_thread and not self._background_thread.is_alive():
+                    self.start_background_stream()
+            else:
+                raise NetworkError("Reconnection test failed")
+
+        except Exception as exc:
+            logger.warning("Reconnection attempt failed: %s", exc)
+            self._handle_connection_failure(str(exc))
+
+    def _adjust_buffer_size(self) -> None:
+        """Dynamically adjust buffer size based on memory usage and performance."""
+        if not self._adaptive_buffer:
+            return
+
+        try:
+            buffer_stats = self.buffer.stats()
+            current_utilization = buffer_stats.rows / buffer_stats.capacity
+
+            # Update system stats
+            self._health.update_system_stats()
+
+            memory_mb = self._health.memory_usage_mb
+
+            # Adjust buffer size based on utilization and system resources
+            target_capacity = buffer_stats.capacity
+
+            if current_utilization > 0.9:  # Over 90% utilization
+                # Increase buffer size if memory allows
+                if memory_mb < 500:  # Less than 500MB memory usage
+                    target_capacity = int(buffer_stats.capacity * 1.5)
+                    logger.info(
+                        "Increasing buffer capacity to %d due to high utilization",
+                        target_capacity,
+                    )
+            elif (
+                current_utilization < 0.3 and buffer_stats.capacity > 100000
+            ):  # Under 30% utilization
+                # Decrease buffer size to save memory
+                target_capacity = max(100000, int(buffer_stats.capacity * 0.8))
+                logger.info(
+                    "Decreasing buffer capacity to %d due to low utilization",
+                    target_capacity,
+                )
+
+            # Apply high memory pressure adjustments
+            if memory_mb > 800:  # Over 800MB
+                target_capacity = max(50000, int(buffer_stats.capacity * 0.5))
+                logger.warning(
+                    "Reducing buffer capacity to %d due to high memory usage (%.1f MB)",
+                    target_capacity,
+                    memory_mb,
+                )
+
+            # Resize buffer if needed
+            if target_capacity != buffer_stats.capacity:
+                logger.info(
+                    "Resizing buffer from %d to %d rows",
+                    buffer_stats.capacity,
+                    target_capacity,
+                )
+                # Create new buffer with target capacity
+                old_buffer = self.buffer
+                self.buffer = StreamBuffer(
+                    capacity=target_capacity,
+                    columns=None,
+                    compression=self._buffer_compression,
+                    compress_min_rows=self._buffer_compress_min_rows,
+                )
+                # Copy existing data to new buffer
+                if buffer_stats.rows > 0:
+                    existing_data = old_buffer.to_dataframe(buffer_stats.rows)
+                    self.buffer.extend(existing_data)
+                logger.info("Buffer resized successfully")
+
+        except Exception as exc:
+            logger.exception("Error adjusting buffer size: %s", exc)
 
     def _record_failure(self, exc: Exception) -> None:
         self._health.consecutive_failures += 1
@@ -411,6 +641,16 @@ class StreamingPipeline:
                 },
                 level=logging.WARNING,
             )
+            self.observability.record_metrics(
+                {"stream_failures": float(self._health.consecutive_failures)}
+            )
+
+    def _record_success(self) -> None:
+        self._health.status = "ok"
+        self._health.consecutive_failures = 0
+        self._health.last_success_at = datetime.now(timezone.utc)
+        self._backoff_seconds = 1.0
+        if self.observability:
             self.observability.record_metrics(
                 {"stream_failures": float(self._health.consecutive_failures)}
             )

@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import List, Optional
 
 import pandas as pd
-import pyarrow as pa  # type: ignore
-import pyarrow.parquet as pq  # type: ignore
+import pyarrow as pa
+import pyarrow.parquet as pq
 import requests
 
 logger = logging.getLogger(__name__)

@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
+from ztb.utils.errors import safe_operation
+
 logger = logging.getLogger(__name__)
 
 # Global cache
@@ -34,6 +36,11 @@ def generate_synthetic_market_data(
     Returns:
         DataFrame with OHLCV data
     """
+    # Check cache first
+    cache_key = f"synthetic_{version}_{n_samples}_{seed}"
+    if cache_key in _data_cache:
+        return _data_cache[cache_key].copy()  # type: ignore
+
     np.random.seed(seed)
 
     if version == "v2":
@@ -48,14 +55,24 @@ def generate_synthetic_market_data(
         )  # Volatility factor
 
         # Price influenced by latent factors
-        trend = 0.01 * t
+        # Randomize trend direction to create balanced market conditions
+        trend_direction = np.random.choice(
+            [-1, 0, 1], p=[0.3, 0.4, 0.3]
+        )  # 30% down, 40% sideways, 30% up
+        trend_magnitude = np.random.uniform(0.005, 0.015)  # Random trend strength
+        trend = trend_direction * trend_magnitude * t
+
         latent_influence = 0.3 * cycle + 0.2 * momentum + 0.1 * volatility
         noise = np.random.normal(0, 0.003, n_samples)
         price = 100 * np.exp(trend + latent_influence + noise)
     else:
-        # Original synthetic data
+        # Original synthetic data with randomized trend
         t = np.linspace(0, 100, n_samples)
-        trend = 0.02 * t  # Stronger trend
+        trend_direction = np.random.choice(
+            [-1, 0, 1], p=[0.3, 0.4, 0.3]
+        )  # 30% down, 40% sideways, 30% up
+        trend_magnitude = np.random.uniform(0.01, 0.03)  # Random trend strength
+        trend = trend_direction * trend_magnitude * t  # Randomized trend
         noise = np.random.normal(0, 0.005, n_samples)  # Less noise
         price = 100 * np.exp(trend + noise)
 
@@ -76,6 +93,9 @@ def generate_synthetic_market_data(
     # Ensure high >= max(open, close) and low <= min(open, close)
     df["high"] = np.maximum(df[["open", "close"]].max(axis=1), df["high"])
     df["low"] = np.minimum(df[["open", "close"]].min(axis=1), df["low"])
+
+    # Cache the result
+    _data_cache[cache_key] = df.copy()
 
     return df
 
@@ -118,21 +138,11 @@ def load_sample_data(
                 logger.warning(f"Failed to load cache: {e}")
 
     # Generate/load fresh data
-    if dataset == "coingecko":
-        try:
-            from data.coin_gecko import fetch_btc_jpy
-
-            df = fetch_btc_jpy(days=365, interval="daily")
-        except ImportError:
-            raise ImportError(
-                "CoinGecko data loader not available. Install required dependencies."
-            )
+    # Generate synthetic data
+    if dataset == "synthetic-v2":
+        df = generate_synthetic_market_data(version="v2")
     else:
-        # Generate synthetic data
-        if dataset == "synthetic-v2":
-            df = generate_synthetic_market_data(version="v2")
-        else:
-            df = generate_synthetic_market_data(version="v1")
+        df = generate_synthetic_market_data(version="v1")
 
     # Cache the result
     _data_cache[cache_key] = df.copy()
@@ -226,8 +236,8 @@ def save_parquet_chunked(
     Returns:
         List of saved file paths
     """
-    import pyarrow as pa  # type: ignore
-    import pyarrow.parquet as pq  # type: ignore
+    import pyarrow as pa
+    import pyarrow.parquet as pq
 
     saved_files = []
     # base_path is already a Path object
@@ -345,3 +355,62 @@ def save_parquet_monthly_chunked(
 
     logger.info(f"Saved {len(saved_files)} Parquet files to {base_path}")
     return saved_files
+
+
+def generate_synthetic_data(
+    n_rows: int = 5000,
+    freq: str = "1H",
+    episode_length: Optional[int] = 1000,
+    volume_range: tuple = (1000, 10000),
+) -> pd.DataFrame:
+    """合成データを生成（学習用）"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _generate_synthetic_data_impl(
+            n_rows, freq, episode_length, volume_range
+        ),
+        context="synthetic_data_generation",
+        default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+    )
+
+
+def _generate_synthetic_data_impl(
+    n_rows: int = 5000,
+    freq: str = "1H",
+    episode_length: Optional[int] = 1000,
+    volume_range: tuple = (1000, 10000),
+) -> pd.DataFrame:
+    """Implementation of synthetic data generation."""
+    np.random.seed(42)
+    dates = pd.date_range("2024-01-01", periods=n_rows, freq=freq)
+
+    returns = np.random.normal(0, 0.02, n_rows)
+    price = 100 * np.exp(np.cumsum(returns))
+
+    high = price * (1 + np.random.uniform(0, 0.03, n_rows))
+    low = price * (1 - np.random.uniform(0, 0.03, n_rows))
+    close = price
+    volume = np.random.uniform(volume_range[0], volume_range[1], n_rows)
+
+    # エピソードID: episode_lengthステップごとに変更（Noneの場合は0固定）
+    if episode_length is not None:
+        episode_ids = np.repeat(
+            np.arange(n_rows // episode_length + 1), episode_length
+        )[:n_rows]
+    else:
+        episode_ids = np.zeros(n_rows, dtype=int)
+
+    df = pd.DataFrame(
+        {
+            "ts": dates.view("int64") // 10**9,
+            "close": close,
+            "high": high,
+            "low": low,
+            "volume": volume,
+            "exchange": "synthetic",
+            "pair": "BTC/USD",
+            "episode_id": episode_ids,
+        }
+    )
+
+    return df

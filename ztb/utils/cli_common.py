@@ -28,7 +28,9 @@ class CLIFormatter:
 
     @staticmethod
     @staticmethod
-    def format_required_help(description: str, choices: Optional[List[str]] = None) -> str:
+    def format_required_help(
+        description: str, choices: Optional[List[str]] = None
+    ) -> str:
         """Format help text for required arguments."""
         help_parts = [description]
         if choices:
@@ -106,9 +108,11 @@ class CommonArgs:
         parser.add_argument(
             "--correlation-id",
             required=required,
-            help=CLIFormatter.format_required_help("Session correlation ID")
-            if required
-            else CLIFormatter.format_help("Session correlation ID"),
+            help=(
+                CLIFormatter.format_required_help("Session correlation ID")
+                if required
+                else CLIFormatter.format_help("Session correlation ID")
+            ),
         )
 
     @staticmethod

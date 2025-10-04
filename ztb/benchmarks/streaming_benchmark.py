@@ -9,8 +9,7 @@ import asyncio
 import statistics
 import time
 from dataclasses import dataclass
-from datetime import datetime
-from typing import List
+from typing import List, cast
 
 import numpy as np
 
@@ -33,7 +32,8 @@ class BenchmarkResult:
 class StreamingBenchmark:
     """Benchmark for streaming data processing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        super().__init__()
         self.perf_gates = {
             "min_ops_per_second": 1000,  # Minimum operations per second
             "max_p95_latency_ms": 100,  # Maximum 95th percentile latency
@@ -54,13 +54,6 @@ class StreamingBenchmark:
             msg_start = time.time()
 
             # Simulate message processing
-            message = {
-                "timestamp": datetime.now().isoformat(),
-                "price": 10000 + np.random.normal(0, 100),
-                "volume": np.random.exponential(10),
-                "sequence": i,
-            }
-
             # Simulate processing delay (network + parsing)
             await asyncio.sleep(0.001)  # 1ms processing time
 
@@ -97,8 +90,8 @@ class StreamingBenchmark:
             duration_seconds=duration,
             operations_per_second=ops_per_second,
             latency_p50=p50,
-            latency_p95=p95,
-            latency_p99=p99,
+            latency_p95=float(p95),
+            latency_p99=float(p99),
             memory_mb=avg_memory,
             passed_gates=len(violations) == 0,
             gate_violations=violations,
@@ -115,23 +108,14 @@ class StreamingBenchmark:
 
         # Pre-generate test data
         prices = np.random.normal(10000, 100, num_signals)
-        volumes = np.random.exponential(10, num_signals)
 
         for i in range(num_signals):
             signal_start = time.time()
 
             # Simulate signal processing pipeline
-            price = prices[i]
-            volume = volumes[i]
-
-            # Simple moving average calculation
+            # Simple moving average calculation (simplified)
             if i >= 20:
-                ma20 = np.mean(prices[i - 20 : i])
-                signal = (
-                    1 if price > ma20 * 1.001 else (-1 if price < ma20 * 0.999 else 0)
-                )
-            else:
-                signal = 0
+                np.mean(prices[i - 20 : i])  # Calculate but don't store
 
             # Simulate additional processing
             await asyncio.sleep(0.0005)  # 0.5ms processing
@@ -159,8 +143,8 @@ class StreamingBenchmark:
             duration_seconds=duration,
             operations_per_second=ops_per_second,
             latency_p50=p50,
-            latency_p95=p95,
-            latency_p99=p99,
+            latency_p95=cast(float, p95),
+            latency_p99=cast(float, p99),
             memory_mb=30,  # Estimated
             passed_gates=len(violations) == 0,
             gate_violations=violations,
@@ -175,24 +159,16 @@ class StreamingBenchmark:
         latencies = []
         start_time = time.time()
 
-        for i in range(num_orders):
+        for _ in range(num_orders):
             order_start = time.time()
 
             # Simulate order execution
-            order = {
-                "id": f"order_{i}",
-                "type": "market",
-                "side": "buy" if i % 2 == 0 else "sell",
-                "quantity": np.random.uniform(0.001, 1.0),
-                "price": 10000 + np.random.normal(0, 50),
-            }
-
             # Simulate API call + processing
             await asyncio.sleep(0.005)  # 5ms simulated API latency
 
-            # Simulate slippage calculation
-            executed_price = order["price"] * (1 + np.random.normal(0, 0.001))
-            executed_quantity = order["quantity"] * (1 - np.random.normal(0, 0.01))
+            # Simulate slippage calculation (removed - not used)
+            # executed_price = order["price"] * (1 + np.random.normal(0, 0.001))
+            # executed_quantity = order["quantity"] * (1 - np.random.normal(0, 0.01))
 
             latency = (time.time() - order_start) * 1000
             latencies.append(latency)
@@ -216,14 +192,14 @@ class StreamingBenchmark:
             duration_seconds=duration,
             operations_per_second=ops_per_second,
             latency_p50=p50,
-            latency_p95=p95,
-            latency_p99=p99,
+            latency_p95=cast(float, p95),
+            latency_p99=cast(float, p99),
             memory_mb=25,
             passed_gates=len(violations) == 0,
             gate_violations=violations,
         )
 
-    def print_result(self, result: BenchmarkResult):
+    def print_result(self, result: BenchmarkResult) -> None:
         """Print benchmark result."""
         status = "✓ PASS" if result.passed_gates else "✗ FAIL"
 
@@ -278,7 +254,7 @@ class StreamingBenchmark:
         return results
 
 
-async def main():
+async def main() -> None:
     """Main benchmark runner."""
     benchmark = StreamingBenchmark()
     results = await benchmark.run_all_benchmarks()

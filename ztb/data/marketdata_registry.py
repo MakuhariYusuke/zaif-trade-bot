@@ -7,21 +7,22 @@ with factory pattern for instantiation and configuration.
 
 from __future__ import annotations
 
-import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Protocol
 
-from ztb.data.coin_gecko_stream import CoinGeckoStream, StreamConfig
+from ztb.data.coin_gecko_stream import CoinGeckoStream
 from ztb.data.streaming_pipeline import StreamingPipeline
-from ztb.live.replay_market import ReplayMarket
+from ztb.trading.live.replay_market import ReplayMarket
 
-logger = logging.getLogger(__name__)
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class MarketDataSource(Protocol):
     """Protocol for market data sources."""
 
-    def get_data(self, **kwargs) -> Any:
+    def get_data(self, **kwargs: Any) -> Any:
         """Get market data from the source."""
         ...
 
@@ -30,7 +31,7 @@ class MarketDataSourceFactory(ABC):
     """Abstract factory for creating market data sources."""
 
     @abstractmethod
-    def create(self, **kwargs) -> MarketDataSource:
+    def create(self, *args: Any, **kwargs: Any) -> MarketDataSource:
         """Create a market data source instance."""
         ...
 
@@ -38,10 +39,13 @@ class MarketDataSourceFactory(ABC):
 class CachedMarketDataFactory(MarketDataSourceFactory):
     """Factory for cached market data sources."""
 
-    def create(self, cache_path: str, **kwargs) -> MarketDataSource:
+    def create(self, *args: Any, **kwargs: Any) -> MarketDataSource:
         """Create a cached market data source."""
+        cache_path = args[0] if args else None
+        if not cache_path:
+            raise ValueError("cache_path is required")
         # Import here to avoid circular imports
-        from ztb.cache.price_cache import PriceCache
+        from ztb.cache.price_cache import PriceCache  # type: ignore[import]
 
         cache = PriceCache(cache_path)
         return cache
@@ -50,7 +54,7 @@ class CachedMarketDataFactory(MarketDataSourceFactory):
 class StreamingMarketDataFactory(MarketDataSourceFactory):
     """Factory for streaming market data sources."""
 
-    def create(self, **kwargs) -> StreamingPipeline:
+    def create(self, *args: Any, **kwargs: Any) -> MarketDataSource:
         """Create a streaming market data pipeline."""
         # Extract streaming-specific parameters
         buffer_capacity = kwargs.get("buffer_capacity", 1_000_000)
@@ -58,12 +62,7 @@ class StreamingMarketDataFactory(MarketDataSourceFactory):
         lookback_rows = kwargs.get("lookback_rows", 512)
 
         # Create CoinGecko stream client
-        stream_config = StreamConfig(
-            symbols=kwargs.get("symbols", ["bitcoin"]),
-            update_interval=kwargs.get("update_interval", 60),
-            batch_size=kwargs.get("batch_size", 100),
-        )
-        stream_client = CoinGeckoStream(stream_config)
+        stream_client = CoinGeckoStream()
 
         # Create streaming pipeline
         pipeline = StreamingPipeline(
@@ -79,30 +78,35 @@ class StreamingMarketDataFactory(MarketDataSourceFactory):
 class ReplayMarketDataFactory(MarketDataSourceFactory):
     """Factory for replay market data sources."""
 
-    def create(self, data_path: str, **kwargs) -> MarketDataSource:
+    def create(self, *args: Any, **kwargs: Any) -> MarketDataSource:
         """Create a replay market data source."""
+        data_path = args[0] if args else None
+        if not data_path:
+            raise ValueError("data_path is required")
         # For now, return a simple replay source
         # This would be expanded to support actual replay functionality
-        from pathlib import Path
 
-        replay = ReplayMarket(Path(data_path), **kwargs)
+        replay = ReplayMarket(str(data_path), **kwargs)
         return replay
 
 
 class MarketDataSourceRegistry:
     """Registry for market data source factories."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        super().__init__()
         self._factories: Dict[str, MarketDataSourceFactory] = {}
         self._register_default_factories()
 
-    def _register_default_factories(self):
+    def _register_default_factories(self) -> None:
         """Register default factory implementations."""
         self.register_factory("cached", CachedMarketDataFactory())
         self.register_factory("streaming", StreamingMarketDataFactory())
         self.register_factory("replay", ReplayMarketDataFactory())
 
-    def register_factory(self, source_type: str, factory: MarketDataSourceFactory):
+    def register_factory(
+        self, source_type: str, factory: MarketDataSourceFactory
+    ) -> None:
         """Register a factory for a source type."""
         self._factories[source_type] = factory
         logger.info(f"Registered market data source factory: {source_type}")
@@ -117,7 +121,7 @@ class MarketDataSourceRegistry:
 
         return self._factories[source_type]
 
-    def create_source(self, source_type: str, **kwargs) -> MarketDataSource:
+    def create_source(self, source_type: str, **kwargs: Any) -> MarketDataSource:
         """Create a market data source instance."""
         factory = self.get_factory(source_type)
         return factory.create(**kwargs)
@@ -139,7 +143,7 @@ def get_market_data_registry() -> MarketDataSourceRegistry:
     return _registry
 
 
-def create_market_data_source(source_type: str, **kwargs) -> MarketDataSource:
+def create_market_data_source(source_type: str, **kwargs: Any) -> MarketDataSource:
     """Convenience function to create a market data source."""
     registry = get_market_data_registry()
     return registry.create_source(source_type, **kwargs)

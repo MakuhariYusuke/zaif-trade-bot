@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import TimeSeriesSplit  # type: ignore
-from statsmodels.stats.multitest import fdrcorrection  # type: ignore
+from sklearn.model_selection import TimeSeriesSplit
+from statsmodels.stats.multitest import fdrcorrection  # type: ignore[import-untyped]
 
 from ztb.metrics.metrics import calculate_all_metrics
 

@@ -14,12 +14,12 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional, cast
 
 
 def find_tb_dirs(base_dir: Path) -> list[Path]:
     """Find TensorBoard directories in the base directory."""
-    tb_dirs = []
+    tb_dirs: list[Path] = []
     if not base_dir.exists():
         return tb_dirs
 
@@ -43,7 +43,7 @@ def extract_scalars(tb_dir: Path) -> Dict[str, Any]:
     if summary_file.exists():
         try:
             with open(summary_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                return cast(Dict[str, Any], json.load(f))
         except (json.JSONDecodeError, IOError):
             pass
 
@@ -63,7 +63,9 @@ def extract_scalars(tb_dir: Path) -> Dict[str, Any]:
     return scalars
 
 
-def scrape_summaries(run_dir: Path, output_file: Path = None) -> Dict[str, Any]:
+def scrape_summaries(
+    run_dir: Path, output_file: Optional[Path] = None
+) -> Dict[str, Any]:
     """Scrape summaries from all TB directories in run_dir."""
     tb_dirs = find_tb_dirs(run_dir)
 
@@ -87,7 +89,7 @@ def scrape_summaries(run_dir: Path, output_file: Path = None) -> Dict[str, Any]:
     return summaries
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Extract TensorBoard scalars to JSON")
     parser.add_argument(
         "--run-dir",

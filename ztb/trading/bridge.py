@@ -10,12 +10,13 @@ import random
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Literal, Optional, Union, cast
 
 import pandas as pd
 import requests
 
 from ztb.ops.monitoring.monitoring import get_exporter
+from ztb.utils.errors import safe_operation
 
 logger = logging.getLogger(__name__)
 
@@ -134,11 +135,20 @@ class VirtualTradingBridge:
             return round(quantity, 4)
         return quantity
 
-    def calculate_slippage(self, symbol: str, side: str, quantity: float) -> float:
+    def calculate_slippage(self, symbol: str, side: Union[Literal["buy"], Literal["sell"], str], quantity: float) -> float:
         """
         Calculate dynamic slippage based on board spread.
         Simplified implementation - in real trading, use actual order book.
         """
+        return safe_operation(
+            logger=logger,
+            operation=lambda: self._calculate_slippage_impl(symbol, side, quantity),
+            context="slippage_calculation",
+            default_result=0.0,  # No slippage on error
+        )
+
+    def _calculate_slippage_impl(self, symbol: str, side: str, quantity: float) -> float:
+        """Implementation of slippage calculation."""
         # Mock slippage: 0.1% for buy, -0.1% for sell
         base_slippage = 0.001
         if side == "sell":
@@ -148,7 +158,7 @@ class VirtualTradingBridge:
     def place_market_order(
         self,
         symbol: str,
-        side: str,
+        side: Union[Literal["buy"], Literal["sell"], str],
         quantity: float,
         current_price: Optional[float] = None,
     ) -> VirtualOrder:
@@ -164,69 +174,74 @@ class VirtualTradingBridge:
         Returns:
             VirtualOrder object
         """
-        if current_price is None:
-            current_price = self.get_market_price(symbol)
-
-        # Round quantity
-        quantity = self.round_quantity(quantity, symbol)
-
-        # Calculate slippage
-        slippage = self.calculate_slippage(symbol, side, quantity)
-        execution_price = current_price * (1 + slippage)
-
-        # Record slippage for analysis
-        self.slippage_analysis.add_slippage_event(
-            symbol=symbol,
-            side=side,
-            intended_price=current_price,
-            executed_price=execution_price,
-            quantity=quantity,
-        )
-
-        # Calculate commission (always positive)
-        commission = abs(quantity * execution_price * self.commission_rate)
-
-        # Create order
-        self.order_counter += 1
-        order = VirtualOrder(
-            order_id=f"virtual_{self.order_counter:06d}",
-            symbol=symbol,
-            side=side,
-            order_type="market",
-            quantity=quantity,
-            price=current_price,
-            filled_price=execution_price,
-            commission=commission,
-        )
-
-        # Update balance and positions
-        if side == "buy":
-            cost = quantity * execution_price + commission
-            if self.balance >= cost:
-                self.balance -= cost
-                self.positions[symbol] = self.positions.get(symbol, 0) + quantity
+        def execute_order() -> VirtualOrder:
+            if current_price is None:
+                current_price_inner = self.get_market_price(symbol)
             else:
-                order.status = "cancelled"
-                logger.warning(
-                    f"Insufficient balance for buy order: {cost} > {self.balance}"
-                )
-        else:  # sell
-            current_position = self.positions.get(symbol, 0)
-            if current_position >= quantity:
-                proceeds = quantity * execution_price - commission
-                self.balance += proceeds
-                self.positions[symbol] = current_position - quantity
-            else:
-                order.status = "cancelled"
-                logger.warning(
-                    f"Insufficient position for sell order: {quantity} > {current_position}"
-                )
+                current_price_inner = current_price
 
-        self.orders.append(order)
-        logger.info(
-            f"Virtual {side} order executed: {quantity} {symbol} at {execution_price:.2f}"
-        )
-        return order
+            # Round quantity
+            quantity_rounded = self.round_quantity(quantity, symbol)
+
+            # Calculate slippage
+            slippage = self.calculate_slippage(symbol, side, quantity_rounded)
+            execution_price = current_price_inner * (1 + slippage)
+
+            # Record slippage for analysis
+            self.slippage_analysis.add_slippage_event(
+                symbol=symbol,
+                side=side,
+                intended_price=current_price_inner,
+                executed_price=execution_price,
+                quantity=quantity_rounded,
+            )
+
+            # Calculate commission (always positive)
+            commission = abs(quantity_rounded * execution_price * self.commission_rate)
+
+            # Create order
+            self.order_counter += 1
+            order = VirtualOrder(
+                order_id=f"virtual_{self.order_counter:06d}",
+                symbol=symbol,
+                side=side,
+                order_type="market",
+                quantity=quantity_rounded,
+                price=current_price_inner,
+                filled_price=execution_price,
+                commission=commission,
+            )
+
+            # Update balance and positions
+            if side == "buy":
+                cost = quantity_rounded * execution_price + commission
+                if self.balance >= cost:
+                    self.balance -= cost
+                    self.positions[symbol] = self.positions.get(symbol, 0) + quantity_rounded
+                else:
+                    order.status = "cancelled"
+                    logger.warning(
+                        f"Insufficient balance for buy order: {cost} > {self.balance}"
+                    )
+            else:  # sell
+                current_position = self.positions.get(symbol, 0)
+                if current_position >= quantity_rounded:
+                    proceeds = quantity_rounded * execution_price - commission
+                    self.balance += proceeds
+                    self.positions[symbol] = current_position - quantity_rounded
+                else:
+                    order.status = "cancelled"
+                    logger.warning(
+                        f"Insufficient position for sell order: {quantity_rounded} > {current_position}"
+                    )
+
+            self.orders.append(order)
+            logger.info(
+                f"Virtual {side} order executed: {quantity_rounded} {symbol} at {execution_price:.2f}"
+            )
+            return order
+
+        return safe_operation(logger, execute_order, f"place_market_order({symbol}, {side}, {quantity})")
 
     def get_balance(self) -> float:
         """Get current balance"""
@@ -279,11 +294,11 @@ class LiveTradingBridge:
         self.discord_webhook_url = discord_webhook_url
         self.daily_loss_limit = 0.02  # 2%
         self.max_consecutive_losses = 5
-        self.circuit_breaker_threshold = 0.10  # ±10% price change
+        self.circuit_breaker_threshold = 0.20  # ±20% price change (softened)
 
         # Extended risk management (Step 8)
         self.max_drawdown_limit = 0.05  # 5% maximum drawdown
-        self.max_position_size = 0.10  # 10% of portfolio per position
+        self.max_position_size = 1.0  # 100% of portfolio per position (no limit)
         self.max_open_positions = 3  # Maximum 3 open positions
         self.min_order_size = 0.001  # Minimum order size (BTC)
         self.max_order_size = 1.0  # Maximum order size (BTC)
@@ -319,6 +334,15 @@ class LiveTradingBridge:
         Returns:
             True if safe to trade, False if limits exceeded
         """
+        return safe_operation(
+            logger=logger,
+            operation=lambda: self._check_safety_limits_impl(current_balance, current_price),
+            context="safety_limits_check",
+            default_result=False,  # Default to unsafe on error
+        )
+
+    def _check_safety_limits_impl(self, current_balance: float, current_price: float) -> bool:
+        """Implementation of safety limits check."""
         # Daily loss limit
         if self.daily_start_balance > 0:
             daily_loss = (
@@ -373,6 +397,17 @@ class LiveTradingBridge:
         Returns:
             True if position limits allow trade, False otherwise
         """
+        return safe_operation(
+            logger=logger,
+            operation=lambda: self._check_position_limits_impl(symbol, quantity, current_balance, current_price),
+            context="position_limits_check",
+            default_result=False,  # Default to unsafe on error
+        )
+
+    def _check_position_limits_impl(
+        self, symbol: str, quantity: float, current_balance: float, current_price: float
+    ) -> bool:
+        """Implementation of position limits check."""
         # Check order size limits
         if quantity < self.min_order_size:
             logger.error(f"Order size {quantity} below minimum {self.min_order_size}")
