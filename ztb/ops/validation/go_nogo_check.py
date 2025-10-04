@@ -13,7 +13,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 import psutil
 
@@ -27,7 +27,11 @@ class GoNoGoChecker:
         self.checks: List[Dict[str, Any]] = []
 
     def add_check(
-        self, name: str, description: str, check_func, critical: bool = True
+        self,
+        name: str,
+        description: str,
+        check_func: Callable[[], Any],
+        critical: bool = True,
     ) -> None:
         """Add a check to the evaluation suite."""
         self.checks.append(
@@ -77,9 +81,11 @@ class GoNoGoChecker:
         """Generate detailed JSON report."""
         return {
             "timestamp": time.time(),
-            "overall_result": "GO"
-            if all(c["result"] for c in self.checks if c["critical"])
-            else "NO-GO",
+            "overall_result": (
+                "GO"
+                if all(c["result"] for c in self.checks if c["critical"])
+                else "NO-GO"
+            ),
             "checks": [
                 {
                     "name": c["name"],
@@ -223,7 +229,7 @@ def check_security(checker: GoNoGoChecker) -> tuple[bool, str]:
         return False, f"Security check error: {str(e)}"
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Go/No-Go Checker for Zaif Trade Bot")
     parser.add_argument(
         "--report", action="store_true", help="Generate detailed JSON report"

@@ -9,7 +9,7 @@ import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 def get_session_status(corr_dir: Path) -> str:
@@ -34,7 +34,7 @@ def get_session_status(corr_dir: Path) -> str:
 
 def index_sessions(root: Path) -> Dict[str, Any]:
     """Index sessions."""
-    sessions = []
+    sessions: List[Dict[str, Any]] = []
 
     for item in root.iterdir():
         if item.is_dir() and not item.name.startswith("."):
@@ -43,7 +43,7 @@ def index_sessions(root: Path) -> Dict[str, Any]:
             summary_path = item / "summary.json"
             best_marker = item / "best.marker"
 
-            session = {
+            session: Dict[str, Any] = {
                 "correlation_id": corr_id,
                 "created_at": datetime.fromtimestamp(item.stat().st_ctime).isoformat(),
                 "modified_at": datetime.fromtimestamp(item.stat().st_mtime).isoformat(),
@@ -86,7 +86,7 @@ def index_sessions(root: Path) -> Dict[str, Any]:
             sessions.append(session)
 
     # Sort by modified_at descending (newest first)
-    sessions.sort(key=lambda s: s["modified_at"], reverse=True)
+    sessions.sort(key=lambda s: str(s["modified_at"]), reverse=True)
     latest_session = sessions[0]["correlation_id"] if sessions else None
 
     # Find best sessions
@@ -100,7 +100,7 @@ def index_sessions(root: Path) -> Dict[str, Any]:
     }
 
 
-def main():
+def main() -> int:
     root = Path("artifacts")
     index = index_sessions(root)
 

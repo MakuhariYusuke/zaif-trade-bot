@@ -2,21 +2,19 @@
 Centralized configuration management.
 """
 
-import os
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from .loader import ConfigLoader
 from .schema import GlobalConfig
 
 
 class ConfigManager:
-    """Centralized configuration manager."""
+    """Configuration manager singleton."""
 
     _instance: Optional["ConfigManager"] = None
     _config: Optional[GlobalConfig] = None
 
-    def __init__(self):
+    def __init__(self) -> None:
         if ConfigManager._instance is not None:
             raise RuntimeError("ConfigManager is a singleton")
         ConfigManager._instance = self
@@ -45,13 +43,14 @@ class ConfigManager:
         """Get current configuration."""
         if self._config is None:
             self.load_config()
+        assert self._config is not None
         return self._config
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by key."""
         config = self.get_config()
         keys = key.split(".")
-        value = config.dict()
+        value = config.model_dump()
         for k in keys:
             if isinstance(value, dict) and k in value:
                 value = value[k]
@@ -62,7 +61,7 @@ class ConfigManager:
     def set(self, key: str, value: Any) -> None:
         """Set configuration value."""
         # This would update the config, but for simplicity, just update the dict
-        config_dict = self.get_config().dict()
+        config_dict = self.get_config().model_dump()
         keys = key.split(".")
         d = config_dict
         for k in keys[:-1]:

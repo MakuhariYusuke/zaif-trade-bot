@@ -99,10 +99,10 @@ class QualityGates:
                     results["skew"] = None  # type: ignore
                     results["skew_pass"] = False
             else:
-                results["skew"] = None
+                results["skew"] = None  # type: ignore
                 results["skew_pass"] = False
         else:
-            results["skew"] = None
+            results["skew"] = None  # type: ignore[assignment]
             results["skew_pass"] = False
 
         # Kurtosis
@@ -116,13 +116,13 @@ class QualityGates:
                         abs(kurtosis) <= gates["kurtosis_threshold"]
                     )
                 except (ValueError, TypeError):
-                    results["kurtosis"] = None
+                    results["kurtosis"] = None  # type: ignore
                     results["kurtosis_pass"] = False
             else:
-                results["kurtosis"] = None
+                results["kurtosis"] = None  # type: ignore
                 results["kurtosis_pass"] = False
         else:
-            results["kurtosis"] = None
+            results["kurtosis"] = None  # type: ignore
             results["kurtosis_pass"] = False
 
         # Overall pass

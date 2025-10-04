@@ -7,10 +7,11 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 
 def sharpe_ratio(
-    returns: Union[List[float], np.ndarray[Any, np.dtype[Any]]],
+    returns: Union[List[float], NDArray[np.floating]],
     risk_free_rate: float = 0.0,
     periods_per_year: int = 252,
 ) -> float:

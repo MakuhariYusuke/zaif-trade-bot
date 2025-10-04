@@ -203,17 +203,23 @@ class SlippageAnalysis:
 
         report = {
             "analysis_period": {
-                "start": slippage_df["timestamp"].min().isoformat()
-                if not slippage_df.empty
-                else None,
-                "end": slippage_df["timestamp"].max().isoformat()
-                if not slippage_df.empty
-                else None,
+                "start": (
+                    slippage_df["timestamp"].min().isoformat()
+                    if not slippage_df.empty
+                    else None
+                ),
+                "end": (
+                    slippage_df["timestamp"].max().isoformat()
+                    if not slippage_df.empty
+                    else None
+                ),
                 "total_trades": len(slippage_df),
                 "successful_trades": len(successful_trades),
-                "success_rate": len(successful_trades) / len(slippage_df)
-                if len(slippage_df) > 0
-                else 0.0,
+                "success_rate": (
+                    len(successful_trades) / len(slippage_df)
+                    if len(slippage_df) > 0
+                    else 0.0
+                ),
             },
             "slippage_statistics": {},
             "liquidity_analysis": {},

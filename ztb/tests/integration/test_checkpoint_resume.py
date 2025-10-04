@@ -26,13 +26,9 @@ if "ztb.features" not in sys.modules:
     fake_features.FeatureRegistry = _FakeRegistry
     sys.modules["ztb.features"] = fake_features
 
-    fake_feature_engine = types.ModuleType("ztb.features.feature_engine")
-
-    def _compute_features_batch(df, feature_names=None, **_kwargs):
-        return pd.DataFrame(index=df.index)
-
-    fake_feature_engine.compute_features_batch = _compute_features_batch
-    sys.modules["ztb.features.feature_engine"] = fake_feature_engine
+    # Use common test utility for feature engine mock
+    from ztb.tests.test_utils import create_mock_feature_engine
+    create_mock_feature_engine()
 
 from ztb.data.coin_gecko_stream import MarketDataBatch, StreamConfig
 from ztb.data.streaming_pipeline import StreamingPipeline

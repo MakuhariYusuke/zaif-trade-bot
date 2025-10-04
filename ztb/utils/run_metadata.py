@@ -12,11 +12,9 @@ import platform
 import subprocess
 import sys
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pkg_resources
-
-from .observability import generate_correlation_id
 
 
 class RunMetadata:
@@ -24,7 +22,7 @@ class RunMetadata:
 
     def __init__(self, random_seed: int = 42):
         self.random_seed = random_seed
-        self.metadata = {}
+        self.metadata: Dict[str, Any] = {}
 
     def capture_system_info(self) -> Dict[str, Any]:
         """Capture system and environment information."""
@@ -96,61 +94,13 @@ class RunMetadata:
 
         return env_vars
 
-    def capture_git_info(self) -> Dict[str, str]:
-        """Capture git repository information."""
-        git_info = {
-            "sha": "unknown",
-            "branch": "unknown",
-            "status": "unknown",
-            "remote_url": "unknown",
-        }
-
-        try:
-            # Get current commit SHA
-            result = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-                timeout=10,
-            )
-            if result.returncode == 0:
-                git_info["sha"] = result.stdout.strip()
-
-            # Get current branch
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-                timeout=10,
-            )
-            if result.returncode == 0:
-                git_info["branch"] = result.stdout.strip()
-
-            # Get remote URL
-            result = subprocess.run(
-                ["git", "remote", "get-url", "origin"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-                timeout=10,
-            )
-            if result.returncode == 0:
-                git_info["remote_url"] = result.stdout.strip()
-
-        except Exception:
-            pass
-
-        return git_info
-
-    def capture_package_info(self) -> Dict[str, str]:
+    def capture_package_info(self) -> Dict[str, Any]:
         """Capture installed package versions and hashes."""
         packages = {}
 
         try:
             # Get all installed packages
-            for dist in pkg_resources.working_set:
+            for dist in pkg_resources.working_set:  # type: ignore
                 package_name = dist.project_name
                 version = dist.version
 
@@ -181,7 +131,7 @@ class RunMetadata:
 
         return packages
 
-    def capture_config_hashes(self, config_files: list = None) -> Dict[str, str]:
+    def capture_config_hashes(self, config_files: Optional[list[str]] = None) -> Dict[str, str]:
         """Capture hashes of configuration files."""
         if config_files is None:
             config_files = [
@@ -204,24 +154,7 @@ class RunMetadata:
 
         return config_hashes
 
-    def capture_all_metadata(self) -> Dict[str, Any]:
-        """Capture all metadata in one call."""
-        metadata = {
-            "correlation_id": generate_correlation_id(),
-            "system": self.capture_system_info(),
-            "git": self.capture_git_info(),
-            # "packages": self.capture_package_info(),  # Skip slow package capture
-            "config_hashes": self.capture_config_hashes(),
-            "run_config": {
-                "random_seed": self.random_seed,
-                "captured_at": datetime.now().isoformat(),
-            },
-        }
-
-        self.metadata = metadata
-        return metadata
-
-    def _get_package_hash(self, dist) -> str:
+    def _get_package_hash(self, dist: pkg_resources.Distribution) -> str:
         """Generate hash of package files."""
         hasher = hashlib.sha256()
 
@@ -230,7 +163,7 @@ class RunMetadata:
             location = dist.location
             if location and os.path.isdir(location):
                 # Walk through package files
-                for root, dirs, files in os.walk(location):
+                for root, _dirs, files in os.walk(location):
                     for file in files:
                         if file.endswith((".py", ".pyc", ".pyo")):
                             file_path = os.path.join(root, file)
@@ -246,12 +179,12 @@ class RunMetadata:
 
     def capture_git_info(self) -> Dict[str, str]:
         """Capture git repository information."""
-        git_info = {
-            "sha": None,
-            "branch": None,
-            "status": None,
-            "remote_url": None,
-            "is_dirty": None,
+        git_info: Dict[str, str] = {
+            "sha": "unknown",
+            "branch": "unknown",
+            "status": "unknown",
+            "remote_url": "unknown",
+            "is_dirty": "unknown",
         }
 
         try:
@@ -282,7 +215,7 @@ class RunMetadata:
                 text=True,
                 cwd=os.getcwd(),
             )
-            git_info["is_dirty"] = len(result.stdout.strip()) > 0
+            git_info["is_dirty"] = "true" if len(result.stdout.strip()) > 0 else "false"
 
             # Get remote URL
             result = subprocess.run(
@@ -324,7 +257,7 @@ class RunMetadata:
         self.metadata = metadata
         return metadata
 
-    def save_to_file(self, file_path: str):
+    def save_to_file(self, file_path: str) -> None:
         """Save metadata to JSON file."""
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.metadata, f, indent=2, ensure_ascii=False)

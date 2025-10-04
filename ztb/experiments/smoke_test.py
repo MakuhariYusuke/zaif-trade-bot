@@ -8,6 +8,7 @@ Usage:
 """
 
 import argparse
+import logging
 import sys
 import time
 from datetime import datetime
@@ -19,7 +20,6 @@ import psutil
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
 from ztb.experiments.base import ExperimentBase, ExperimentResult
-from ztb.utils import LoggerManager
 from ztb.utils.data.data_generation import load_sample_data
 from ztb.utils.feature_testing import evaluate_feature_performance
 
@@ -161,7 +161,7 @@ def main():
     args = parser.parse_args()
 
     # Setup logging
-    logger_manager = LoggerManager(experiment_id="smoke_test")
+    logger = logging.getLogger("smoke_test")
 
     config = {
         "total_steps": args.steps,

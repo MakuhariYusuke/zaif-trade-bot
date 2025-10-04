@@ -13,19 +13,21 @@ from typing import Any, Dict
 
 import pandas as pd
 
+from ztb.utils.data_utils import load_csv_data
+
 from ztb.evaluation.baseline_comparison import get_baseline_comparison_engine
 from ztb.evaluation.regime_eval import RegimeEvaluator
 
 
-def load_trade_data(trade_log_path: str) -> list:
+def load_trade_data(trade_log_path: str) -> list[Any]:
     """Load trade log from JSON file."""
     with open(trade_log_path, "r") as f:
-        return json.load(f)
+        return json.load(f)  # type: ignore
 
 
 def load_price_data(price_data_path: str) -> pd.DataFrame:
     """Load price data from CSV file."""
-    df = pd.read_csv(price_data_path)
+    df = load_csv_data(price_data_path)
     if "timestamp" in df.columns:
         df["timestamp"] = pd.to_datetime(df["timestamp"])
         df.set_index("timestamp", inplace=True)
@@ -123,7 +125,7 @@ def run_regime_evaluation(
     return regime_results
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Run market regime evaluation")
     parser.add_argument(

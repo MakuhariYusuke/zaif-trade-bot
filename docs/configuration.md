@@ -3,6 +3,7 @@
 ## Core Configuration Classes
 
 ### ZTBConfig
+
 Central configuration management for all system components.
 
 ```python
@@ -97,6 +98,97 @@ export ZTB_CONFIG_FILE=config/prod.yaml
 # Runtime overrides
 export ZTB_LOG_LEVEL=DEBUG
 ```
+
+## Training Configuration Files
+
+### unified_training_config.json
+
+Unified training systemのメイン設定ファイル。PPOトレーニングと反復トレーニングの両方をサポート。
+
+| パラメータ | 型 | 説明 | デフォルト値 | 例 |
+|----------|----|------|------------|----|
+| `algorithm` | string | トレーニングアルゴリズム: "ppo" または "iterative" | "ppo" | "ppo" |
+| `data_path` | string | トレーニングデータファイルのパス | - | "ml-dataset-enhanced.csv" |
+| `session_id` | string | セッション識別子（ログ/チェックポイント用） | - | "scalping_15s_ultra_aggressive_1M" |
+| `total_timesteps` | int | 総トレーニングステップ数 | 1000000 | 1000000 |
+| `checkpoint_dir` | string | チェックポイント保存ディレクトリ | "checkpoints" | "checkpoints" |
+| `log_dir` | string | ログ保存ディレクトリ | "logs" | "logs" |
+| `model_dir` | string | モデル保存ディレクトリ | "models" | "models" |
+| `verbose` | int | ログ詳細度 (0-2) | 1 | 1 |
+| `validation_level` | string | 検証レベル: "basic" または "full" | "basic" | "basic" |
+| `correlation_id` | string | 監視/レポート用識別子 | - | "scalping_15s_ultra_aggressive_1M" |
+| `trading_mode` | string | トレードモード: "scalping", "swing", "position" | "scalping" | "scalping" |
+| `feature_set` | string | 特徴量セット: "full" または "reduced" | "full" | "full" |
+| `timeframe` | string | タイムフレーム | "15s" | "15s" |
+| `transaction_cost` | float | 取引コスト（手数料率） | 0.0005 | 0.0005 |
+| `max_position_size` | float | 最大ポジションサイズ（比率） | 0.5 | 0.5 |
+| `reward_*` | float | 報酬関数パラメータ | 各種 | 0.01 |
+| `offline_mode` | bool | オフラインモード（データファイル使用） | true | true |
+
+### scalping-config.json
+
+スキャルピング戦略専用の設定ファイル。リスク管理とトレーニングパラメータを含む。
+
+#### データ設定
+
+| パラメータ | 説明 |
+|----------|------|
+| `data.train_data` | トレーニングデータファイル |
+| `data.test_data` | テストデータファイル |
+| `data.validation_data` | 検証データファイル |
+
+#### トレーニング設定
+
+| パラメータ | 説明 | デフォルト |
+|----------|------|----------|
+| `training.total_timesteps` | 総ステップ数 | 250000 |
+| `training.eval_freq` | 評価頻度 | 10000 |
+| `training.batch_size` | バッチサイズ | 64 |
+| `training.n_steps` | ステップ数 | 2048 |
+| `training.gamma` | 割引率 | 0.99 |
+| `training.learning_rate` | 学習率 | 0.0003 |
+| `training.ent_coef` | エントロピー係数 | 0.0 |
+| `training.clip_range` | PPOクリップ範囲 | 0.2 |
+
+#### 環境設定（リスク管理）
+
+| パラメータ | 説明 | デフォルト |
+|----------|------|----------|
+| `environment.reward_scaling` | 報酬スケーリング | 1.0 |
+| `environment.transaction_cost` | 取引コスト | 0.001 |
+| `environment.max_position_size` | 最大ポジションサイズ | 0.05 |
+| `environment.reward_clip_value` | 報酬クリップ値 | 5.0 |
+| `environment.reward_position_penalty_scale` | ポジションペナルティ | 20.0 |
+| `environment.reward_inventory_penalty_scale` | 在庫ペナルティ | 3.0 |
+| `environment.reward_trade_frequency_penalty` | 取引頻度ペナルティ | 3.0 |
+
+#### パス設定
+
+| パラメータ | 説明 |
+|----------|------|
+| `paths.log_dir` | ログディレクトリ |
+| `paths.model_dir` | モデルディレクトリ |
+| `paths.results_dir` | 結果ディレクトリ |
+| `paths.opt_dir` | 最適化ディレクトリ |
+| `paths.tensorboard_log` | TensorBoardログディレクトリ |
+
+### リスク管理パラメータの詳細
+
+#### ポジション管理
+
+- **max_position_size**: ポートフォリオに対する最大ポジション比率
+- **reward_position_penalty_scale**: ポジション保持に対するペナルティ（取引を促進）
+- **reward_inventory_penalty_scale**: 在庫（未決済ポジション）に対するペナルティ
+
+#### 取引頻度制御
+
+- **reward_trade_frequency_penalty**: 取引ごとのペナルティ（過度な取引を抑制）
+- **reward_clip_value**: 報酬の最大/最小値を制限
+
+#### コスト考慮
+
+- **transaction_cost**: 実際の手数料を反映したコストモデル
+- **reward_scaling**: 全体的な報酬のスケーリング調整
 
 ## Pydantic-Based Configuration Schema
 

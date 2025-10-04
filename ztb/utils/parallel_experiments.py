@@ -7,6 +7,7 @@ with shared resources and separate checkpoint directories.
 """
 
 import gc
+import logging
 import signal
 import subprocess
 import sys
@@ -27,7 +28,6 @@ ProcessInfo = Dict[str, Any]  # Process information dictionary
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
 from ztb.experiments.base import ExperimentResult
-from ztb.utils import LoggerManager
 from ztb.utils.resource.process_priority import ProcessPriorityManager
 
 
@@ -51,8 +51,9 @@ class ParallelExperimentRunner:
     """Runner for executing multiple experiments in parallel"""
 
     def __init__(self, config: ParallelExperimentConfig):
+        super().__init__()
         self.config = config
-        self.shared_logger = LoggerManager(experiment_id="parallel_experiments")
+        self.shared_logger = logging.getLogger("parallel_experiments")
         self.resource_monitor = (
             ResourceMonitor() if config.enable_resource_monitoring else None
         )
@@ -97,7 +98,7 @@ class ParallelExperimentRunner:
 
                 with open(cache_path, "rb") as f:
                     self.shared_data = pickle.load(f)
-                self.shared_logger.logger.info(
+                self.shared_logger.info(
                     f"Loaded shared data cache: {len(self.shared_data)} items"
                 )
 
@@ -110,13 +111,12 @@ class ParallelExperimentRunner:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             with open(cache_path, "wb") as f:
                 pickle.dump(self.shared_data, f)
-            self.shared_logger.logger.info(
+            self.shared_logger.info(
                 f"Saved shared data cache: {len(self.shared_data)} items"
             )
 
     def run_parallel(self) -> List[ExperimentResult]:
         """Execute experiments in parallel with efficiency optimizations"""
-        self.shared_logger.start_session("parallel_execution", "multiple_experiments")
 
         start_time = time.time()
         results = []
@@ -138,7 +138,7 @@ class ParallelExperimentRunner:
 
                 # リソースチェック
                 if not self._check_resource_limits():
-                    self.shared_logger.logger.warning(
+                    self.shared_logger.warning(
                         "Resource limits exceeded, pausing execution"
                     )
                     time.sleep(30)  # 30秒待機
@@ -164,13 +164,11 @@ class ParallelExperimentRunner:
                 memory_summary = self.resource_monitor.get_memory_leak_summary()
                 summary["memory_leak_analysis"] = memory_summary
                 if memory_summary.get("potential_leak", False):
-                    self.shared_logger.logger.warning(
+                    self.shared_logger.warning(
                         f"Memory leak detected during parallel execution: "
                         f"{memory_summary['memory_increase_percent']:.1f}% increase, "
                         f"{memory_summary['objects_increase']} more objects"
                     )
-
-            self.shared_logger.end_session(summary)
 
         return results
 
@@ -196,7 +194,7 @@ class ParallelExperimentRunner:
         """バッチ単位で実験を実行（リソース監視付き）"""
         # リソース制限チェック
         if not self._check_resource_limits():
-            self.shared_logger.logger.warning(
+            self.shared_logger.warning(
                 "Resource limits exceeded, skipping batch execution"
             )
             return []
@@ -229,7 +227,7 @@ class ParallelExperimentRunner:
 
                 # リソースチェック - 制限を超えている場合
                 if not self._check_resource_limits():
-                    self.shared_logger.logger.warning(
+                    self.shared_logger.warning(
                         f"Resource limits exceeded during batch execution, "
                         f"forcing checkpoint saves for running experiments"
                     )
@@ -241,7 +239,7 @@ class ParallelExperimentRunner:
                 try:
                     result = future.result()
                     results.append(result)
-                    self.shared_logger.enqueue_notification(
+                    self.shared_logger.info(
                         f"Experiment {index} completed: {result.status} ({result.experiment_name})"
                     )
                 except Exception as e:
@@ -255,7 +253,7 @@ class ParallelExperimentRunner:
                         error_message=str(e),
                     )
                     results.append(error_result)
-                    self.shared_logger.enqueue_notification(
+                    self.shared_logger.info(
                         f"Experiment {index} failed: {str(e)}"
                     )
 
@@ -277,7 +275,7 @@ class ParallelExperimentRunner:
                                 getattr(signal, "SIGUSR1", None) or signal.SIGTERM
                             )
                             process.send_signal(signal_to_send)
-                            self.shared_logger.logger.info(
+                            self.shared_logger.info(
                                 f"Sent checkpoint signal to process {pid} ({experiment_info.get('name', 'unknown')})"
                             )
                         except (ProcessLookupError, PermissionError):
@@ -285,7 +283,7 @@ class ParallelExperimentRunner:
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass  # プロセスが既に終了している場合
         except Exception as e:
-            self.shared_logger.logger.error(f"Failed to force checkpoint saves: {e}")
+            self.shared_logger.error(f"Failed to force checkpoint saves: {e}")
 
     def _check_resource_limits(self) -> bool:
         """リソース制限をチェック（CPU、メモリ、GPU）- 効率化"""
@@ -309,7 +307,7 @@ class ParallelExperimentRunner:
                     gpu_ok = max_gpu_usage < self.resource_limits["gpu_memory_percent"]
 
                     if not gpu_ok:
-                        self.shared_logger.logger.warning(
+                        self.shared_logger.warning(
                             f"GPU memory usage too high: {max_gpu_usage:.1f}% "
                             f"(limit: {self.resource_limits['gpu_memory_percent']}%)"
                         )
@@ -319,19 +317,19 @@ class ParallelExperimentRunner:
 
             # ログ出力の最適化（制限を超えた場合のみ）
             if not cpu_ok:
-                self.shared_logger.logger.warning(
+                self.shared_logger.warning(
                     f"CPU usage too high: {cpu_percent:.1f}% "
                     f"(limit: {self.resource_limits['cpu_percent']}%)"
                 )
             if not memory_ok:
-                self.shared_logger.logger.warning(
+                self.shared_logger.warning(
                     f"Memory usage too high: {memory.percent:.1f}% "
                     f"(limit: {self.resource_limits['memory_percent']}%)"
                 )
 
             return cpu_ok and memory_ok and gpu_ok
         except Exception as e:
-            self.shared_logger.logger.error(f"Resource check failed: {e}")
+            self.shared_logger.error(f"Resource check failed: {e}")
             return True  # エラーの場合は続行
 
     def _detect_gpu(self) -> bool:
@@ -451,7 +449,7 @@ class ParallelExperimentRunner:
         except Exception as e:
             # Return error result（効率化: エラーハンドリング改善）
             error_msg = f"Experiment failed: {str(e)}"
-            self.shared_logger.logger.error(error_msg)
+            self.shared_logger.error(error_msg)
 
             return ExperimentResult(
                 experiment_name=f"experiment_{index}",
@@ -473,7 +471,7 @@ class ResourceMonitor:
 
         # 基本設定
         self.log_interval = log_interval_seconds
-        self.logger = LoggerManager(experiment_id="resource_monitor")
+        self.logger = logging.getLogger("resource_monitor")
 
         # 時間追跡
         self.start_time = time.time()
@@ -530,7 +528,7 @@ class ResourceMonitor:
                     else 1.0
                 )
                 if memory_ratio > (1.0 + self.memory_leak_threshold_percent / 100.0):
-                    self.logger.logger.warning(
+                    self.logger.warning(
                         f"Potential memory leak detected: memory increased from "
                         f"{recent_memory[0]:.1f}MB to {recent_memory[-1]:.1f}MB "
                         f"(+{(memory_ratio - 1.0) * 100:.1f}%)"
@@ -540,7 +538,7 @@ class ResourceMonitor:
                 recent_objects = self.object_counts[-10:]
                 object_increase = recent_objects[-1] - recent_objects[0]
                 if object_increase > self.object_leak_threshold:
-                    self.logger.logger.warning(
+                    self.logger.warning(
                         f"Potential object leak detected: objects increased by {object_increase} "
                         f"(from {recent_objects[0]} to {recent_objects[-1]})"
                     )
@@ -579,7 +577,7 @@ class ResourceMonitor:
                 self.avg_cpu_percent = sum(self.measurements) / len(self.measurements)
 
         except Exception as e:
-            self.logger.logger.error(f"Resource monitoring error: {e}")
+            self.logger.error(f"Resource monitoring error: {e}")
 
     def get_memory_leak_summary(self) -> Dict[str, Any]:
         """Get summary of memory usage and potential leaks（効率化）"""

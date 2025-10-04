@@ -29,25 +29,16 @@ adx = ema_cross = heikin_ashi = kama = supertrend = tema = None
 rsi = roc = obv = zscore = None
 
 try:
-    from ztb.test_simple_features import (
-        OBV as obv,
-    )
-    from ztb.test_simple_features import (
-        ROC as roc,
-    )
-    from ztb.test_simple_features import (
-        RSI as rsi,
-    )
-    from ztb.test_simple_features import (
-        ZScore as zscore,
-    )
-
     from ztb.features.trend.adx import ADX as adx
     from ztb.features.trend.emacross import EMACross as ema_cross
     from ztb.features.trend.heikin_ashi import HeikinAshi as heikin_ashi
     from ztb.features.trend.kama import KAMA as kama
     from ztb.features.trend.supertrend import Supertrend as supertrend
     from ztb.features.trend.tema import TEMA as tema
+    from ztb.test_simple_features import OBV as obv
+    from ztb.test_simple_features import ROC as roc
+    from ztb.test_simple_features import RSI as rsi
+    from ztb.test_simple_features import ZScore as zscore
 
     print("Feature imports successful")
 except ImportError as e:

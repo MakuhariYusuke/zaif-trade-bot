@@ -27,7 +27,7 @@ class ReportGenerator:
         """Generate JSON report."""
 
         # Convert timestamps to strings for JSON serialization
-        def serialize_timestamps(obj):
+        def serialize_timestamps(obj: Any) -> Any:
             if isinstance(obj, dict):
                 return {
                     k: (v.isoformat() if hasattr(v, "isoformat") else v)
@@ -176,7 +176,7 @@ class ReportGenerator:
         import csv
 
         # Get all unique keys from orders
-        fieldnames = set()
+        fieldnames: set[str] = set()
         for order in orders:
             fieldnames.update(order.keys())
 

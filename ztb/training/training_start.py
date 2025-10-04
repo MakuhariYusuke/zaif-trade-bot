@@ -6,12 +6,13 @@ Usage: python training_start.py [--correlation-id <id>] [--dry-run]
 
 import argparse
 import os
-import subprocess
 import sys
 from datetime import datetime, timezone
 
+from ztb.utils.compat_wrapper import run_command_safely
 
-def main():
+
+def main() -> None:
     parser = argparse.ArgumentParser(description="Start training session")
     parser.add_argument("--correlation-id", help="Correlation ID for the session")
     parser.add_argument(
@@ -38,14 +39,14 @@ def main():
         return
 
     print(f"Executing: {' '.join(cmd)}")
-    result = subprocess.run(cmd, env=env, cwd=os.path.dirname(__file__))
+    result = run_command_safely(cmd, env=env, cwd=os.path.dirname(__file__))
 
-    if result.returncode == 0:
+    if result["success"]:
         print("Training started successfully")
         print(f"Monitor with: make 1m-watch CORR={corr_id}")
     else:
-        print(f"Failed to start training (exit code: {result.returncode})")
-        sys.exit(result.returncode)
+        print(f"Failed to start training (exit code: {result['returncode']})")
+        sys.exit(result["returncode"])
 
 
 if __name__ == "__main__":

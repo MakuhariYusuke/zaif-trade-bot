@@ -33,7 +33,7 @@ def get_disk_usage(path: Path) -> Dict[str, Any]:
 def get_inode_usage(path: Path) -> Optional[Dict[str, Any]]:
     """Get inode usage if available."""
     try:
-        statvfs = os.statvfs(path)
+        statvfs = os.statvfs(path)  # type: ignore[attr-defined]
         total_inodes = statvfs.f_files
         free_inodes = statvfs.f_favail
         used_inodes = total_inodes - free_inodes
@@ -45,7 +45,7 @@ def get_inode_usage(path: Path) -> Optional[Dict[str, Any]]:
             "usage_pct": usage_pct,
         }
     except AttributeError:
-        # Windows doesn't have statvfs
+        # os.statvfs not available on Windows
         return None
     except Exception as e:
         return {"error": str(e)}
@@ -64,8 +64,8 @@ def measure_io_latency(path: Path, test_size: int = 1024) -> Optional[float]:
         os.fsync(f.fileno())  # Force write to disk
 
         # Read test
-        with open(test_file, "rb") as f:
-            _ = f.read()
+        with open(test_file, "rb") as rf:
+            _ = rf.read()
 
         end = time.time()
         test_file.unlink(missing_ok=True)
@@ -78,7 +78,7 @@ def measure_io_latency(path: Path, test_size: int = 1024) -> Optional[float]:
 
 def check_health(
     path: Path, min_free_gb: float, max_inode_usage: float, check_io: bool = False
-) -> list:
+) -> list[Dict[str, Any]]:
     """Check disk health and return alerts."""
     alerts = []
 
@@ -102,7 +102,7 @@ def check_health(
                 "alert_type": "low_disk_space",
                 "message": f"Free disk space: {disk['free_gb']:.1f}GB < {min_free_gb}GB",
                 "path": str(path),
-                "free_gb": disk["free_gb"],
+                "free_gb": str(disk["free_gb"]),
             }
         )
 
@@ -117,7 +117,7 @@ def check_health(
                     "alert_type": "high_inode_usage",
                     "message": f"Inode usage: {inodes['usage_pct']:.1f}% > {max_inode_usage}%",
                     "path": str(path),
-                    "inode_usage_pct": inodes["usage_pct"],
+                    "inode_usage_pct": str(inodes["usage_pct"]),
                 }
             )
 
@@ -132,14 +132,14 @@ def check_health(
                     "alert_type": "slow_io",
                     "message": f"I/O latency: {latency:.1f}ms > 100ms",
                     "path": str(path),
-                    "latency_ms": latency,
+                    "latency_ms": str(latency),
                 }
             )
 
     return alerts
 
 
-def write_alerts(alerts: list, log_path: Path):
+def write_alerts(alerts: list[Dict[str, Any]], log_path: Path) -> None:
     """Write alerts to JSONL file."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a") as f:
@@ -147,7 +147,7 @@ def write_alerts(alerts: list, log_path: Path):
             f.write(json.dumps(alert) + "\n")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Check disk health for Zaif Trade Bot")
     parser.add_argument(
         "--correlation-id", required=True, help="Session correlation ID"

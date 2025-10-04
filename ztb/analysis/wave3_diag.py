@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy.stats import pearsonr
-from sklearn.feature_selection import (
-    mutual_info_regression,  # type: ignore[import-untyped]
+from sklearn.feature_selection import (  # type: ignore[import-untyped]
+    mutual_info_regression,
 )
 from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
 
@@ -24,6 +24,8 @@ from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped
 project_root = str(Path(__file__).parent.parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
+
+from ztb.utils.errors import safe_operation
 
 from ztb.features import get_feature_manager
 
@@ -66,6 +68,18 @@ def calculate_correlations(
     df: pd.DataFrame, target_col: str = "return"
 ) -> Dict[str, pd.DataFrame]:
     """相関計算"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _calculate_correlations_impl(df, target_col),
+        context="correlation_calculation",
+        default_result={"pearson": pd.DataFrame(), "spearman": pd.DataFrame()},
+    )
+
+
+def _calculate_correlations_impl(
+    df: pd.DataFrame, target_col: str
+) -> Dict[str, pd.DataFrame]:
+    """Implementation of correlation calculation."""
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     feature_cols = [
         c for c in numeric_cols if c not in ["ts", "episode_id", target_col]
@@ -79,6 +93,16 @@ def calculate_correlations(
 
 def calculate_vif(df: pd.DataFrame) -> pd.DataFrame:
     """VIF計算"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _calculate_vif_impl(df),
+        context="vif_calculation",
+        default_result=pd.DataFrame(columns=["feature", "vif", "high_vif"]),
+    )
+
+
+def _calculate_vif_impl(df: pd.DataFrame) -> pd.DataFrame:
+    """Implementation of VIF calculation."""
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     feature_cols = [c for c in numeric_cols if c not in ["ts", "episode_id", "return"]]
 
@@ -106,6 +130,18 @@ def calculate_mutual_info(
     df: pd.DataFrame, horizons: List[int]
 ) -> Dict[str, pd.DataFrame]:
     """相互情報量計算"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _calculate_mutual_info_impl(df, horizons),
+        context="mutual_info_calculation",
+        default_result={f"h{h}": pd.DataFrame(columns=["feature", "mi"]) for h in horizons},
+    )
+
+
+def _calculate_mutual_info_impl(
+    df: pd.DataFrame, horizons: List[int]
+) -> Dict[str, pd.DataFrame]:
+    """Implementation of mutual information calculation."""
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     feature_cols = [c for c in numeric_cols if c not in ["ts", "episode_id", "return"]]
 
@@ -132,6 +168,16 @@ def calculate_mutual_info(
 
 def check_leaks(df: pd.DataFrame) -> pd.DataFrame:
     """リークチェック"""
+    return safe_operation(
+        logger=None,  # Use default logger
+        operation=lambda: _check_leaks_impl(df),
+        context="leak_check",
+        default_result=pd.DataFrame(columns=["feature", "corr_current", "corr_future", "warning", "reason"]),
+    )
+
+
+def _check_leaks_impl(df: pd.DataFrame) -> pd.DataFrame:
+    """Implementation of leak check."""
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     feature_cols = [c for c in numeric_cols if c not in ["ts", "episode_id", "return"]]
 
@@ -290,11 +336,11 @@ def main() -> None:
     high_vif = vif_df[vif_df["high_vif"]]
     warnings = leak_df[leak_df["warning"]]
 
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"High VIF features (>10): {len(high_vif)}")
     print(f"Leak warnings: {len(warnings)}")
-    print(f"Correlation heatmap saved to corr_heatmap.png")
-    print(f"Column mapping saved to column_mapping.csv")
+    print("Correlation heatmap saved to corr_heatmap.png")
+    print("Column mapping saved to column_mapping.csv")
 
     if len(high_vif) > 0:
         print("High VIF features:")

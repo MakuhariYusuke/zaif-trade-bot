@@ -10,7 +10,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from ztb.utils.observability import get_logger
+from ztb.utils.errors import handle_error
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -66,53 +67,67 @@ class OrderReconciliationStrategy(ReconciliationStrategy):
 
     def reconcile_item(self, item: ReconciliationItem) -> ReconciliationResult:
         """Reconcile order states."""
-        discrepancies = []
-        actions = []
+        def perform_reconciliation() -> ReconciliationResult:
+            discrepancies = []
+            actions = []
 
-        internal = item.internal_state
-        external = item.external_state
+            internal = item.internal_state
+            external = item.external_state
 
-        # Check order status
-        if internal.get("status") != external.get("status"):
-            discrepancies.append(
-                f"Status mismatch: internal={internal.get('status')}, external={external.get('status')}"
+            # Check order status
+            if internal.get("status") != external.get("status"):
+                discrepancies.append(
+                    f"Status mismatch: internal={internal.get('status')}, external={external.get('status')}"
+                )
+
+            # Check filled quantity
+            internal_filled = internal.get("filled_quantity", 0)
+            external_filled = external.get("filled_quantity", 0)
+            if (
+                abs(internal_filled - external_filled) > 0.0001
+            ):  # Allow small floating point differences
+                discrepancies.append(
+                    f"Filled quantity mismatch: internal={internal_filled}, external={external_filled}"
+                )
+
+            # Check remaining quantity
+            internal_remaining = internal.get("remaining_quantity", 0)
+            external_remaining = external.get("remaining_quantity", 0)
+            if abs(internal_remaining - external_remaining) > 0.0001:
+                discrepancies.append(
+                    f"Remaining quantity mismatch: internal={internal_remaining}, external={external_remaining}"
+                )
+
+            # If discrepancies found, log and potentially trigger corrective actions
+            if discrepancies:
+                logger.warning(
+                    f"Reconciliation discrepancies for order {item.item_id}: {discrepancies}"
+                )
+                # TODO: Implement corrective actions (e.g., update internal state, alert, etc.)
+                actions.append("logged_discrepancies")
+            else:
+                actions.append("no_action_needed")
+
+            return ReconciliationResult(
+                item_id=item.item_id,
+                is_consistent=len(discrepancies) == 0,
+                discrepancies=discrepancies,
+                actions_taken=actions,
+                timestamp=item.timestamp,
             )
 
-        # Check filled quantity
-        internal_filled = internal.get("filled_quantity", 0)
-        external_filled = external.get("filled_quantity", 0)
-        if (
-            abs(internal_filled - external_filled) > 0.0001
-        ):  # Allow small floating point differences
-            discrepancies.append(
-                f"Filled quantity mismatch: internal={internal_filled}, external={external_filled}"
+        try:
+            return perform_reconciliation()
+        except Exception as e:
+            handle_error(logger, e, f"reconcile_item({item.item_id})")
+            # Return failed result on error
+            return ReconciliationResult(
+                item_id=item.item_id,
+                is_consistent=False,
+                discrepancies=["reconciliation_error"],
+                actions_taken=["error_handled"],
+                timestamp=item.timestamp,
             )
-
-        # Check remaining quantity
-        internal_remaining = internal.get("remaining_quantity", 0)
-        external_remaining = external.get("remaining_quantity", 0)
-        if abs(internal_remaining - external_remaining) > 0.0001:
-            discrepancies.append(
-                f"Remaining quantity mismatch: internal={internal_remaining}, external={external_remaining}"
-            )
-
-        # If discrepancies found, log and potentially trigger corrective actions
-        if discrepancies:
-            logger.warning(
-                f"Reconciliation discrepancies for order {item.item_id}: {discrepancies}"
-            )
-            # TODO: Implement corrective actions (e.g., update internal state, alert, etc.)
-            actions.append("logged_discrepancies")
-        else:
-            actions.append("no_action_needed")
-
-        return ReconciliationResult(
-            item_id=item.item_id,
-            is_consistent=len(discrepancies) == 0,
-            discrepancies=discrepancies,
-            actions_taken=actions,
-            timestamp=item.timestamp,
-        )
 
 
 class PositionReconciliationStrategy(ReconciliationStrategy):
@@ -123,59 +138,74 @@ class PositionReconciliationStrategy(ReconciliationStrategy):
 
     def reconcile_item(self, item: ReconciliationItem) -> ReconciliationResult:
         """Reconcile position states."""
-        discrepancies = []
-        actions = []
+        def perform_reconciliation() -> ReconciliationResult:
+            discrepancies = []
+            actions = []
 
-        internal = item.internal_state
-        external = item.external_state
+            internal = item.internal_state
+            external = item.external_state
 
-        # Check position size
-        internal_size = internal.get("size", 0)
-        external_size = external.get("size", 0)
-        if abs(internal_size - external_size) > 0.0001:
-            discrepancies.append(
-                f"Position size mismatch: internal={internal_size}, external={external_size}"
+            # Check position size
+            internal_size = internal.get("size", 0)
+            external_size = external.get("size", 0)
+            if abs(internal_size - external_size) > 0.0001:
+                discrepancies.append(
+                    f"Position size mismatch: internal={internal_size}, external={external_size}"
+                )
+
+            # Check average price
+            internal_avg_price = internal.get("average_price", 0)
+            external_avg_price = external.get("average_price", 0)
+            if abs(internal_avg_price - external_avg_price) > 0.01:  # Allow 1% difference
+                discrepancies.append(
+                    f"Average price mismatch: internal={internal_avg_price}, external={external_avg_price}"
+                )
+
+            if discrepancies:
+                logger.warning(
+                    f"Reconciliation discrepancies for position {item.item_id}: {discrepancies}"
+                )
+                actions.append("logged_discrepancies")
+            else:
+                actions.append("no_action_needed")
+
+            return ReconciliationResult(
+                item_id=item.item_id,
+                is_consistent=len(discrepancies) == 0,
+                discrepancies=discrepancies,
+                actions_taken=actions,
+                timestamp=item.timestamp,
             )
 
-        # Check average price
-        internal_avg_price = internal.get("average_price", 0)
-        external_avg_price = external.get("average_price", 0)
-        if abs(internal_avg_price - external_avg_price) > 0.01:  # Allow 1% difference
-            discrepancies.append(
-                f"Average price mismatch: internal={internal_avg_price}, external={external_avg_price}"
+        try:
+            return perform_reconciliation()
+        except Exception as e:
+            handle_error(logger, e, f"reconcile_item({item.item_id})")
+            # Return failed result on error
+            return ReconciliationResult(
+                item_id=item.item_id,
+                is_consistent=False,
+                discrepancies=["reconciliation_error"],
+                actions_taken=["error_handled"],
+                timestamp=item.timestamp,
             )
-
-        if discrepancies:
-            logger.warning(
-                f"Reconciliation discrepancies for position {item.item_id}: {discrepancies}"
-            )
-            actions.append("logged_discrepancies")
-        else:
-            actions.append("no_action_needed")
-
-        return ReconciliationResult(
-            item_id=item.item_id,
-            is_consistent=len(discrepancies) == 0,
-            discrepancies=discrepancies,
-            actions_taken=actions,
-            timestamp=item.timestamp,
-        )
 
 
 class ReconciliationEngine:
     """Engine for running reconciliation processes."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize reconciliation engine."""
+        super().__init__()
         self.strategies: Dict[str, ReconciliationStrategy] = {}
         self.register_default_strategies()
 
-    def register_default_strategies(self):
+    def register_default_strategies(self) -> None:
         """Register default reconciliation strategies."""
         self.register_strategy(OrderReconciliationStrategy())
         self.register_strategy(PositionReconciliationStrategy())
 
-    def register_strategy(self, strategy: ReconciliationStrategy):
+    def register_strategy(self, strategy: ReconciliationStrategy) -> None:
         """Register a reconciliation strategy."""
         self.strategies[strategy.get_strategy_name()] = strategy
         logger.info(
@@ -242,9 +272,9 @@ class ReconciliationEngine:
             "total_items": total_items,
             "consistent_items": consistent_items,
             "inconsistent_items": inconsistent_items,
-            "consistency_rate": consistent_items / total_items
-            if total_items > 0
-            else 0,
+            "consistency_rate": (
+                consistent_items / total_items if total_items > 0 else 0
+            ),
             "total_discrepancies": total_discrepancies,
             "results": results,
         }

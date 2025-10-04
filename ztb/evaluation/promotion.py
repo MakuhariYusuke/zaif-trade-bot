@@ -505,14 +505,16 @@ class YamlPromotionEngine(PromotionEngine):
             "criterion_details": criterion_details,
             "hard_requirements_passed": all_hard_requirements_passed,
             "hard_requirement_details": hard_requirement_details,
-            "staging_samples": feature_results.get("sample_count", 0)
-            if current_status == "staging"
-            else None,
-            "staging_min_samples": self.config.get("staging", {}).get(
-                "min_samples_required", 1000
-            )
-            if current_status == "staging"
-            else None,
+            "staging_samples": (
+                feature_results.get("sample_count", 0)
+                if current_status == "staging"
+                else None
+            ),
+            "staging_min_samples": (
+                self.config.get("staging", {}).get("min_samples_required", 1000)
+                if current_status == "staging"
+                else None
+            ),
         }
 
         # Send notifications based on result

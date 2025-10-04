@@ -14,7 +14,7 @@ import pandas as pd
 import zstandard as zstd
 
 
-def create_test_data(size_mb=10):
+def create_test_data(size_mb: int = 10) -> pd.DataFrame:
     """テストデータ作成（DataFrame）"""
     n_rows = size_mb * 1024 * 1024 // 100  # 概算
     data = {
@@ -32,7 +32,13 @@ def create_test_data(size_mb=10):
     return pd.DataFrame(data)
 
 
-def benchmark_compressor(name, compressor_func, decompressor_func, data, iterations=5):
+def benchmark_compressor(
+    name: str,
+    compressor_func: callable,
+    decompressor_func: callable,
+    data: bytes,
+    iterations: int = 5,
+) -> dict:
     """圧縮/展開ベンチマーク"""
     original_size = len(data)
 
