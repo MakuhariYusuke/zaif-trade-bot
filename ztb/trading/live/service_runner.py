@@ -11,7 +11,7 @@ import logging
 import signal
 import sys
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from ztb.ops.monitoring.health_monitor import HealthMonitor
 from ztb.utils.errors import TradingBotError
@@ -20,7 +20,9 @@ from ztb.utils.errors import TradingBotError
 class TradingService:
     """24/7 trading service with automatic restarts and monitoring."""
 
-    def __init__(self, config_path: Optional[str] = None, log_level: str = "INFO"):
+    def __init__(
+        self, config_path: Optional[str] = None, log_level: str = "INFO"
+    ) -> None:
         self.config_path = config_path
         self.log_level = log_level
         self.running = False
@@ -28,7 +30,7 @@ class TradingService:
         self.max_restarts = 10
         self.restart_delay = 60  # seconds
         self.health_monitor = HealthMonitor("trading_service")
-        self.last_health_report = 0
+        self.last_health_report = 0.0
         self.health_report_interval = 300  # 5 minutes
 
         # Set up logging
@@ -38,7 +40,7 @@ class TradingService:
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
 
-    def _setup_logging(self):
+    def _setup_logging(self) -> None:
         """Set up comprehensive logging."""
         log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         logging.basicConfig(
@@ -51,7 +53,7 @@ class TradingService:
         )
         self.logger = logging.getLogger(__name__)
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum: int, frame: Any) -> None:
         """Handle shutdown signals."""
         self.logger.info(f"Received signal {signum}, shutting down...")
         self.running = False
@@ -78,7 +80,7 @@ class TradingService:
             self.logger.error(f"Trading cycle failed: {e}", exc_info=True)
             return False
 
-    def _simulate_trading_cycle(self):
+    def _simulate_trading_cycle(self) -> None:
         """Simulate a trading cycle (replace with actual trading logic)."""
         # This is a placeholder - in real implementation, this would:
         # 1. Load configuration
@@ -119,7 +121,7 @@ class TradingService:
                 self.logger.warning("Health monitor recommends restart")
                 return False
 
-            return health_status["status"] == "healthy"
+            return health_status["status"] == "healthy"  # type: ignore[no-any-return]
 
         except Exception as e:
             self.logger.error(f"Health check failed: {e}")
@@ -142,7 +144,7 @@ class TradingService:
         )
         return True
 
-    def run(self):
+    def run(self) -> None:
         """Run the 24/7 trading service."""
         self.logger.info("Starting 24/7 Trading Service")
         self.logger.info(f"Config: {self.config_path}")
@@ -175,14 +177,14 @@ class TradingService:
             self.logger.info("Trading service stopped")
             self._cleanup()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """Clean up resources."""
         self.logger.info("Performing cleanup...")
         # Close connections, save state, etc.
         self.logger.info("Cleanup completed")
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="24/7 Trading Service Runner")
     parser.add_argument("--config", type=str, help="Path to configuration file")

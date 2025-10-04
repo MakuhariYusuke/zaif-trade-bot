@@ -8,11 +8,14 @@ from typing import Any, Dict, List, Optional, Union, cast
 import numpy as np
 import pandas as pd
 
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
+
 
 def sharpe_ratio(
     returns: Union[List[float], np.ndarray[Any, np.dtype[Any]]],
     risk_free_rate: float = 0.0,
-    periods_per_year: int = 252,
+    periods_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
     """
     Sharpe ratioを計算（堅牢なNaN処理付き）
@@ -121,7 +124,7 @@ def calculate_delta_sharpe(
     }
 
 
-def validate_ablation_results(results: Dict) -> bool:
+def validate_ablation_results(results: Dict[str, Any]) -> bool:
     """
     アブレーション結果の妥当性を検証
 
@@ -206,20 +209,30 @@ def calculate_feature_metrics(
 
     # Sharpe ratio
     if strategy_returns.std() > 0:
-        sharpe_ratio = strategy_returns.mean() / strategy_returns.std() * np.sqrt(252)
+        sharpe_ratio = (
+            strategy_returns.mean()
+            / strategy_returns.std()
+            * np.sqrt(TRADING_DAYS_PER_YEAR)
+        )
     else:
         sharpe_ratio = 0.0
 
     # Sortino ratio
     downside_returns = strategy_returns[strategy_returns < 0]
     if len(downside_returns) > 0 and downside_returns.std() > 0:
-        sortino_ratio = strategy_returns.mean() / downside_returns.std() * np.sqrt(252)
+        sortino_ratio = (
+            strategy_returns.mean()
+            / downside_returns.std()
+            * np.sqrt(TRADING_DAYS_PER_YEAR)
+        )
     else:
         sortino_ratio = 0.0
 
     # Calmar ratio
     if abs(max_drawdown) > 0:
-        calmar_ratio = strategy_returns.mean() * 252 / abs(max_drawdown)
+        calmar_ratio = (
+            strategy_returns.mean() * TRADING_DAYS_PER_YEAR / abs(max_drawdown)
+        )
     else:
         calmar_ratio = 0.0
 

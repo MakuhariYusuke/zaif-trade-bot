@@ -19,6 +19,14 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -107,6 +115,14 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -181,14 +197,9 @@ jobs:
         for i in range(10):
             strategy.update()
         end = time.time()
-        print(f'Benchmark smoke test completed in {end - start:.2f} seconds')
+        print(f'Benchmark smoke test completed in {time.time() - start:.2f}s')
         "
 
-    - name: Upload memory profile
-      uses: actions/upload-artifact@v4
-      with:
-        name: memory-profile-${{ github.run_id }}
-        path: |
-          memory_profile_*.csv
-          logs/**/*.jsonl
-        retention-days: 30
+    - name: Run DRY_RUN E2E tests
+      run: |
+        python -m pytest tests/test_paper_trading.py -v -k "DRY_RUN"

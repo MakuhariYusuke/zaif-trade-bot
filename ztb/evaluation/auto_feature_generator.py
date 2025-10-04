@@ -24,9 +24,14 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import yaml
+from numpy.typing import NDArray
 
 from ztb.evaluation.logging import EvaluationLogger
 from ztb.features.base import CommonPreprocessor
+from ztb.utils.quality import QualityGates
+
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
 
 
 class ParameterCombinationGenerator:
@@ -58,7 +63,7 @@ class ParameterCombinationGenerator:
     def validate_combination(
         combination: Tuple[Any, ...],
         feature_type: Optional[str] = None,
-        validators: Optional[List[Callable]] = None,
+        validators: Optional[List[Callable[..., Any]]] = None,
     ) -> bool:
         """Validate a parameter combination with built-in rules"""
         # Built-in validations by feature type
@@ -142,6 +147,7 @@ class FeatureGeneratorTemplate(ABC):
     def __init__(self, name: str, params: Dict[str, Any]):
         self.name = name
         self.params = params
+        self.quality_gates = QualityGates()
 
     def generate_features(self, ohlc_data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
         """Template method for feature generation"""
@@ -230,6 +236,7 @@ class AutoFeatureGenerator:
         config_path: Optional[Path] = None,
     ):
         self.logger = logger or EvaluationLogger()
+        self.quality_gates = QualityGates()
 
         # Load parameter configurations
         self.config_path = config_path or Path("config/feature_params.yaml")
@@ -263,7 +270,7 @@ class AutoFeatureGenerator:
                 # Ensure max_combinations exists
                 if "max_combinations" not in params:
                     params["max_combinations"] = 100
-                return params
+                return params  # type: ignore
         except Exception as e:
             print(f"Warning: Could not load config from {self.config_path}: {e}")
             # Fallback to default parameters
@@ -367,49 +374,28 @@ class AutoFeatureGenerator:
         self, features: Dict[str, pd.DataFrame], ohlc_data: pd.DataFrame
     ) -> Dict[str, pd.DataFrame]:
         """Apply quality gates to filter out poor quality features"""
-        quality_gates = self.params.get("quality_gates", {})
-        max_nan_rate = quality_gates.get("max_nan_rate_threshold", 0.8)
-        min_abs_correlation = quality_gates.get("min_abs_correlation_threshold", 0.05)
-
         filtered_features = {}
 
         for name, feature_df in features.items():
-            # Check NaN rate
-            nan_rate = (
-                feature_df.isna().mean().mean()
-            )  # Average NaN rate across all columns
-            if nan_rate > max_nan_rate:
-                print(
-                    f"Quality gate: {name} rejected (NaN rate: {nan_rate:.3f} > {max_nan_rate})"
-                )
-                continue
-
-            # Check correlation with base signal (close or return)
-            correlations = []
+            # Use QualityGates for each feature column
+            feature_passed = True
             for col in feature_df.columns:
-                if col in feature_df.columns:
-                    # Try correlation with close, fallback to return
-                    if "close" in ohlc_data.columns:
-                        corr = feature_df[col].corr(ohlc_data["close"])
-                    elif "return" in ohlc_data.columns:
-                        corr = feature_df[col].corr(ohlc_data["return"])
-                    else:
-                        corr = 0.0
+                feature_series = feature_df[col]
+                price_series = ohlc_data.get("close", ohlc_data.get("return", pd.Series()))
+                if price_series.empty:
+                    continue
 
-                    if not pd.isna(corr):
-                        correlations.append(abs(corr))
-
-            avg_correlation = (
-                sum(correlations) / len(correlations) if correlations else 0.0
-            )
-
-            if avg_correlation < min_abs_correlation:
-                print(
-                    f"Quality gate: {name} rejected (correlation: {avg_correlation:.3f} < {min_abs_correlation})"
+                result = self.quality_gates.evaluate(
+                    feature_series, price_series, mode="normal", dataset="synthetic"
                 )
-                continue
 
-            filtered_features[name] = feature_df
+                if not result.get("passed", False):
+                    print(f"Quality gate: {name}.{col} rejected - {result}")
+                    feature_passed = False
+                    break
+
+            if feature_passed:
+                filtered_features[name] = feature_df
 
         return filtered_features
 
@@ -481,7 +467,7 @@ class AutoFeatureGenerator:
             validated_name = name
         return validated_name
 
-    def _generate_unique_name(self, base_name: str, existing_names: set) -> str:
+    def _generate_unique_name(self, base_name: str, existing_names: set[str]) -> str:
         """Generate unique feature name to avoid conflicts"""
         name = base_name
         counter = 1
@@ -626,7 +612,7 @@ class AutoFeatureGenerator:
 
         return False
 
-    def _calculate_basic_metrics(self, returns: np.ndarray) -> Dict[str, float]:
+    def _calculate_basic_metrics(self, returns: NDArray[Any]) -> Dict[str, float]:
         """Calculate basic performance metrics"""
         returns = np.asarray(returns)  # Ensure returns is np.ndarray
         if len(returns) == 0:
@@ -635,7 +621,11 @@ class AutoFeatureGenerator:
         # Sharpe ratio
         mean_return = np.mean(returns)
         std_return = np.std(returns, ddof=1)
-        sharpe = mean_return / std_return * np.sqrt(252) if std_return > 0 else 0.0
+        sharpe = (
+            mean_return / std_return * np.sqrt(TRADING_DAYS_PER_YEAR)
+            if std_return > 0
+            else 0.0
+        )
 
         # Win rate
         win_rate = np.mean(returns > 0)

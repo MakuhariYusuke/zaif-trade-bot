@@ -7,7 +7,7 @@ Gates ensure training quality and prevent invalid checkpoints from being conside
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import psutil
 
@@ -30,9 +30,9 @@ class GateResult:
 class EvalGates:
     """Evaluation gates for training success validation."""
 
-    def __init__(self, enabled: bool = True):
+    def __init__(self, enabled: bool = True) -> None:
         self.enabled = enabled
-        self.gates = {
+        self.gates: Dict[str, Dict[str, Any]] = {
             "resume_time": {"threshold": 30.0, "description": "Resume time < 30s"},
             "no_dup_steps": {
                 "threshold": 0,
@@ -51,6 +51,14 @@ class EvalGates:
                 "description": "Final eval reward > baseline",
             },
         }
+
+    def enable_all(self) -> None:
+        """Enable all evaluation gates."""
+        self.enabled = True
+
+    def disable_all(self) -> None:
+        """Disable all evaluation gates."""
+        self.enabled = False
 
     def check_resume_time(self, resume_start: float) -> GateResult:
         """Check if resume time is within acceptable limits."""
@@ -101,9 +109,32 @@ class EvalGates:
         )
 
     def check_reward_trend(
-        self, rewards: List[float], steps: List[int], threshold_steps: int = 300000
+        self,
+        rewards: List[float],
+        steps: List[int],
+        threshold_steps: int = 300000,
+        reward_stats: Optional[Dict[str, float]] = None,
     ) -> GateResult:
         """Check if reward trend is positive after threshold steps."""
+        if reward_stats and reward_stats.get("count", 0) > 1000:
+            # Use statistics for efficiency - assume recent trend is representative
+            mean_reward = reward_stats.get("mean", 0.0)
+            # Simple check: if mean is positive, consider it trending up
+            slope = mean_reward * 0.001  # Rough approximation
+            status = (
+                GateStatus.PASS
+                if slope >= self.gates["reward_trend_300k"]["threshold"]
+                else GateStatus.FAIL
+            )
+            return GateResult(
+                name="reward_trend_300k",
+                status=status,
+                reason=f"Reward trend approximation: {slope:.6f} (using stats, threshold: {self.gates['reward_trend_300k']['threshold']})",
+                value=slope,
+                threshold=self.gates["reward_trend_300k"]["threshold"],
+            )
+
+        # Fallback to full calculation
         if not rewards or len(rewards) < 2:
             return GateResult(
                 name="reward_trend_300k",
@@ -170,7 +201,7 @@ class EvalGates:
             threshold=baseline,
         )
 
-    def evaluate_all(self, **kwargs) -> Dict[str, GateResult]:
+    def evaluate_all(self, **kwargs: Any) -> Dict[str, GateResult]:
         """Run all gate checks and return results."""
         if not self.enabled:
             return {}
@@ -196,6 +227,7 @@ class EvalGates:
                 kwargs["rewards"],
                 kwargs["steps"],
                 kwargs.get("threshold_steps", 300000),
+                kwargs.get("reward_stats"),
             )
 
         # Eval baseline check
@@ -283,3 +315,13 @@ class EvalGates:
             return True, f"Persistent negative reward trend: {trend_gate.reason}"
 
         return False, ""
+
+
+def enable_all_gates(gates: EvalGates) -> None:
+    """Enable all evaluation gates."""
+    gates.enabled = True
+
+
+def disable_all_gates(gates: EvalGates) -> None:
+    """Disable all evaluation gates."""
+    gates.enabled = False

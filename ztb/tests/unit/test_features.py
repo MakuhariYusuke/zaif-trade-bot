@@ -93,25 +93,25 @@ class TestFeatureValidation(BaseFeatureTest):
 
         # Check for duplicates
         unique_features = set(all_features)
-        assert len(all_features) == len(unique_features), (
-            "Duplicate features found in coverage.json"
-        )
+        assert len(all_features) == len(
+            unique_features
+        ), "Duplicate features found in coverage.json"
 
     def test_feature_class_naming_convention(self, coverage_data):
         """Test that feature classes follow naming conventions"""
         for category, features in coverage_data.items():
             for feature in features:
                 # Feature names should be PascalCase
-                assert feature[0].isupper(), (
-                    f"Feature {feature} should start with uppercase letter"
-                )
+                assert feature[
+                    0
+                ].isupper(), f"Feature {feature} should start with uppercase letter"
                 # Should not contain spaces or special characters
-                assert " " not in feature, (
-                    f"Feature {feature} should not contain spaces"
-                )
-                assert all(c.isalnum() or c == "_" for c in feature), (
-                    f"Feature {feature} contains invalid characters"
-                )
+                assert (
+                    " " not in feature
+                ), f"Feature {feature} should not contain spaces"
+                assert all(
+                    c.isalnum() or c == "_" for c in feature
+                ), f"Feature {feature} contains invalid characters"
 
     @pytest.fixture
     def sample_ohlc_data(self):
@@ -196,9 +196,9 @@ class TestFeatureStatusTransitions:
         for category in ["verified", "pending", "unverified"]:
             category_features = coverage_data.get(category, [])
             for failed_feature in failed_features:
-                assert failed_feature not in category_features, (
-                    f"Failed feature {failed_feature} appears in {category}"
-                )
+                assert (
+                    failed_feature not in category_features
+                ), f"Failed feature {failed_feature} appears in {category}"
 
     def test_unverified_features_require_attention(self, coverage_data):
         """Test that unverified features are flagged for attention"""

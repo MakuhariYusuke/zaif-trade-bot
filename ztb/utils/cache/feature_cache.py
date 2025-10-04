@@ -14,7 +14,7 @@ import threading
 import time
 import zlib
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Callable, Dict, Optional, Union, cast
 
 try:
     import zstandard as zstd
@@ -58,6 +58,10 @@ class FeatureCache:
         self.access_pattern = access_pattern
         self.dynamic_sizing = dynamic_sizing
         self._lock = threading.Lock()  # 並列アクセス用ロック
+
+        # 圧縮関数（型アノテーション）
+        self._compress_func: Optional[Callable[[bytes], bytes]] = None
+        self._decompress_func: Optional[Callable[[bytes], bytes]] = None
 
         # 圧縮方式の設定
         self._setup_compressor()
@@ -239,6 +243,7 @@ class FeatureCache:
                 self.stats["hits"] += 1
             try:
                 compressed_data = f.read_bytes()
+                assert self._decompress_func is not None
                 decompressed_data = self._decompress_func(compressed_data)
                 return pickle.loads(decompressed_data)
             except Exception as e:
@@ -256,6 +261,7 @@ class FeatureCache:
         with self._lock:
             # データのシリアライズと圧縮
             original_data = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
+            assert self._compress_func is not None
             blob = self._compress_func(original_data)
 
             # 統計更新
@@ -275,9 +281,11 @@ class FeatureCache:
             total_requests = self.stats["hits"] + self.stats["misses"]
             hit_rate = cast(
                 float,
-                (self.stats["hits"] / total_requests * 100)
-                if total_requests > 0
-                else 0,
+                (
+                    (self.stats["hits"] / total_requests * 100)
+                    if total_requests > 0
+                    else 0
+                ),
             )
 
             compression_ratio: float = 0

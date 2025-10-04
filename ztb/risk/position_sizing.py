@@ -7,12 +7,16 @@ Provides risk-based position sizing to achieve target portfolio volatility.
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
 
 from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
+from ztb.utils.errors import handle_error, safe_operation
+
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
 
 
 class SizingMethod(Enum):
@@ -75,6 +79,24 @@ class PositionSizer:
         Returns:
             List of position sizes with sizing reasons
         """
+        return safe_operation(
+            logger=None,  # Will use default logger
+            operation=lambda: self._calculate_position_sizes_impl(
+                signals, current_prices, portfolio_value, asset_volatilities, correlation_matrix
+            ),
+            context="position_size_calculation",
+            default_result=[],
+        )
+
+    def _calculate_position_sizes_impl(
+        self,
+        signals: Dict[str, float],  # symbol -> signal strength (-1 to 1)
+        current_prices: Dict[str, float],
+        portfolio_value: float,
+        asset_volatilities: Dict[str, float],  # annualized volatilities
+        correlation_matrix: Optional[pd.DataFrame] = None,
+    ) -> List[PositionSize]:
+        """Implementation of position size calculation."""
         if not signals:
             return []
 
@@ -102,7 +124,7 @@ class PositionSizer:
         portfolio_value: float,
     ) -> List[PositionSize]:
         """Equal weight position sizing."""
-        positions = []
+        positions: List[PositionSize] = []
         num_signals = len(signals)
         if num_signals == 0:
             return positions
@@ -123,6 +145,7 @@ class PositionSizer:
                     sizing_reason=f"Equal weight: {allocation_per_signal:.0f} JPY allocation",
                     target_vol_contribution=0.0,  # Not applicable
                     current_portfolio_vol=0.0,
+                    sizing_chain={},  # Add empty sizing chain for consistency
                 )
             )
 
@@ -175,11 +198,11 @@ class PositionSizer:
                 "validated": None,
                 "circuit_breaker_veto": None,
                 "final_quantity": None,
-                "skip_reason": None,
+                "skip_reason": "",  # Changed from None to "" to allow string assignment
             }
 
             # Kelly adjustment (0.5)
-            allocation = sizing_chain["kelly"]
+            allocation = cast(float, sizing_chain["kelly"])
 
             # Decimal rounding (price/qty)
             price_dec = Decimal(str(price))
@@ -205,7 +228,7 @@ class PositionSizer:
             # Circuit breaker veto
             try:
                 kill_switch = get_global_kill_switch()
-                if kill_switch.is_active():
+                if kill_switch.is_killed():  # Changed from activated to is_killed()
                     sizing_chain["circuit_breaker_veto"] = 0
                     sizing_chain["skip_reason"] = "Circuit breaker active"
                     quantity_rounded = 0
@@ -261,6 +284,14 @@ class PositionSizer:
             allocation = portfolio_value * risk_adjusted_kelly
             quantity = allocation / price
 
+            # Build sizing chain similar to vol_targeting
+            sizing_chain = {
+                "kelly_fraction": kelly_fraction,
+                "risk_adjusted_kelly": risk_adjusted_kelly,
+                "allocation": allocation,
+                "quantity": quantity,
+            }
+
             positions.append(
                 PositionSize(
                     symbol=symbol,
@@ -268,6 +299,7 @@ class PositionSizer:
                     sizing_reason=f"Kelly criterion: {kelly_fraction:.2f} fraction",
                     target_vol_contribution=self.target_volatility,
                     current_portfolio_vol=vol,
+                    sizing_chain=sizing_chain,
                 )
             )
 
@@ -280,7 +312,7 @@ class PositionSizer:
         correlation_matrix: Optional[pd.DataFrame] = None,
     ) -> float:
         """Estimate portfolio volatility from signals and asset data."""
-        if not correlation_matrix:
+        if correlation_matrix is None:
             # Assume independence if no correlation matrix
             weights = np.array(list(signals.values()))
             vols = np.array([asset_volatilities.get(s, 0.5) for s in signals.keys()])
@@ -303,7 +335,7 @@ class PositionSizer:
             cov_matrix = vol_matrix @ corr @ vol_matrix
             portfolio_vol = np.sqrt(weights.T @ cov_matrix @ weights)
 
-        return portfolio_vol
+        return cast(float, portfolio_vol)
 
     def estimate_asset_volatilities(
         self, price_history: Dict[str, pd.Series], window: int = 30
@@ -329,7 +361,7 @@ class PositionSizer:
             returns = prices.pct_change().dropna()
 
             # Rolling volatility (annualized)
-            vol = returns.rolling(window).std() * np.sqrt(252)
+            vol = returns.rolling(window).std() * np.sqrt(TRADING_DAYS_PER_YEAR)
             volatilities[symbol] = vol.iloc[-1] if not vol.empty else 0.5
 
         return volatilities

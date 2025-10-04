@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ztb.config.schema import GlobalConfig
 
 
-def main():
+def main() -> None:
     schema = GlobalConfig.model_json_schema()
     output_path = Path("schema/config_schema.json")
     output_path.parent.mkdir(parents=True, exist_ok=True)

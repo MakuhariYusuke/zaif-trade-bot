@@ -6,10 +6,13 @@ Compares trained model performance against baseline strategies.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
+
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
 
 
 @dataclass
@@ -38,10 +41,10 @@ class ComparisonReport:
 class BaselineStrategy:
     """Base class for baseline strategies."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
 
-    def evaluate(self, price_data: pd.DataFrame, **kwargs) -> BaselineResult:
+    def evaluate(self, price_data: pd.DataFrame, **kwargs: Any) -> BaselineResult:
         """Evaluate strategy on price data."""
         raise NotImplementedError
 
@@ -49,24 +52,29 @@ class BaselineStrategy:
 class BuyAndHoldStrategy(BaselineStrategy):
     """Buy and hold baseline strategy."""
 
-    def evaluate(self, price_data: pd.DataFrame, **kwargs) -> BaselineResult:
+    def evaluate(self, price_data: pd.DataFrame, **kwargs: Any) -> BaselineResult:
         """Evaluate buy and hold strategy."""
         # Simple buy and hold return calculation
         start_price = price_data["close"].iloc[0]
         end_price = price_data["close"].iloc[-1]
-        total_return = (end_price - start_price) / start_price
+        total_return = cast(float, (end_price - start_price) / start_price)
 
         # Calculate basic metrics
         returns = price_data["close"].pct_change().dropna()
-        sharpe_ratio = (
-            returns.mean() / returns.std() * np.sqrt(252) if len(returns) > 0 else 0
+        sharpe_ratio = cast(
+            float,
+            (
+                returns.mean() / returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
+                if len(returns) > 0
+                else 0
+            ),
         )
 
         # Max drawdown
         cumulative = (1 + returns).cumprod()
         running_max = cumulative.expanding().max()
         drawdown = (cumulative - running_max) / running_max
-        max_drawdown = drawdown.min()
+        max_drawdown = cast(float, drawdown.min())
 
         return BaselineResult(
             strategy_name=self.name,
@@ -91,7 +99,7 @@ class SMAStrategy(BaselineStrategy):
         price_data: pd.DataFrame,
         fast_period: int = 10,
         slow_period: int = 30,
-        **kwargs,
+        **kwargs: Any,
     ) -> BaselineResult:
         """Evaluate SMA crossover strategy."""
         # Calculate SMAs
@@ -114,20 +122,25 @@ class SMAStrategy(BaselineStrategy):
             price_data["signal"].shift(1) * price_data["returns"]
         )
 
-        total_return = (1 + price_data["strategy_returns"].dropna()).prod() - 1
+        total_return = (
+            cast(float, (1 + price_data["strategy_returns"].dropna()).prod()) - 1
+        )
         returns = price_data["strategy_returns"].dropna()
 
-        sharpe_ratio = (
-            returns.mean() / returns.std() * np.sqrt(252)
-            if len(returns) > 0 and returns.std() > 0
-            else 0
+        sharpe_ratio = cast(
+            float,
+            (
+                returns.mean() / returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
+                if len(returns) > 0 and returns.std() > 0
+                else 0
+            ),
         )
 
         # Max drawdown
         cumulative = (1 + returns).cumprod()
         running_max = cumulative.expanding().max()
         drawdown = (cumulative - running_max) / running_max
-        max_drawdown = drawdown.min() if len(drawdown) > 0 else 0
+        max_drawdown = cast(float, drawdown.min()) if len(drawdown) > 0 else 0
 
         # Win rate
         winning_trades = len(returns[returns > 0])
@@ -152,13 +165,13 @@ class SMAStrategy(BaselineStrategy):
 class BaselineComparisonEngine:
     """Engine for comparing model performance against baselines."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.strategies = {
             "buy_hold": BuyAndHoldStrategy("Buy and Hold"),
             "sma_crossover": SMAStrategy("SMA Crossover"),
         }
 
-    def add_strategy(self, strategy: BaselineStrategy):
+    def add_strategy(self, strategy: BaselineStrategy) -> None:
         """Add a custom baseline strategy."""
         self.strategies[strategy.name] = strategy
 

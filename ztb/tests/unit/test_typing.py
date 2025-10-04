@@ -49,9 +49,9 @@ class TestTypedDictValidation(BaseFeatureTest):
 
         # All values should be floats (not Optional)
         for key, value in result.items():
-            assert isinstance(value, (int, float)), (
-                f"Value for {key} should be numeric, got {type(value)}"
-            )
+            assert isinstance(
+                value, (int, float)
+            ), f"Value for {key} should be numeric, got {type(value)}"
 
     def test_evaluation_result_structure(self):
         """Test that EvaluationResult contains all required keys"""

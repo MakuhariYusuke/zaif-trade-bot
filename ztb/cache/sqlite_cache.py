@@ -58,7 +58,8 @@ class SQLiteCache:
     def _init_db(self) -> None:
         """Initialize database schema"""
         conn = self.conn
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS cache (
                 key TEXT PRIMARY KEY,
                 value BLOB,
@@ -66,7 +67,8 @@ class SQLiteCache:
                 last_access INTEGER,
                 ttl_sec INTEGER
             )
-        """)
+        """
+        )
         # Enable WAL mode for better concurrency
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")

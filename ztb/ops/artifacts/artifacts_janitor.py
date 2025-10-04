@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 
-def rotate_log(log_path: Path, max_mb: float):
+def rotate_log(log_path: Path, max_mb: float) -> None:
     """Rotate log if oversized."""
     if not log_path.exists():
         return
@@ -29,7 +29,7 @@ def rotate_log(log_path: Path, max_mb: float):
         print(f"Rotated {log_path} to {rotated_path}")
 
 
-def delete_old_runs(root: Path, retention_days: int, dry_run: bool):
+def delete_old_runs(root: Path, retention_days: int, dry_run: bool) -> None:
     """Delete old correlation directories."""
     cutoff = datetime.now() - timedelta(days=retention_days)
 
@@ -49,7 +49,7 @@ def delete_old_runs(root: Path, retention_days: int, dry_run: bool):
                 print(f"Error checking {item}: {e}")
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Janitor for artifacts")
     parser.add_argument(
         "--root", type=Path, default=Path("artifacts"), help="Root directory"

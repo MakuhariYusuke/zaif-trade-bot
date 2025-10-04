@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
-from ztb.utils.observability import get_logger
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,7 +52,7 @@ class CircuitBreaker:
         self.last_failure_time = 0.0
         self._lock = asyncio.Lock()
 
-    async def call(self, func: Callable, *args, **kwargs) -> Any:
+    async def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Execute function through circuit breaker.
 
         Args:
@@ -231,7 +231,7 @@ class KillSwitchActivatedError(Exception):
 class CircuitBreakerRegistry:
     """Registry for managing multiple circuit breakers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize registry."""
         self.breakers: Dict[str, CircuitBreaker] = {}
         self._lock = asyncio.Lock()

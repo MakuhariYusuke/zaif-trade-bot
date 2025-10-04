@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import AgglomerativeClustering  # type: ignore[import-untyped]
+from sklearn.cluster import AgglomerativeClustering
 
 
 def calculate_feature_correlations(feature_df: pd.DataFrame) -> pd.DataFrame:
@@ -144,7 +144,7 @@ def select_representative_features_from_clusters(
     """
     selected_features = []
 
-    for cluster_id, features in clusters.items():
+    for _, features in clusters.items():
         if len(features) == 1:
             # Single feature in cluster - keep it
             selected_features.extend(features)
@@ -251,9 +251,11 @@ def remove_redundant_features(
         "status": "success",
         "original_features": len(feature_df.columns),
         "reduced_features": len(selected_features),
-        "reduction_ratio": len(selected_features) / len(feature_df.columns)
-        if feature_df.columns.size > 0
-        else 0,
+        "reduction_ratio": (
+            len(selected_features) / len(feature_df.columns)
+            if feature_df.columns.size > 0
+            else 0
+        ),
         "correlated_pairs": correlated_pairs,
         "clusters": clusters,
         "selected_features": selected_features,

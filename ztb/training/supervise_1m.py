@@ -9,11 +9,12 @@ Writes artifacts/{corr}/logs/supervise_log.txt.
 """
 
 import argparse
-import subprocess
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+from ztb.utils.compat_wrapper import run_command_safely
 
 
 def acquire_lock(lock_file: Path) -> bool:
@@ -32,7 +33,7 @@ def check_kill_file() -> bool:
     return Path("ztb.stop").exists()
 
 
-def get_training_command(correlation_id: str, ppo_args: str = "") -> list:
+def get_training_command(correlation_id: str, ppo_args: str = "") -> list[str]:
     """Get the training command to run."""
     run_1m_path = Path("ztb/ztb/ztb/scripts/run_1m.py")
     if run_1m_path.exists():
@@ -67,7 +68,7 @@ def get_training_command(correlation_id: str, ppo_args: str = "") -> list:
     return cmd
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Supervise training with auto-resume")
     parser.add_argument(
         "--correlation-id", required=True, help="Correlation ID for this session"
@@ -124,26 +125,15 @@ def main():
                 )
             else:
                 try:
-                    result = subprocess.run(
-                        cmd,
-                        cwd=Path.cwd(),
-                        capture_output=True,
-                        text=True,
-                        timeout=3600,
-                    )  # 1h timeout
-                    exit_code = result.returncode
+                    result = run_command_safely(cmd, timeout=3600, cwd=str(Path.cwd()))
+                    exit_code = result["returncode"]
                     log.write(
                         f"{datetime.now().isoformat()} - Exit code: {exit_code}\n"
                     )
-                    if result.stdout:
-                        log.write(f"STDOUT: {result.stdout}\n")
-                    if result.stderr:
-                        log.write(f"STDERR: {result.stderr}\n")
-                except subprocess.TimeoutExpired:
-                    exit_code = 1
-                    log.write(
-                        f"{datetime.now().isoformat()} - Timeout, exit code: {exit_code}\n"
-                    )
+                    if result["stdout"]:
+                        log.write(f"STDOUT: {result['stdout']}\n")
+                    if result["stderr"]:
+                        log.write(f"STDERR: {result['stderr']}\n")
                 except Exception as e:
                     exit_code = 1
                     log.write(

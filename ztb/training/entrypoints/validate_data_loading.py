@@ -16,8 +16,8 @@ import pandas as pd
 class DataLoadingValidator:
     """Validate data loading and missing data handling"""
 
-    def __init__(self):
-        self.validation_results = []
+    def __init__(self) -> None:
+        self.validation_results: list[Any] = []
 
     def simulate_missing_data_scenarios(self) -> List[tuple[str, pd.DataFrame]]:
         """Create test datasets with different missing data patterns"""
@@ -157,9 +157,11 @@ class DataLoadingValidator:
         return {
             "original_reward": original_reward,
             "filled_reward": filled_reward,
-            "reward_change_percent": ((filled_reward / original_reward) - 1) * 100
-            if original_reward != 0
-            else 0,
+            "reward_change_percent": (
+                ((filled_reward / original_reward) - 1) * 100
+                if original_reward != 0
+                else 0
+            ),
             "correlation_change": correlation_change,
             "max_price_deviation": abs(
                 filled_data["close"] - original_data["close"]
@@ -180,24 +182,25 @@ class DataLoadingValidator:
         cache_age_hours = (datetime.now() - cache_creation).total_seconds() / 3600
         is_expired = cache_age_hours > cache_expiry_hours
 
-        # Simulate API call timing
-        api_call_start = datetime.now()
-        simulated_api_delay = 0.5  # 500ms API call
-        api_call_end = api_call_start + timedelta(seconds=simulated_api_delay)
+        # Simulate API call timing (removed - not used)
+        # api_call_start = datetime.now()
+        # simulated_api_delay = 0.5  # 500ms API call
+        # api_call_end = api_call_start + timedelta(seconds=simulated_api_delay)
 
         return {
             "cache_age_hours": cache_age_hours,
             "is_expired": is_expired,
             "cache_expiry_hours": cache_expiry_hours,
-            "simulated_api_call_sec": simulated_api_delay,
             "should_refresh_cache": is_expired,
             "next_cache_expiry": cache_creation + timedelta(hours=cache_expiry_hours),
-            "recommendation": "extend_expiry"
-            if cache_age_hours < cache_expiry_hours * 1.5
-            else "current_ok",
+            "recommendation": (
+                "extend_expiry"
+                if cache_age_hours < cache_expiry_hours * 1.5
+                else "current_ok"
+            ),
         }
 
-    def run_validation(self):
+    def run_validation(self) -> None:
         """Run comprehensive data loading validation"""
         print("🔍 Data Loading Validation")
         print("=" * 50)
@@ -209,7 +212,7 @@ class DataLoadingValidator:
             print(f"\n📊 Scenario: {scenario_name}")
             print(f"  Original missing values: {original_data.isnull().sum().sum()}")
 
-            scenario_results = {
+            scenario_results: Dict[str, Any] = {
                 "scenario": scenario_name,
                 "original_missing": int(original_data.isnull().sum().sum()),
                 "fill_method_results": [],
@@ -239,7 +242,9 @@ class DataLoadingValidator:
 
         self.validation_results.append({"cache_validation": cache_validation})
 
-    def save_results(self, output_file: str = "reports/data_loading_validation.json"):
+    def save_results(
+        self, output_file: str = "reports/data_loading_validation.json"
+    ) -> None:
         """Save validation results"""
         Path(output_file).parent.mkdir(parents=True, exist_ok=True)
 
@@ -284,9 +289,11 @@ class DataLoadingValidator:
 
         return {
             "best_fill_methods": best_methods,
-            "overall_recommendation": "ffill_bfill"
-            if all(m["best_method"] == "ffill_bfill" for m in best_methods.values())
-            else "interpolate",
+            "overall_recommendation": (
+                "ffill_bfill"
+                if all(m["best_method"] == "ffill_bfill" for m in best_methods.values())
+                else "interpolate"
+            ),
             "cache_expiry_recommendation": "extend_to_48h",  # Based on analysis
         }
 

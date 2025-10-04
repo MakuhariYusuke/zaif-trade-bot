@@ -10,7 +10,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 class Exchange(str, Enum):
@@ -59,7 +59,7 @@ class Trade(BaseModel):
 
     @field_validator("pair")
     @classmethod
-    def validate_pair(cls, v):
+    def validate_pair(cls, v: str) -> str:
         """Validate trading pair format."""
         if not v or "_" not in v:
             raise ValueError('Pair must be in format "base_quote"')
@@ -86,7 +86,7 @@ class Order(BaseModel):
 
     @field_validator("price", mode="before")
     @classmethod
-    def validate_price(cls, v, info):
+    def validate_price(cls, v: Any, info: ValidationInfo) -> Any:
         """Validate price based on order type."""
         order_type = info.data.get("type")
         if order_type == OrderType.MARKET and v is not None:
@@ -124,7 +124,7 @@ class Position(BaseModel):
 
     @field_validator("exit_timestamp", mode="before")
     @classmethod
-    def validate_exit_timestamp(cls, v, info):
+    def validate_exit_timestamp(cls, v: Any, info: ValidationInfo) -> Any:
         """Validate exit timestamp is after entry."""
         if v and info.data.get("entry_timestamp") and v < info.data["entry_timestamp"]:
             raise ValueError("Exit timestamp must be after entry timestamp")
@@ -142,7 +142,7 @@ class Balance(BaseModel):
 
     @field_validator("available")
     @classmethod
-    def validate_available(cls, v, info):
+    def validate_available(cls, v: Decimal, info: ValidationInfo) -> Decimal:
         """Validate available + locked <= total."""
         locked = info.data.get("locked")
         total = info.data.get("total")
@@ -152,7 +152,7 @@ class Balance(BaseModel):
 
     @field_validator("locked")
     @classmethod
-    def validate_locked(cls, v, info):
+    def validate_locked(cls, v: Decimal, info: ValidationInfo) -> Decimal:
         """Validate available + locked <= total."""
         available = info.data.get("available")
         total = info.data.get("total")

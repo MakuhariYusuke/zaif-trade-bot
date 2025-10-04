@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import math
 import sys
 import warnings
 from datetime import datetime
@@ -13,8 +14,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from numpy.typing import NDArray
 from stable_baselines3 import PPO
 from torch.utils.tensorboard import SummaryWriter
+
+from ztb.utils.data_utils import load_csv_data
+from ztb.utils.errors import safe_operation
 
 warnings.filterwarnings("ignore")
 
@@ -42,7 +47,10 @@ class EvaluationResult(TypedDict, total=False):
 class TradingEvaluator:
     """取引モデルの評価クラス"""
 
-    def __init__(self, model_path: str, data_path: str, config: Optional[dict] = None):
+    def __init__(
+        self, model_path: str, data_path: str, config: Optional[dict[str, Any]] = None
+    ) -> None:
+        super().__init__()
         self.model_path = Path(model_path)
         self.data_path = Path(data_path)
         self.config = config or self._get_default_config()
@@ -70,7 +78,7 @@ class TradingEvaluator:
             log_dir=str(self.tensorboard_log_dir / "evaluation")
         )
 
-    def _get_default_config(self) -> dict:
+    def _get_default_config(self) -> dict[str, Any]:
         """デフォルト設定を取得"""
         return {
             "results_dir": "./results/",
@@ -82,13 +90,26 @@ class TradingEvaluator:
         }
 
     def _load_data(self) -> pd.DataFrame:
-        """データの読み込み"""
-        if self.data_path.suffix == ".parquet":
-            df = pd.read_parquet(self.data_path)
-        elif self.data_path.suffix == ".csv":
-            df = pd.read_csv(self.data_path)
+        """データの読み込み（キャッシュ最適化付き）"""
+        # キャッシュチェック
+        cache_path = self.data_path.with_suffix(".pkl")
+        if (
+            cache_path.exists()
+            and cache_path.stat().st_mtime > self.data_path.stat().st_mtime
+        ):
+            print(f"Loading cached data from {cache_path}")
+            df = pd.read_pickle(cache_path)
         else:
-            raise ValueError(f"Unsupported file format: {self.data_path.suffix}")
+            if self.data_path.suffix == ".parquet":
+                df = pd.read_parquet(self.data_path)
+            elif self.data_path.suffix == ".csv":
+                df = load_csv_data(self.data_path)
+            else:
+                raise ValueError(f"Unsupported file format: {self.data_path.suffix}")
+
+            # キャッシュ保存
+            df.to_pickle(cache_path)
+            print(f"Cached data to {cache_path}")
 
         print(f"Loaded evaluation data: {len(df)} rows, {len(df.columns)} columns")
         return df
@@ -114,8 +135,17 @@ class TradingEvaluator:
         env = HeavyTradingEnv(self.df, env_config)
         return env
 
-    def evaluate_model(self) -> Dict:
+    def evaluate_model(self) -> Dict[str, Any]:
         """モデルの包括的な評価"""
+        return safe_operation(
+            logger=None,  # Use default logger
+            operation=self._evaluate_model_impl,
+            context="model_evaluation",
+            default_result={},  # Empty dict on error
+        )
+
+    def _evaluate_model_impl(self) -> Dict[str, Any]:
+        """Implementation of model evaluation."""
         print("Starting comprehensive model evaluation...")
 
         # 複数エピソードの評価
@@ -155,7 +185,7 @@ class TradingEvaluator:
         bootstrap_resamples: int = 1000,
         bootstrap_block: Optional[int] = None,
         bootstrap_overlap: Optional[bool] = None,
-    ) -> Dict:
+    ) -> Dict[str, Any]:
         """複数のモデルの比較評価"""
         print("Starting model comparison...")
 
@@ -220,7 +250,7 @@ class TradingEvaluator:
         print(f"Metrics saved to {metrics_file}")
         return comparison_data
 
-    def _evaluate_single_episode(self) -> Dict:
+    def _evaluate_single_episode(self) -> Dict[str, Any]:
         """単一エピソードの評価"""
         obs, info = self.env.reset()
         done = False
@@ -240,7 +270,7 @@ class TradingEvaluator:
             action = cast(int, action_value.item())
 
             # 環境ステップ
-            next_obs, reward, done, truncated, info = self.env.step(action)
+            next_obs, reward, done, _, info = self.env.step(action)
 
             # データの記録
             rewards.append(reward)
@@ -261,8 +291,12 @@ class TradingEvaluator:
         }
 
     def _calculate_statistics(
-        self, all_rewards: List, all_positions: List, all_pnls: List, all_actions: List
-    ) -> Dict:
+        self,
+        all_rewards: List[List[float]],
+        all_positions: List[List[float]],
+        all_pnls: List[List[float]],
+        all_actions: List[List[int]],
+    ) -> Dict[str, Any]:
         """統計の計算"""
         # リワード統計
         all_episode_rewards = [sum(episode_rewards) for episode_rewards in all_rewards]
@@ -299,6 +333,11 @@ class TradingEvaluator:
                 ),
                 "total_reward_sum": sum(all_episode_rewards),
                 "win_rate": win_rate,
+                "sharpe_ratio": (
+                    np.mean(all_episode_rewards) / np.std(all_episode_rewards)
+                    if np.std(all_episode_rewards) > 0
+                    else 0.0
+                ),
             },
             "pnl_stats": {
                 "mean_total_pnl": np.mean(all_episode_pnls),
@@ -329,9 +368,12 @@ class TradingEvaluator:
                 "mean_trades_per_episode": np.mean(
                     [len([a for a in actions if a != 0]) for actions in all_actions]
                 ),
-                "position_change_rate": np.mean(all_position_changes)
-                if all_position_changes
-                else 0,
+                "position_change_rate": (
+                    np.mean(all_position_changes) if all_position_changes else 0
+                ),
+                "position_change_variance": (
+                    np.var(all_position_changes) if all_position_changes else 0
+                ),
                 "hold_ratio": all_episode_actions.count(0) / len(all_episode_actions),
                 "buy_ratio": all_episode_actions.count(1) / len(all_episode_actions),
                 "sell_ratio": all_episode_actions.count(2) / len(all_episode_actions),
@@ -344,6 +386,23 @@ class TradingEvaluator:
                 "hold_ratio_penalty": self._calculate_hold_ratio_penalty(all_actions),
                 "profit_factor": self._calculate_profit_factor(
                     list(map(float, all_episode_pnls))
+                ),
+                "profit_per_trade": (
+                    sum(all_episode_pnls)
+                    / sum(
+                        len([a for a in actions if a != 0]) for actions in all_actions
+                    )
+                    if sum(
+                        len([a for a in actions if a != 0]) for actions in all_actions
+                    )
+                    > 0
+                    else 0.0
+                ),
+                "win_rate": (
+                    sum(1 for pnl in all_episode_pnls if pnl > 0)
+                    / len(all_episode_pnls)
+                    if all_episode_pnls
+                    else 0.0
                 ),
             },
             "episode_stats": {
@@ -363,7 +422,7 @@ class TradingEvaluator:
 
         return stats
 
-    def _calculate_data_quality_score(self, stats: Dict) -> float:
+    def _calculate_data_quality_score(self, stats: Dict[str, Any]) -> float:
         """Calculate composite data quality score based on various metrics"""
         score_components = []
 
@@ -424,7 +483,7 @@ class TradingEvaluator:
 
         return cast(float, round(quality_score, 3))
 
-    def _calculate_outlier_rate(self, stats: Dict) -> float:
+    def _calculate_outlier_rate(self, stats: Dict[str, Any]) -> float:
         """Calculate outlier rate using IQR method"""
         try:
             rewards = stats.get("episode_rewards", [])
@@ -451,7 +510,7 @@ class TradingEvaluator:
         except Exception:
             return 0.0
 
-    def _calculate_distribution_quality(self, stats: Dict) -> float:
+    def _calculate_distribution_quality(self, stats: Dict[str, Any]) -> float:
         """Calculate distribution quality based on skew and kurtosis"""
         try:
             rewards = stats.get("episode_rewards", [])
@@ -473,11 +532,11 @@ class TradingEvaluator:
             # Higher score for more normal-like distributions
             quality_score = 1.0 - (skew_penalty * 0.6 + kurtosis_penalty * 0.4)
 
-            return cast(float, max(0.0, quality_score))
+            return max(0.0, quality_score)
         except Exception:
             return 0.5
 
-    def _calculate_stability_trend(self, stats: Dict) -> float:
+    def _calculate_stability_trend(self, stats: Dict[str, Any]) -> float:
         """Calculate stability trend (consistency over time)"""
         try:
             rewards = stats.get("episode_rewards", [])
@@ -505,17 +564,17 @@ class TradingEvaluator:
                     0.0, 1.0 - std_trend * 50
                 )  # Penalize increasing std
 
-            return cast(float, stability_score)
+            return stability_score
         except Exception:
             return 0.5
 
     def _save_evaluation_results(
         self,
-        stats: Dict,
-        all_rewards: List,
-        all_positions: List,
-        all_pnls: List,
-        all_actions: List,
+        stats: Dict[str, Any],
+        all_rewards: List[List[float]],
+        all_positions: List[List[float]],
+        all_pnls: List[List[float]],
+        all_actions: List[List[int]],
     ) -> None:
         """評価結果の保存"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -546,7 +605,9 @@ class TradingEvaluator:
         # TensorBoardに指標を記録
         self._log_to_tensorboard(stats)
 
-    def _log_to_tensorboard(self, stats: Dict, timestamp: Optional[str] = None) -> None:
+    def _log_to_tensorboard(
+        self, stats: Dict[str, Any], timestamp: Optional[str] = None
+    ) -> None:
         """TensorBoardに評価指標を記録"""
         try:
             # 報酬統計
@@ -588,6 +649,16 @@ class TradingEvaluator:
                 0,
             )
             self.writer.add_scalar(
+                "Evaluation/Position_Change_Rate",
+                trading_stats["position_change_rate"],
+                0,
+            )
+            self.writer.add_scalar(
+                "Evaluation/Position_Change_Variance",
+                trading_stats["position_change_variance"],
+                0,
+            )
+            self.writer.add_scalar(
                 "Evaluation/Hold_Ratio", trading_stats["hold_ratio"], 0
             )
             self.writer.add_scalar(
@@ -595,6 +666,9 @@ class TradingEvaluator:
             )
             self.writer.add_scalar(
                 "Evaluation/Sell_Ratio", trading_stats["sell_ratio"], 0
+            )
+            self.writer.add_scalar(
+                "Evaluation/Profit_Per_Trade", trading_stats["profit_per_trade"], 0
             )
 
             # エピソード統計
@@ -630,8 +704,8 @@ class TradingEvaluator:
             if major > 3 or (major == 3 and minor >= 6):
                 plot_style = "seaborn-v0_8"
         plt.style.use(plot_style)
-        sns.set_palette("husky")
-        sns.set_palette("husky")
+        sns.set_palette("Set2")
+        sns.set_palette("Set2")
 
         # 評価結果ファイルの読み込み
         stats_files = list(self.results_dir.glob("evaluation_stats_*.json"))
@@ -651,52 +725,52 @@ class TradingEvaluator:
 
         print(f"Visualizations saved to {self.results_dir}")
 
-    def _create_reward_analysis_plot(self, stats: Dict) -> None:
+    def _create_reward_analysis_plot(self, stats: Dict[str, Any]) -> None:
         """リワード分析プロット"""
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+        _, axes = plt.subplots(2, 2, figsize=(15, 12))
 
         # リワード分布
         episode_rewards = stats.get("episode_rewards", [])
         if episode_rewards:
-            axes[0, 0].hist(episode_rewards, bins=20, alpha=0.7, edgecolor="black")
-            axes[0, 0].set_title("Episode Reward Distribution")
-            axes[0, 0].set_xlabel("Total Reward")
-            axes[0, 0].set_ylabel("Frequency")
-            axes[0, 0].axvline(
+            axes[0][0].hist(episode_rewards, bins=20, alpha=0.7, edgecolor="black")
+            axes[0][0].set_title("Episode Reward Distribution")
+            axes[0][0].set_xlabel("Total Reward")
+            axes[0][0].set_ylabel("Frequency")
+            axes[0][0].axvline(
                 np.mean(episode_rewards),
                 color="red",
                 linestyle="--",
                 label=f"Mean: {np.mean(episode_rewards):.2f}",
             )
-            axes[0, 0].legend()
+            axes[0][0].legend()
 
         # リワード統計
         reward_stats = stats["reward_stats"]
         labels = list(reward_stats.keys())
         values = list(reward_stats.values())
 
-        axes[0, 1].bar(labels, values, alpha=0.7)
-        axes[0, 1].set_title("Reward Statistics")
-        axes[0, 1].set_ylabel("Value")
-        axes[0, 1].tick_params(axis="x", rotation=45)
+        axes[0][1].bar(labels, values, alpha=0.7)
+        axes[0][1].set_title("Reward Statistics")
+        axes[0][1].set_ylabel("Value")
+        axes[0][1].tick_params(axis="x", rotation=45)
 
         # 累積リワード
         if episode_rewards:
             cumulative = np.cumsum(episode_rewards)
-            axes[1, 0].plot(cumulative, alpha=0.7)
-            axes[1, 0].set_title("Cumulative Episode Rewards")
-            axes[1, 0].set_xlabel("Episode")
-            axes[1, 0].set_ylabel("Cumulative Reward")
-            axes[1, 0].grid(True)
+            axes[1][0].plot(cumulative, alpha=0.7)
+            axes[1][0].set_title("Cumulative Episode Rewards")
+            axes[1][0].set_xlabel("Episode")
+            axes[1][0].set_ylabel("Cumulative Reward")
+            axes[1][0].grid(True)
 
         # リワード vs エピソード長
         episode_lengths = stats.get("episode_lengths", [])
         if episode_lengths and len(episode_lengths) == len(episode_rewards):
-            axes[1, 1].scatter(episode_lengths, episode_rewards, alpha=0.6)
-            axes[1, 1].set_title("Reward vs Episode Length")
-            axes[1, 1].set_xlabel("Episode Length")
-            axes[1, 1].set_ylabel("Total Reward")
-            axes[1, 1].grid(True)
+            axes[1][1].scatter(episode_lengths, episode_rewards, alpha=0.6)
+            axes[1][1].set_title("Reward vs Episode Length")
+            axes[1][1].set_xlabel("Episode Length")
+            axes[1][1].set_ylabel("Total Reward")
+            axes[1][1].grid(True)
 
         plt.tight_layout()
         plt.savefig(
@@ -704,67 +778,67 @@ class TradingEvaluator:
         )
         plt.close()
 
-    def _create_pnl_analysis_plot(self, stats: Dict) -> None:
+    def _create_pnl_analysis_plot(self, stats: Dict[str, Any]) -> None:
         """PnL分析プロット"""
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+        _, axes = plt.subplots(2, 2, figsize=(15, 12))
 
         # PnL分布
         episode_pnls = stats.get("episode_pnls", [])
         if episode_pnls:
-            axes[0, 0].hist(episode_pnls, bins=20, alpha=0.7, edgecolor="black")
-            axes[0, 0].set_title("Episode PnL Distribution")
-            axes[0, 0].set_xlabel("Total PnL")
-            axes[0, 0].set_ylabel("Frequency")
-            axes[0, 0].axvline(
+            axes[0][0].hist(episode_pnls, bins=20, alpha=0.7, edgecolor="black")
+            axes[0][0].set_title("Episode PnL Distribution")
+            axes[0][0].set_xlabel("Total PnL")
+            axes[0][0].set_ylabel("Frequency")
+            axes[0][0].axvline(
                 np.mean(episode_pnls),
                 color="red",
                 linestyle="--",
                 label=f"Mean: {np.mean(episode_pnls):.4f}",
             )
-            axes[0, 0].legend()
+            axes[0][0].legend()
 
         # PnL統計
         pnl_stats = stats["pnl_stats"]
         labels = list(pnl_stats.keys())
         values = list(pnl_stats.values())
 
-        axes[0, 1].bar(labels, values, alpha=0.7)
-        axes[0, 1].set_title("PnL Statistics")
-        axes[0, 1].set_ylabel("Value")
-        axes[0, 1].tick_params(axis="x", rotation=45)
+        axes[0][1].bar(labels, values, alpha=0.7)
+        axes[0][1].set_title("PnL Statistics")
+        axes[0][1].set_ylabel("Value")
+        axes[0][1].tick_params(axis="x", rotation=45)
 
         # Sharpe比率の表示
         sharpe = pnl_stats.get("sharpe_ratio", 0)
-        axes[1, 0].text(
+        axes[1][0].text(
             0.5,
             0.5,
             f"Sharpe Ratio: {sharpe:.4f}",
-            transform=axes[1, 0].transAxes,
+            transform=axes[1][0].transAxes,
             fontsize=16,
             ha="center",
             va="center",
         )
-        axes[1, 0].set_title("Risk-Adjusted Performance")
-        axes[1, 0].set_xlim(0, 1)
-        axes[1, 0].set_ylim(0, 1)
-        axes[1, 0].axis("off")
+        axes[1][0].set_title("Risk-Adjusted Performance")
+        axes[1][0].set_xlim(0, 1)
+        axes[1][0].set_ylim(0, 1)
+        axes[1][0].axis("off")
 
         # 累積PnL
         if episode_pnls:
             cumulative = np.cumsum(episode_pnls)
-            axes[1, 1].plot(cumulative, alpha=0.7)
-            axes[1, 1].set_title("Cumulative Episode PnL")
-            axes[1, 1].set_xlabel("Episode")
-            axes[1, 1].set_ylabel("Cumulative PnL")
-            axes[1, 1].grid(True)
+            axes[1][1].plot(cumulative, alpha=0.7)
+            axes[1][1].set_title("Cumulative Episode PnL")
+            axes[1][1].set_xlabel("Episode")
+            axes[1][1].set_ylabel("Cumulative PnL")
+            axes[1][1].grid(True)
 
         plt.tight_layout()
         plt.savefig(self.results_dir / "pnl_analysis.png", dpi=300, bbox_inches="tight")
         plt.close()
 
-    def _create_trading_behavior_plot(self, stats: Dict) -> None:
+    def _create_trading_behavior_plot(self, stats: Dict[str, Any]) -> None:
         """取引行動分析プロット"""
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+        _, axes = plt.subplots(2, 2, figsize=(15, 12))
 
         # 行動分布
         trading_stats = stats["trading_stats"]
@@ -775,8 +849,8 @@ class TradingEvaluator:
             trading_stats["sell_ratio"],
         ]
 
-        axes[0, 0].pie(ratios, labels=actions, autopct="%1.1f%%", startangle=90)
-        axes[0, 0].set_title("Action Distribution")
+        axes[0][0].pie(ratios, labels=actions, autopct="%1.1f%%", startangle=90)
+        axes[0][0].set_title("Action Distribution")
 
         # 取引統計
         trade_labels = ["Total Trades", "Mean Trades/Episode", "Position Change Rate"]
@@ -786,9 +860,9 @@ class TradingEvaluator:
             trading_stats["position_change_rate"],
         ]
 
-        axes[0, 1].bar(trade_labels, trade_values, alpha=0.7)
-        axes[0, 1].set_title("Trading Statistics")
-        axes[0, 1].set_ylabel("Value")
+        axes[0][1].bar(trade_labels, trade_values, alpha=0.7)
+        axes[0][1].set_title("Trading Statistics")
+        axes[0][1].set_ylabel("Value")
         axes[0, 1].tick_params(axis="x", rotation=45)
 
         # エピソード統計
@@ -819,9 +893,9 @@ class TradingEvaluator:
         )
         plt.close()
 
-    def _create_summary_dashboard(self, stats: Dict) -> None:
+    def _create_summary_dashboard(self, stats: Dict[str, Any]) -> None:
         """サマリーダッシュボード"""
-        fig, axes = plt.subplots(3, 2, figsize=(16, 12))
+        fig, axes = plt.subplots(4, 2, figsize=(16, 16))
 
         # 主要指標
         main_metrics = {
@@ -864,76 +938,6 @@ class TradingEvaluator:
         plt.tight_layout()
         plt.savefig(
             self.results_dir / "evaluation_summary.png", dpi=300, bbox_inches="tight"
-        )
-        plt.close()
-
-    def compare_models(
-        self, model_paths: List[str], model_names: Optional[List[str]] = None
-    ) -> None:
-        """複数モデルの比較"""
-        if model_names is None:
-            model_names = [f"Model_{i + 1}" for i in range(len(model_paths))]
-
-        comparison_results = {}
-
-        for model_path, name in zip(model_paths, model_names):
-            print(f"Evaluating {name}...")
-            self.model_path = Path(model_path)
-            self.model = self._load_model()
-
-            stats = self.evaluate_model()
-            comparison_results[name] = stats
-
-        # 比較プロットの作成
-        self._create_model_comparison_plot(comparison_results)
-
-        # 比較結果の保存
-        comparison_file = self.results_dir / "model_comparison.json"
-        with open(comparison_file, "w") as f:
-            json.dump(comparison_results, f, indent=2, default=str)
-
-        print(f"Model comparison saved to {comparison_file}")
-
-    def _create_model_comparison_plot(self, comparison_results: Dict) -> None:
-        """モデル比較プロット"""
-        models = list(comparison_results.keys())
-        metrics = [
-            "mean_total_reward",
-            "mean_total_pnl",
-            "sharpe_ratio",
-            "total_trades",
-        ]
-
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-
-        for i, metric in enumerate(metrics):
-            row, col = i // 2, i % 2
-
-            values = [
-                comparison_results[model][
-                    "reward_stats"
-                    if "reward" in metric
-                    else "pnl_stats"
-                    if "pnl" in metric
-                    else "trading_stats"
-                ][metric]
-                for model in models
-            ]
-
-            axes[row, col].bar(models, values, alpha=0.7)
-            axes[row, col].set_title(f"{metric.replace('_', ' ').title()}")
-            axes[row, col].set_ylabel("Value")
-            axes[row, col].tick_params(axis="x", rotation=45)
-
-            # 値の表示
-            for j, v in enumerate(values):
-                axes[row, col].text(
-                    j, v + max(values) * 0.01, f"{v:.3f}", ha="center", va="bottom"
-                )
-
-        plt.tight_layout()
-        plt.savefig(
-            self.results_dir / "model_comparison.png", dpi=300, bbox_inches="tight"
         )
         plt.close()
 
@@ -1161,11 +1165,21 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # 設定の更新
+    # 設定の更新（デフォルト設定を維持しつつ上書き）
     config = {
-        "n_eval_episodes": args.n_episodes,
         "results_dir": "./results/",
+        "n_eval_episodes": 20,
+        "max_steps_per_episode": 10000,
+        "render_mode": None,
+        "deterministic": True,
+        "plot_style": "seaborn",
     }
+    config.update(
+        {
+            "n_eval_episodes": args.n_episodes,
+            "results_dir": "./results/",
+        }
+    )
 
     evaluator = TradingEvaluator(args.model, args.data, config)
 

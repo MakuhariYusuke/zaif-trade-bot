@@ -1,0 +1,321 @@
+[
+  {
+    "model_name": "single_model",
+    "model_type": "single",
+    "metrics": {
+      "total_return": -99.89999999999998,
+      "avg_return": -9.989999999999998,
+      "win_rate": 0.0,
+      "sharpe_ratio": 0.0,
+      "sortino_ratio": 0.0,
+      "calmar_ratio": 0.0,
+      "max_drawdown": -89.90999999999997,
+      "total_trades": 0,
+      "buy_actions": 0,
+      "sell_actions": 0,
+      "hold_actions": 9990,
+      "returns": [
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998,
+        -9.989999999999998
+      ],
+      "cumulative_returns": [
+        -9.989999999999998,
+        -19.979999999999997,
+        -29.969999999999995,
+        -39.959999999999994,
+        -49.94999999999999,
+        -59.93999999999998,
+        -69.92999999999998,
+        -79.91999999999997,
+        -89.90999999999997,
+        -99.89999999999996
+      ],
+      "drawdowns": [
+        0.0,
+        -9.989999999999998,
+        -19.979999999999997,
+        -29.969999999999995,
+        -39.959999999999994,
+        -49.94999999999999,
+        -59.93999999999998,
+        -69.92999999999998,
+        -79.91999999999997,
+        -89.90999999999997
+      ],
+      "extended_evaluation": {
+        "performance_attribution": {
+          "error": "Analysis failed: Input X contains NaN.\nLinearRegression does not accept missing values encoded as NaN natively. For supervised learning, you might want to consider sklearn.ensemble.HistGradientBoostingClassifier and Regressor which accept missing values encoded as NaNs natively. Alternatively, it is possible to preprocess the data, for instance by using an imputer transformer in a pipeline or drop samples with missing values. See https://scikit-learn.org/stable/modules/impute.html You can find a list of all estimators that handle NaN values at the following page: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values",
+          "attribution_score": 0.0,
+          "factor_contributions": {},
+          "r_squared": 0.0
+        },
+        "monte_carlo": {
+          "error": "Analysis failed: 'MonteCarloResult' object has no attribute 'simulation_paths'",
+          "simulation_score": 0.0,
+          "expected_return": 0.0,
+          "value_at_risk": 0.0,
+          "expected_shortfall": 0.0
+        },
+        "strategy_robustness": {
+          "robustness_score": 0.5181983621474067,
+          "stability_score": 1.0,
+          "volatility": 0.0,
+          "sharpe_ratio": 0.0,
+          "max_drawdown": -9.989999999999998,
+          "avg_drawdown": -3.9959999999999996,
+          "skewness": NaN,
+          "kurtosis": NaN,
+          "returns_quantiles": {
+            "0.1": -9.989999999999998,
+            "0.25": -9.989999999999998,
+            "0.5": -9.989999999999998,
+            "0.75": -9.989999999999998,
+            "0.9": -9.989999999999998
+          },
+          "max_positive_streak": 0,
+          "max_negative_streak": 10,
+          "avg_positive_streak": 0.0,
+          "avg_negative_streak": 10.0,
+          "total_positive_days": 0,
+          "total_negative_days": 10,
+          "win_rate": 0.0
+        },
+        "risk_parity": {
+          "risk_parity_score": 0.5,
+          "diversification_ratio": 1.0,
+          "concentration_index": 1.0,
+          "volatility": 0.0,
+          "total_return": 3448235488.5027537,
+          "sharpe_ratio": 0.0,
+          "sortino_ratio": 0.0,
+          "downside_volatility": 0.0,
+          "win_rate": 0.0,
+          "loss_rate": 1.0,
+          "avg_win": 0.0,
+          "avg_loss": -9.989999999999998
+        },
+        "cost_sensitivity": {
+          "cost_sensitivity_score": 0.0,
+          "breakeven_fee": 0.0,
+          "profit_erosion_rate": 0.0,
+          "fee_range": [
+            0.0001,
+            0.0006210526315789474,
+            0.0011421052631578948,
+            0.0016631578947368423,
+            0.0021842105263157894,
+            0.0027052631578947366,
+            0.0032263157894736843,
+            0.0037473684210526316,
+            0.004268421052631579,
+            0.004789473684210527,
+            0.005310526315789474,
+            0.005831578947368421,
+            0.006352631578947369,
+            0.0068736842105263166,
+            0.007394736842105264,
+            0.00791578947368421,
+            0.008436842105263158,
+            0.008957894736842106,
+            0.009478947368421052,
+            0.01
+          ],
+          "sensitivity_scores": {
+            "sharpe_ratio": 4.296392878803244e+17,
+            "total_return": 3855083721.1044393,
+            "volatility": 3.41803522673583e-11,
+            "max_drawdown": 1.0000000000001814,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "breakeven_analysis": {
+            "sharpe_ratio": 0.0,
+            "total_return": 0.01,
+            "profit_factor": 0.0
+          },
+          "fee_0.0001": {
+            "sharpe_ratio": 0,
+            "total_return": 3448619071.1610594,
+            "volatility": 0.0,
+            "max_drawdown": -9.990099999999998,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0006210526315789474": {
+            "sharpe_ratio": 0,
+            "total_return": 3450618360.127485,
+            "volatility": 0.0,
+            "max_drawdown": -9.990621052631578,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0011421052631578948": {
+            "sharpe_ratio": -354313828730444.75,
+            "total_return": 3452618692.1874223,
+            "volatility": 2.8198790620570592e-14,
+            "max_drawdown": -9.991142105263158,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0016631578947368423": {
+            "sharpe_ratio": 0,
+            "total_return": 3454620067.8245955,
+            "volatility": 0.0,
+            "max_drawdown": -9.991663157894735,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0021842105263157894": {
+            "sharpe_ratio": 0,
+            "total_return": 3456622487.52293,
+            "volatility": 0.0,
+            "max_drawdown": -9.992184210526316,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0027052631578947366": {
+            "sharpe_ratio": -354369262238773.9,
+            "total_return": 3458625951.7665205,
+            "volatility": 2.8198790620570592e-14,
+            "max_drawdown": -9.992705263157893,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0032263157894736843": {
+            "sharpe_ratio": 0,
+            "total_return": 3460630461.0396905,
+            "volatility": 0.0,
+            "max_drawdown": -9.993226315789475,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0037473684210526316": {
+            "sharpe_ratio": 0,
+            "total_return": 3462636015.8269305,
+            "volatility": 0.0,
+            "max_drawdown": -9.993747368421051,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.004268421052631579": {
+            "sharpe_ratio": -354424695747102.94,
+            "total_return": 3464642616.61295,
+            "volatility": 2.8198790620570592e-14,
+            "max_drawdown": -9.99426842105263,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.004789473684210527": {
+            "sharpe_ratio": 0,
+            "total_return": 3466650263.882651,
+            "volatility": 0.0,
+            "max_drawdown": -9.99478947368421,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.005310526315789474": {
+            "sharpe_ratio": 0,
+            "total_return": 3468658958.1211143,
+            "volatility": 0.0,
+            "max_drawdown": -9.995310526315789,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.005831578947368421": {
+            "sharpe_ratio": -354480129255432.1,
+            "total_return": 3470668699.8136473,
+            "volatility": 2.8198790620570592e-14,
+            "max_drawdown": -9.995831578947369,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.006352631578947369": {
+            "sharpe_ratio": 0,
+            "total_return": 3472679489.4457207,
+            "volatility": 0.0,
+            "max_drawdown": -9.996352631578945,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.0068736842105263166": {
+            "sharpe_ratio": 0,
+            "total_return": 3474691327.503037,
+            "volatility": 0.0,
+            "max_drawdown": -9.996873684210525,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.007394736842105264": {
+            "sharpe_ratio": -354535562763761.25,
+            "total_return": 3476704214.471462,
+            "volatility": 2.8198790620570592e-14,
+            "max_drawdown": -9.997394736842104,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.00791578947368421": {
+            "sharpe_ratio": 0,
+            "total_return": 3478718150.8370805,
+            "volatility": 0.0,
+            "max_drawdown": -9.997915789473682,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.008436842105263158": {
+            "sharpe_ratio": 0,
+            "total_return": 3480733137.086178,
+            "volatility": 0.0,
+            "max_drawdown": -9.998436842105262,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.008957894736842106": {
+            "sharpe_ratio": -354590996272090.4,
+            "total_return": 3482749173.7052116,
+            "volatility": 2.8198790620570592e-14,
+            "max_drawdown": -9.99895789473684,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.009478947368421052": {
+            "sharpe_ratio": 0,
+            "total_return": 3484766261.180865,
+            "volatility": 0.0,
+            "max_drawdown": -9.999478947368422,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          },
+          "fee_0.01": {
+            "sharpe_ratio": 0,
+            "total_return": 3486784399.9999933,
+            "volatility": 0.0,
+            "max_drawdown": -10.0,
+            "win_rate": 0.0,
+            "profit_factor": 0.0
+          }
+        }
+      },
+      "comprehensive_score": -39.959999999999994,
+      "risk_adjusted_score": 0.0,
+      "robustness_score": -21.968400818926288
+    },
+    "config": {
+      "model_path": "models\\iterative_100k_full_features_final.zip",
+      "cv_scores": [
+        -19.899999999999995,
+        -19.899999999999995,
+        -19.899999999999995,
+        -19.899999999999995,
+        -19.899999999999995
+      ]
+    }
+  }
+]

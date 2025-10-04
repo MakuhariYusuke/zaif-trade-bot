@@ -37,7 +37,7 @@ class TestWeeklyReportGeneration:
 
         return evaluator
 
-    def test_weekly_report_contains_unverified_section(self, temp_dir, mock_evaluator):
+    def test_weekly_report_contains_unverified_section(self, temp_dir, _mock_evaluator):
         """Test that weekly report contains unverified features section"""
         report_path = temp_dir / "weekly_report.md"
 
@@ -322,9 +322,9 @@ class TestWeeklyReportGeneration:
         )
 
         # Check that improvement is reasonable
-        assert -1 <= sections["avg_improvement"] <= 1, (
-            "Sharpe improvement should be reasonable"
-        )
+        assert (
+            -1 <= sections["avg_improvement"] <= 1
+        ), "Sharpe improvement should be reasonable"
 
     def test_json_file_naming_convention(self, temp_dir):
         """Test that JSON files follow naming conventions"""
@@ -344,9 +344,9 @@ class TestWeeklyReportGeneration:
 
             # Check naming convention
             assert filename.endswith(".json"), f"File {filename} should end with .json"
-            assert "_" in filename or filename == "feature_details.json", (
-                f"File {filename} should use snake_case"
-            )
+            assert (
+                "_" in filename or filename == "feature_details.json"
+            ), f"File {filename} should use snake_case"
 
             # Verify file exists
             assert path.exists()

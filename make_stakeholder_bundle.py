@@ -6,28 +6,14 @@ Creates a complete evidence package for trading readiness demonstration.
 """
 
 import shutil
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
-
-def run_command(cmd, description):
-    """Run a command and print status."""
-    print(f"Running: {description}")
-    try:
-        result = subprocess.run(
-            cmd, shell=True, check=True, capture_output=True, text=True
-        )
-        print(f"✓ {description} completed")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"✗ {description} failed: {e}")
-        print(f"Error output: {e.stderr}")
-        return False
+from ztb.utils.compat_wrapper import run_command_safely
 
 
-def main():
+def main() -> int:
     """Main bundle creation logic."""
     print("Creating stakeholder evidence bundle...")
 
@@ -45,19 +31,27 @@ def main():
     strategies = ["sma_fast_slow", "buy_hold", "rl"]
     for strategy in strategies:
         total_count += 1
-        if run_command(
-            f"python -m ztb.backtest.runner --policy {strategy} --output-dir {bundle_dir}/backtest_results",
-            f"Backtest validation ({strategy})",
-        ):
+        description = f"Backtest validation ({strategy})"
+        print(f"Running: {description}")
+        if run_command_safely(
+            f"python -m ztb.backtest.runner --policy {strategy} --output-dir {bundle_dir}/backtest_results"
+        )["success"]:
+            print(f"✓ {description} completed")
             success_count += 1
+        else:
+            print(f"✗ {description} failed")
 
     # Run paper trading simulation
     total_count += 1
-    if run_command(
-        f"python -m ztb.live.paper_trader --mode replay --policy sma_fast_slow --output-dir {bundle_dir}/paper_results",
-        "Paper trading simulation",
-    ):
+    description = "Paper trading simulation"
+    print(f"Running: {description}")
+    if run_command_safely(
+        f"python -m ztb.live.paper_trader --mode replay --policy sma_fast_slow --output-dir {bundle_dir}/paper_results"
+    )["success"]:
+        print(f"✓ {description} completed")
         success_count += 1
+    else:
+        print(f"✗ {description} failed")
 
     # Copy documentation
     docs_dir = bundle_dir / "docs"

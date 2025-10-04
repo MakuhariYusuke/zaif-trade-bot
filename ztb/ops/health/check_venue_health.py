@@ -114,9 +114,7 @@ class VenueHealthChecker:
                 ping_msg = {
                     "jsonrpc": "2.0",
                     "method": "subscribe",
-                    "params": {
-                        "channel": f"btc_jpy-ticker"  # Simplified channel name
-                    },
+                    "params": {"channel": f"btc_jpy-ticker"},  # Simplified channel name
                     "id": 1,
                 }
 
@@ -176,7 +174,7 @@ class VenueHealthChecker:
         return self.results
 
 
-def main():
+def main() -> None:
     parser = create_standard_parser("Check venue API health")
     parser.add_argument(
         "--venue", required=True, help="Trading venue (e.g., coincheck)"

@@ -115,9 +115,9 @@ class TestCanaryHarness:
         # Check duration is reasonable (within 10% of expected)
         expected_min = config.duration_s * 0.9
         expected_max = config.duration_s * 1.1
-        assert expected_min <= duration <= expected_max, (
-            f"Duration {duration} not in range [{expected_min}, {expected_max}]"
-        )
+        assert (
+            expected_min <= duration <= expected_max
+        ), f"Duration {duration} not in range [{expected_min}, {expected_max}]"
 
         # Check logs contain correlation ID
         log_messages = [record.message for record in caplog.records]

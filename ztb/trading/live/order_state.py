@@ -13,109 +13,10 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Dict, Optional, Set
 
-from ztb.live.idempotency_store import get_idempotency_store
-from ztb.live.precision_policy import quantize_price, quantize_quantity
-from ztb.utils.observability import get_logger
+from ztb.trading.live.precision_policy import quantize_price, quantize_quantity
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class OrderRecord:
-    """Order record for tracking order state and metadata."""
-
-    order_id: str
-    client_order_id: Optional[str]
-    symbol: str
-    side: str
-    quantity: float
-    price: Optional[float]
-    venue: str
-    state: str = "pending"
-    created_at: float = field(default_factory=time.time)
-    updated_at: float = field(default_factory=time.time)
-    filled_quantity: float = 0.0
-    filled_price: Optional[float] = None
-    error_message: Optional[str] = None
-
-
-def generate_order_id() -> str:
-    """Generate unique order ID."""
-    return str(uuid.uuid4())
-
-
-def create_order_with_idempotency(
-    symbol: str,
-    side: str,
-    quantity: float,
-    price: Optional[float] = None,
-    venue: str = "coincheck",
-    client_order_id: Optional[str] = None,
-    **kwargs,
-) -> Optional[OrderRecord]:
-    """
-    Create order with automatic idempotency handling and durable storage.
-
-    Args:
-        symbol: Trading symbol
-        side: Order side (buy/sell)
-        quantity: Order quantity
-        price: Order price (None for market orders)
-        venue: Trading venue for precision policy
-        client_order_id: Client-provided order ID for idempotency
-        **kwargs: Additional order parameters
-
-    Returns:
-        Order record if created, None if duplicate
-
-    Raises:
-        ValueError: If client_order_id is duplicate
-    """
-    # Use client_order_id if provided, otherwise generate
-    if client_order_id is None:
-        client_order_id = generate_order_id()
-
-    # Check idempotency store
-    store = get_idempotency_store()
-    order_data = {
-        "symbol": symbol,
-        "side": side,
-        "quantity": quantity,
-        "price": price,
-        "venue": venue,
-        "client_order_id": client_order_id,
-        **kwargs,
-    }
-
-    if not store.check_and_store(client_order_id, order_data):
-        # Duplicate order ID
-        existing = store.get_order_data(client_order_id)
-        if existing:
-            logger.warning(f"Duplicate client_order_id: {client_order_id}")
-            raise ValueError(
-                f"Order with client_order_id {client_order_id} already exists"
-            )
-
-    # Apply precision policy
-    if price is not None:
-        price = float(quantize_price(venue, symbol, Decimal(str(price))))
-    quantity = float(quantize_quantity(venue, symbol, Decimal(str(quantity))))
-
-    order_data = OrderData(
-        order_id=client_order_id,  # Use client_order_id as order_id
-        symbol=symbol,
-        side=side,
-        quantity=quantity,
-        price=price,
-        **kwargs,
-    )
-
-    record = _order_state_machine.create_order(order_data)
-
-    # Update status to submitted
-    store.update_status(client_order_id, "submitted")
-
-    return record
 
 
 class OrderState(enum.Enum):
@@ -177,7 +78,7 @@ class OrderRecord:
     external_order_id: Optional[str] = None
     idempotency_key: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Generate idempotency key if not provided."""
         if not self.idempotency_key:
             self.idempotency_key = self._generate_idempotency_key()
@@ -239,8 +140,9 @@ class OrderRecord:
 class OrderStateMachine:
     """State machine for managing order lifecycle."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize state machine."""
+        super().__init__()
         self.orders: Dict[str, OrderRecord] = {}
         self.idempotency_map: Dict[str, str] = {}  # idempotency_key -> order_id
 
@@ -275,7 +177,7 @@ class OrderStateMachine:
         )
         return record
 
-    def transition_order(self, order_id: str, event: OrderEvent, **kwargs) -> bool:
+    def transition_order(self, order_id: str, event: OrderEvent, **kwargs: Any) -> bool:
         """Transition order to new state based on event.
 
         Args:
@@ -447,7 +349,7 @@ def create_order_with_idempotency(
     quantity: float,
     price: Optional[float] = None,
     venue: str = "coincheck",
-    **kwargs,
+    **kwargs: Any,
 ) -> OrderRecord:
     """Create order with automatic idempotency handling.
 
@@ -516,7 +418,7 @@ def coincheck_order_pre_submit_hook(order_data: OrderData) -> OrderData:
 
 
 def coincheck_order_post_submit_hook(
-    order_data: OrderData, broker_response: Any
+    order_data: OrderData, _broker_response: Any
 ) -> None:
     """Post-submit hook for Coincheck orders (placeholder for future implementation)."""
     # TODO: Handle Coincheck-specific response processing
