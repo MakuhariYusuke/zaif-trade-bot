@@ -89,7 +89,7 @@ def find_candidates(
     return candidates
 
 
-def apply_cleanup(root: Path, candidates: List[Tuple[str, str]]):
+def apply_cleanup(root: Path, candidates: List[Tuple[str, str]]) -> None:
     """Apply cleanup by removing candidate directories."""
     for sess_id, reason in candidates:
         sess_dir = root / sess_id
@@ -102,7 +102,7 @@ def apply_cleanup(root: Path, candidates: List[Tuple[str, str]]):
             print(f"Failed to remove {sess_id}: {e}", file=sys.stderr)
 
 
-def main():
+def main() -> int:
     parser = create_standard_parser("Apply retention policy for artifacts")
     CommonArgs.add_artifacts_dir(parser)
     parser.add_argument(

@@ -36,9 +36,9 @@ class TestADX:
         # Check for reasonable values (ADX typically 0-100)
         adx_values = result[f"adx_14"].dropna()
         if len(adx_values) > 0:
-            assert all(0 <= val <= 100 for val in adx_values), (
-                "ADX values should be between 0 and 100"
-            )
+            assert all(
+                0 <= val <= 100 for val in adx_values
+            ), "ADX values should be between 0 and 100"
 
     def test_adx_insufficient_data(self):
         """Test ADX with insufficient data."""

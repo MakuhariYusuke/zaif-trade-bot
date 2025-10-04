@@ -17,7 +17,7 @@ class PrometheusExporter:
     Prometheus metrics exporter for comprehensive monitoring.
     """
 
-    def __init__(self, port: int = 8000):
+    def __init__(self, port: int = 8000) -> None:
         self.port = port
 
         # Data pipeline metrics
@@ -164,7 +164,9 @@ class PrometheusExporter:
 
         # Send notification if available
         try:
-            from .notifications import send_notification
+            from .notifications import (
+                send_notification,  # type: ignore[import-not-found]
+            )
 
             send_notification(
                 title=f"Alert: {alert_type}",
@@ -180,7 +182,9 @@ class ResourceMonitor:
     Resource monitor for disk and memory usage.
     """
 
-    def __init__(self, disk_threshold_gb: float = 10.0, mem_threshold_gb: float = 1.0):
+    def __init__(
+        self, disk_threshold_gb: float = 10.0, mem_threshold_gb: float = 1.0
+    ) -> None:
         self.disk_threshold_gb = disk_threshold_gb
         self.mem_threshold_gb = mem_threshold_gb
         self.last_disk_alert = 0.0
@@ -227,7 +231,9 @@ class ResourceMonitor:
         logger.warning(message)
 
         try:
-            from .notifications import send_notification
+            from .notifications import (
+                send_notification,  # type: ignore[import-not-found]
+            )
 
             send_notification(
                 title="Disk Space Alert", message=message, priority="high"
@@ -241,7 +247,9 @@ class ResourceMonitor:
         logger.warning(message)
 
         try:
-            from .notifications import send_notification
+            from .notifications import (
+                send_notification,  # type: ignore[import-not-found]
+            )
 
             send_notification(title="Memory Alert", message=message, priority="high")
         except ImportError:

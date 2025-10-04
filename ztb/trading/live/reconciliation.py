@@ -6,10 +6,11 @@ balances, and order states against external sources for consistency and accuracy
 """
 
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from ztb.utils.observability import get_logger
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -69,26 +70,28 @@ class ReconciliationError(Exception):
     pass
 
 
-class BaseReconciler:
+class BaseReconciler(ABC):
     """Base class for reconciliation operations."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         """Initialize reconciler.
 
         Args:
             name: Name identifier for this reconciler
         """
+        super().__init__()
         self.name = name
         self.last_reconciliation = 0.0
         self.reconciliation_count = 0
 
-    async def reconcile(self) -> ReconciliationResult:
+    @abstractmethod
+    async def reconcile(self, *args: Any, **kwargs: Any) -> ReconciliationResult:
         """Perform reconciliation.
 
         Returns:
             Reconciliation result
         """
-        raise NotImplementedError
+        pass
 
     def get_last_result(self) -> Optional[ReconciliationResult]:
         """Get last reconciliation result."""
@@ -109,7 +112,7 @@ class BaseReconciler:
 class PositionReconciler(BaseReconciler):
     """Reconciler for trading positions."""
 
-    def __init__(self, name: str = "positions"):
+    def __init__(self, name: str = "positions") -> None:
         """Initialize position reconciler."""
         super().__init__(name)
         self._last_result: Optional[ReconciliationResult] = None
@@ -133,9 +136,9 @@ class PositionReconciler(BaseReconciler):
         self.last_reconciliation = time.time()
         self.reconciliation_count += 1
 
-        discrepancies = {}
-        matches = 0
-        total = 0
+        discrepancies: Dict[str, Any] = {}
+        matches: int = 0
+        total: int = 0
 
         # Convert to dicts for easier comparison
         local_dict = {p.symbol: p for p in local_positions}
@@ -218,7 +221,7 @@ class PositionReconciler(BaseReconciler):
 class BalanceReconciler(BaseReconciler):
     """Reconciler for account balances."""
 
-    def __init__(self, name: str = "balances"):
+    def __init__(self, name: str = "balances") -> None:
         """Initialize balance reconciler."""
         super().__init__(name)
         self._last_result: Optional[ReconciliationResult] = None
@@ -242,9 +245,9 @@ class BalanceReconciler(BaseReconciler):
         self.last_reconciliation = time.time()
         self.reconciliation_count += 1
 
-        discrepancies = {}
-        matches = 0
-        total = 0
+        discrepancies: Dict[str, Any] = {}
+        matches: int = 0
+        total: int = 0
 
         # Convert to dicts
         local_dict = {b.asset: b for b in local_balances}
@@ -327,7 +330,7 @@ class BalanceReconciler(BaseReconciler):
 class OrderReconciler(BaseReconciler):
     """Reconciler for order states."""
 
-    def __init__(self, name: str = "orders"):
+    def __init__(self, name: str = "orders") -> None:
         """Initialize order reconciler."""
         super().__init__(name)
         self._last_result: Optional[ReconciliationResult] = None
@@ -347,9 +350,9 @@ class OrderReconciler(BaseReconciler):
         self.last_reconciliation = time.time()
         self.reconciliation_count += 1
 
-        discrepancies = {}
-        matches = 0
-        total = 0
+        discrepancies: Dict[str, Any] = {}
+        matches: int = 0
+        total: int = 0
 
         # Convert to dicts
         local_dict = {o.order_id: o for o in local_orders}
@@ -433,8 +436,9 @@ class OrderReconciler(BaseReconciler):
 class ComprehensiveReconciler:
     """Comprehensive reconciler that combines multiple reconciliation types."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize comprehensive reconciler."""
+        super().__init__()
         self.position_reconciler = PositionReconciler()
         self.balance_reconciler = BalanceReconciler()
         self.order_reconciler = OrderReconciler()
@@ -442,12 +446,12 @@ class ComprehensiveReconciler:
 
     async def reconcile_all(
         self,
-        local_positions: List[PositionRecord] = None,
-        external_positions: List[PositionRecord] = None,
-        local_balances: List[BalanceRecord] = None,
-        external_balances: List[BalanceRecord] = None,
-        local_orders: List[OrderRecord] = None,
-        external_orders: List[OrderRecord] = None,
+        local_positions: Optional[List[PositionRecord]] = None,
+        external_positions: Optional[List[PositionRecord]] = None,
+        local_balances: Optional[List[BalanceRecord]] = None,
+        external_balances: Optional[List[BalanceRecord]] = None,
+        local_orders: Optional[List[OrderRecord]] = None,
+        external_orders: Optional[List[OrderRecord]] = None,
     ) -> ReconciliationResult:
         """Perform comprehensive reconciliation.
 
@@ -506,9 +510,9 @@ class ComprehensiveReconciler:
 
         comprehensive_result = ReconciliationResult(
             timestamp=timestamp,
-            positions_match=position_result.positions_match
-            if position_result
-            else True,
+            positions_match=(
+                position_result.positions_match if position_result else True
+            ),
             balances_match=balance_result.balances_match if balance_result else True,
             orders_match=order_result.orders_match if order_result else True,
             discrepancies=all_discrepancies,

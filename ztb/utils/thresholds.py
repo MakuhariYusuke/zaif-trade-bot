@@ -142,7 +142,7 @@ class AdaptiveThresholdManager:
 
         return gates
 
-    def update_thresholds(self, new_evaluation_results: Dict[str, Any]) -> None:
+    def update_thresholds(self, _new_evaluation_results: Dict[str, Any]) -> None:
         """Update thresholds with new evaluation results"""
         # This would be called after each evaluation cycle
         # Implementation depends on how we want to update the adaptive thresholds

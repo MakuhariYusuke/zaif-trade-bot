@@ -14,8 +14,12 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from ..risk.position_sizing import PositionSizer
-from ..utils.observability import generate_correlation_id, setup_observability
+from ztb.utils.observability import generate_correlation_id, setup_observability
+
+from ..risk.circuit_breakers import (  # type: ignore[import-not-found]
+    get_global_kill_switch,
+)
+from ..risk.position_sizing import PositionSizer  # type: ignore[import-not-found]
 from .adapters import StrategyAdapter, create_adapter
 from .metrics import MetricsCalculator
 from .report import ReportGenerator
@@ -34,7 +38,7 @@ class BacktestEngine:
         kill_file: str = "/tmp/ztb.stop",
         target_vol: Optional[float] = None,
         correlation_id: Optional[str] = None,
-    ):
+    ) -> None:
         """Initialize backtest engine."""
         self.initial_capital = initial_capital
         self.slippage_bps = slippage_bps
@@ -54,7 +58,7 @@ class BacktestEngine:
         # Initialize kill switch if risk management enabled
         self.kill_switch = get_global_kill_switch() if enable_risk else None
 
-    def load_data(self, dataset_path: str) -> pd.DataFrame:
+    def load_data(self, _dataset_path: str) -> pd.DataFrame:
         """Load market data from cache or file."""
         # TODO: Implement actual data loading from repository cache
         # For now, generate synthetic data
@@ -208,7 +212,7 @@ class BacktestEngine:
         return equity_series, orders_df
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Run trading strategy backtest")
     parser.add_argument(

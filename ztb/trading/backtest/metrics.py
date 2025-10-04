@@ -5,10 +5,13 @@ Provides comprehensive performance metrics for trading strategy evaluation.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 import pandas as pd
+
+# 営業日数
+TRADING_DAYS_PER_YEAR = 252
 
 
 @dataclass
@@ -68,11 +71,17 @@ class MetricsCalculator:
         if len(returns) < 2:
             return 0.0
 
-        excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate
+        excess_returns = (
+            returns - risk_free_rate / TRADING_DAYS_PER_YEAR
+        )  # Daily risk-free rate
         if excess_returns.std() == 0:
             return 0.0
 
-        sharpe = excess_returns.mean() / excess_returns.std() * np.sqrt(252)
+        sharpe = (
+            excess_returns.mean()
+            / excess_returns.std()
+            * np.sqrt(TRADING_DAYS_PER_YEAR)
+        )
         return float(sharpe)
 
     @staticmethod
@@ -83,13 +92,17 @@ class MetricsCalculator:
         if len(returns) < 2:
             return 0.0
 
-        excess_returns = returns - risk_free_rate / 252
+        excess_returns = returns - risk_free_rate / TRADING_DAYS_PER_YEAR
         downside_returns = excess_returns[excess_returns < 0]
 
         if len(downside_returns) == 0 or downside_returns.std() == 0:
             return 0.0
 
-        sortino = excess_returns.mean() / downside_returns.std() * np.sqrt(252)
+        sortino = (
+            excess_returns.mean()
+            / downside_returns.std()
+            * np.sqrt(TRADING_DAYS_PER_YEAR)
+        )
         return float(sortino)
 
     @staticmethod
@@ -109,12 +122,12 @@ class MetricsCalculator:
         if max_dd >= 0:  # No drawdown
             return 0.0
 
-        total_return = (1 + returns).prod() - 1
-        years = len(returns) / 252
+        total_return = cast(float, (1 + returns).prod() - 1)  # type: ignore[operator]
+        years = len(returns) / TRADING_DAYS_PER_YEAR
         if years == 0:
             return 0.0
 
-        annualized_return = (1 + total_return) ** (1 / years) - 1
+        annualized_return = float((1 + total_return) ** (1 / years) - 1)
         calmar = annualized_return / abs(max_dd)
         return float(calmar)
 
@@ -125,7 +138,7 @@ class MetricsCalculator:
             return 0.0
 
         total_return = equity_curve.iloc[-1] / equity_curve.iloc[0] - 1
-        years = len(equity_curve) / 252  # Assuming daily data
+        years = len(equity_curve) / TRADING_DAYS_PER_YEAR  # Assuming daily data
 
         if years <= 0 or total_return <= -1:
             return 0.0
@@ -180,7 +193,9 @@ class MetricsCalculator:
 
         # Annualize (assuming daily data)
         days = len(orders) if len(orders) > 0 else 1
-        annualized_turnover = total_turnover / initial_capital * (252 / days)
+        annualized_turnover = (
+            total_turnover / initial_capital * (TRADING_DAYS_PER_YEAR / days)
+        )
 
         return float(annualized_turnover)
 
@@ -215,7 +230,7 @@ class MetricsCalculator:
             if len(equity_curve) > 1
             else 0.0
         )
-        volatility = returns.std() * np.sqrt(252)  # Annualized
+        volatility = returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)  # Annualized
 
         total_trades, win_rate, avg_win, avg_loss, profit_factor = (
             cls.calculate_trade_metrics(orders)
@@ -258,7 +273,7 @@ class MetricsCalculator:
         # Deflate by number of strategies tested (simplified)
         # In practice, this would be more sophisticated
         deflation_factor = 1.0 / np.sqrt(num_strategies)
-        return sharpe * deflation_factor
+        return cast(float, sharpe * deflation_factor)
 
     @staticmethod
     def calculate_bootstrap_pvalue(
@@ -275,7 +290,7 @@ class MetricsCalculator:
 
         # Bootstrap resampling
         combined = pd.concat([strategy_returns, benchmark_returns], ignore_index=True)
-        bootstrap_diffs = []
+        bootstrap_diffs: List[float] = []
 
         for _ in range(num_bootstrap):
             # Resample with replacement
@@ -286,7 +301,7 @@ class MetricsCalculator:
             bootstrap_diffs.append(diff)
 
         # Calculate p-value (two-tailed)
-        bootstrap_diffs = np.array(bootstrap_diffs)
-        p_value = np.mean(np.abs(bootstrap_diffs) >= np.abs(observed_diff))
+        bootstrap_array = np.array(bootstrap_diffs)
+        p_value = np.mean(np.abs(bootstrap_array) >= np.abs(observed_diff))
 
-        return float(p_value)
+        return cast(float, p_value)

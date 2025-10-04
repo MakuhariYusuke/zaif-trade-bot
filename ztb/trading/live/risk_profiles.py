@@ -12,10 +12,10 @@ from ztb.config.schema import RiskProfileConfig
 class RiskProfileManager:
     """Manages risk profiles for trading strategies."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._profiles: Dict[str, RiskProfileConfig] = {}
 
-    def add_profile(self, profile: RiskProfileConfig):
+    def add_profile(self, profile: RiskProfileConfig) -> None:
         """Add a risk profile."""
         self._profiles[profile.name] = profile
 

@@ -9,6 +9,7 @@ import argparse
 import signal
 import subprocess
 import sys
+from types import FrameType
 from typing import List, Optional
 
 
@@ -22,7 +23,7 @@ class MonitoringLauncher:
         self.correlation_id = correlation_id
         self.webhook_url = webhook_url
         self.dry_run = dry_run
-        self.processes: List[subprocess.Popen] = []
+        self.processes: List[subprocess.Popen[str]] = []
 
     def get_commands(self) -> List[List[str]]:
         """Get list of commands to run."""
@@ -53,7 +54,7 @@ class MonitoringLauncher:
 
         return commands
 
-    def launch_processes(self):
+    def launch_processes(self) -> None:
         """Launch all monitoring processes."""
         commands = self.get_commands()
 
@@ -62,16 +63,16 @@ class MonitoringLauncher:
                 print(f"Would run: {' '.join(cmd)}")
             else:
                 try:
-                    proc = subprocess.Popen(cmd)
+                    proc = subprocess.Popen(cmd, text=True)
                     self.processes.append(proc)
                     print(f"Launched: {' '.join(cmd)} (PID: {proc.pid})")
                 except Exception as e:
                     print(f"Failed to launch {' '.join(cmd)}: {e}", file=sys.stderr)
 
-    def wait_and_cleanup(self):
+    def wait_and_cleanup(self) -> None:
         """Wait for processes and clean up on signal."""
 
-        def signal_handler(signum, frame):
+        def signal_handler(signum: int, frame: Optional[FrameType]) -> None:
             print("\nReceived signal, terminating processes...")
             self.terminate_all()
             sys.exit(0)
@@ -93,7 +94,7 @@ class MonitoringLauncher:
             except KeyboardInterrupt:
                 print("\nDry run interrupted.")
 
-    def terminate_all(self):
+    def terminate_all(self) -> None:
         """Terminate all running processes."""
         for proc in self.processes:
             try:
@@ -107,7 +108,7 @@ class MonitoringLauncher:
                 print(f"Error terminating PID {proc.pid}: {e}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Launch monitoring processes for Zaif Trade Bot session"
     )

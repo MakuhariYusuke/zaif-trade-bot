@@ -1,11 +1,35 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from numba import jit  # type: ignore[import-untyped]
 from numpy.typing import NDArray
 
 from ..base import BaseFeature
+from ..registry import FeatureRegistry
+
+
+@FeatureRegistry.register("Donchian_Pos_20")
+def compute_donchian_pos_20(df: pd.DataFrame) -> pd.Series:
+    """Donchian Channel Position (20-period)"""
+    feature = Donchian()
+    result_df = feature.compute(df, periods=[20])
+    return result_df["donchian_pos_20"]
+
+
+@FeatureRegistry.register("Donchian_Width_Rel_20")
+def compute_donchian_width_rel_20(df: pd.DataFrame) -> pd.Series:
+    """Donchian Channel Relative Width (20-period)"""
+    feature = Donchian()
+    result_df = feature.compute(df, periods=[20])
+    return result_df["donchian_width_rel_20"]
+
+
+@FeatureRegistry.register("Donchian_Slope_20")
+def compute_donchian_slope_20(df: pd.DataFrame) -> pd.Series:
+    """Donchian Channel Slope (20-period)"""
+    feature = Donchian()
+    result_df = feature.compute(df, periods=[20])
+    return result_df["donchian_slope_20"]
 
 
 class Donchian(BaseFeature):
@@ -15,14 +39,14 @@ class Donchian(BaseFeature):
         super().__init__("Donchian", deps=["high", "low", "close", "ATR_simplified"])
 
     @staticmethod
-    @jit(nopython=True)  # type: ignore[misc]
     def _compute_donchian(
-        high: NDArray[np.float64],
-        low: NDArray[np.float64],
-        close: NDArray[np.float64],
-        atr: NDArray[np.float64],
+        high: NDArray[np.floating[Any]],
+        low: NDArray[np.floating[Any]],
+        close: NDArray[np.floating[Any]],
+        atr: NDArray[np.floating[Any]],
         period: int = 20,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+    ) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
+        """Compute Donchian Channel using pure numpy (no numba)"""
         n = len(high)
         upper = np.zeros(n)
         lower = np.zeros(n)
@@ -44,8 +68,22 @@ class Donchian(BaseFeature):
 
         return position, width_rel
 
-    def compute(self, df: pd.DataFrame, **params: Dict[str, Any]) -> pd.DataFrame:
-        periods = params.get("periods", [20, 55])
+    def compute(
+        self,
+        df: pd.DataFrame,
+        periods: Optional[List[int]] = None,
+        **params: Dict[str, Any],
+    ) -> pd.DataFrame:
+        if periods is None:
+            periods_raw = params.get("periods", [20, 55])
+            periods = periods_raw if isinstance(periods_raw, list) else [20, 55]
+        # Ensure ATR_simplified is available
+        if "ATR_simplified" not in df.columns:
+            from ztb.features.volatility.atr import compute_atr_simplified
+
+            atr_series = compute_atr_simplified(df)
+            df = df.copy()
+            df["ATR_simplified"] = atr_series
         # Ensure inputs are numpy arrays
         high = np.asarray(df["high"].values, dtype=np.float64)
         low = np.asarray(df["low"].values, dtype=np.float64)

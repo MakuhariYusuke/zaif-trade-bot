@@ -10,11 +10,7 @@ import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional
-
-
-class IdempotencyStore:
-    """SQLite-based idempotency store for order IDs."""
+from typing import Any, Dict, Generator, Optional, cast
 
 
 class IdempotencyStore:
@@ -22,7 +18,7 @@ class IdempotencyStore:
 
     def __init__(
         self, db_path: str = ":memory:", table_name: str = "order_idempotency"
-    ):
+    ) -> None:
         """
         Initialize idempotency store.
 
@@ -42,10 +38,10 @@ class IdempotencyStore:
             self._lock_fd = None
 
         # Create table if it doesn't exist
-        self._ensure_table()
+        # self._ensure_table()
 
     @contextmanager
-    def _process_lock(self):
+    def _process_lock(self) -> Generator[None, None, None]:
         """Process-level file locking for cross-process synchronization."""
         if self._lock_file is None:
             # In-memory database, no process locking needed
@@ -74,7 +70,7 @@ class IdempotencyStore:
                     pass  # Ignore cleanup errors
 
     @contextmanager
-    def _get_connection(self):
+    def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         """Get thread-local database connection with process-level locking."""
         with self._process_lock():
             if not hasattr(self._local, "connection"):
@@ -96,22 +92,26 @@ class IdempotencyStore:
                     delattr(self._local, "connection")
                 raise
 
-    def _ensure_table(self):
+    def _ensure_table(self) -> None:
         """Ensure the idempotency table exists."""
         with self._get_connection() as conn:
-            conn.execute(f"""
+            conn.execute(
+                f"""
                 CREATE TABLE IF NOT EXISTS {self.table_name} (
                     client_order_id TEXT PRIMARY KEY,
                     order_data TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     status TEXT DEFAULT 'pending'
                 )
-            """)
+            """
+            )
             # Create index for faster lookups
-            conn.execute(f"""
+            conn.execute(
+                f"""
                 CREATE INDEX IF NOT EXISTS idx_client_order_id
                 ON {self.table_name}(client_order_id)
-            """)
+            """
+            )
             conn.commit()
 
     def check_and_store(self, client_order_id: str, order_data: Dict[str, Any]) -> bool:
@@ -170,7 +170,7 @@ class IdempotencyStore:
 
             row = cursor.fetchone()
             if row:
-                return json.loads(row[0])
+                return cast(Dict[str, Any], json.loads(row[0]))
             return None
 
     def update_status(self, client_order_id: str, status: str) -> bool:
@@ -237,7 +237,7 @@ class IdempotencyStore:
 
             results = []
             for row in cursor.fetchall():
-                order_data = json.loads(row[1])
+                order_data = cast(Dict[str, Any], json.loads(row[1]))
                 results.append(
                     {
                         "client_order_id": row[0],
@@ -275,19 +275,19 @@ class IdempotencyStore:
         with self._get_connection() as conn:
             # Total orders
             cursor = conn.execute(f"SELECT COUNT(*) FROM {self.table_name}")
-            total_orders = cursor.fetchone()[0]
+            total_orders = cast(int, cursor.fetchone()[0])
 
             # Status breakdown
-            cursor = conn.execute(f"""
+            cursor = conn.execute(
+                f"""
                 SELECT status, COUNT(*) FROM {self.table_name}
                 GROUP BY status
-            """)
-            status_counts = dict(cursor.fetchall())
+            """
+            )
+            status_counts = cast(Dict[str, int], dict(cursor.fetchall()))
 
             return {"total_orders": total_orders, "status_breakdown": status_counts}
 
-
-import threading
 
 # Global instance and lock for thread safety
 _idempotency_store = IdempotencyStore()
@@ -299,7 +299,7 @@ def get_idempotency_store() -> IdempotencyStore:
     return _idempotency_store
 
 
-def set_global_store_path(db_path: str):
+def set_global_store_path(db_path: str) -> None:
     """Set global store database path in a thread-safe manner."""
     global _idempotency_store
     with _idempotency_store_lock:

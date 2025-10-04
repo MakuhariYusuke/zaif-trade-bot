@@ -1,4 +1,4 @@
-# Unified Training System (v3.4.0)
+# Unified Training System (v3.5.0)
 
 このシステムは、Zaif Trade Bot の複数のトレーニングアプローチを統合したものです。様々なアルゴリズムとトレード戦略を統一的なインターフェースで扱えます。
 

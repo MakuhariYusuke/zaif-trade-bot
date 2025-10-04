@@ -9,6 +9,8 @@ from typing import Any, Dict
 
 import psutil
 
+from ztb.utils.errors import safe_operation
+
 
 class HealthMonitor:
     """Monitor the health of the trading service."""
@@ -17,7 +19,7 @@ class HealthMonitor:
         self.service_name = service_name
         self.logger = logging.getLogger(__name__)
         self.start_time = time.time()
-        self.last_health_check = 0
+        self.last_health_check = 0.0
         self.health_check_interval = 60  # seconds
 
     def check_overall_health(self) -> Dict[str, Any]:
@@ -27,7 +29,21 @@ class HealthMonitor:
         Returns:
             Dict containing health status and metrics
         """
-        health_status = {
+        return safe_operation(
+            logger=self.logger,
+            operation=self._check_overall_health_impl,
+            context="health_check",
+            default_result={
+                "timestamp": time.time(),
+                "service": self.service_name,
+                "status": "unhealthy",
+                "error": "Health check failed",
+            },
+        )
+
+    def _check_overall_health_impl(self) -> Dict[str, Any]:
+        """Implementation of overall health check."""
+        health_status: Dict[str, Any] = {
             "timestamp": time.time(),
             "service": self.service_name,
             "status": "healthy",
@@ -35,34 +51,28 @@ class HealthMonitor:
             "metrics": {},
         }
 
-        try:
-            # System resource checks
-            health_status["checks"]["memory"] = self._check_memory_usage()
-            health_status["checks"]["cpu"] = self._check_cpu_usage()
-            health_status["checks"]["disk"] = self._check_disk_space()
-            health_status["checks"]["uptime"] = self._check_uptime()
+        # System resource checks
+        health_status["checks"]["memory"] = self._check_memory_usage()
+        health_status["checks"]["cpu"] = self._check_cpu_usage()
+        health_status["checks"]["disk"] = self._check_disk_space()
+        health_status["checks"]["uptime"] = self._check_uptime()
 
-            # Application-specific checks
-            health_status["checks"]["logs"] = self._check_log_files()
-            health_status["checks"]["config"] = self._check_configuration()
+        # Application-specific checks
+        health_status["checks"]["logs"] = self._check_log_files()
+        health_status["checks"]["config"] = self._check_configuration()
 
-            # Aggregate status
-            failed_checks = [
-                k
-                for k, v in health_status["checks"].items()
-                if not v.get("healthy", False)
-            ]
-            if failed_checks:
-                health_status["status"] = "degraded"
-                health_status["failed_checks"] = failed_checks
+        # Aggregate status
+        failed_checks = [
+            k
+            for k, v in health_status["checks"].items()
+            if not v.get("healthy", False)
+        ]
+        if failed_checks:
+            health_status["status"] = "degraded"
+            health_status["failed_checks"] = failed_checks
 
-            # Performance metrics
-            health_status["metrics"] = self._collect_metrics()
-
-        except Exception as e:
-            self.logger.error(f"Health check failed: {e}")
-            health_status["status"] = "unhealthy"
-            health_status["error"] = str(e)
+        # Performance metrics
+        health_status["metrics"] = self._collect_metrics()
 
         self.last_health_check = time.time()
         return health_status

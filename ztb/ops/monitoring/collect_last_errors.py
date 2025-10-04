@@ -34,7 +34,7 @@ def extract_errors_from_logs(log_dir: Path) -> List[str]:
 
 def extract_errors_from_watch_log(watch_log_path: Path) -> List[str]:
     """Extract ERROR/FAIL alerts from watch_log.jsonl."""
-    errors = []
+    errors: List[str] = []
 
     if not watch_log_path.exists():
         return errors

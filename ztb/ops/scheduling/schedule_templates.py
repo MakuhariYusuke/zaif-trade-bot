@@ -14,9 +14,10 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
-def get_template(name: str) -> dict:
+def get_template(name: str) -> dict[str, Any]:
     """Get the schedule template for the given name."""
     templates = {
         "daily": {
@@ -63,7 +64,7 @@ def get_template(name: str) -> dict:
     return templates[name]
 
 
-def list_templates():
+def list_templates() -> None:
     """List all available templates."""
     templates = [
         "daily",
@@ -79,7 +80,7 @@ def list_templates():
         print(f"  {template}: {desc}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate cronish.py schedule templates"
     )

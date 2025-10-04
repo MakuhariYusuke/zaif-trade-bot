@@ -12,7 +12,9 @@ class TradingStrategy(ABC):
     """Abstract base class for trading strategies."""
 
     @abstractmethod
-    def generate_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
         """Generate trading signal based on current data and position."""
         pass
 
@@ -26,7 +28,9 @@ class DataProvider(ABC):
     """Abstract base class for data providers."""
 
     @abstractmethod
-    async def get_historical_data(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+    async def get_historical_data(
+        self, symbol: str, start_date: str, end_date: str
+    ) -> pd.DataFrame:
         """Fetch historical data for a symbol."""
         pass
 

@@ -10,17 +10,26 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
 import yaml
 
+from ztb.utils.data_utils import load_csv_data
+
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
+
 # プロジェクトルートをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def evaluate_experimental_features(df, experimental_features, baseline_sharpe=None):
+def evaluate_experimental_features(
+    df: pd.DataFrame,
+    experimental_features: List[str],
+    baseline_sharpe: Optional[float] = None,
+) -> Dict[str, Any]:
     """
     Stub implementation for experimental features evaluation
     TODO: Implement proper evaluation logic
@@ -40,13 +49,13 @@ from ztb.utils.metrics.trading_metrics import (
 )
 
 
-def load_config(config_path: Path) -> dict:
+def load_config(config_path: Path) -> dict[str, Any]:
     """設定ファイルを読み込み"""
     with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return cast(dict[str, Any], yaml.safe_load(f))
 
 
-def load_evaluation_config() -> dict:
+def load_evaluation_config() -> dict[str, Any]:
     """評価設定を読み込み"""
     config_path = Path("config/evaluation.yaml")
     if not config_path.exists():
@@ -57,13 +66,13 @@ def load_evaluation_config() -> dict:
         }
 
     with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f)  # type: ignore
 
 
-def load_feature_sets(sets_path: Path) -> dict:
+def load_feature_sets(sets_path: Path) -> dict[str, Any]:
     """特徴量セットを読み込み"""
     with open(sets_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f)  # type: ignore
 
 
 def run_ablation_analysis(
@@ -71,8 +80,8 @@ def run_ablation_analysis(
     experimental_features: Optional[List[str]] = None,
     data_path: Optional[Path] = None,
     num_runs: int = 5,
-    evaluation_config: Optional[dict] = None,
-) -> Dict:
+    evaluation_config: Optional[dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     アブレーション分析を実行
 
@@ -95,7 +104,7 @@ def run_ablation_analysis(
 
     # データ読み込み（仮）
     if data_path and data_path.exists():
-        df = pd.read_csv(data_path)
+        df = load_csv_data(data_path)
     else:
         # サンプルデータ生成
         np.random.seed(42)  # 再現性のためにシード固定
@@ -117,7 +126,9 @@ def run_ablation_analysis(
     base_sharpes = []
     for run in range(num_runs):
         # ランダムなリターンを生成（実際のトレーディング結果をシミュレート）
-        returns = np.random.normal(0.001, 0.02, 252)  # 1年分の日次リターン
+        returns = np.random.normal(
+            0.001, 0.02, TRADING_DAYS_PER_YEAR
+        )  # 1年分の日次リターン
         sharpe = sharpe_ratio(returns)
         base_sharpes.append(sharpe)
 
@@ -130,14 +141,14 @@ def run_ablation_analysis(
         for run in range(num_runs):
             # 特徴量の影響をシミュレート（ランダムノイズ）
             impact = np.random.normal(0, 0.01, 1)[0]  # 特徴量の影響
-            returns = np.random.normal(0.001 + impact, 0.02, 252)
+            returns = np.random.normal(0.001 + impact, 0.02, TRADING_DAYS_PER_YEAR)
             sharpe = sharpe_ratio(returns)
             with_feature_sharpes.append(sharpe)
 
         # delta_sharpeの計算
         delta_sharpe = calculate_delta_sharpe(base_sharpes, with_feature_sharpes)
 
-        results["ablation_results"][feature_name] = {
+        results["ablation_results"][feature_name] = {  # type: ignore
             "success": delta_sharpe is not None,
             "sharpe_stats": sharpe_with_stats(with_feature_sharpes),
             "delta_sharpe": delta_sharpe,
@@ -145,22 +156,22 @@ def run_ablation_analysis(
             "is_experimental": feature_name in (experimental_features or []),
         }
 
-        if validate_ablation_results(results["ablation_results"][feature_name]):
-            results["summary"]["valid_results"] += 1
+        if validate_ablation_results(results["ablation_results"][feature_name]):  # type: ignore
+            results["summary"]["valid_results"] += 1  # type: ignore
 
     base_stats = sharpe_with_stats(base_sharpes)
 
     # experimental特徴量の評価
     if experimental_features:
         exp_results = evaluate_experimental_features(
-            df, experimental_features, baseline_sharpe=base_stats["mean"]
+            df, experimental_features, baseline_sharpe=cast(float, base_stats["mean"])
         )
         results["experimental_eval"] = exp_results
 
     return results
 
 
-def save_results(results: Dict, output_path: Path):
+def save_results(results: Dict[str, Any], output_path: Path) -> None:
     """結果をJSONファイルとCSVファイルに保存"""
     # JSON保存
     with open(output_path, "w", encoding="utf-8") as f:
@@ -223,7 +234,7 @@ def save_results(results: Dict, output_path: Path):
     logging.info(f"Results saved to {output_path} and {csv_path}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="特徴量アブレーション分析")
     parser.add_argument(
         "--config",

@@ -11,21 +11,25 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 import yaml
 
+from ztb.risk.circuit_breakers import (  # type: ignore[import]
+    KillSwitchActivatedError,
+    get_global_kill_switch,
+)
+from ztb.risk.position_sizing import PositionSizer  # type: ignore[import]
+from ztb.trading.backtest.adapters import StrategyAdapter, create_adapter
 from ztb.utils.cli_common import (
     CLIFormatter,
     CLIValidator,
     CommonArgs,
     create_standard_parser,
 )
+from ztb.utils.data_utils import load_csv_data
 
-from ...backtest.adapters import StrategyAdapter, create_adapter
-from ..risk.circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
-from ..risk.position_sizing import PositionSizer
 from .sim_broker import SimBroker
 
 
@@ -38,13 +42,13 @@ def load_venue_config(venue_name: str, config_dir: str = "venues") -> Dict[str, 
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    return config
+    return cast(Dict[str, Any], config)
 
 
 class SymbolMeta:
     """Symbol metadata for validation."""
 
-    def __init__(self, symbol_config: Dict[str, Any]):
+    def __init__(self, symbol_config: Dict[str, Any]) -> None:
         self.symbol = symbol_config["symbol"]
         self.base_asset = symbol_config["base_asset"]
         self.quote_asset = symbol_config["quote_asset"]
@@ -93,7 +97,7 @@ class PaperTrader:
         venue_config: Optional[Dict[str, Any]] = None,
         target_vol: Optional[float] = None,
         from_streaming: bool = False,
-    ):
+    ) -> None:
         """Initialize paper trader."""
         self.broker = broker
         self.strategy = strategy
@@ -186,10 +190,20 @@ class PaperTrader:
         data.set_index("timestamp", inplace=True)
         return data
 
+    def _prepare_data_feed(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Prepare data feed for replay."""
+        # For RL, we need all features, not just OHLCV
+        return df
+
     async def run_replay(self, output_dir: Path) -> Dict[str, Any]:
         """Run replay mode simulation."""
         if self.data_feed is None:
-            raise ValueError("No data feed available for replay mode")
+            if self.dataset:
+                self.data_feed = load_csv_data(self.dataset)
+                self.data_feed = self._prepare_data_feed(self.data_feed)
+                print(f"Data columns: {self.data_feed.columns.tolist()}")  # type: ignore[unreachable]
+            else:
+                raise ValueError("No dataset provided for replay mode")
 
         # Capture run metadata
         metadata_path = output_dir / "run_metadata.json"
@@ -247,8 +261,14 @@ class PaperTrader:
                             "BTC_JPY": 0.5
                         }  # Simplified volatility assumption
 
+                        # Calculate portfolio value
+                        portfolio_value = (
+                            self.broker.balance["JPY"]
+                            + self.broker.balance["BTC"] * current_prices["BTC_JPY"]
+                        )
+
                         sizes = self.position_sizer.calculate_position_sizes(
-                            signals, current_prices, self.broker.balance, asset_vols
+                            signals, current_prices, portfolio_value, asset_vols
                         )
 
                         if sizes:
@@ -257,7 +277,7 @@ class PaperTrader:
 
                             # Log sizing chain to orders.csv
                             order_record = {
-                                "timestamp": timestamp.isoformat(),
+                                "timestamp": str(timestamp),
                                 "symbol": symbol,
                                 "side": signal["action"],
                                 "price": price,
@@ -405,7 +425,7 @@ def save_results(results: Dict[str, Any], output_dir: Path):
         json.dump(summary, f, indent=2)
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
     parser = create_standard_parser("Run paper trading simulation")
     parser.add_argument(
@@ -421,6 +441,10 @@ def main():
         help=CLIFormatter.format_help(
             "Trading strategy", "sma_fast_slow", ["rl", "sma_fast_slow", "buy_hold"]
         ),
+    )
+    parser.add_argument(
+        "--model-path",
+        help="Path to trained RL model (required for rl policy)",
     )
     parser.add_argument(
         "--dataset",
@@ -479,6 +503,10 @@ def main():
 
     args = parser.parse_args()
 
+    # Validate arguments
+    if args.policy == "rl" and not args.model_path:
+        parser.error("--model-path is required when using rl policy")
+
     # Create output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path(args.output_dir) / f"{args.mode}_{timestamp}"
@@ -496,8 +524,10 @@ def main():
         print(f"Loaded venue config for {args.venue}")
 
         # Initialize components
-        broker = SimBroker(initial_balance=args.initial_balance)
-        strategy = create_adapter(args.policy)
+        broker = SimBroker(
+            initial_balance=args.initial_balance, venue_config=venue_config
+        )
+        strategy = create_adapter(args.policy, model_path=args.model_path)
 
         trader = PaperTrader(
             broker=broker,

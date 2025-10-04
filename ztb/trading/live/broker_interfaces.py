@@ -96,7 +96,9 @@ class IBroker(ABC):
 class ZaifAdapter(IBroker):
     """Zaif exchange adapter (stub implementation)."""
 
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None):
+    def __init__(
+        self, api_key: Optional[str] = None, api_secret: Optional[str] = None
+    ) -> None:
         """Initialize with API credentials."""
         self.api_key = api_key
         self.api_secret = api_secret
@@ -108,6 +110,9 @@ class ZaifAdapter(IBroker):
         quantity: float,
         price: Optional[float] = None,
         order_type: str = "market",
+        client_order_id: Optional[str] = None,
+        sizing_reason: Optional[str] = None,
+        target_vol: Optional[float] = None,
     ) -> Order:
         """Place order on Zaif (stub - raises NotImplementedError)."""
         raise NotImplementedError(

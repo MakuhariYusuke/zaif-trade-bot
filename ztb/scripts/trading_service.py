@@ -16,11 +16,9 @@ warnings.warn(
 
 # Import and re-export from the new location
 try:
-    from ztb.live.service_runner import TradingService, main
+    pass
 
-    __all__ = ["TradingService", "main"]
+    __all__ = []
 except ImportError as e:
     print(f"Error importing service_runner: {e}", file=sys.stderr)
-    TradingService = None  # type: ignore
-    main = None  # type: ignore
     __all__ = []

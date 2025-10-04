@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Clean up old artifacts")
     parser.add_argument(
         "--dry-run",

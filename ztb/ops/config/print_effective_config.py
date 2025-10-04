@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ztb.config.loader import load_config
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Print effective configuration")
     parser.add_argument("--config", type=str, help="Path to YAML config file")
     parser.add_argument("--output", type=str, help="Output file (default: stdout)")

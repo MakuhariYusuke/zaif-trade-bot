@@ -10,7 +10,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 # Add the ztb package to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
@@ -22,6 +22,7 @@ try:
 
     has_alert_notifier = True
 except ImportError:
+    send_webhook: Optional[Callable[..., bool]] = None  # type: ignore[no-redef]
     has_alert_notifier = False
 
 
@@ -32,7 +33,7 @@ def load_gates(gates_path: Path) -> Dict[str, Any]:
 
     try:
         with open(gates_path, "r") as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore[no-any-return]
     except Exception:
         return {}
 
@@ -100,6 +101,7 @@ def send_alerts(
     }
 
     title = f"🚨 Gate Alert: {correlation_id}"
+    assert send_webhook is not None
     success = send_webhook(
         webhook_url, title, correlation_id, [compact_alert], platform
     )
@@ -107,7 +109,7 @@ def send_alerts(
     return 0 if success else 1
 
 
-def main():
+def main() -> int:
     parser = create_standard_parser("Send gate failure alerts")
     CommonArgs.add_correlation_id(parser)
     parser.add_argument(
