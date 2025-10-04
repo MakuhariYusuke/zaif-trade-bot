@@ -1,5 +1,79 @@
 # Changelog
 
+## 3.6.0 - 2025-10-04
+
+### Added
+
+- **Reward Function Optimization**: Comprehensive reward function design and optimization
+  - Implemented step-based PnL rewards with ATR normalization and action consideration
+  - Optimized reward_scaling parameter to 6.0 achieving 71.10% return
+  - Enhanced reward function with position-aware multipliers and market trend consideration
+
+- **PPO Hyperparameter Optimization**: Systematic optimization of all PPO parameters
+  - Optimized learning_rate=5e-4, gamma=0.95, gae_lambda=0.8, clip_range=0.3
+  - Optimized vf_coef=0.5, max_grad_norm=1.0, target_kl=0.005, ent_coef=0.05, batch_size=64
+  - Achieved stable training with balanced action distributions
+
+- **Evaluation Framework Expansion**: Enhanced model evaluation capabilities
+  - Implemented comprehensive_benchmark.py with 7 specialized evaluation modules
+  - Added ablation_study.py and trade_analysis.py for detailed performance analysis
+  - Integrated Monte Carlo simulation, risk parity analysis, and cost sensitivity evaluation
+
+- **Feature Computation Optimization**: Improved feature processing efficiency
+  - Built FeatureRegistry for centralized feature management
+  - Implemented performance profiling tools for bottleneck identification
+  - Optimized 73-dimensional feature set for better computational efficiency
+
+- **Training Infrastructure Consolidation**: Unified training pipeline
+  - Created unified_trainer.py with integrated configuration management
+  - Standardized training scripts and configuration files
+  - Enhanced reproducibility and ease of experimentation
+
+### Technical
+
+- **Code Quality Improvements**: Systematic refactoring and utility consolidation
+  - Extracted duplicate functions into reusable utility modules
+  - Enhanced error handling and type safety across the codebase
+  - Improved code maintainability and development efficiency
+
+### Known Issues
+
+- **Action Distribution Bias**: Models exhibit SELL-dominant behavior (90% SELL actions)
+  - Root cause analysis ongoing: investigating data bias, reward design, and environment settings
+  - Curriculum learning implementation in progress to address action imbalance
+
+## 3.5.0 - 2025-10-04
+
+### Added
+
+- **Code Refactoring and Utility Consolidation**: Major code quality improvement through systematic utility extraction and deduplication
+  - Created `ztb/utils/data/outlier_detection.py` with IQR and Z-score outlier detection methods
+  - Created `ztb/utils/data/data_generation.py` with configurable synthetic market data generation
+  - Consolidated duplicate functions across benchmark and data processing modules
+  - Enhanced code reusability and maintainability through centralized utility functions
+
+- **Data Processing Utilities Enhancement**:
+  - Standardized outlier detection with safe operation error handling
+  - Flexible synthetic data generation supporting multiple frequencies and episode configurations
+  - Integration with existing data quality analysis workflows
+
+### Technical
+
+- **Code Quality Improvements**: Systematic reduction of code duplication across the codebase
+  - Eliminated redundant data generation functions in `ablate_features.py` and `bench_features.py`
+  - Centralized mathematical and statistical utility functions
+  - Enhanced type safety and error handling in utility modules
+
+- **Documentation Updates**: Comprehensive documentation improvements
+  - Updated `ztb/utils/README.md` with new utility modules and usage examples
+  - Enhanced API documentation for data processing and outlier detection utilities
+  - Improved developer experience with clear usage patterns and feature descriptions
+
+### Performance
+
+- **Code Maintainability**: Improved code organization and reduced maintenance overhead
+- **Development Efficiency**: Faster development through reusable utility components
+
 ## 3.4.0 - 2025-10-04
 
 ### Added
