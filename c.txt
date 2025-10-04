@@ -1,0 +1,1 @@
+cd c:\Users\Admin\dev\zaif-trade-bot && python -m ztb.training.unified_trainer --config unified_training_config.json --algorithm iterative --force && python -m ztb.training.unified_trainer --config unified_training_config.json --algorithm iterative --force && python -m ztb.training.unified_trainer --config unified_training_config.json --algorithm iterative --force

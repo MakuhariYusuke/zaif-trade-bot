@@ -1,9 +1,12 @@
 import json
 import tempfile
 from pathlib import Path
+from typing import Generator
+from unittest.mock import patch
 
 import pytest
-from scripts.rollup_artifacts import (
+
+from ztb.ops.rollup.rollup_artifacts import (
     aggregate_metrics,
     generate_executive_summary,
     redact_summary,
@@ -12,12 +15,12 @@ from scripts.rollup_artifacts import (
 
 
 @pytest.fixture
-def temp_artifacts():
+def temp_artifacts() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory() as tmp:
         yield Path(tmp)
 
 
-def test_aggregate_metrics(temp_artifacts):
+def test_aggregate_metrics(temp_artifacts: Path) -> None:
     corr_id = "test123"
     artifacts_dir = temp_artifacts / "artifacts" / corr_id
     artifacts_dir.mkdir(parents=True)
@@ -42,16 +45,24 @@ def test_aggregate_metrics(temp_artifacts):
     with open(artifacts_dir / "eval_results.json", "w") as f:
         json.dump(eval_data, f)
 
-    summary = aggregate_metrics(corr_id)
+    # Change to temp directory so aggregate_metrics finds the files
+    import os
 
-    assert summary["summary"]["global_step"] == 5000
-    assert summary["summary"]["wall_clock_duration_hours"] == 2.0
+    old_cwd = os.getcwd()
+    os.chdir(temp_artifacts)
+    try:
+        summary = aggregate_metrics(corr_id)
+
+        assert summary["summary"]["global_step"] == 5000
+        assert summary["summary"]["wall_clock_duration_hours"] == 2.0
+    finally:
+        os.chdir(old_cwd)
     assert summary["summary"]["rss_peak_mb"] == 2048
     assert summary["summary"]["best_sharpe"] == 1.5
     assert summary["summary"]["acceptance_gate"]["pass"] is True
 
 
-def test_generate_executive_summary():
+def test_generate_executive_summary() -> None:
     summary = {
         "correlation_id": "test123",
         "timestamp": "2025-09-29T12:00:00",
@@ -74,7 +85,7 @@ def test_generate_executive_summary():
     assert "Best Sharpe Ratio: 1.5" in md
 
 
-def test_redact_summary():
+def test_redact_summary() -> None:
     summary = {
         "metadata": {"config": {"api_key": "secret123", "normal_field": "value"}}
     }
@@ -84,7 +95,7 @@ def test_redact_summary():
     assert redacted["metadata"]["config"]["normal_field"] == "value"
 
 
-def test_validate_summary_valid():
+def test_validate_summary_valid() -> None:
     summary = {
         "correlation_id": "test",
         "timestamp": "2025-09-29T12:00:00",
@@ -100,16 +111,19 @@ def test_validate_summary_valid():
     }
 
     # Mock schema validation
-    with patch("scripts.rollup_artifacts.jsonschema.validate", return_value=None):
+    with patch(
+        "ztb.ops.rollup.rollup_artifacts.jsonschema.validate", return_value=None
+    ):
         valid = validate_summary(summary)
         assert valid
 
 
-def test_validate_summary_invalid():
+def test_validate_summary_invalid() -> None:
     summary = {}
 
     with patch(
-        "scripts.rollup_artifacts.jsonschema.validate", side_effect=Exception("invalid")
+        "ztb.ops.rollup.rollup_artifacts.jsonschema.validate",
+        side_effect=Exception("invalid"),
     ):
         valid = validate_summary(summary)
         assert not valid

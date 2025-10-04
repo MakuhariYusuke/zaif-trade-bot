@@ -10,7 +10,7 @@ client-side validation.
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Type
 
 # Add the project root to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -28,12 +28,12 @@ from ztb.contracts.models import (
 )
 
 
-def generate_schema(model_class) -> Dict[str, Any]:
+def generate_schema(model_class: Type[Any]) -> Dict[str, Any]:
     """Generate JSON schema for a Pydantic model."""
-    return model_class.model_json_schema()
+    return model_class.model_json_schema()  # type: ignore[no-any-return]
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     schemas = {
         "Trade": generate_schema(Trade),

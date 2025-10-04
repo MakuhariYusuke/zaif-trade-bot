@@ -1,0 +1,23 @@
+{
+  "current_step": 40960,
+  "rewards_history": [
+    -167.21050632722648,
+    -337.44120547613136,
+    -532.6212330411485,
+    -0.01
+  ],
+  "steps_history": [
+    10240,
+    20480,
+    30720,
+    40960
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "ensemble_model_1",
+  "timestamp": "2025-10-04T01:44:30.387970"
+}

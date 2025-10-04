@@ -1,0 +1,25 @@
+{
+  "current_step": 51200,
+  "rewards_history": [
+    136.56908731049248,
+    283.6743060582096,
+    427.81598817536474,
+    -0.03,
+    127.25294373671827
+  ],
+  "steps_history": [
+    10240,
+    20480,
+    30720,
+    40960,
+    51200
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "scalping_15s_balance_test16_forced_diversity",
+  "timestamp": "2025-10-03T23:33:15.028381"
+}

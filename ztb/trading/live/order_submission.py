@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional
 
-from ztb.live.idempotency_store import IdempotencyStore
-from ztb.live.precision_policy import PrecisionPolicyManager
-from ztb.live.symbols import SymbolNormalizer, Venue
+from ztb.trading.live.idempotency_store import IdempotencyStore
+from ztb.trading.live.precision_policy import PrecisionPolicyManager
+from ztb.trading.live.symbols import SymbolNormalizer, Venue
 from ztb.utils.errors import IdempotencyError, ValidationError
 
 
@@ -36,7 +36,7 @@ class PreparedOrder:
 class OrderPreparer:
     """Prepares orders with precision and idempotency safety."""
 
-    def __init__(self, idempotency_store: Optional[IdempotencyStore] = None):
+    def __init__(self, idempotency_store: Optional[IdempotencyStore] = None) -> None:
         self.precision_manager = PrecisionPolicyManager()
         self.symbol_normalizer = SymbolNormalizer()
         self.idempotency_store = idempotency_store or IdempotencyStore()

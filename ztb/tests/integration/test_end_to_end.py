@@ -41,9 +41,7 @@ class TestEndToEnd:
                     "model_dir": f"{temp_dir}/models",
                     "results_dir": f"{temp_dir}/results",
                 },
-                "data": {
-                    "train_data": "dummy_path"  # Will be mocked
-                },
+                "data": {"train_data": "dummy_path"},  # Will be mocked
             }
 
             # Mock data loading
@@ -143,14 +141,14 @@ class TestEndToEnd:
         return pd.DataFrame()
 
     def _compare_feature_distributions(
-        self, ts_data: pd.DataFrame, py_data: pd.DataFrame
+        self, ts_data: pd.DataFrame, _py_data: pd.DataFrame
     ):
         """Compare feature distributions between TS and Python"""
         # TODO: Implement statistical comparison
         # TODO: 統計比較を実装
         pass
 
-    def _check_for_anomalies(self, ts_data: pd.DataFrame, py_data: pd.DataFrame):
+    def _check_for_anomalies(self, ts_data: pd.DataFrame, _py_data: pd.DataFrame):
         """Check for anomalies in feature differences"""
         # TODO: Implement anomaly detection
         # TODO: 異常検知を実装

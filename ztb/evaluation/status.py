@@ -39,7 +39,7 @@ class FeatureReason(Enum):
 
 
 # Status to allowed reasons mapping
-STATUS_REASONS: Dict[FeatureStatus, set] = {
+STATUS_REASONS: Dict[FeatureStatus, set[FeatureReason]] = {
     FeatureStatus.PENDING: {
         FeatureReason.INSUFFICIENT_DATA,
         FeatureReason.HIGH_NAN_RATE,
@@ -71,7 +71,7 @@ class CoverageValidator:
         from pathlib import Path
 
         base_path_obj = Path(base_path)
-        merged_coverage = {
+        merged_coverage: Dict[str, Any] = {
             "events": [],  # Event sourcing
             "current_state": {  # Current snapshot
                 "verified": [],
@@ -118,16 +118,16 @@ class CoverageValidator:
 
         # Update totals
         current_state = cast(Dict[str, List[str]], merged_coverage["current_state"])
-        merged_coverage["metadata"]["total_verified"] = len(current_state["verified"])  # type: ignore
-        merged_coverage["metadata"]["total_staging"] = len(current_state["staging"])  # type: ignore
-        merged_coverage["metadata"]["total_pending"] = len(current_state["pending"])  # type: ignore
+        merged_coverage["metadata"]["total_verified"] = len(current_state["verified"])  # type: ignore[index]
+        merged_coverage["metadata"]["total_staging"] = len(current_state["staging"])  # type: ignore[index]
+        merged_coverage["metadata"]["total_pending"] = len(current_state["pending"])  # type: ignore[index]
         merged_coverage["metadata"]["total_pending_due_to_gate_fail"] = len(
             current_state["pending_due_to_gate_fail"]
-        )  # type: ignore
-        merged_coverage["metadata"]["total_failed"] = len(current_state["failed"])  # type: ignore
+        )  # type: ignore[index]
+        merged_coverage["metadata"]["total_failed"] = len(current_state["failed"])  # type: ignore[index]
         merged_coverage["metadata"]["total_unverified"] = len(
             current_state["unverified"]
-        )  # type: ignore
+        )  # type: ignore[index]
 
         return merged_coverage
 
@@ -160,9 +160,9 @@ class CoverageValidator:
         }
 
         # Track existing features by name
-        existing_features: Dict[
-            str, Tuple[FeatureStatus, Optional[Dict[str, Any]]]
-        ] = {}
+        existing_features: Dict[str, Tuple[FeatureStatus, Optional[Dict[str, Any]]]] = (
+            {}
+        )
         for status in FeatureStatus:
             status_key = status.value
             if status_key in target_current:
@@ -423,8 +423,8 @@ class CoverageValidator:
             # Other statuses are list of dicts with "name" key
             status_list: List[Dict[str, Any]] = target_current[status_key]  # type: ignore
             status_list[:] = [
-                item for item in status_list if item.get("name") != feature_name
-            ]  # type: ignore
+                item for item in status_list if item.get("name") != feature_name  # type: ignore
+            ]
 
     @staticmethod
     def validate_coverage_structure(coverage_data: Dict[str, Any]) -> List[str]:

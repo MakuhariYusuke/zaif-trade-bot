@@ -27,7 +27,7 @@ def estimate_steps_per_sec_from_metrics(metrics_path: Path) -> Optional[float]:
         steps = data.get("steps", 0)
         elapsed = data.get("elapsed_time", 0)  # in seconds
         if elapsed > 0:
-            return steps / elapsed
+            return float(steps) / float(elapsed)
     except Exception as e:
         print(f"Error reading metrics: {e}", file=sys.stderr)
 
@@ -96,7 +96,7 @@ def compute_eta(
 
 def update_summary(
     summary_path: Path, steps_per_sec: float, eta: str, completion_time: str, pct: float
-):
+) -> None:
     """Update summary.json with progress info."""
     if not summary_path.exists():
         return
@@ -120,7 +120,7 @@ def update_summary(
         print(f"Error updating summary: {e}", file=sys.stderr)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Estimate progress ETA for Zaif Trade Bot session"
     )

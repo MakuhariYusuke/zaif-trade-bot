@@ -7,10 +7,13 @@ Analyzes trading performance across different market regimes (bull, bear, sidewa
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
+
+# 年間取引日数（一般的に252日）
+TRADING_DAYS_PER_YEAR = 252
 
 
 class MarketRegime(Enum):
@@ -61,7 +64,7 @@ class RegimeDetector:
         trend_window: int = 50,
         volatility_threshold: float = 0.02,
         trend_threshold: float = 0.001,
-    ):
+    ) -> None:
         """
         Initialize regime detector.
 
@@ -71,6 +74,7 @@ class RegimeDetector:
             volatility_threshold: Threshold for sideways regime
             trend_threshold: Threshold for trend strength
         """
+        super().__init__()
         self.volatility_window = volatility_window
         self.trend_window = trend_window
         self.volatility_threshold = volatility_threshold
@@ -126,7 +130,7 @@ class RegimeDetector:
             if current_regime != regime:
                 # End previous segment
                 segment = self._create_segment(
-                    price_data, start_idx, i - 1, current_regime
+                    price_data, start_idx, i - 1, current_regime  # type: ignore[arg-type]
                 )
                 if segment:
                     regimes.append(segment)
@@ -166,11 +170,11 @@ class RegimeDetector:
     def _calculate_trend_strength(self, prices: pd.Series, window: int) -> pd.Series:
         """Calculate trend strength using linear regression slope."""
 
-        def slope(y):
+        def slope(y: pd.Series) -> float:
             if len(y) < 2:
                 return 0.0
             x = np.arange(len(y))
-            return np.polyfit(x, y, 1)[0]
+            return cast(float, np.polyfit(x, y, 1)[0])
 
         return prices.rolling(window).apply(slope, raw=False)
 
@@ -178,7 +182,7 @@ class RegimeDetector:
         self, data: pd.DataFrame, start_idx: int, end_idx: int, regime: MarketRegime
     ) -> Optional[RegimeSegment]:
         """Create a regime segment from data indices."""
-        if start_idx >= end_idx:
+        if start_idx > end_idx:
             return None
 
         segment_data = data.iloc[start_idx : end_idx + 1]
@@ -187,18 +191,22 @@ class RegimeDetector:
         ) / segment_data["close"].iloc[0]
         volatility = segment_data["returns"].std()
         trend_strength = segment_data["trend_strength"].mean()
-        duration_days = (segment_data.index[-1] - segment_data.index[0]).days
+        duration_days = (segment_data.index[-1] - segment_data.index[0]).days + 1
 
         return RegimeSegment(
             regime=regime,
             start_idx=start_idx,
             end_idx=end_idx,
-            start_date=segment_data.index[0].tz_localize("UTC")
-            if segment_data.index[0].tz is None
-            else segment_data.index[0],
-            end_date=segment_data.index[-1].tz_localize("UTC")
-            if segment_data.index[-1].tz is None
-            else segment_data.index[-1],
+            start_date=(
+                segment_data.index[0].tz_localize("UTC")
+                if getattr(segment_data.index[0], "tzinfo", None) is None
+                else segment_data.index[0]
+            ),
+            end_date=(
+                segment_data.index[-1].tz_localize("UTC")
+                if getattr(segment_data.index[-1], "tzinfo", None) is None
+                else segment_data.index[-1]
+            ),
             returns=returns,
             volatility=volatility,
             trend_strength=trend_strength,
@@ -212,6 +220,7 @@ class RegimeEvaluator:
 
     def __init__(self, regime_detector: Optional[RegimeDetector] = None):
         """Initialize regime evaluator."""
+        super().__init__()
         self.regime_detector = regime_detector or RegimeDetector()
 
     def evaluate_performance(
@@ -245,10 +254,10 @@ class RegimeEvaluator:
         else:
             trades_df = pd.DataFrame()
 
-        # Ensure price_data index is timezone-aware
-        if price_data.index.tz is None:
+        if hasattr(price_data.index, "tz") and price_data.index.tz is None:
             price_data = price_data.copy()
-            price_data.index = price_data.index.tz_localize("UTC")
+            if hasattr(price_data.index, "tz_localize"):
+                price_data.index = price_data.index.tz_localize("UTC")
 
         # Evaluate each regime
         regime_results = {}
@@ -322,8 +331,10 @@ class RegimeEvaluator:
         if not trades.empty and "pnl" in trades.columns:
             trade_returns = trades["pnl"].dropna()
             sharpe_ratio = (
-                trade_returns.mean() / trade_returns.std() * np.sqrt(252)
-                if len(trade_returns) > 1 and trade_returns.std() > 0
+                trade_returns.mean()
+                / trade_returns.std(ddof=1)
+                * np.sqrt(TRADING_DAYS_PER_YEAR)
+                if len(trade_returns) > 1 and trade_returns.std(ddof=1) > 0
                 else 0
             )
             max_drawdown = self._calculate_max_drawdown(trade_returns.cumsum())
@@ -341,14 +352,14 @@ class RegimeEvaluator:
 
         return RegimeMetrics(
             regime=segments[0].regime if segments else MarketRegime.SIDEWAYS,
-            total_return=total_return,
+            total_return=cast(float, total_return),
             sharpe_ratio=sharpe_ratio,
             max_drawdown=max_drawdown,
             win_rate=win_rate,
             total_trades=total_trades,
             avg_trade_return=avg_trade_return,
-            volatility=volatility,
-            regime_duration_days=regime_duration_days,
+            volatility=cast(float, volatility),
+            regime_duration_days=cast(float, regime_duration_days),
         )
 
     def _calculate_max_drawdown(self, cumulative_returns: pd.Series) -> float:
@@ -357,14 +368,15 @@ class RegimeEvaluator:
             return 0.0
 
         running_max = cumulative_returns.expanding().max()
-        drawdown = (cumulative_returns - running_max) / running_max
-        return drawdown.min()
+        safe_running_max = running_max.replace(0, np.nan)
+        drawdown = (cumulative_returns - safe_running_max) / safe_running_max
+        return cast(float, drawdown.min())
 
     def _compare_baselines(
         self, regime_results: Dict[str, Any], baseline_strategies: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Compare regime performance with baseline strategies."""
-        comparison = {}
+        comparison: Dict[str, Any] = {}
 
         for regime_name, regime_data in regime_results.items():
             if regime_name == "baseline_comparison":
@@ -455,7 +467,6 @@ class RegimeEvaluator:
             )
 
         # Simple trade metrics calculation
-        returns = []
         for trade in trades:
             if "price" in trade and "quantity" in trade and "side" in trade:
                 # Simplified: assume entry and exit in same trade record
@@ -478,9 +489,29 @@ class RegimeEvaluator:
                     if ret > 0:
                         wins += 1
 
-        win_rate = wins / total_trades if total_trades > 0 else 0
+        total_return = (
+            total_return if total_trades > 0 else 0.0
+        )  # Return 0.0 if no trades
         total_return = total_return if total_trades > 0 else 0.1  # Mock return
-        sharpe_ratio = 1.0 if total_return >= 0 else -1.0  # Mock sharpe
+
+        win_rate = wins / total_trades if total_trades > 0 else 0.0
+
+        # Use actual Sharpe ratio calculation for test data if possible
+        trade_returns = []
+        for i in range(0, len(trades) - 1, 2):
+            if i + 1 < len(trades):
+                buy_price = trades[i].get("price", 0)
+                sell_price = trades[i + 1].get("price", 0)
+                if buy_price > 0:
+                    trade_returns.append((sell_price - buy_price) / buy_price)
+        if len(trade_returns) > 1 and np.std(trade_returns, ddof=1) > 0:
+            sharpe_ratio = (
+                np.mean(trade_returns)
+                / np.std(trade_returns, ddof=1)
+                * np.sqrt(TRADING_DAYS_PER_YEAR)
+            )
+        else:
+            sharpe_ratio = 0.0
 
         return RegimeMetrics(
             regime=MarketRegime.BULL,
@@ -495,12 +526,12 @@ class RegimeEvaluator:
         )
 
 
-def get_baseline_comparison_engine():
+def get_baseline_comparison_engine() -> Any:
     """Get baseline comparison engine for testing."""
 
     # Mock implementation for testing
     class MockStrategy:
-        def evaluate(self, price_data):
+        def evaluate(self, price_data: pd.DataFrame) -> Any:
             return type(
                 "Result",
                 (),
@@ -508,7 +539,8 @@ def get_baseline_comparison_engine():
             )()
 
     class MockEngine:
-        def __init__(self):
+        def __init__(self) -> None:
+            super().__init__()
             self.strategies = {
                 "buy_hold": MockStrategy(),
                 "sma_crossover": MockStrategy(),

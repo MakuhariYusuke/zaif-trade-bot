@@ -13,7 +13,7 @@ from ztb.features.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("OBV")
-def compute_obv(df: pd.DataFrame) -> pd.Series[float]:
+def compute_obv(df: pd.DataFrame) -> pd.Series:
     """Compute OBV (On-Balance Volume)"""
     if not FeatureRegistry.is_cache_enabled():
         direction = np.sign(df["close"].diff().fillna(0))

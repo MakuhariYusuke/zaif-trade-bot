@@ -68,7 +68,8 @@ class ExperimentalWeeklyReporter:
     def _init_db(self) -> None:
         """Initialize SQLite database for historical tracking"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS experimental_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     report_date TEXT,
@@ -82,11 +83,14 @@ class ExperimentalWeeklyReporter:
                     reason_code TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_report_date_feature 
                 ON experimental_history(report_date, feature_name)
-            """)
+            """
+            )
             conn.commit()
 
     def evaluate_all_experimental_features(self) -> List[ExperimentalFeatureMetrics]:

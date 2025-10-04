@@ -1,0 +1,272 @@
+[
+  {
+    "step": 2,
+    "action": "2",
+    "prev_portfolio": 10000.0,
+    "new_portfolio": 9999.989040057373,
+    "prev_position": 0,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.010959942626868724
+  },
+  {
+    "step": 43,
+    "action": "1",
+    "prev_portfolio": 9992.926963000487,
+    "new_portfolio": 9992.91569684372,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.011266156767305802
+  },
+  {
+    "step": 59,
+    "action": "2",
+    "prev_portfolio": 9994.465623864746,
+    "new_portfolio": 9994.45414626541,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.0114775993351941
+  },
+  {
+    "step": 125,
+    "action": "1",
+    "prev_portfolio": 9967.450716291809,
+    "new_portfolio": 9967.43835879364,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012357498168057646
+  },
+  {
+    "step": 137,
+    "action": "2",
+    "prev_portfolio": 9968.40117204132,
+    "new_portfolio": 9968.388647995758,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012524045561804087
+  },
+  {
+    "step": 198,
+    "action": "0",
+    "prev_portfolio": 9935.994466919708,
+    "new_portfolio": 10000.0,
+    "prev_position": -0.05,
+    "new_position": 0,
+    "reward": "-5.0",
+    "portfolio_change": 64.00553308029157
+  },
+  {
+    "step": 8,
+    "action": "2",
+    "prev_portfolio": 10000.0,
+    "new_portfolio": 9999.988974430084,
+    "prev_position": 0,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.011025569916455424
+  },
+  {
+    "step": 131,
+    "action": "1",
+    "prev_portfolio": 9924.277677532196,
+    "new_portfolio": 9924.26525116043,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012426371766196098
+  },
+  {
+    "step": 198,
+    "action": "0",
+    "prev_portfolio": 9961.41356918106,
+    "new_portfolio": 10000.0,
+    "prev_position": 0.05,
+    "new_position": 0,
+    "reward": "-5.0",
+    "portfolio_change": 38.586430818939334
+  },
+  {
+    "step": 23,
+    "action": "1",
+    "prev_portfolio": 10000.0,
+    "new_portfolio": 9999.988922329712,
+    "prev_position": 0,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.011077670287704677
+  },
+  {
+    "step": 105,
+    "action": "2",
+    "prev_portfolio": 10036.845129876709,
+    "new_portfolio": 10036.833048738099,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012081138609573827
+  },
+  {
+    "step": 123,
+    "action": "1",
+    "prev_portfolio": 10034.727950906372,
+    "new_portfolio": 10034.715635045624,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012315860747548868
+  },
+  {
+    "step": 133,
+    "action": "2",
+    "prev_portfolio": 10035.413824739075,
+    "new_portfolio": 10035.401319031525,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012505707549280487
+  },
+  {
+    "step": 198,
+    "action": "0",
+    "prev_portfolio": 10001.786882855988,
+    "new_portfolio": 10000.0,
+    "prev_position": -0.05,
+    "new_position": 0,
+    "reward": "-5.0",
+    "portfolio_change": -1.786882855987642
+  },
+  {
+    "step": 36,
+    "action": "1",
+    "prev_portfolio": 10000.0,
+    "new_portfolio": 9999.988695719147,
+    "prev_position": 0,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.011304280853437376
+  },
+  {
+    "step": 46,
+    "action": "2",
+    "prev_portfolio": 9999.794308876038,
+    "new_portfolio": 9999.782992520142,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.01131635589626967
+  },
+  {
+    "step": 112,
+    "action": "1",
+    "prev_portfolio": 9973.392116276551,
+    "new_portfolio": 9973.379987828064,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012128448486691923
+  },
+  {
+    "step": 148,
+    "action": "2",
+    "prev_portfolio": 9983.616500584412,
+    "new_portfolio": 9983.60379832611,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012702258301942493
+  },
+  {
+    "step": 198,
+    "action": "0",
+    "prev_portfolio": 9961.037707096863,
+    "new_portfolio": 10000.0,
+    "prev_position": -0.05,
+    "new_position": 0,
+    "reward": "-5.0",
+    "portfolio_change": 38.962292903137495
+  },
+  {
+    "step": 20,
+    "action": "1",
+    "prev_portfolio": 10000.0,
+    "new_portfolio": 9999.98891427536,
+    "prev_position": 0,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.011085724639997352
+  },
+  {
+    "step": 27,
+    "action": "2",
+    "prev_portfolio": 10000.25959246292,
+    "new_portfolio": 10000.248432728577,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.011159734343891614
+  },
+  {
+    "step": 87,
+    "action": "1",
+    "prev_portfolio": 9982.348237467193,
+    "new_portfolio": 9982.336382105255,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.011855361937705311
+  },
+  {
+    "step": 116,
+    "action": "2",
+    "prev_portfolio": 9986.369498499298,
+    "new_portfolio": 9986.3572893013,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012209197997435695
+  },
+  {
+    "step": 128,
+    "action": "1",
+    "prev_portfolio": 9985.09398498001,
+    "new_portfolio": 9985.081530521393,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012454458617867203
+  },
+  {
+    "step": 130,
+    "action": "2",
+    "prev_portfolio": 9985.062502576446,
+    "new_portfolio": 9985.050044429016,
+    "prev_position": 0.05,
+    "new_position": -0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.012458147430152167
+  },
+  {
+    "step": 196,
+    "action": "1",
+    "prev_portfolio": 9950.58558879013,
+    "new_portfolio": 9950.572017644501,
+    "prev_position": -0.05,
+    "new_position": 0.05,
+    "reward": "-5.0",
+    "portfolio_change": -0.013571145629612147
+  },
+  {
+    "step": 198,
+    "action": "0",
+    "prev_portfolio": 9950.517263027192,
+    "new_portfolio": 10000.0,
+    "prev_position": 0.05,
+    "new_position": 0,
+    "reward": "-5.0",
+    "portfolio_change": 49.4827369728082
+  }
+]

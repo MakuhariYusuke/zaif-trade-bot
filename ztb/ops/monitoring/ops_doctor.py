@@ -7,9 +7,12 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
-def run_script(script_name, args, cwd=None):
+def run_script(
+    script_name: str, args: list[str], cwd: Optional[str] = None
+) -> tuple[int, str, str]:
     """Run a script and return exit code."""
     cmd = [sys.executable, f"ztb/ztb/ztb/scripts/{script_name}"] + args
     try:
@@ -23,7 +26,7 @@ def run_script(script_name, args, cwd=None):
         return 1, "", str(e)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Comprehensive health check runner")
     parser.add_argument(
         "--correlation-id", required=True, help="Correlation ID for the session"

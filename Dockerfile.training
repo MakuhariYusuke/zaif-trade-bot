@@ -6,49 +6,63 @@
 
 FROM python:3.11-slim
 
-# Set environment variables
+# Set environment variables for better Python performance and security
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    PYTHONPATH=/app \
+    ZTB_LOG_LEVEL=INFO \
+    ZTB_ENABLE_METRICS=false \
+    ZTB_ENABLE_HEALTH_CHECK=false
 
-# Install system dependencies
+# Install system dependencies with minimal footprint
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
     curl \
     nodejs \
     npm \
-    && rm -rf /var/lib/apt/lists/*
+    # Additional dependencies for ML and data processing
+    libgomp1 \
+    libatlas-base-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Create app directory
 WORKDIR /app
 
-# Copy Python requirements first for better caching
-COPY requirements.txt requirements-dev.txt ./
+# Copy Python requirements first for better Docker layer caching
+COPY requirements.txt requirements-dev.txt constraints.txt ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-dev.txt
+# Install Python dependencies with constraints for reproducibility
+RUN pip install --no-cache-dir --constraint constraints.txt -r requirements.txt && \
+    pip install --no-cache-dir --constraint constraints.txt -r requirements-dev.txt
 
 # Copy package files for Node.js dependencies
 COPY package*.json ./
 
 # Install Node.js dependencies
-RUN npm ci --only=production
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy source code
+# Copy source code with .dockerignore exclusions
 COPY . .
 
 # Build TypeScript if needed (optional, for production builds)
 # RUN npm run build
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash app && \
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash --uid 1000 app && \
     chown -R app:app /app
+
+# Switch to non-root user
 USER app
 
-# Default command
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)" || exit 1
+
+# Default command with better error handling
 CMD ["python", "-c", "print('Zaif Trade Bot training environment ready')"]

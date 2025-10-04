@@ -1,0 +1,25 @@
+{
+  "current_step": 51200,
+  "rewards_history": [
+    -149.76010023654288,
+    -86.80647274453212,
+    900.9556711810302,
+    0.0,
+    337.5428451093889
+  ],
+  "steps_history": [
+    10240,
+    20480,
+    30720,
+    40960,
+    51200
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "trading_optimized_reward_v2",
+  "timestamp": "2025-10-02T14:33:48.679955"
+}

@@ -35,8 +35,10 @@ class RLPolicyAdapter:
         """Initialize with trained model path."""
         self.model_path = model_path
         self.model = None
-        # TODO: Load actual PPO model when available
-        # For now, implement a simple rule-based fallback
+        if model_path:
+            from stable_baselines3 import PPO
+
+            self.model = PPO.load(model_path)
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
@@ -46,8 +48,32 @@ class RLPolicyAdapter:
             # Fallback: Simple momentum strategy
             return self._momentum_signal(data, current_position)
 
-        # TODO: Implement actual RL policy inference
-        return {"action": "hold", "confidence": 0.5}
+        # Extract features (exclude metadata columns)
+        exclude_cols = [
+            "ts",
+            "timestamp",
+            "exchange",
+            "pair",
+            "episode_id",
+            "side",
+            "source",
+        ]
+        features = [c for c in data.columns if c not in exclude_cols]
+        print(
+            f"RL features: {len(features)}, data shape: {data.shape}, columns: {data.columns.tolist()}"
+        )
+
+        # Get latest observation
+        import numpy as np
+
+        obs = data[features].iloc[-1].values.astype(np.float32)
+
+        # Predict action
+        action, _ = self.model.predict(obs, deterministic=True)
+
+        # Map action to signal
+        action_map = {0: "hold", 1: "buy", 2: "sell"}
+        return {"action": action_map[int(action)], "confidence": 0.5}
 
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         """Generate signals for backtest (returns DataFrame)."""
@@ -79,8 +105,8 @@ class RLPolicyAdapter:
         # Simple RSI-based signal
         close = data["close"]
         delta = close.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()  # type: ignore[operator]
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()  # type: ignore[operator]
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
 
@@ -153,7 +179,7 @@ class SMACrossoverAdapter:
 class BuyAndHoldAdapter:
     """Buy and hold strategy (benchmark)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize buy and hold strategy."""
         self.initialized = False
 
@@ -188,7 +214,7 @@ class BuyAndHoldAdapter:
         )
 
 
-def create_adapter(strategy_name: str, **kwargs) -> StrategyAdapter:
+def create_adapter(strategy_name: str, **kwargs: Any) -> StrategyAdapter:
     """Factory function to create strategy adapters."""
 
     if strategy_name == "rl":

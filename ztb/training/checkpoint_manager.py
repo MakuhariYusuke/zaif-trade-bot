@@ -15,6 +15,8 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
 
+from ztb.utils.checkpoint import CheckpointManager
+from ztb.utils.errors import handle_error
 from ztb.utils.observability import ObservabilityClient
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,7 @@ class TrainingCheckpointManager:
             save_dir=str(self.save_dir),
             keep_last=self.config.keep_last,
             compress=self.config.compress,
+            enable_wal=True,  # Enable WAL for crash recovery
         )
 
     # ------------------------------------------------------------------
@@ -128,11 +131,19 @@ class TrainingCheckpointManager:
             if self.observability:
                 self.observability.log_event("checkpoint_load_missing")
             return None
+        except Exception as e:
+            handle_error(logger, e, "load_latest() - manager.load_latest()")
+            return None
 
-        self._validate_payload(payload)  # type: ignore[arg-type]
+        try:
+            self._validate_payload(payload)  # type: ignore[arg-type]
+        except Exception as e:
+            handle_error(logger, e, "load_latest() - _validate_payload()")
+            return None
+
         snapshot = TrainingCheckpointSnapshot(
-            step=step, payload=payload, metadata=metadata
-        )  # type: ignore[arg-type]
+            step=step, payload=payload, metadata=metadata  # type: ignore[arg-type]
+        )
         if self.observability:
             self.observability.log_event(
                 "checkpoint_load",

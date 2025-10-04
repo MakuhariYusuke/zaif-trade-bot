@@ -35,7 +35,8 @@ class JobStateDB:
     def _init_db(self):
         """Initialize database schema"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS jobs (
                     id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -46,7 +47,8 @@ class JobStateDB:
                     created_at REAL DEFAULT (strftime('%s', 'now')),
                     updated_at REAL DEFAULT (strftime('%s', 'now'))
                 )
-            """)
+            """
+            )
             conn.commit()
 
     def save_job_state(

@@ -194,7 +194,7 @@ def create_release_bundle(output_dir: Path, canary_results: Dict[str, Any]) -> P
     return zip_path
 
 
-def main():
+def main() -> None:
     """Main release preparation workflow."""
     parser = argparse.ArgumentParser(description="Release preparation orchestrator")
     parser.add_argument(
@@ -225,7 +225,7 @@ def main():
 
     # Step 2: Canary test
     canary_success = True
-    canary_results = {}
+    canary_results: Dict[str, Any] = {}
 
     if not args.skip_canary:
         canary_success, canary_results = run_canary_test(args.canary_duration)

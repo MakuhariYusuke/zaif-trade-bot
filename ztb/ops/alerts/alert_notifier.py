@@ -83,7 +83,7 @@ def send_webhook(
         }
     else:
         # Slack webhook format (default)
-        payload = {"title": title, "correlation_id": correlation_id, "alerts": alerts}
+        payload = {"title": title, "correlation_id": correlation_id, "alerts": alerts}  # type: ignore[dict-item]
 
     max_retries = 3
     for attempt in range(max_retries):
@@ -123,7 +123,7 @@ def send_webhook(
     return False
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Notify alerts via webhook")
     parser.add_argument("--correlation-id", required=True, help="Correlation ID")
     parser.add_argument("--jsonl", type=Path, help="Path to JSONL file")

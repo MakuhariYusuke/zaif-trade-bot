@@ -73,9 +73,7 @@ def validate_evaluation_success_rate(
     trend = (
         "improving"
         if recent_success_rate > older_success_rate
-        else "declining"
-        if recent_success_rate < older_success_rate
-        else "stable"
+        else "declining" if recent_success_rate < older_success_rate else "stable"
     )
 
     return {
@@ -95,7 +93,9 @@ def validate_evaluation_success_rate(
 
 
 def test_feature_computation_stability(
-    feature_func: Callable, ohlc_data: pd.DataFrame, n_runs: int = 10
+    feature_func: Callable[[pd.DataFrame], Any],
+    ohlc_data: pd.DataFrame,
+    n_runs: int = 10,
 ) -> Dict[str, Any]:
     """
     Test feature computation stability across multiple runs
@@ -111,7 +111,7 @@ def test_feature_computation_stability(
     results = []
     errors = []
 
-    for run in range(n_runs):
+    for _ in range(n_runs):
         try:
             result = feature_func(ohlc_data)
             results.append(result)
@@ -145,11 +145,11 @@ def test_feature_computation_stability(
     success_rate = len(results) / n_runs
 
     return {
-        "status": "success"
-        if consistent and success_rate >= 0.9
-        else "warning"
-        if success_rate >= 0.7
-        else "failure",
+        "status": (
+            "success"
+            if consistent and success_rate >= 0.9
+            else "warning" if success_rate >= 0.7 else "failure"
+        ),
         "success_rate": success_rate,
         "consistent": consistent,
         "max_difference": max_diff,
@@ -159,7 +159,7 @@ def test_feature_computation_stability(
 
 
 def test_evaluation_pipeline_robustness(
-    evaluation_func: Callable, test_cases: List[Dict[str, Any]]
+    evaluation_func: Callable[..., Any], test_cases: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """
     Test evaluation pipeline robustness with various edge cases
@@ -186,14 +186,14 @@ def test_evaluation_pipeline_robustness(
 
             test_result = {
                 "test_case": i,
-                "status": "success"
-                if has_expected_keys and not has_error
-                else "failure",
+                "status": (
+                    "success" if has_expected_keys and not has_error else "failure"
+                ),
                 "has_expected_keys": has_expected_keys,
                 "has_error": has_error,
-                "result_keys": list(result.keys())
-                if isinstance(result, dict)
-                else None,
+                "result_keys": (
+                    list(result.keys()) if isinstance(result, dict) else None
+                ),
                 "error": result.get("error"),
             }
 
@@ -247,30 +247,34 @@ def detect_performance_regressions(
     # Calculate baseline metrics
     baseline_successful = [r for r in baseline_data if r["status"] == "success"]
     baseline_metrics = {
-        "computation_time": np.mean(
-            [r["computation_time_ms"] for r in baseline_successful]
-        )
-        if baseline_successful
-        else 0,
-        "nan_rate": np.mean([r["nan_rate"] for r in baseline_successful])
-        if baseline_successful
-        else 0,
-        "success_rate": len(baseline_successful) / len(baseline_data)
-        if baseline_data
-        else 0,
+        "computation_time": (
+            np.mean([r["computation_time_ms"] for r in baseline_successful])
+            if baseline_successful
+            else 0
+        ),
+        "nan_rate": (
+            np.mean([r["nan_rate"] for r in baseline_successful])
+            if baseline_successful
+            else 0
+        ),
+        "success_rate": (
+            len(baseline_successful) / len(baseline_data) if baseline_data else 0
+        ),
     }
 
     # Calculate recent metrics
     recent_successful = [r for r in recent_data if r["status"] == "success"]
     recent_metrics = {
-        "computation_time": np.mean(
-            [r["computation_time_ms"] for r in recent_successful]
-        )
-        if recent_successful
-        else 0,
-        "nan_rate": np.mean([r["nan_rate"] for r in recent_successful])
-        if recent_successful
-        else 0,
+        "computation_time": (
+            np.mean([r["computation_time_ms"] for r in recent_successful])
+            if recent_successful
+            else 0
+        ),
+        "nan_rate": (
+            np.mean([r["nan_rate"] for r in recent_successful])
+            if recent_successful
+            else 0
+        ),
         "success_rate": len(recent_successful) / len(recent_data) if recent_data else 0,
     }
 
@@ -402,7 +406,9 @@ def generate_test_report(
 
 
 def run_comprehensive_evaluation_tests(
-    logger: EvaluationLogger, evaluation_func: Callable, ohlc_data: pd.DataFrame
+    logger: EvaluationLogger,
+    evaluation_func: Callable[..., Any],
+    ohlc_data: pd.DataFrame,
 ) -> Dict[str, Any]:
     """
     Run comprehensive evaluation testing suite
@@ -454,6 +460,6 @@ def run_comprehensive_evaluation_tests(
         if isinstance(result, dict) and "status" in result
     )
 
-    results["overall_status"] = "success" if all_passed else "failure"
+    results["overall_status"] = "success" if all_passed else "failure"  # type: ignore[assignment]
 
     return results

@@ -4,9 +4,11 @@ memory_monitor.py
 Memory monitoring utilities for development and testing
 """
 
-import os
+from typing import cast
 
 import psutil
+
+from ztb.utils.config import ZTBConfig
 
 
 def check_memory_usage(threshold_mb: int = 1000) -> None:
@@ -16,7 +18,8 @@ def check_memory_usage(threshold_mb: int = 1000) -> None:
     Args:
         threshold_mb: Memory usage threshold in MB
     """
-    if os.getenv("ZTB_DEV_MEMORY_WARN") == "1":
+    config = ZTBConfig()
+    if config.get_bool("ZTB_DEV_MEMORY_WARN"):
         process = psutil.Process()
         memory_mb = process.memory_info().rss / 1024 / 1024
         if memory_mb > threshold_mb:
@@ -33,7 +36,7 @@ def get_memory_usage() -> float:
         Memory usage in MB
     """
     process = psutil.Process()
-    return process.memory_info().rss / 1024 / 1024
+    return cast(float, process.memory_info().rss / 1024 / 1024)
 
 
 def log_memory_usage(label: str = "") -> None:

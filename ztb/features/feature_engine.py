@@ -5,10 +5,11 @@ Feature computation engine with stability and efficiency improvements.
 特徴量計算エンジン - 安定性と効率性の改善
 """
 
+import gc
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 import psutil
@@ -17,11 +18,11 @@ import psutil
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features import FeatureRegistry
-from ztb.features.utils.rolling import (
-    generate_intermediate_report,
-    optimize_dataframe_dtypes,
-)
 from ztb.utils.data.data_generation import generate_synthetic_market_data
+from ztb.utils.errors import safe_operation
+
+# Optimize GC for better memory management - more aggressive
+gc.set_threshold(100, 5, 5)  # Even more aggressive garbage collection
 
 
 def compute_features_batch(
@@ -29,72 +30,20 @@ def compute_features_batch(
     feature_names: Optional[List[str]] = None,
     report_interval: int = 10000,
     verbose: bool = True,
-) -> pd.DataFrame:
-    """
-    Compute features in batch with stability and efficiency improvements
-
-    Args:
-        df: Input DataFrame with OHLCV data
-        feature_names: List of feature names to compute (None for all)
-        report_interval: Steps between intermediate reports
-
-    Returns:
-        DataFrame with computed features
-    """
-    # Initialize registry if not already done
-    FeatureRegistry.initialize()
-
-    if feature_names is None:
-        feature_names = FeatureRegistry.list()
-
-    if verbose:
-        print(f"Computing {len(feature_names)} features...")
-
-    results = {}
-    feature_times = {}
-    nan_rates = {}
-    step_count = 0
-
-    for feature_name in feature_names:
-        start_time = time.time()
-
-        try:
-            feature_func = FeatureRegistry.get(feature_name)
-            feature_series = feature_func(df)
-
-            # Store result
-            results[feature_name] = feature_series
-
-            # Calculate metrics
-            computation_time = time.time() - start_time
-            feature_times[feature_name] = computation_time
-            nan_rates[feature_name] = feature_series.isna().mean()
-
-            step_count += 1
-
-            # Generate intermediate report
-            if step_count % report_interval == 0:
-                memory_usage = psutil.Process().memory_info().rss / 1024 / 1024  # MB
-                generate_intermediate_report(
-                    step_count, feature_times, memory_usage, nan_rates
-                )
-                print(f"Generated intermediate report at step {step_count}")
-
-        except Exception as e:
-            print(f"Error computing {feature_name}: {e}")
-            feature_times[feature_name] = 0.0
-            nan_rates[feature_name] = 1.0
-
-    # Combine all features into DataFrame
-    features_df = pd.DataFrame(results)
-
-    # Optimize dtypes
-    config = FeatureRegistry.get_config()
-    if config.get("optimize_dtypes", True):
-        features_df = optimize_dataframe_dtypes(features_df)
-        print("Optimized DataFrame dtypes")
-
-    return features_df
+    enable_chunking: Optional[bool] = None,
+    chunk_size: Optional[int] = None,
+    return_timing: bool = False,
+) -> pd.DataFrame | Tuple[pd.DataFrame, Dict[str, float]]:
+    """Wrapper that delegates to the FeatureRegistry batch computation."""
+    return FeatureRegistry.compute_features_batch(
+        df,
+        feature_names=feature_names,
+        report_interval=report_interval,
+        verbose=verbose,
+        enable_chunking=enable_chunking,
+        chunk_size=chunk_size,
+        return_timing=return_timing,
+    )
 
 
 def run_100k_experiment() -> pd.DataFrame:
@@ -110,9 +59,16 @@ def run_100k_experiment() -> pd.DataFrame:
     df = generate_synthetic_market_data(n_samples=100000, seed=42)
     print(f"Generated {len(df)} samples")
 
-    # Compute features
+    # Compute features with safe operation
     start_time = time.time()
-    features_df = compute_features_batch(df, report_interval=10000, verbose=False)
+    features_df = safe_operation(
+        compute_features_batch,
+        fallback=pd.DataFrame(),
+        operation_name="100k_feature_computation",
+        df=df,
+        verbose=True,
+        return_timing=False
+    )
     total_time = time.time() - start_time
 
     print("\n📊 Experiment Results:")

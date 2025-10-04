@@ -16,13 +16,14 @@ Non-zero exit for hard breaches (RSS/VRAM/stall) or kill-file.
 
 import argparse
 import json
-import os
 import re
 import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
+
+from ztb.utils.config import ZTBConfig
 
 try:
     import psutil
@@ -56,17 +57,18 @@ class TrainingWatcher:
         self.log_dir = log_dir
 
         # Thresholds from env vars with defaults
-        self.stall_min = int(os.getenv("ZTB_WATCH_STALL_MIN", "10"))
-        self.rss_mb = int(os.getenv("ZTB_WATCH_RSS_MB", "2048"))  # 2GB
-        self.vram_mb = int(os.getenv("ZTB_WATCH_VRAM_MB", "4096"))  # 4GB
-        self.err_pct = float(os.getenv("ZTB_WATCH_ERR_PCT", "2.0"))
-        self.reward_sigma = float(os.getenv("ZTB_WATCH_REWARD_SIGMA", "2.0"))
+        config = ZTBConfig()
+        self.stall_min = config.get_int("ZTB_WATCH_STALL_MIN", 10)
+        self.rss_mb = config.get_int("ZTB_WATCH_RSS_MB", 2048)  # 2GB
+        self.vram_mb = config.get_int("ZTB_WATCH_VRAM_MB", 4096)  # 4GB
+        self.err_pct = config.get_float("ZTB_WATCH_ERR_PCT", 2.0)
+        self.reward_sigma = config.get_float("ZTB_WATCH_REWARD_SIGMA", 2.0)
 
         # State tracking
         self.last_step = 0
         self.last_step_time = datetime.now()
-        self.errors_last_hour = []
-        self.rewards = []  # For sigma calculation
+        self.errors_last_hour: List[datetime] = []
+        self.rewards: List[float] = []  # For sigma calculation
         self.hard_breach = False
         self.kill_file = Path("ztb.stop")
 
@@ -74,8 +76,12 @@ class TrainingWatcher:
         self.step_pattern = re.compile(r"global_step=(\d+)")
 
     def emit_alert(
-        self, level: str, alert_type: str, message: str, details: Dict = None
-    ):
+        self,
+        level: str,
+        alert_type: str,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Emit structured JSON alert to file and stdout."""
         alert = {
             "timestamp": datetime.now().isoformat(),
@@ -98,7 +104,7 @@ class TrainingWatcher:
                 with open(metrics_file, "r") as f:
                     data = json.load(f)
                     if "global_step" in data:
-                        return data["global_step"]
+                        return cast(int, data["global_step"])
             except Exception:
                 pass
 
@@ -266,12 +272,12 @@ class TrainingWatcher:
         # For now, skip
         return False
 
-    def parse_log_for_errors(self, line: str):
+    def parse_log_for_errors(self, line: str) -> None:
         """Parse log line for errors."""
         if "error" in line.lower() or "exception" in line.lower():
             self.errors_last_hour.append(datetime.now())
 
-    def watch(self):
+    def watch(self) -> int:
         """Main watch loop."""
         last_status = time.time()
 
@@ -312,7 +318,7 @@ class TrainingWatcher:
 
             time.sleep(10)  # Check every 10s
 
-    def run_once(self):
+    def run_once(self) -> int:
         """Run checks once for testing."""
         exit_code = 0
         if self.check_kill_file():
@@ -330,7 +336,7 @@ class TrainingWatcher:
         return exit_code
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Watch training session for issues")
     parser.add_argument(
         "--correlation-id", required=True, help="Correlation ID for this session"

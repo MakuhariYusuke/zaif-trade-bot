@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Start monitoring processes")
     parser.add_argument(
         "--correlation-id", required=True, help="Correlation ID for the session"

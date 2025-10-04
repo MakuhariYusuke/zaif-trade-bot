@@ -1,0 +1,31 @@
+{
+  "current_step": 81920,
+  "rewards_history": [
+    -1250.0,
+    -2489.98,
+    -3750.0,
+    0.01,
+    -1255.0,
+    -2499.99,
+    -3744.98,
+    0.02
+  ],
+  "steps_history": [
+    10240,
+    20480,
+    30720,
+    40960,
+    51200,
+    61440,
+    71680,
+    81920
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "iterative_100k_full_features_penalty_tuned_iter_01",
+  "timestamp": "2025-10-02T11:56:29.249547"
+}

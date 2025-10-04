@@ -1,0 +1,26 @@
+﻿{
+  "algorithm": "ensemble",
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+  "ensemble_models": [
+    {
+      "path": "models/scalping_15s_balance_test12_balanced_data.zip",
+      "weight": 1.0,
+      "feature_set": "scalping"
+    }
+  ],
+  "aggregation": {
+    "method": "mean_probability",
+    "deterministic": true
+  },
+  "paper_trading": {
+    "episodes": 10,
+    "max_steps": 1000,
+    "initial_balance": 100000.0,
+    "feature_set": "full",
+    "timeframe": "1m"
+  },
+  "metadata": {
+    "description": "Configuration for running ensemble PPO models in unified trainer.",
+    "created_at": "2025-10-03"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "reward_stats": {
+    "mean_total_reward": 1956.055112459821,
+    "std_total_reward": 0.0,
+    "min_total_reward": 1956.055112459821,
+    "max_total_reward": 1956.055112459821,
+    "mean_step_reward": 1.9580131255854063,
+    "total_reward_sum": 19560.55112459821,
+    "win_rate": 1.0,
+    "sharpe_ratio": 0.0
+  },
+  "pnl_stats": {
+    "mean_total_pnl": 71419.38355784584,
+    "std_total_pnl": 0.0,
+    "min_total_pnl": 71419.38355784584,
+    "max_total_pnl": 71419.38355784584,
+    "total_pnl_sum": 714193.8355784584,
+    "sharpe_ratio": 10.0,
+    "sortino_ratio": Infinity,
+    "max_drawdown": 0.0,
+    "max_drawdown_duration_days": 0,
+    "calmar_ratio": Infinity
+  },
+  "trading_stats": {
+    "total_trades": 50,
+    "mean_trades_per_episode": 5.0,
+    "position_change_rate": 0.0,
+    "position_change_variance": 0.0,
+    "hold_ratio": 0.994994994994995,
+    "buy_ratio": 0.005005005005005005,
+    "sell_ratio": 0.0,
+    "min_trades_per_episode": 5,
+    "max_trades_per_episode": 5,
+    "hold_ratio_penalty": 0.9499499499499497,
+    "profit_factor": Infinity,
+    "profit_per_trade": 14283.876711569168,
+    "win_rate": 1.0
+  },
+  "episode_stats": {
+    "num_episodes": 10,
+    "mean_episode_length": 999.0,
+    "total_steps": 9990
+  },
+  "episode_lengths": [
+    999,
+    999,
+    999,
+    999,
+    999,
+    999,
+    999,
+    999,
+    999,
+    999
+  ],
+  "episode_rewards": [
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821,
+    1956.055112459821
+  ],
+  "episode_pnls": [
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584,
+    71419.38355784584
+  ],
+  "data_quality_score": 0.655
+}

@@ -1,0 +1,25 @@
+{
+  "current_step": 51200,
+  "rewards_history": [
+    -21.086631894581583,
+    37.40897522224834,
+    44.32440043638173,
+    -0.03,
+    14.417575222135916
+  ],
+  "steps_history": [
+    10240,
+    20480,
+    30720,
+    40960,
+    51200
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "scalping_15s_balance_test19_buy_weaker",
+  "timestamp": "2025-10-03T23:55:37.026198"
+}

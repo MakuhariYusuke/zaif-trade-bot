@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import AsyncContextManager, Callable, Dict, Optional
 
-from ztb.utils.observability import get_logger
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
