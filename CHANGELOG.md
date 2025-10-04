@@ -1,6 +1,37 @@
 # Changelog
 
-## 3.3.0 - 2025-10-03
+## 3.4.0 - 2025-10-04
+
+### Added
+
+- **Comprehensive Benchmark Suite Enhancement**: Major expansion of evaluation framework with advanced analysis modules
+  - Integrated 6 specialized evaluation analyzers: Performance Attribution, Monte Carlo Simulation, Strategy Robustness, Benchmark Comparison, Risk Parity Analysis, and Cost Sensitivity Analysis
+  - Extended BenchmarkMetrics with comprehensive scoring system (comprehensive_score, risk_adjusted_score, robustness_score, consistency_score)
+  - Holistic model evaluation combining traditional trading metrics with advanced risk and performance analysis
+
+- **Progress Bar Improvements**: Enhanced user experience with tqdm-based progress indicators
+  - Real-time progress bars for model evaluation, extended analysis, and cross-validation
+  - Improved feedback during long-running benchmark operations
+
+- **Evaluation Framework Integration**: Seamless integration of evaluation modules into comprehensive_benchmark.py
+  - Automatic execution of all evaluation analyzers during model assessment
+  - Comprehensive judgment synthesis combining multiple evaluation perspectives
+  - Enhanced reporting with detailed evaluation results
+
+### Performance
+
+- **Evaluation Speed Optimization**: Improved benchmark execution with progress feedback
+- **Comprehensive Analysis**: Multi-dimensional model assessment enabling better trading decisions
+
+### Fixed
+
+- **Environment Compatibility**: Fixed Gym API compatibility issues for stable model evaluation
+- **Observation Space Alignment**: Ensured proper feature dimension matching (26 features) for model compatibility
+
+### Technical
+
+- **Code Quality**: Enhanced type safety and error handling in evaluation framework
+- **Documentation**: Updated evaluation methodology and scoring system documentation
 
 ### Added
 
