@@ -1,6 +1,24 @@
-# Risk Management Module
+# Risk Management Module (v3.4.0)
 
 This module provides comprehensive risk controls for trading operations, including position limits, loss management, and trade validation.
+
+## 🎯 Latest Updates (v3.4.0)
+
+### Integration with Comprehensive Evaluation Framework
+
+The risk management module now integrates with the enhanced evaluation system:
+
+- **Risk-Adjusted Scoring**: Risk metrics feed into comprehensive model evaluation
+- **Monte Carlo Integration**: Probabilistic risk analysis for strategy validation
+- **Cost Sensitivity Analysis**: Transaction cost impact assessment
+- **Strategy Robustness Testing**: Stress testing with risk controls
+
+### Enhanced Risk Analysis
+
+- **VaR Calculation**: Value at Risk assessment using Monte Carlo simulation
+- **Stress Testing**: Market crash scenario analysis
+- **Risk Parity Optimization**: Portfolio risk distribution analysis
+- **Benchmark Comparison**: Risk-adjusted performance vs market benchmarks
 
 ## Features
 
@@ -9,6 +27,7 @@ This module provides comprehensive risk controls for trading operations, includi
 - **Real-time Monitoring**: Drawdown and volatility tracking
 - **Stop Loss Automation**: Trailing stops and take profit rules
 - **Trade Frequency Control**: Rate limiting and cooldown periods
+- **Advanced Analytics**: Integration with comprehensive evaluation framework
 
 ## Quick Start
 
