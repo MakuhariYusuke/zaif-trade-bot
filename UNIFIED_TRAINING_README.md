@@ -1,6 +1,31 @@
-# Unified Training System
+# Unified Training System (v3.4.0)
 
-このシステムは、Zaif Trade Bot の複数のトレーニングアプローチを統合したものです。様々なアルゴリズムとトレードモードを統一的なインターフェースで扱えます。
+このシステムは、Zaif Trade Bot の複数のトレーニングアプローチを統合したものです。様々なアルゴリズムとトレード戦略を統一的なインターフェースで扱えます。
+
+## 🎯 最新機能 (v3.4.0)
+
+### 包括的評価フレームワーク統合
+
+トレーニング完了後のモデル評価に、6つの専門分析モジュールを統合：
+
+- **Performance Attribution**: 収益源泉の詳細分解
+- **Monte Carlo Simulation**: 確率的リスク評価
+- **Strategy Robustness**: 市場変動耐性テスト
+- **Benchmark Comparison**: 業界標準との比較
+- **Risk Parity Analysis**: ポートフォリオ最適化
+- **Cost Sensitivity**: 取引コスト影響分析
+
+### 評価実行例
+
+```bash
+# トレーニング済みモデルの包括的評価
+python comprehensive_benchmark.py --data ml-dataset-enhanced.csv --single-model models/trained_model.zip --episodes 10 --output-dir evaluation_results
+
+# 進捗バー付きクロスバリデーション
+python comprehensive_benchmark.py --data ml-dataset-enhanced.csv --single-model models/trained_model.zip --cv-folds 5 --output-dir cv_results
+```
+
+詳細: [comprehensive_benchmark.py](../comprehensive_benchmark.py), [CHANGELOG.md](../CHANGELOG.md)
 
 ## 🚀 実行マニュアル
 
@@ -101,25 +126,6 @@ export COINCHECK_API_KEY="your_api_key"
 export COINCHECK_API_SECRET="your_api_secret"
 export DISCORD_WEBHOOK="your_webhook_url"  # 通知用（オプション）
 ```
-
-2. **実行**
-```bash
-# デモモード（APIキーなし）
-python live_trade.py --model-path models/scalping_iterative_v1_final.zip --duration-hours 1
-
-# 本番モード（APIキー設定済み）
-python live_trade.py --model-path models/scalping_iterative_v1_final.zip --duration-hours 24
-
-# リスク制限を無効化（テスト/上級者向け）
-python live_trade.py --model-path models/scalping_iterative_v1_final.zip --duration-hours 1 --disable-risk-limits
-```
-
-### リスク管理機能
-
-- **日次損失制限**: 10,000円（デフォルト）
-- **日次トレード数制限**: 50回（デフォルト）
-- **緊急ストップロス**: 5%（デフォルト）
-- **自動停止システム**: 高度なリスク管理
 
 ### クロスプラットフォーム対応
 
