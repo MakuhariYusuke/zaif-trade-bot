@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
-from ztb.training.ppo_trainer import PPOTrainer
+from ztb.training.ppo_trainer_old import PPOTrainer
 
 
 class TestPPOTrainer:
