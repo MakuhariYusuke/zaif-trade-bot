@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
+from typing import cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -64,7 +65,7 @@ def run_evaluation() -> Dict[str, Any]:
 
     import logging
     logger = logging.getLogger(__name__)
-    return safe_operation(logger, perform_evaluation, "run_evaluation()", {})
+    return cast(Dict[str, Any], safe_operation(logger, perform_evaluation, "run_evaluation()", {}))
 
 
 def run_correlation_analysis() -> Optional[Dict[str, Any]]:

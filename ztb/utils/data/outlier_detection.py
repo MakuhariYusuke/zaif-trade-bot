@@ -6,7 +6,7 @@ using various statistical methods (IQR, Z-score, etc.).
 """
 
 import logging
-from typing import Tuple
+from typing import Any, Tuple, cast
 
 import numpy as np
 import pandas as pd
@@ -30,11 +30,14 @@ def detect_outliers_iqr(
     Returns:
         Tuple of (outliers DataFrame, lower_bound, upper_bound)
     """
-    return safe_operation(
-        logger,
-        lambda: _detect_outliers_iqr_impl(data, column),
-        f"detect_outliers_iqr({column})",
-        (pd.DataFrame(), 0.0, 0.0)
+    return cast(
+        Tuple[pd.DataFrame, float, float],
+        safe_operation(
+            logger,
+            lambda: _detect_outliers_iqr_impl(data, column),
+            f"detect_outliers_iqr({column})",
+            (pd.DataFrame(), 0.0, 0.0)
+        )
     )
 
 
@@ -66,11 +69,14 @@ def detect_outliers_zscore(
     Returns:
         DataFrame containing outliers
     """
-    return safe_operation(
-        logger,
-        lambda: _detect_outliers_zscore_impl(data, column, threshold),
-        f"detect_outliers_zscore({column})",
-        pd.DataFrame()
+    return cast(
+        pd.DataFrame,
+        safe_operation(
+            logger,
+            lambda: _detect_outliers_zscore_impl(data, column, threshold),
+            f"detect_outliers_zscore({column})",
+            pd.DataFrame()
+        )
     )
 
 
@@ -84,11 +90,11 @@ def _detect_outliers_zscore_impl(
     z_scores_raw = stats.zscore(series, nan_policy="omit")
 
     # Convert to numpy array, filling NaN with 0
-    z_scores = np.nan_to_num(z_scores_raw, nan=0.0)
+    z_scores = np.nan_to_num(np.array(z_scores_raw), nan=0.0)
 
     # Find outliers
     outlier_mask = np.abs(z_scores) > threshold
-    outliers = data[outlier_mask]
+    outliers = cast(pd.DataFrame, data[outlier_mask])
 
     return outliers
 
@@ -109,11 +115,14 @@ def detect_outliers_isolation_forest(
     Returns:
         DataFrame containing outliers
     """
-    return safe_operation(
-        logger,
-        lambda: _detect_outliers_isolation_forest_impl(data, columns, contamination),
-        f"detect_outliers_isolation_forest({columns})",
-        pd.DataFrame()
+    return cast(
+        pd.DataFrame,
+        safe_operation(
+            logger,
+            lambda: _detect_outliers_isolation_forest_impl(data, columns, contamination),
+            f"detect_outliers_isolation_forest({columns})",
+            pd.DataFrame()
+        )
     )
 
 
@@ -137,7 +146,7 @@ def _detect_outliers_isolation_forest_impl(
     outlier_predictions = iso_forest.fit_predict(X)
 
     # Get outliers (prediction == -1)
-    outliers = data[outlier_predictions == -1]
+    outliers = cast(pd.DataFrame, data[outlier_predictions == -1])
 
     return outliers
 
@@ -146,7 +155,7 @@ def remove_outliers(
     data: pd.DataFrame,
     column: str,
     method: str = "iqr",
-    **kwargs
+    **kwargs: Any
 ) -> pd.DataFrame:
     """
     Remove outliers from DataFrame using specified method.
@@ -160,11 +169,14 @@ def remove_outliers(
     Returns:
         DataFrame with outliers removed
     """
-    return safe_operation(
-        logger,
-        lambda: _remove_outliers_impl(data, column, method, **kwargs),
-        f"remove_outliers({column}, {method})",
-        data.copy()
+    return cast(
+        pd.DataFrame,
+        safe_operation(
+            logger,
+            lambda: _remove_outliers_impl(data, column, method, **kwargs),
+            f"remove_outliers({column}, {method})",
+            data.copy()
+        )
     )
 
 
@@ -172,7 +184,7 @@ def _remove_outliers_impl(
     data: pd.DataFrame,
     column: str,
     method: str = "iqr",
-    **kwargs
+    **kwargs: Any
 ) -> pd.DataFrame:
     """Implementation of outlier removal."""
     if method == "iqr":

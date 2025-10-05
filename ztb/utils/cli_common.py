@@ -78,7 +78,7 @@ class CLIValidator:
     @staticmethod
     def validate_venue(venue: str) -> str:
         """Validate venue name."""
-        supported_venues = ["coincheck"]
+        supported_venues = ["coincheck", "bitflyer", "binance"]
         if venue.lower() not in supported_venues:
             raise ValueError(
                 f"Unsupported venue: {venue}. Supported: {', '.join(supported_venues)}"
@@ -121,7 +121,7 @@ class CommonArgs:
         parser.add_argument(
             "--venue",
             default=default,
-            help=CLIFormatter.format_help("Trading venue", default, ["coincheck"]),
+            help=CLIFormatter.format_help("Trading venue", default, ["coincheck", "bitflyer", "binance"]),
         )
 
     @staticmethod

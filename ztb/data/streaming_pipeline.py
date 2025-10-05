@@ -8,7 +8,7 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Iterator, List, Optional, Sequence
+from typing import Any, Callable, Iterator, List, Optional, Sequence, cast
 
 import pandas as pd
 
@@ -52,7 +52,7 @@ def _default_validator(df: pd.DataFrame) -> pd.DataFrame:
         result = result.drop_duplicates(subset="timestamp").sort_values("timestamp")
         return result.reset_index(drop=True)
 
-    return safe_operation(logger, perform_validation, "_default_validator()", df)
+    return cast(pd.DataFrame, safe_operation(logger, perform_validation, "_default_validator()", df))
 
 
 @dataclass
@@ -378,12 +378,12 @@ class StreamingPipeline:
         return self._compute_features_core(history, rows)
 
     def _compute_features_core(self, history: pd.DataFrame, rows: int) -> pd.DataFrame:
-        features_df = compute_features_batch(
+        features_df = cast(pd.DataFrame, compute_features_batch(
             history.copy(),
             feature_names=list(self.feature_names),
             report_interval=(rows + self.lookback_rows) + 1,
             verbose=False,
-        )
+        ))
 
         combined = pd.concat([history.reset_index(drop=True), features_df], axis=1)
         if rows >= len(combined):

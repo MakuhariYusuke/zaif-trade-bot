@@ -64,7 +64,7 @@ class TrainingCheckpointManager:
         self.config = config or TrainingCheckpointConfig()
         self.observability = observability
         self.correlation_id = observability.correlation_id if observability else None
-        self._manager = CheckpointManager(
+        self._manager = CheckpointManager(  # type: ignore[call-arg]
             save_dir=str(self.save_dir),
             keep_last=self.config.keep_last,
             compress=self.config.compress,

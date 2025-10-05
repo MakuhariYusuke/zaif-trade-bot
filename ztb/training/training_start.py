@@ -39,7 +39,7 @@ def main() -> None:
         return
 
     print(f"Executing: {' '.join(cmd)}")
-    result = run_command_safely(cmd, env=env, cwd=os.path.dirname(__file__))
+    result = run_command_safely(" ".join(cmd))
 
     if result["success"]:
         print("Training started successfully")

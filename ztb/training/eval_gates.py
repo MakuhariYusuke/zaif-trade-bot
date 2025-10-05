@@ -196,8 +196,8 @@ class EvalGates:
         return GateResult(
             name="eval_above_baseline",
             status=status,
-            reason=f"Final eval: {final_eval_reward:.6f} vs baseline: {baseline:.6f}",
-            value=final_eval_reward,
+            reason=f"Final eval: {float(final_eval_reward):.6f} vs baseline: {baseline:.6f}",
+            value=float(final_eval_reward),
             threshold=baseline,
         )
 

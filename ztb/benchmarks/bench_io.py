@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,12 +40,13 @@ def generate_test_data(n_rows: int = 100000) -> pd.DataFrame:
         "bb_lower": np.random.uniform(100, 200, n_rows),
     }
 
-    # Ensure high >= close >= low, etc.
-    for i in range(n_rows):
-        data["high"][i] = max(data["open"][i], data["high"][i], data["close"][i])  # type: ignore
-        data["low"][i] = min(data["open"][i], data["low"][i], data["close"][i])  # type: ignore
+    # Build DataFrame and use pandas vectorized operations which have better
+    # typing support for mypy than numpy ufunc overloads here.
+    df = pd.DataFrame(data)
+    df["high"] = df[["open", "high", "close"]].max(axis=1)
+    df["low"] = df[["open", "low", "close"]].min(axis=1)
 
-    return pd.DataFrame(data)
+    return df
 
 
 def measure_io_performance(
@@ -57,7 +58,8 @@ def measure_io_performance(
     # Write benchmark
     write_start = time.time()
     mem_before_write = process.memory_info().rss
-    cpu_before_write = psutil.cpu_percent(interval=None)
+    # sample CPU percent (we only use the after-sample values)
+    psutil.cpu_percent(interval=None)
 
     parquet_path = (
         temp_dir
@@ -72,9 +74,9 @@ def measure_io_performance(
     # Read benchmark
     read_start = time.time()
     mem_before_read = process.memory_info().rss
-    cpu_before_read = psutil.cpu_percent(interval=None)
+    psutil.cpu_percent(interval=None)
 
-    df_read = read_parquet(parquet_path, config)
+    _ = read_parquet(parquet_path, config)
 
     read_time = time.time() - read_start
     mem_after_read = process.memory_info().rss
@@ -100,9 +102,11 @@ def measure_io_performance(
 
 
 def run_benchmark(
-    n_rows: int = 100000, output_dir: Path = Path("reports")
+    n_rows: int = 100000, output_dir: Optional[Path] = None
 ) -> pd.DataFrame:
     """Run comprehensive I/O benchmark"""
+    if output_dir is None:
+        output_dir = Path("reports")
     output_dir.mkdir(exist_ok=True)
 
     # Generate test data
@@ -194,7 +198,7 @@ def generate_plots(results_df: pd.DataFrame, output_dir: Path) -> None:
     top_configs = grouped.nlargest(3, "read_throughput_mbps")
 
     # Plot throughput
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    _fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
     # Write throughput
     axes[0, 0].bar(range(len(top_configs)), top_configs["write_throughput_mbps"])
@@ -439,4 +443,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()  # type: ignore
+    main()

@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ztb.features import FeatureRegistry
 from ztb.utils.data.data_generation import generate_synthetic_market_data
 from ztb.utils.errors import safe_operation
+from typing import cast
 
 # Optimize GC for better memory management - more aggressive
 gc.set_threshold(100, 5, 5)  # Even more aggressive garbage collection
@@ -61,13 +62,18 @@ def run_100k_experiment() -> pd.DataFrame:
 
     # Compute features with safe operation
     start_time = time.time()
-    features_df = safe_operation(
-        compute_features_batch,
-        fallback=pd.DataFrame(),
-        operation_name="100k_feature_computation",
-        df=df,
-        verbose=True,
-        return_timing=False
+    from typing import cast
+
+    features_df = cast(
+        pd.DataFrame,
+        safe_operation(
+            compute_features_batch,
+            fallback=pd.DataFrame(),
+            operation_name="100k_feature_computation",
+            df=df,
+            verbose=True,
+            return_timing=False,
+        ),
     )
     total_time = time.time() - start_time
 

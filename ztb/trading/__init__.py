@@ -1,8 +1,6 @@
-from .environment import HeavyTradingEnv
-
 # Conditional import for PPO trainer
 try:
-    from .ppo_trainer import (
+    from ztb.training.ppo_trainer_old import (  # type: ignore[attr-defined]
         CheckpointCallback,
         PPOTrainer,
         SafetyCallback,
@@ -13,9 +11,11 @@ try:
 except ImportError:
     _ppo_available = False
     # Create dummy classes to avoid import errors
-    PPOTrainer = None
+    PPOTrainer = None  # type: ignore[misc,assignment]
     SafetyCallback = None
     TensorBoardCallback = None
+
+from .environment.environment import HeavyTradingEnv
 
 __all__ = [
     "HeavyTradingEnv",

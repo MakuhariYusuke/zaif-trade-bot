@@ -1,6 +1,6 @@
 """Time series lag correlation analysis"""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import numpy as np
 import pandas as pd
@@ -14,11 +14,14 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, 
     Lags: [1, 5, 10, 20]
     Returns top 10 pairs by absolute correlation.
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _compute_lag_correlations_impl(frames),
-        context="lag_correlation_analysis",
-        default_result=[],  # Return empty list on error
+    return cast(
+        List[Dict[str, Any]],
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _compute_lag_correlations_impl(frames),
+            context="lag_correlation_analysis",
+            default_result=[],  # Return empty list on error
+        ),
     )
 
 

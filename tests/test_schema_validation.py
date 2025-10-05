@@ -4,11 +4,43 @@ Unit tests for schema validation of trading results.
 """
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, Any
 
 import jsonschema
 import pytest
+
+
+class TestConfig:
+    """Test configuration management."""
+    
+    @staticmethod
+    def get_test_config() -> Dict[str, Any]:
+        """Get test configuration with environment overrides."""
+        base_config = {
+            "test_data_dir": Path(__file__).parent / "test_data",
+            "mock_api_responses": True,
+            "test_timeout": 30,
+            "parallel_tests": os.getenv("PARALLEL_TESTS", "false").lower() == "true",
+        }
+        
+        # Environment-specific overrides
+        if os.getenv("CI"):
+            base_config.update({
+                "test_timeout": 60,
+                "mock_api_responses": True,
+            })
+            
+        return base_config
+    
+    @staticmethod
+    def create_test_data_dir() -> Path:
+        """Create and return test data directory."""
+        test_dir = TestConfig.get_test_config()["test_data_dir"]
+        test_dir.mkdir(exist_ok=True)
+        return test_dir
 
 
 class TestSchemaValidation:

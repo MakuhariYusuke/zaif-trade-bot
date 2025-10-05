@@ -103,6 +103,66 @@ for step in range(1000000):
 trainer.save_checkpoint("final_checkpoint.json")
 ```
 
+## Curriculum Learning
+
+**Role**: Progressive learning approach to address persistent action distribution bias in trading policies.
+
+**Key Components**:
+
+- `ztb.training.curriculum_learning`: P0→P2 staged learning implementation
+- `ztb.training.unified_trainer.UnifiedTrainer._train_curriculum()`: Integration with unified training interface
+- Progressive difficulty stages with balance enforcement
+
+**Curriculum Stages**:
+
+- **P0 (Forced Balance)**: High entropy exploration (ent_coef=0.8) with forced action balancing
+- **P1 (Balanced Transition)**: Moderate entropy (ent_coef=0.6) with balance penalty reduction
+- **P2 (Full Curriculum)**: Low entropy (ent_coef=0.4) with full reward structure
+
+**Features**:
+
+- **Bias Correction**: Addresses persistent BUY/SELL imbalance through staged learning
+- **Balance Penalties**: Dynamic penalties for action distribution deviation from target
+- **Progressive Difficulty**: Gradual reduction of constraints as learning advances
+- **Regime Evaluation**: Automatic evaluation after each stage using regime_analysis
+
+**Training Flow**:
+
+1. P0: Train with forced balance constraints (50k steps)
+2. Evaluate action distribution across market regimes
+3. P1: Relax constraints with balance penalties (100k steps)
+4. Evaluate and validate improvement
+5. P2: Full curriculum with minimal constraints (200k steps)
+6. Final evaluation and model saving
+
+**Usage Example**:
+
+```python
+from ztb.training.unified_trainer import UnifiedTrainer
+
+# Configure for curriculum learning
+config = {
+    "algorithm": "curriculum",
+    "data_path": "ml-dataset-enhanced.csv",
+    "curriculum_stage": "full",  # Will be overridden by stages
+    "total_timesteps": 200000,   # Will be overridden by stages
+}
+
+trainer = UnifiedTrainer(config)
+result = trainer.train()  # Runs P0→P2 automatically
+```
+
+**Configuration**:
+
+```json
+{
+  "algorithm": "curriculum",
+  "data_path": "ml-dataset-enhanced.csv",
+  "model_dir": "models",
+  "checkpoint_dir": "checkpoints"
+}
+```
+
 ## Run Seal
 
 **Role**: Ensures deterministic training runs with environment tracking and seed management.

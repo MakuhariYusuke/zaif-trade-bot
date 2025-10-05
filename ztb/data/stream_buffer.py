@@ -124,13 +124,17 @@ class _Chunk:
 
 def _compress_df(df: pd.DataFrame, compression: str) -> bytes:
     payload = pickle.dumps(df, protocol=pickle.HIGHEST_PROTOCOL)
+    result: Any
     if compression == "zstd" and HAS_ZSTD and zstd is not None:
-        return zstd.ZstdCompressor(level=3).compress(payload)  # type: ignore[no-any-return]
-    if compression == "lz4" and HAS_LZ4 and lz4_frame is not None:
-        return lz4_frame.compress(payload)  # type: ignore[no-any-return]
-    if compression == "gzip":
-        return gzip.compress(payload, compresslevel=6)  # type: ignore[no-any-return]
-    return zlib.compress(payload, level=6)  # type: ignore[no-any-return]
+        result = zstd.ZstdCompressor(level=3).compress(payload)
+    elif compression == "lz4" and HAS_LZ4 and lz4_frame is not None:
+        result = lz4_frame.compress(payload)
+    elif compression == "gzip":
+        result = gzip.compress(payload, compresslevel=6)
+    else:
+        result = zlib.compress(payload, level=6)
+
+    return cast(bytes, result)
 
 
 def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:
@@ -142,6 +146,7 @@ def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:
         payload = gzip.decompress(data)
     else:
         payload = zlib.decompress(data)
+    # pickle.loads returns Any; cast to DataFrame for typing
     return cast(pd.DataFrame, pickle.loads(payload))
 
 

@@ -1,6 +1,6 @@
 """Correlation analysis utilities"""
 
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
 import pandas as pd
 
@@ -21,11 +21,14 @@ def compute_correlations(
     Returns:
         Dict with 'pearson' and 'spearman' DataFrames or None if not computable.
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _compute_correlations_impl(frames, nan_strategy, fill_value),
-        context="correlation_analysis",
-        default_result={"pearson": None, "spearman": None},
+    return cast(
+        Dict[str, Optional[pd.DataFrame]],
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _compute_correlations_impl(frames, nan_strategy, fill_value),
+            context="correlation_analysis",
+            default_result={"pearson": None, "spearman": None},
+        ),
     )
 
 

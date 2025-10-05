@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 parent_path = str(Path(__file__).parent.parent)
 if parent_path not in sys.path:
     sys.path.insert(0, parent_path)
-from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 class EvaluationResult(TypedDict, total=False):
@@ -46,6 +46,8 @@ class EvaluationResult(TypedDict, total=False):
 
 class TradingEvaluator:
     """取引モデルの評価クラス"""
+
+    writer: Any  # TensorBoard SummaryWriter
 
     def __init__(
         self, model_path: str, data_path: str, config: Optional[dict[str, Any]] = None
@@ -74,7 +76,7 @@ class TradingEvaluator:
             self.config.get("tensorboard_log", "./tensorboard/")
         )
         self.tensorboard_log_dir.mkdir(parents=True, exist_ok=True)
-        self.writer = SummaryWriter(
+        self.writer = SummaryWriter(  # type: ignore[no-untyped-call]
             log_dir=str(self.tensorboard_log_dir / "evaluation")
         )
 
@@ -112,7 +114,7 @@ class TradingEvaluator:
             print(f"Cached data to {cache_path}")
 
         print(f"Loaded evaluation data: {len(df)} rows, {len(df.columns)} columns")
-        return df
+        return cast(pd.DataFrame, df)
 
     def _load_model(self) -> PPO:
         """モデルの読み込み"""
@@ -137,12 +139,12 @@ class TradingEvaluator:
 
     def evaluate_model(self) -> Dict[str, Any]:
         """モデルの包括的な評価"""
-        return safe_operation(
+        return cast(Dict[str, Any], safe_operation(
             logger=None,  # Use default logger
             operation=self._evaluate_model_impl,
             context="model_evaluation",
             default_result={},  # Empty dict on error
-        )
+        ))
 
     def _evaluate_model_impl(self) -> Dict[str, Any]:
         """Implementation of model evaluation."""
@@ -524,13 +526,13 @@ class TradingEvaluator:
             )
 
             # Penalize high skew (prefer normal distribution)
-            skew_penalty = min(1.0, abs(skew) / 2.0)
+            skew_penalty: float = min(1.0, abs(skew) / 2.0)
 
             # Penalize extreme kurtosis (prefer moderate peakedness)
-            kurtosis_penalty = min(1.0, abs(kurtosis) / 4.0)
+            kurtosis_penalty: float = min(1.0, abs(kurtosis) / 4.0)
 
             # Higher score for more normal-like distributions
-            quality_score = 1.0 - (skew_penalty * 0.6 + kurtosis_penalty * 0.4)
+            quality_score: float = 1.0 - (skew_penalty * 0.6 + kurtosis_penalty * 0.4)
 
             return max(0.0, quality_score)
         except Exception:
@@ -554,7 +556,7 @@ class TradingEvaluator:
                 return 0.5
 
             # Check if standard deviation is decreasing (improving stability)
-            std_trend = np.polyfit(range(len(rolling_std)), rolling_std, 1)[0]
+            std_trend: float = np.polyfit(range(len(rolling_std)), rolling_std, 1)[0]
 
             # Negative trend (decreasing std) is good
             if std_trend < 0:

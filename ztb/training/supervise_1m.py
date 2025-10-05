@@ -125,7 +125,7 @@ def main() -> int:
                 )
             else:
                 try:
-                    result = run_command_safely(cmd, timeout=3600, cwd=str(Path.cwd()))
+                    result = run_command_safely(" ".join(cmd), timeout=3600)
                     exit_code = result["returncode"]
                     log.write(
                         f"{datetime.now().isoformat()} - Exit code: {exit_code}\n"
