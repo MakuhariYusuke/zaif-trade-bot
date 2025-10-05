@@ -4,7 +4,6 @@ Binary search optimization for clip_range parameter in PPO.
 Uses the base optimizer class for common functionality.
 """
 
-import argparse
 import sys
 from pathlib import Path
 from typing import Union
