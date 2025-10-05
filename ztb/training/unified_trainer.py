@@ -70,18 +70,20 @@ os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 
 import argparse
-import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, Optional
+
+from ztb.utils.file_utils import safe_json_load
+from ztb.utils.path_utils import get_project_root
 
 # Add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 # Add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 # Conditional imports based on algorithm
@@ -396,7 +398,7 @@ class UnifiedTrainer:
 
         try:
             # Change to project root for curriculum learning
-            project_root = Path(__file__).parent.parent.parent
+            project_root = get_project_root()
             os.chdir(project_root)
 
             # Run curriculum learning
@@ -416,8 +418,10 @@ class UnifiedTrainer:
 
 def load_config(config_path: str) -> Dict[str, Any]:
     """Load configuration from JSON file."""
-    with open(config_path, "r", encoding="utf-8-sig") as f:
-        return cast(Dict[str, Any], json.load(f))
+    config = safe_json_load(Path(config_path))
+    if config is None:
+        raise FileNotFoundError(f"Could not load config from {config_path}")
+    return config
 
 
 def main() -> int:

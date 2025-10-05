@@ -8,10 +8,7 @@ PPO Trainer implementations:
 
 # --- 以下、trading/ppo_trainer.pyのPPOTrainerをPPOTrainerAutoHaltとして移植 ---
 
-from collections import deque
-from typing import Any, Callable, Dict, Optional
-import json
-from pathlib import Path
+from ztb.utils.path_utils import ensure_dir
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
@@ -174,7 +171,7 @@ class PPOTrainerAutoHalt:
             "halt_reason": self.halt_reason,
             "is_training": self.is_training,
         }
-        Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(Path(checkpoint_path).parent)
         with open(checkpoint_path, "w") as f:
             json.dump(checkpoint_data, f, indent=2)
         logger.info(f"Checkpoint saved to {checkpoint_path}")
@@ -263,8 +260,6 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 import math
-
-import numpy as np
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
@@ -528,7 +523,7 @@ class PPOTrainer:
         }
 
         # Save to file (simplified - in real implementation would use proper serialization)
-        Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(Path(checkpoint_path).parent)
         with open(checkpoint_path, "w") as f:
             import json
 
