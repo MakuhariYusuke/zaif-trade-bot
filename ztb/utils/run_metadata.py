@@ -100,7 +100,7 @@ class RunMetadata:
 
         try:
             # Get all installed packages
-            for dist in pkg_resources.working_set:  # type: ignore
+            for dist in pkg_resources.working_set:
                 package_name = dist.project_name
                 version = dist.version
 

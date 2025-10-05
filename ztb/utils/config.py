@@ -69,5 +69,43 @@ class ZTBConfig:
                 logger.info(f"  {var}={value}")
 
 
+def get_config_value(config_dict: dict[str, Any], key: str, expected_type: type, default: Any = None) -> Any:
+    """
+    Safely extract and convert configuration values from dict with type validation.
+    
+    Args:
+        config_dict: Configuration dictionary
+        key: Key to extract
+        expected_type: Expected type (str, int, float, bool)
+        default: Default value if key not found or conversion fails
+        
+    Returns:
+        Converted value or default
+    """
+    raw_value = config_dict.get(key)
+    try:
+        if raw_value is None:
+            return default
+            
+        if expected_type == str:
+            return str(raw_value)
+        elif expected_type == int:
+            return int(raw_value) if isinstance(raw_value, (int, str)) else default
+        elif expected_type == float:
+            return float(raw_value) if isinstance(raw_value, (int, float, str)) else default
+        elif expected_type == bool:
+            if isinstance(raw_value, bool):
+                return raw_value
+            elif isinstance(raw_value, str):
+                return raw_value.lower() in ("true", "1", "yes", "on")
+            else:
+                return default
+        else:
+            return raw_value
+    except (ValueError, TypeError):
+        logger.warning(f"Failed to convert config value for {key}: {raw_value}, using default {default}")
+        return default
+
+
 # Global instance
 config = ZTBConfig()
