@@ -5,7 +5,6 @@ Tests both True and False values to find optimal setting.
 Uses the base optimizer class for common functionality.
 """
 
-import argparse
 import sys
 from pathlib import Path
 from typing import Union
