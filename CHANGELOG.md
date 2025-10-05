@@ -11,10 +11,17 @@
 
 ### Technical
 
-- **Type Safety and Code Quality Improvements**: Enhanced type checking and utility consolidation
-  - Reduced mypy errors from 103 to 5 through systematic fixes and utility improvements
-  - Improved code maintainability through centralized utility functions
-  - Enhanced error handling and type validation across configuration and metadata management
+- **Utility Function Horizontal Expansion**: Systematic expansion of existing utility functions across the codebase
+  - Applied `get_config_value()` for type-safe config extraction in `ztb/risk/profiles.py`
+  - Integrated `RunMetadata` class for system info capture in `ztb/trading/backtest/runner.py`
+  - Standardized correlation ID generation using `generate_correlation_id()` in `ztb/trading/live/orders/submission.py`
+  - Reduced mypy errors from 103 to 5 through systematic utility improvements
+
+- **New Utility Modules**: Added comprehensive utility libraries for common operations
+  - Created `ztb/utils/path_utils.py` with `get_project_root()`, `ensure_dir()`, and path management functions
+  - Created `ztb/utils/file_utils.py` with `safe_json_load/dump()` and file I/O utilities
+  - Extended `ztb/utils/config.py` with support for list/dict types and helper functions
+  - Applied utilities in `ztb/training/unified_trainer.py` and `ztb/training/ppo_trainer.py` for consistency
 
 ## 3.6.0 - 2025-10-04
 
