@@ -4,7 +4,6 @@ Binary search optimization for reward function parameters.
 Uses the base optimizer class for common functionality.
 """
 
-import argparse
 import sys
 from pathlib import Path
 from typing import Optional, Union
