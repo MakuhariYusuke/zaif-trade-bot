@@ -6,10 +6,9 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 # Ensure project root is on sys.path
@@ -21,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from ztb.evaluation.evaluate import TradingEvaluator  # noqa: E402
 from ztb.utils.errors import safe_operation
+from typing import cast
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,11 +40,14 @@ def simulate_transaction_costs(
     Returns:
         Dictionary mapping cost to performance metrics
     """
-    return safe_operation(
-        logger=LOGGER,
-        operation=lambda: _simulate_transaction_costs_impl(model_path, cost_range, data_path, output_dir),
-        context="transaction_cost_simulation",
-        default_result={},  # Return empty dict on error
+    return cast(
+        Dict[float, Dict[str, float]],
+        safe_operation(
+            logger=LOGGER,
+            operation=lambda: _simulate_transaction_costs_impl(model_path, cost_range, data_path, output_dir),
+            context="transaction_cost_simulation",
+            default_result={},  # Return empty dict on error
+        ),
     )
 
 

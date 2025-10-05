@@ -26,10 +26,11 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
+import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -37,7 +38,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.environment import HeavyTradingEnv as TradingEnvironment
+from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
 from ztb.training.entrypoints.base_ml_reinforcement import CheckpointData, StepResult
 from ztb.utils import DiscordNotifier
 
@@ -57,8 +58,10 @@ class PaperTrader:
         self.logger = logging.getLogger(__name__)
 
         # Initialize instance variables
-        self.test_df = None
+        self.test_df: Optional[pd.DataFrame] = None
         self.model: Optional[PPO] = None
+        self.env: DummyVecEnv = None  # type: ignore
+        self.episode_results: List[Dict[str, Any]] = []
 
         # Load test data first
         self._load_test_data()
@@ -187,7 +190,7 @@ class PaperTrader:
                 if policy_state:
                     self.model.policy.load_state_dict(policy_state)
                 if value_state and hasattr(self.model, "value_net"):
-                    self.model.value_net.load_state_dict(value_state)  # type: ignore
+                    self.model.value_net.load_state_dict(value_state)
 
                 print("Successfully loaded model using custom checkpoint format")
 
@@ -218,7 +221,7 @@ class PaperTrader:
             if policy_state:
                 self.model.policy.load_state_dict(policy_state)
             if value_state and hasattr(self.model, "value_net"):
-                self.model.value_net.load_state_dict(value_state)  # type: ignore
+                self.model.value_net.load_state_dict(value_state)
 
         except ImportError:
             raise ImportError("lz4 is required to load compressed checkpoints")
@@ -239,6 +242,11 @@ class PaperTrader:
 
     def simulate_trading(self, n_episodes: int = 5) -> Dict[str, Any]:
         """Simulate paper trading for multiple episodes."""
+        if self.model is None:
+            raise ValueError("Model not loaded")
+        if self.test_df is None:
+            raise ValueError("Test data not loaded")
+
         self.logger.info(
             f"Starting paper trading simulation with {n_episodes} episodes"
         )
@@ -274,7 +282,7 @@ class PaperTrader:
         while not done and steps < 10000:  # Max steps per episode
             # Get action from model
             predict_obs = obs[0] if isinstance(obs, tuple) else obs
-            action, _ = self.model.predict(
+            action, _ = cast(PPO, self.model).predict(
                 predict_obs, deterministic=False
             )  # Use stochastic for scalping
 
@@ -282,8 +290,8 @@ class PaperTrader:
             if steps < 3:
                 try:
                     # Get action probabilities if available
-                    dist = self.model.policy.get_distribution(predict_obs)
-                    if hasattr(dist, "distribution") and hasattr(
+                    dist = cast(PPO, self.model).policy.get_distribution(torch.from_numpy(predict_obs).float())
+                    if hasattr(dist, "distribution") and dist.distribution is not None and hasattr(
                         dist.distribution, "probs"
                     ):
                         probs = dist.distribution.probs.detach().cpu().numpy()
@@ -298,13 +306,13 @@ class PaperTrader:
             prev_position = self.position
 
             # Execute action
-            obs, reward, done_vec, info = self.env.step(action)
+            obs, reward, done_vec, _ = self.env.step(action)
             done = done_vec[0]
             reward = reward[0]
 
             # Update from environment
-            self.portfolio_value = self.env.envs[0].portfolio_value
-            self.position = self.env.envs[0].position
+            self.portfolio_value = cast(TradingEnvironment, self.env.envs[0]).portfolio_value
+            self.position = cast(TradingEnvironment, self.env.envs[0]).position
 
             # Record trade if position changed
             if (
@@ -415,7 +423,7 @@ class PaperTrader:
             )
 
         # Action distribution
-        action_counts = {}
+        action_counts: Dict[str, int] = {}
         for trade in self.trades:
             action = trade["action"]
             if isinstance(action, (list, np.ndarray)):

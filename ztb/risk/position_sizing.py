@@ -79,13 +79,16 @@ class PositionSizer:
         Returns:
             List of position sizes with sizing reasons
         """
-        return safe_operation(
-            logger=None,  # Will use default logger
-            operation=lambda: self._calculate_position_sizes_impl(
-                signals, current_prices, portfolio_value, asset_volatilities, correlation_matrix
+        return cast(
+            List[PositionSize],
+            safe_operation(
+                logger=None,  # Will use default logger
+                operation=lambda: self._calculate_position_sizes_impl(
+                    signals, current_prices, portfolio_value, asset_volatilities, correlation_matrix
+                ),
+                context="position_size_calculation",
+                default_result=[],
             ),
-            context="position_size_calculation",
-            default_result=[],
         )
 
     def _calculate_position_sizes_impl(

@@ -9,7 +9,7 @@ import io
 import pstats
 import time
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 import pandas as pd
 import psutil
@@ -19,12 +19,12 @@ from ztb.features import FeatureRegistry
 class PerformanceProfiler:
     """Performance profiling utilities for feature computation"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.process = psutil.Process()
         self._profile_stats: Optional[pstats.Stats] = None
 
     @contextmanager
-    def profile_context(self, name: str = "operation"):
+    def profile_context(self, name: str = "operation") -> Generator[None, None, None]:
         """Context manager for profiling code blocks"""
         profiler = cProfile.Profile()
         profiler.enable()
@@ -57,7 +57,7 @@ class PerformanceProfiler:
             return "No profiling data available"
 
         s = io.StringIO()
-        self._profile_stats.stream = s
+        self._profile_stats.stream = s  # type: ignore[attr-defined]
         self._profile_stats.print_stats(10)
         return s.getvalue()
 

@@ -14,7 +14,7 @@ from typing import List, Optional
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # ローカルモジュールのインポート
-from ztb.trading.ppo_trainer import PPOTrainer
+from ztb.training.ppo_trainer import PPOTrainer
 from ztb.utils import DiscordNotifier, LoggerManager
 from ztb.utils.cli_common import CLIFormatter, CLIValidator, create_standard_parser
 

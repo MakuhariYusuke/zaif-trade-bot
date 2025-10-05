@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,7 +19,7 @@ import sys
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ztb.training.ppo_trainer import PPOTrainer  # noqa: E402
+from ztb.training.ppo_trainer_old import PPOTrainer  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,10 +55,12 @@ def simulate_policy_updates(
             "seed": 42,
         }
 
+        from ztb.utils.config import get_config_value
+        
         trainer = PPOTrainer(
-            data_path=config["data_path"],
+            data_path=get_config_value(config, "data_path", str),
             config=config,
-            checkpoint_dir=config["checkpoint_dir"],
+            checkpoint_dir=get_config_value(config, "checkpoint_dir", str),
         )
 
         # Track metrics over updates
@@ -68,9 +70,9 @@ def simulate_policy_updates(
         policy_losses = []
 
         # Monkey patch to capture metrics
-        original_update = trainer.model.update
+        original_update = trainer.model.update  # type: ignore[union-attr]
 
-        def patched_update(*args, **kwargs):
+        def patched_update(*args: Any, **kwargs: Any) -> Any:
             result = original_update(*args, **kwargs)
             # Extract metrics from the update result
             if hasattr(result, "infos") and result.infos:
@@ -81,7 +83,7 @@ def simulate_policy_updates(
                 policy_losses.append(info.get("policy_loss", 0))
             return result
 
-        trainer.model.update = patched_update
+        trainer.model.update = patched_update  # type: ignore[union-attr]
 
         # Train and collect metrics
         trainer.train(session_id=f"clip_viz_{clip_range}")

@@ -27,7 +27,7 @@ class FunctionCallback(BaseCallback):
             self.func()
         return True
 
-    def __call__(self, *args: Any, **kwargs: Any):
+    def __call__(self, *args: Any, **kwargs: Any) -> None:
         if self.func:
             self.func()
 
@@ -35,7 +35,7 @@ class FunctionCallback(BaseCallback):
 class DSREvaluationCallback(EvalCallback):
     """Evaluation callback with Deflated Sharpe Ratio and bootstrap resampling."""
 
-    best_mean_reward: Optional[float] = None
+    best_mean_reward: Optional[float] = None  # type: ignore[assignment]
     callback_on_new_best: Optional[BaseCallback] = None
     callback_after_eval: Optional[BaseCallback] = None
 

@@ -15,7 +15,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.ppo_trainer import PPOTrainer
+from ztb.trading.training.ppo_trainer import PPOTrainer
 from ztb.utils import DiscordNotifier
 
 
@@ -239,18 +239,18 @@ def main() -> int:
             from ztb.data.streaming_pipeline import StreamingPipeline
 
             streaming_pipeline = StreamingPipeline(
-                batch_size=args.stream_batch_size,
+                batch_size=args.stream_batch_size,  # type: ignore[call-arg]
                 # Add other config as needed
             )
 
         # Create trainer
         trainer = PPOTrainer(
-            data_path=str(data_path) if not args.enable_streaming else None,
+            data_path=str(data_path) if not args.enable_streaming else None,  # type: ignore[arg-type]
             config=config,
             checkpoint_interval=10000,
             checkpoint_dir=args.checkpoint_dir,
-            streaming_pipeline=streaming_pipeline,
-            stream_batch_size=args.stream_batch_size,
+            streaming_pipeline=streaming_pipeline,  # type: ignore[call-arg]
+            stream_batch_size=args.stream_batch_size,  # type: ignore[call-arg]
         )
 
         # Run training

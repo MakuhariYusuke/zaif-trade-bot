@@ -1,5 +1,13 @@
 """
-Centralized seed management for deterministic training.
+Centraliz    try:
+        import numpy as np
+    except Exception:  # pragma: no cover - type checking only
+        np = None  # type: ignore[assignment]
+
+    try:
+        import torch
+    except Exception:  # pragma: no cover - type checking only
+        torch = None  # type: ignore[assignment]anagement for deterministic training.
 
 This module provides unified seed setting across all random number generators
 used in the training pipeline to ensure reproducibility.
@@ -7,16 +15,38 @@ used in the training pipeline to ensure reproducibility.
 
 import os
 import random
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 # Optional imports - gracefully handle missing dependencies
-try:
-    import numpy as np
+if TYPE_CHECKING:
+    # For type checking, import numpy and torch types if available
+    try:
+        import numpy as np
+    except Exception:  # pragma: no cover - type checking only
+        np = None  # type: ignore[assignment]
 
+    try:
+        import torch
+    except Exception:  # pragma: no cover - type checking only
+        torch = None  # type: ignore[assignment]
     HAS_NUMPY = True
-except ImportError:
-    HAS_NUMPY = False
-    np = None  # type: ignore[assignment]
+    HAS_TORCH = True
+else:
+    try:
+        import numpy as np
+
+        HAS_NUMPY = True
+    except ImportError:
+        HAS_NUMPY = False
+        np = None
+
+    try:
+        import torch
+
+        HAS_TORCH = True
+    except ImportError:
+        HAS_TORCH = False
+        torch = None
 
 try:
     import torch
@@ -51,19 +81,20 @@ class SeedManager:
 
         # Set NumPy seed
         if HAS_NUMPY:
-            np.random.seed(seed)  # type: ignore[attr-defined]
+            np.random.seed(seed)
 
         # Set PyTorch seeds and enable deterministic behavior
         if HAS_TORCH:
-            torch.manual_seed(seed)  # type: ignore[attr-defined]
-            torch.cuda.manual_seed(seed)  # type: ignore[attr-defined]
-            torch.cuda.manual_seed_all(seed)  # type: ignore[attr-defined]
+            # torch may be dynamically absent at runtime; guarded by HAS_TORCH
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
 
             # Enable deterministic algorithms
             if self.determinism_enabled:
                 self._enable_torch_determinism()
 
-    def _enable_torch_determinism(self) -> None:  # type: ignore[misc]
+    def _enable_torch_determinism(self) -> None:
         """Enable deterministic behavior in PyTorch."""
         if not HAS_TORCH:
             return
@@ -81,7 +112,7 @@ class SeedManager:
         # Set environment variables for additional determinism
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-    def disable_determinism(self) -> None:  # type: ignore[misc]
+    def disable_determinism(self) -> None:
         """Disable deterministic behavior for performance."""
         self.determinism_enabled = False
 
@@ -138,7 +169,7 @@ def get_seed_manager() -> SeedManager:
     """Get global seed manager instance."""
     global _seed_manager
     if _seed_manager is None:
-        _seed_manager = SeedManager()  # type: ignore[no-untyped-call]
+        _seed_manager = SeedManager()
     return _seed_manager
 
 

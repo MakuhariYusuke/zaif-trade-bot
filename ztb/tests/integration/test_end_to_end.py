@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 # Import modules to test
-from ztb.trading.ppo_trainer import PPOTrainer
+from ztb.trading.training.ppo_trainer import PPOTrainer
 
 # from scripts.main import run_training_pipeline
 

@@ -8,17 +8,17 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy.stats import pearsonr
-from sklearn.feature_selection import (  # type: ignore[import-untyped]
+from sklearn.feature_selection import (
     mutual_info_regression,
 )
-from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
+from sklearn.linear_model import LinearRegression
 
 # プロジェクトルートをパスに追加
 project_root = str(Path(__file__).parent.parent.parent)
@@ -50,7 +50,7 @@ def generate_synthetic_data(n_rows: int = 10000) -> pd.DataFrame:
 
     df = pd.DataFrame(
         {
-            "ts": dates.view("int64") // 10**9,
+            "ts": (dates.astype('int64') // 10**9),
             "close": close,
             "high": high,
             "low": low,
@@ -68,11 +68,14 @@ def calculate_correlations(
     df: pd.DataFrame, target_col: str = "return"
 ) -> Dict[str, pd.DataFrame]:
     """相関計算"""
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _calculate_correlations_impl(df, target_col),
-        context="correlation_calculation",
-        default_result={"pearson": pd.DataFrame(), "spearman": pd.DataFrame()},
+    return cast(
+        Dict[str, pd.DataFrame],
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _calculate_correlations_impl(df, target_col),
+            context="correlation_calculation",
+            default_result={"pearson": pd.DataFrame(), "spearman": pd.DataFrame()},
+        )
     )
 
 
@@ -93,11 +96,14 @@ def _calculate_correlations_impl(
 
 def calculate_vif(df: pd.DataFrame) -> pd.DataFrame:
     """VIF計算"""
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _calculate_vif_impl(df),
-        context="vif_calculation",
-        default_result=pd.DataFrame(columns=["feature", "vif", "high_vif"]),
+    return cast(
+        pd.DataFrame,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _calculate_vif_impl(df),
+            context="vif_calculation",
+            default_result=pd.DataFrame(columns=["feature", "vif", "high_vif"]),
+        )
     )
 
 
@@ -130,11 +136,14 @@ def calculate_mutual_info(
     df: pd.DataFrame, horizons: List[int]
 ) -> Dict[str, pd.DataFrame]:
     """相互情報量計算"""
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _calculate_mutual_info_impl(df, horizons),
-        context="mutual_info_calculation",
-        default_result={f"h{h}": pd.DataFrame(columns=["feature", "mi"]) for h in horizons},
+    return cast(
+        Dict[str, pd.DataFrame],
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _calculate_mutual_info_impl(df, horizons),
+            context="mutual_info_calculation",
+            default_result={f"h{h}": pd.DataFrame(columns=["feature", "mi"]) for h in horizons},
+        )
     )
 
 
@@ -168,11 +177,14 @@ def _calculate_mutual_info_impl(
 
 def check_leaks(df: pd.DataFrame) -> pd.DataFrame:
     """リークチェック"""
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _check_leaks_impl(df),
-        context="leak_check",
-        default_result=pd.DataFrame(columns=["feature", "corr_current", "corr_future", "warning", "reason"]),
+    return cast(
+        pd.DataFrame,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _check_leaks_impl(df),
+            context="leak_check",
+            default_result=pd.DataFrame(columns=["feature", "corr_current", "corr_future", "warning", "reason"]),
+        )
     )
 
 
@@ -246,7 +258,7 @@ def main() -> None:
         all_features.extend(manager.get_enabled_features(wave))
 
     # 特徴量計算
-    df_with_features = manager.compute_features(df, wave=None)
+    df_with_features = manager.compute_features(df)
 
     # リターン追加
     df_with_features["return"] = df_with_features["close"].pct_change().fillna(0)

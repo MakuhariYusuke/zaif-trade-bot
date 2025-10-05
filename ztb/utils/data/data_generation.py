@@ -360,17 +360,20 @@ def save_parquet_monthly_chunked(
 def generate_synthetic_data(
     n_rows: int = 5000,
     freq: str = "1H",
-    episode_length: Optional[int] = 1000,
-    volume_range: tuple = (1000, 10000),
+    episode_length: Optional[int] = None,
+    volume_range: tuple[float, float] = (1000, 10000),
 ) -> pd.DataFrame:
     """合成データを生成（学習用）"""
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _generate_synthetic_data_impl(
-            n_rows, freq, episode_length, volume_range
+    return cast(
+        pd.DataFrame,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _generate_synthetic_data_impl(
+                n_rows, freq, episode_length, volume_range
+            ),
+            context="synthetic_data_generation",
+            default_result=pd.DataFrame(),  # Return empty DataFrame on failure
         ),
-        context="synthetic_data_generation",
-        default_result=pd.DataFrame(),  # Return empty DataFrame on failure
     )
 
 
@@ -378,7 +381,7 @@ def _generate_synthetic_data_impl(
     n_rows: int = 5000,
     freq: str = "1H",
     episode_length: Optional[int] = 1000,
-    volume_range: tuple = (1000, 10000),
+    volume_range: tuple[float, float] = (1000, 10000),
 ) -> pd.DataFrame:
     """Implementation of synthetic data generation."""
     np.random.seed(42)
@@ -402,7 +405,7 @@ def _generate_synthetic_data_impl(
 
     df = pd.DataFrame(
         {
-            "ts": dates.view("int64") // 10**9,
+            "ts": dates.astype("int64") // 10**9,
             "close": close,
             "high": high,
             "low": low,

@@ -377,9 +377,9 @@ class ComprehensiveFeatureReEvaluator:
             print(f"Config file not found: {self.config_path}")
             return {}
 
-    def load_harmful_info(self) -> Dict[str, Dict]:
+    def load_harmful_info(self) -> Dict[str, Dict[str, Any]]:
         """Load harmful features information from markdown"""
-        harmful_info: Dict[str, Dict] = {}
+        harmful_info: Dict[str, Dict[str, Any]] = {}
 
         if not os.path.exists(self.harmful_path):
             print(f"Harmful features file not found: {self.harmful_path}")
@@ -419,7 +419,7 @@ class ComprehensiveFeatureReEvaluator:
             if self.price_data_path.endswith(".parquet"):
                 # Optimized Parquet loading - only essential columns
                 try:
-                    import pyarrow.parquet as pq  # type: ignore
+                    import pyarrow.parquet as pq
 
                     parquet_file = pq.ParquetFile(self.price_data_path)
                     available_columns = set(parquet_file.schema.names)
