@@ -22,7 +22,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from ztb.features import get_feature_manager
-from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:

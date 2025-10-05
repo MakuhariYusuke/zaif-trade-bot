@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -81,7 +82,7 @@ def objective_function(**params: Any) -> float:
         return 1000  # Large penalty for failed runs
 
 
-@use_named_args(SEARCH_SPACE)
+@use_named_args(SEARCH_SPACE)  # type: ignore[misc]
 def wrapped_objective(**params: Any) -> float:
     """Wrapped objective function for skopt."""
     return objective_function(**params)

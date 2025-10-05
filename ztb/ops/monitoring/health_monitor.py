@@ -5,7 +5,7 @@ Health monitoring for the 24/7 trading service.
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import psutil
 
@@ -29,16 +29,19 @@ class HealthMonitor:
         Returns:
             Dict containing health status and metrics
         """
-        return safe_operation(
-            logger=self.logger,
-            operation=self._check_overall_health_impl,
-            context="health_check",
-            default_result={
-                "timestamp": time.time(),
-                "service": self.service_name,
-                "status": "unhealthy",
-                "error": "Health check failed",
-            },
+        return cast(
+            Dict[str, Any],
+            safe_operation(
+                logger=self.logger,
+                operation=self._check_overall_health_impl,
+                context="health_check",
+                default_result={
+                    "timestamp": time.time(),
+                    "service": self.service_name,
+                    "status": "unhealthy",
+                    "error": "Health check failed",
+                },
+            ),
         )
 
     def _check_overall_health_impl(self) -> Dict[str, Any]:

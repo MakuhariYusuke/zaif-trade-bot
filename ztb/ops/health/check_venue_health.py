@@ -37,9 +37,18 @@ class VenueHealthChecker:
         self.symbol = symbol
         self.timeout = timeout
 
-        # Coincheck API endpoints
-        self.rest_base = "https://coincheck.com"
-        self.ws_url = "wss://ws-api.coincheck.com/"
+        # Venue-specific API endpoints
+        if venue == "coincheck":
+            self.rest_base = "https://coincheck.com"
+            self.ws_url = "wss://ws-api.coincheck.com/"
+        elif venue == "bitflyer":
+            self.rest_base = "https://api.bitflyer.com"
+            self.ws_url = "wss://ws.lightstream.bitflyer.com/json-rpc"
+        elif venue == "binance":
+            self.rest_base = "https://api.binance.com"
+            self.ws_url = "wss://stream.binance.com:9443/ws"
+        else:
+            raise ValueError(f"Unsupported venue: {venue}")
 
         # Health check results
         self.results: Dict[str, Any] = {
@@ -60,19 +69,33 @@ class VenueHealthChecker:
             socket.gethostbyname("8.8.8.8")
             self.results["connectivity"]["internet"] = True
             return True
-        except socket.gaierror:
+        except (socket.gaierror, OSError):
             self.results["connectivity"]["internet"] = False
             return False
 
     def check_rest_api(self) -> bool:
         """Check REST API connectivity and measure latency."""
         try:
-            # Coincheck ticker endpoint
-            url = f"{self.rest_base}/api/exchange/ticker"
+            # Venue-specific ticker endpoints
+            if self.venue == "coincheck":
+                url = f"{self.rest_base}/api/exchange/ticker"
+                rate_limit_header = "X-RateLimit-Remaining"
+                rate_reset_header = "X-RateLimit-Reset"
+            elif self.venue == "bitflyer":
+                url = f"{self.rest_base}/v1/ticker"
+                rate_limit_header = None  # bitFlyer doesn't use standard rate limit headers
+                rate_reset_header = None
+            elif self.venue == "binance":
+                url = f"{self.rest_base}/api/v3/ticker/price?symbol={self.symbol.upper()}"
+                rate_limit_header = "X-MBX-USED-WEIGHT-1M"
+                rate_reset_header = None
+            else:
+                url = f"{self.rest_base}/api/exchange/ticker"  # fallback
+                rate_limit_header = "X-RateLimit-Remaining"
+                rate_reset_header = "X-RateLimit-Reset"
+
             start_time = time.time()
-
             response = requests.get(url, timeout=self.timeout)
-
             latency_ms = (time.time() - start_time) * 1000
 
             if response.status_code == 200:
@@ -80,13 +103,15 @@ class VenueHealthChecker:
                 self.results["latency"]["rest_ms"] = round(latency_ms, 2)
 
                 # Check rate limit headers if available
-                remaining = response.headers.get("X-RateLimit-Remaining")
-                reset_time = response.headers.get("X-RateLimit-Reset")
+                if rate_limit_header:
+                    remaining = response.headers.get(rate_limit_header)
+                    if remaining:
+                        self.results["rate_limits"]["remaining"] = int(remaining)
 
-                if remaining:
-                    self.results["rate_limits"]["remaining"] = int(remaining)
-                if reset_time:
-                    self.results["rate_limits"]["reset_time"] = int(reset_time)
+                if rate_reset_header:
+                    reset_time = response.headers.get(rate_reset_header)
+                    if reset_time:
+                        self.results["rate_limits"]["reset_time"] = int(reset_time)
 
                 return True
             else:
@@ -104,19 +129,39 @@ class VenueHealthChecker:
         try:
             start_time = time.time()
 
+            # Venue-specific WebSocket connection and message format
+            if self.venue == "coincheck":
+                ping_msg = {
+                    "jsonrpc": "2.0",
+                    "method": "subscribe",
+                    "params": {"channel": f"btc_jpy-ticker"},
+                    "id": 1,
+                }
+            elif self.venue == "bitflyer":
+                ping_msg = {
+                    "jsonrpc": "2.0",
+                    "method": "subscribe",
+                    "params": {"channel": "lightning_ticker_BTC_JPY"},
+                    "id": 1,
+                }
+            elif self.venue == "binance":
+                ping_msg = {
+                    "method": "SUBSCRIBE",
+                    "params": [f"{self.symbol.lower()}@ticker"],
+                    "id": 1,
+                }
+            else:
+                ping_msg = {
+                    "jsonrpc": "2.0",
+                    "method": "subscribe",
+                    "params": {"channel": f"btc_jpy-ticker"},
+                    "id": 1,
+                }
+
             async with websockets.connect(
                 self.ws_url, extra_headers={"User-Agent": "HealthCheck/1.0"}
             ) as websocket:
                 connect_time = (time.time() - start_time) * 1000
-
-                # Send a simple ping or subscription message
-                # Coincheck WebSocket expects JSON-RPC format
-                ping_msg = {
-                    "jsonrpc": "2.0",
-                    "method": "subscribe",
-                    "params": {"channel": f"btc_jpy-ticker"},  # Simplified channel name
-                    "id": 1,
-                }
 
                 await websocket.send(json.dumps(ping_msg))
 
@@ -158,7 +203,8 @@ class VenueHealthChecker:
         self.results["timestamp"] = time.time()
 
         # Check internet first
-        if not self.check_internet_connectivity():
+        internet_ok = self.check_internet_connectivity()
+        if not internet_ok:
             self.results["status"] = "offline"
             return self.results
 

@@ -1,12 +1,14 @@
+"""Utility error types and a backwards-compatible safe_operation.
+
+This module provides a lightweight TradingBotError hierarchy and a
+flexible `safe_operation` helper. Many call-sites in the codebase call
+`safe_operation` with different argument orders and keywords (historic
+API drift). To reduce widespread mypy "call-arg" issues and to be
+backwards-compatible, `safe_operation` accepts either style and will
+forward arbitrary args/kwargs to the wrapped operation.
 """
-Unified exception types for the trading bot.
 
-Provides standardized error handling without bare except clauses.
-"""
-
-from typing import Any, Callable, Dict, Optional, TypeVar
-
-T = TypeVar('T'), Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 
 class TradingBotError(Exception):
@@ -21,78 +23,110 @@ class TradingBotError(Exception):
 class ConfigurationError(TradingBotError):
     """Configuration-related errors."""
 
-    pass
-
 
 class ValidationError(TradingBotError):
     """Data validation errors."""
-
-    pass
 
 
 class NetworkError(TradingBotError):
     """Network and API communication errors."""
 
-    pass
-
 
 class DatabaseError(TradingBotError):
     """Database operation errors."""
-
-    pass
 
 
 class TradingError(TradingBotError):
     """Trading operation errors."""
 
-    pass
-
 
 class IdempotencyError(TradingBotError):
     """Idempotency-related errors."""
-
-    pass
 
 
 class LockError(TradingBotError):
     """Locking and concurrency errors."""
 
-    pass
-
 
 def handle_error(logger: Any, error: Exception, context: str = "", reraise: bool = True) -> None:
-    """
-    Unified error handling with consistent logging.
+    """Log and optionally re-raise an exception.
 
-    Args:
-        logger: Logger instance for error reporting
-        error: The exception that occurred
-        context: Additional context about where the error occurred
-        reraise: Whether to re-raise the exception after logging
+    This helper keeps calling code concise while making sure exceptions
+    are not lost.
     """
     error_msg = f"{context}: {str(error)}" if context else str(error)
-    logger.error(error_msg, exc_info=True)
+    try:
+        logger.error(error_msg, exc_info=True)
+    except Exception:
+        # Be defensive: logging should not crash the error handler
+        pass
 
     if reraise:
         raise error
 
 
-def safe_operation(logger: Any, operation: Callable[[], Any], context: str = "", default_result: Any = None) -> Any:
-    """
-    Execute an operation safely with unified error handling.
+def safe_operation(*args: Any, **kwargs: Any) -> Any:
+    """Execute an operation safely, supporting multiple calling styles.
 
-    Args:
-        logger: Logger instance for error reporting
-        operation: Callable to execute
-        context: Context for error messages
-        default_result: Value to return on error
+    Supported invocation patterns (both are used in the codebase):
+    - safe_operation(logger, operation=callable, ...)
+    - safe_operation(operation_callable, fallback=..., df=..., verbose=True)
 
-    Returns:
-        Result of operation or default_result on error
+    The helper will:
+    - detect the operation callable and optional logger
+    - accept both `default_result` and `fallback` as the return-on-error
+    - accept `context` or `operation_name` as a context string for logging
+    - forward any remaining kwargs to the operation when calling it
     """
+    # Normalize common control keywords
+    default_result = kwargs.pop("default_result", kwargs.pop("fallback", None))
+    context = kwargs.pop("context", kwargs.pop("operation_name", ""))
+    reraise_critical = kwargs.pop("reraise_critical", False)
+    error_types = kwargs.pop("error_types", None)
+
+    logger: Optional[Any] = None
+    operation: Optional[Callable[..., Any]] = None
+    call_args: tuple[Any, ...] = ()
+
+    # Determine operation and logger from positional args or kwargs
+    if args:
+        if callable(args[0]):
+            operation = args[0]
+            call_args = args[1:]
+            logger = kwargs.pop("logger", None)
+        else:
+            # First positional arg is likely a logger
+            logger = args[0]
+            operation = kwargs.pop("operation", None)
+            call_args = args[1:]
+    else:
+        operation = kwargs.pop("operation", None)
+        logger = kwargs.pop("logger", None)
+
+    if operation is None:
+        raise ValueError("safe_operation requires an operation callable")
+
+    # Remaining kwargs are intended to be forwarded to the operation call
+    call_kwargs = kwargs
+
     try:
-        return operation()
-    except Exception as e:
-        error_msg = f"{context}: {str(e)}" if context else str(e)
-        logger.error(error_msg, exc_info=True)
-        return default_result
+        result = operation(*call_args, **call_kwargs)
+        return result
+    except Exception as e:  # noqa: BLE001 - we intentionally catch exceptions to return default
+        # If caller asked to only handle specific types, re-raise others
+        if error_types is not None and not isinstance(e, tuple(error_types)):
+            raise
+
+        # Re-raise critical trading errors if requested
+        if reraise_critical and isinstance(e, TradingBotError):
+            raise
+
+        # Log if logger is available
+        msg = f"{context}: {e}" if context else str(e)
+        if logger is not None:
+            try:
+                logger.error(msg, exc_info=True)
+            except Exception:
+                pass
+
+    return default_result

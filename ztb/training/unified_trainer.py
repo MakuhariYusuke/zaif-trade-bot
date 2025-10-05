@@ -30,6 +30,12 @@ ALGORITHMS:
    - Supports weighted voting and risk management
    - Best for: Leveraging multiple models for robust trading decisions
 
+5. Curriculum Learning (algorithm: 'curriculum')
+   - Uses curriculum_learning.py for progressive learning
+   - P0→P2 staged learning with forced balance → balanced transition → full curriculum
+   - Addresses action distribution bias through progressive difficulty
+   - Best for: Resolving persistent BUY/SELL bias in trading policies
+
 USAGE:
 ------
 python -m ztb.training.unified_trainer --config config.json --algorithm ppo
@@ -68,7 +74,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -90,6 +96,9 @@ except ImportError:
 
 from ztb.training.entrypoints.base_ml_reinforcement import MLReinforcementExperiment
 from ztb.utils import DiscordNotifier
+
+# Import trading module to register environments
+import ztb.trading
 
 
 class UnifiedTrainer:
@@ -145,6 +154,8 @@ class UnifiedTrainer:
             return self._train_iterative()
         elif self.algorithm == "ensemble":
             return self._train_ensemble()
+        elif self.algorithm == "curriculum":
+            return self._train_curriculum()
         else:
             raise ValueError(f"Unknown algorithm: {self.algorithm}")
 
@@ -158,14 +169,14 @@ class UnifiedTrainer:
         os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
         try:
-            from ztb.trading import PPOTrainer
+            from ztb.training.ppo_trainer import PPOTrainer
         except ImportError as e:
             raise ImportError(
                 f"PPO training is not available due to import failure: {e}. Try using 'base_ml' algorithm instead."
             )
 
         trainer = PPOTrainer(
-            data_path=self.config.get("data_path"),
+            data_path=self.config.get("data_path"),  # type: ignore[arg-type]
             config=self.config,
             checkpoint_dir=self.config.get("checkpoint_dir", "checkpoints"),
         )
@@ -233,6 +244,7 @@ class UnifiedTrainer:
                 operation_name=f"PPO Training ({self.config.get('session_id', 'iterative_session')})",
                 estimated_time=f"~{total_timesteps // 1000}k steps, several hours",
                 risk_description="High CPU/memory usage, large log files, potential system slowdown",
+                message="This will train a PPO model for a long time. Continue?",
             ):
                 logger.info("Training cancelled by user")
                 return None
@@ -296,14 +308,14 @@ class UnifiedTrainer:
 
         # DEBUG: Print sys.argv
         print(f"DEBUG: sys.argv = {sys.argv}")
-        print(f"DEBUG: feature-set value = {self.config.get('feature_set', 'full')}")  # type: ignore[unreachable]
+        print(f"DEBUG: feature-set value = {self.config.get('feature_set', 'full')}")
 
         # Add optional arguments
         if self.dry_run:
             sys.argv.append("--dry-run")
         if self.force:
             sys.argv.append("--force")
-        if self.enable_streaming:
+        if self.enable_streaming:  # type: ignore[unreachable]
             sys.argv.extend(
                 [
                     "--enable-streaming",
@@ -324,7 +336,7 @@ class UnifiedTrainer:
 
     def _train_ensemble(self) -> Any:
         """Train using ensemble approach (load and combine existing models)."""
-        from ztb.trading.ensemble import EnsembleTradingSystem
+        from ztb.training.ensemble import EnsembleTradingSystem
 
         # Get model configurations from config
         model_configs = self.config.get("ensemble_models", [])
@@ -366,11 +378,46 @@ class UnifiedTrainer:
 
         return ensemble_system
 
+    def _train_curriculum(self) -> Any:
+        """Train using curriculum learning approach (P0→P2 staged learning)."""
+        from ztb.training.curriculum_learning import main as curriculum_main
+
+        # Set up environment for curriculum learning
+        self.logger.info("Starting curriculum learning (P0→P2 staged approach)")
+
+        # Validate data path
+        data_path = self.config.get("data_path", "ml-dataset-enhanced.csv")
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Data file not found: {data_path}")
+
+        # Curriculum learning uses its own main function
+        # We need to temporarily modify the working directory or config
+        original_cwd = os.getcwd()
+
+        try:
+            # Change to project root for curriculum learning
+            project_root = Path(__file__).parent.parent.parent
+            os.chdir(project_root)
+
+            # Run curriculum learning
+            curriculum_main()
+
+            # Return success indicator
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Curriculum learning failed: {e}")
+            return False
+
+        finally:
+            # Restore original working directory
+            os.chdir(original_cwd)
+
 
 def load_config(config_path: str) -> Dict[str, Any]:
     """Load configuration from JSON file."""
     with open(config_path, "r", encoding="utf-8-sig") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def main() -> int:
@@ -382,7 +429,7 @@ def main() -> int:
     parser.add_argument(
         "--algorithm",
         type=str,
-        choices=["ppo", "base_ml", "iterative", "ensemble"],
+        choices=["ppo", "base_ml", "iterative", "ensemble", "curriculum"],
         help="Override algorithm from config file",
     )
     parser.add_argument(

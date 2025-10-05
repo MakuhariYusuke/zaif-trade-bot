@@ -32,7 +32,7 @@ if "ztb.features" not in sys.modules:
 
 from ztb.data.coin_gecko_stream import MarketDataBatch, StreamConfig
 from ztb.data.streaming_pipeline import StreamingPipeline
-from ztb.trading.ppo_trainer import PPOTrainer
+from ztb.trading.training.ppo_trainer import PPOTrainer
 
 
 class SyntheticStream:

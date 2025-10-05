@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 
 
 def sharpe_ratio(
-    returns: Union[List[float], NDArray[np.floating]],
+    returns: Union[List[float], NDArray[np.floating[Any]]],
     risk_free_rate: float = 0.0,
     periods_per_year: int = 252,
 ) -> float:

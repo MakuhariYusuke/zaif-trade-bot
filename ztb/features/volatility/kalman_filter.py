@@ -4,7 +4,7 @@ Kalman Filter features for price smoothing and prediction.
 This module implements Kalman filter-based price smoothing and trend detection.
 """
 
-from typing import Any, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ from ztb.utils.errors import safe_operation
 
 
 @FeatureRegistry.register("KalmanFilter")
-def compute_kalman_filter(df: pd.DataFrame) -> pd.Series:
+def compute_kalman_filter(df: pd.DataFrame) -> "pd.Series[float]":
     """Kalman filter smoothed price"""
     feature = KalmanFilter()
     result_df = feature.compute(df)
@@ -24,14 +24,14 @@ def compute_kalman_filter(df: pd.DataFrame) -> pd.Series:
 
 
 @FeatureRegistry.register("KalmanVelocity")
-def compute_kalman_velocity(df: pd.DataFrame) -> pd.Series:
+def compute_kalman_velocity(df: pd.DataFrame) -> "pd.Series[float]":
     """Kalman filter velocity (trend strength)"""
     feature = KalmanFilter()
     result_df = feature.compute(df)
     return result_df["kalman_velocity"]
 
 
-class KalmanFilter(ComputableFeature):
+class KalmanFilter:
     """Kalman filter for price smoothing and trend detection"""
 
     def __init__(
@@ -40,21 +40,30 @@ class KalmanFilter(ComputableFeature):
         measurement_noise: float = 0.1,
         initial_velocity: float = 0.0
     ) -> None:
-        super().__init__(
-            "KalmanFilter",
-            deps=["close"]
-        )
+        self._name = "KalmanFilter"
+        self._deps = ["close"]
         self.process_noise = process_noise
         self.measurement_noise = measurement_noise
         self.initial_velocity = initial_velocity
 
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def deps(self) -> List[str]:
+        return self._deps
+
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute Kalman filter features"""
-        return safe_operation(
-            logger=None,
-            operation=lambda: self._compute_kalman_filter(df),
-            context="kalman_filter_computation",
-            default_result=pd.DataFrame(index=df.index, columns=["kalman_price", "kalman_velocity"])
+        return cast(
+            pd.DataFrame,
+            safe_operation(
+                logger=None,
+                operation=lambda: self._compute_kalman_filter(df),
+                context="kalman_filter_computation",
+                default_result=pd.DataFrame(index=df.index, columns=["kalman_price", "kalman_velocity"])
+            )
         )
 
     def _compute_kalman_filter(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -117,7 +126,7 @@ class KalmanFilter(ComputableFeature):
 
 
 @FeatureRegistry.register("KalmanTrend")
-def compute_kalman_trend(df: pd.DataFrame) -> pd.Series:
+def compute_kalman_trend(df: pd.DataFrame) -> "pd.Series[float]":
     """Kalman filter based trend indicator"""
     feature = KalmanFilter()
     result_df = feature.compute(df)
@@ -126,11 +135,11 @@ def compute_kalman_trend(df: pd.DataFrame) -> pd.Series:
     velocity = result_df["kalman_velocity"]
     trend = np.sign(velocity) * np.minimum(np.abs(velocity) * 100, 1.0)
 
-    return trend.astype(np.float32)
+    return cast("pd.Series[float]", pd.Series(trend.astype(np.float32), index=df.index))
 
 
 @FeatureRegistry.register("KalmanResidual")
-def compute_kalman_residual(df: pd.DataFrame) -> pd.Series:
+def compute_kalman_residual(df: pd.DataFrame) -> "pd.Series[float]":
     """Kalman filter residual (price - smoothed_price)"""
     feature = KalmanFilter()
     result_df = feature.compute(df)
@@ -142,4 +151,4 @@ def compute_kalman_residual(df: pd.DataFrame) -> pd.Series:
     # Normalize by price for scale invariance
     residual_norm = residual / actual_price.replace(0, 1)
 
-    return residual_norm.astype(np.float32)
+    return cast("pd.Series[float]", pd.Series(residual_norm.astype(np.float32), index=df.index))

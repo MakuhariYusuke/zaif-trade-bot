@@ -56,11 +56,16 @@ class FeatureCorrelationProcessor:
         Returns:
             Correlation matrix
         """
-        return safe_operation(
-            logger=LOGGER,
-            operation=lambda: self._analyze_correlations_impl(df, feature_columns),
-            context="correlation_analysis",
-            default_result=pd.DataFrame(),
+        from typing import cast
+
+        return cast(
+            pd.DataFrame,
+            safe_operation(
+                logger=LOGGER,
+                operation=lambda: self._analyze_correlations_impl(df, feature_columns),
+                context="correlation_analysis",
+                default_result=pd.DataFrame(),
+            ),
         )
 
     def _analyze_correlations_impl(
@@ -167,7 +172,7 @@ class FeatureCorrelationProcessor:
         if self.correlation_matrix is None:
             raise ValueError("Correlation matrix not computed.")
 
-        plt.figure(figsize=(20, 16))  # type: ignore[unreachable]
+        plt.figure(figsize=(20, 16))
 
         # Create mask for upper triangle
         mask = np.triu(np.ones_like(self.correlation_matrix, dtype=bool))
@@ -196,8 +201,8 @@ class FeatureCorrelationProcessor:
             for feature in self.features_to_remove:
                 if feature in self.correlation_matrix.columns:
                     idx = self.correlation_matrix.columns.get_loc(feature)
-                    plt.axhline(y=idx, color="red", alpha=0.3, linewidth=2)
-                    plt.axvline(x=idx, color="red", alpha=0.3, linewidth=2)
+                    plt.axhline(y=idx, color="red", alpha=0.3, linewidth=2)  # type: ignore[arg-type]
+                    plt.axvline(x=idx, color="red", alpha=0.3, linewidth=2)  # type: ignore[arg-type]
 
         plt.tight_layout()
         plt.savefig(output_path, dpi=300, bbox_inches="tight")
@@ -214,7 +219,7 @@ class FeatureCorrelationProcessor:
             raise ValueError("Correlation matrix not computed.")
 
         # Find most correlated feature pairs
-        upper = self.correlation_matrix.where(  # type: ignore[unreachable]
+        upper = self.correlation_matrix.where(
             np.triu(np.ones_like(self.correlation_matrix), k=1).astype(bool)
         )
 

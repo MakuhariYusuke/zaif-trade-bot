@@ -9,16 +9,18 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 
 # ztb モジュールのインポートのためパスを追加
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+create_status_embed_func: Optional[Callable[[], Dict[str, Any]]] = None
+import_error_msg = ""
+
 try:
-    from ztb.ops.reports.live_status_snapshot import create_status_embed
+    from ztb.ops.reports.live_status_snapshot import create_status_embed as create_status_embed_func
 except ImportError as e:
-    create_status_embed = None
-    IMPORT_ERROR_MSG = str(e)
+    import_error_msg = str(e)
 
 
 def run_command_safely(cmd: str, timeout: int = 300) -> Dict[str, Any]:
@@ -52,14 +54,14 @@ def run_command_safely(cmd: str, timeout: int = 300) -> Dict[str, Any]:
 
 def handle_status_request(params: Dict[str, Any]) -> Dict[str, Any]:
     """Handle status snapshot request."""
-    if create_status_embed is None:
+    if create_status_embed_func is None:
         return {
             "success": False,
             "action": "status",
-            "error": f"Failed to import create_status_embed: {IMPORT_ERROR_MSG}",
+            "error": f"Failed to import create_status_embed: {import_error_msg}",
         }
     try:
-        embed = create_status_embed()
+        embed = create_status_embed_func()
 
         # Convert embed to plain dict for JSON serialization
         status = {
@@ -109,7 +111,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-def main():
+def main() -> None:
     """Main entry point - read JSON from stdin, write JSON to stdout."""
     try:
         # Read JSON request from stdin (read one line to avoid blocking)

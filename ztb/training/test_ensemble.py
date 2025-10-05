@@ -13,14 +13,14 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.ensemble import EnsembleTradingSystem
+from ztb.training.ensemble import EnsembleTradingSystem
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def test_ensemble_basic():
+def test_ensemble_basic() -> bool:
     """Test basic ensemble functionality."""
     # Example model configurations (replace with actual paths)
     model_configs = [

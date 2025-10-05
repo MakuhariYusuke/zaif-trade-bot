@@ -163,18 +163,18 @@ class PrometheusExporter:
         logger.warning(f"Alert triggered: {alert_type} ({severity}) - {message}")
 
         # Send notification if available
+        # Import inside try/except to allow optional notifications module
         try:
-            from .notifications import (
-                send_notification,  # type: ignore[import-not-found]
-            )
+            from .notifications import send_notification
 
             send_notification(
                 title=f"Alert: {alert_type}",
                 message=f"Severity: {severity}\n{message}",
                 priority="high" if severity == "critical" else "normal",
             )
-        except ImportError:
-            pass  # Notifications not available
+        except Exception:
+            # Notifications are optional; ignore failures at runtime
+            pass
 
 
 class ResourceMonitor:
@@ -232,7 +232,7 @@ class ResourceMonitor:
 
         try:
             from .notifications import (
-                send_notification,  # type: ignore[import-not-found]
+                send_notification,
             )
 
             send_notification(
@@ -248,7 +248,7 @@ class ResourceMonitor:
 
         try:
             from .notifications import (
-                send_notification,  # type: ignore[import-not-found]
+                send_notification,
             )
 
             send_notification(title="Memory Alert", message=message, priority="high")
