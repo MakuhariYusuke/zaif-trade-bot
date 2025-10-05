@@ -118,16 +118,16 @@ class CoverageValidator:
 
         # Update totals
         current_state = cast(Dict[str, List[str]], merged_coverage["current_state"])
-        merged_coverage["metadata"]["total_verified"] = len(current_state["verified"])  # type: ignore[index]
-        merged_coverage["metadata"]["total_staging"] = len(current_state["staging"])  # type: ignore[index]
-        merged_coverage["metadata"]["total_pending"] = len(current_state["pending"])  # type: ignore[index]
+        merged_coverage["metadata"]["total_verified"] = len(current_state["verified"])
+        merged_coverage["metadata"]["total_staging"] = len(current_state["staging"])
+        merged_coverage["metadata"]["total_pending"] = len(current_state["pending"])
         merged_coverage["metadata"]["total_pending_due_to_gate_fail"] = len(
             current_state["pending_due_to_gate_fail"]
-        )  # type: ignore[index]
-        merged_coverage["metadata"]["total_failed"] = len(current_state["failed"])  # type: ignore[index]
+        )
+        merged_coverage["metadata"]["total_failed"] = len(current_state["failed"])
         merged_coverage["metadata"]["total_unverified"] = len(
             current_state["unverified"]
-        )  # type: ignore[index]
+        )
 
         return merged_coverage
 

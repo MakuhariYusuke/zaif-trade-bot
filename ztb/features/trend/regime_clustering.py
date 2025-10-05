@@ -5,7 +5,7 @@ This module implements unsupervised clustering-based market regime detection
 using volatility and trend strength indicators.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -40,11 +40,14 @@ class RegimeClustering:
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute regime clustering features"""
-        return safe_operation(
-            logger=None,
-            operation=lambda: self._compute_regime_clustering(df),
-            context="regime_clustering_computation",
-            default_result=pd.DataFrame(index=df.index, columns=["regime_cluster"])
+        return cast(
+            pd.DataFrame,
+            safe_operation(
+                logger=None,
+                operation=lambda: self._compute_regime_clustering(df),
+                context="regime_clustering_computation",
+                default_result=pd.DataFrame(index=df.index, columns=["regime_cluster"]),
+            ),
         )
 
     def _compute_regime_clustering(self, df: pd.DataFrame) -> pd.DataFrame:

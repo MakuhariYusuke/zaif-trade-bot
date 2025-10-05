@@ -10,7 +10,7 @@ import pandas as pd
 # プロジェクトルートをパスに追加
 sys.path.append(str(Path(__file__).parent.parent))
 
-from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 def test_pnl_calculation():

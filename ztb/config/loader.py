@@ -6,14 +6,15 @@ Supports merging configurations from multiple sources with proper precedence.
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
+import time
 
 import yaml
 from pydantic import ValidationError
 
 from .schema import GlobalConfig
 
-from ztb.utils.errors import safe_operation
+ 
 
 
 class ConfigLoader:
@@ -26,15 +27,88 @@ class ConfigLoader:
             "env": {},
             "cli": {},
         }
+        # Cache for file-based configurations
+        self._file_cache: Dict[str, Dict[str, Any]] = {}
+        self._file_mtimes: Dict[str, float] = {}
+        # Environment support
+        self.environment = os.getenv("ZTB_ENV", "development")
 
     def load_yaml(self, config_path: str) -> Dict[str, Any]:
-        """Load configuration from YAML file."""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: self._load_yaml_impl(config_path),
-            context="yaml_config_loading",
-            default_result={},  # Return empty dict on failure
-        )
+        """Load configuration from YAML file with caching."""
+        path = Path(config_path)
+
+        # If file doesn't exist, return empty dict
+        if not path.exists():
+            return {}
+
+        # Check if file has been modified
+        current_mtime = path.stat().st_mtime
+        cached_mtime = self._file_mtimes.get(config_path, 0)
+
+        if config_path in self._file_cache and current_mtime <= cached_mtime:
+            # Return cached result
+            return dict(self._file_cache[config_path])
+
+        # Load fresh configuration
+        config: Dict[str, Any] = {}
+        try:
+            loaded_raw = self._load_yaml_impl(config_path)
+            loaded = cast(Any, loaded_raw)
+            if isinstance(loaded, dict):
+                # mypy should see concrete Dict[str, Any]
+                config = {str(k): v for k, v in loaded.items()}
+            else:
+                config = {}
+        except Exception:
+            # On any error return empty config
+            config = {}
+
+        # Cache the result (store a shallow copy)
+        self._file_cache[config_path] = dict(config)
+        self._file_mtimes[config_path] = current_mtime
+
+        return config
+
+    def load_yaml_with_env_fallback(self, base_config_path: str) -> Dict[str, Any]:
+        """Load YAML config with environment-specific fallback.
+        
+        Tries to load {base_config_path}.{environment}.yaml first,
+        then falls back to {base_config_path}.yaml.
+        """
+        env_config_path = f"{base_config_path}.{self.environment}.yaml"
+        base_path = f"{base_config_path}.yaml"
+        
+        # Try environment-specific config first
+        if Path(env_config_path).exists():
+            config = self.load_yaml(env_config_path)
+            if config:
+                return config
+        
+        # Fallback to base config
+        return self.load_yaml(base_path)
+
+    def validate_config(self, config: Dict[str, Any], schema: Any = None) -> Dict[str, Any]:
+        """Validate configuration against a schema.
+        
+        Args:
+            config: Configuration dictionary to validate
+            schema: Pydantic model class for validation (optional)
+            
+        Returns:
+            Validated configuration dictionary
+            
+        Raises:
+            ValidationError: If configuration doesn't match schema
+        """
+        if schema is None:
+            schema = GlobalConfig
+            
+        try:
+            validated = schema(**config)
+            # model_dump() is typed as Any by pydantic in some versions; cast to a concrete dict
+            return cast(Dict[str, Any], validated.model_dump())
+        except ValidationError as e:
+            raise ValueError(f"Configuration validation failed: {e}") from e
 
     def _load_yaml_impl(self, config_path: str) -> Dict[str, Any]:
         """Implementation of YAML config loading."""
@@ -43,19 +117,24 @@ class ConfigLoader:
             raise FileNotFoundError(f"Config file not found: {config_path}")
 
         with open(path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
+            raw = yaml.safe_load(f)
+
+        # Normalize to dict[str, Any] and ensure keys are strings
+        config: Dict[str, Any] = {}
+        if isinstance(raw, dict):
+            for k, v in raw.items():
+                if isinstance(k, str):
+                    config[k] = v
 
         self.sources["yaml"] = config
         return config
 
     def load_env(self, prefix: str = "ZTB_") -> Dict[str, Any]:
         """Load configuration from environment variables."""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: self._load_env_impl(prefix),
-            context="env_config_loading",
-            default_result={},  # Return empty dict on failure
-        )
+        try:
+            return self._load_env_impl(prefix)
+        except Exception:
+            return {}
 
     def _load_env_impl(self, prefix: str = "ZTB_") -> Dict[str, Any]:
         """Implementation of environment config loading."""
@@ -72,12 +151,10 @@ class ConfigLoader:
 
     def load_cli(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Load configuration from CLI arguments."""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: self._load_cli_impl(args),
-            context="cli_config_loading",
-            default_result={},  # Return empty dict on failure
-        )
+        try:
+            return self._load_cli_impl(args)
+        except Exception:
+            return {}
 
     def _load_cli_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Implementation of CLI config loading."""
@@ -179,7 +256,7 @@ def load_config(
 
 def initialize_risk_profiles(config: GlobalConfig) -> None:
     """Initialize risk profile manager with config presets."""
-    from ztb.trading.live.risk_profiles import get_risk_manager
+    from ztb.trading.live.risk.profiles import get_risk_manager
 
     manager = get_risk_manager()
     for profile in config.risk_profiles.values():

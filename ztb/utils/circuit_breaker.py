@@ -42,7 +42,7 @@ class CircuitBreakerOpenException(Exception):
 class CircuitBreaker:
     """Circuit breaker implementation."""
 
-    def __init__(self, name: str, config: CircuitBreakerConfig):
+    def __init__(self, name: str, config: CircuitBreakerConfig) -> None:
         """
         Initialize circuit breaker.
 
@@ -58,7 +58,7 @@ class CircuitBreaker:
         self.last_failure_time: Optional[float] = None
         self._lock = asyncio.Lock()
 
-    async def call(self, func: Callable, *args, **kwargs) -> Any:
+    async def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """
         Execute function with circuit breaker protection.
 
@@ -103,7 +103,9 @@ class CircuitBreaker:
                 return False
             elif self.state == CircuitState.HALF_OPEN:
                 return True
-            return False
+            else:
+                # This should never happen if CircuitState is properly defined
+                assert False, f"Unknown circuit state: {self.state}"
 
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt reset."""
@@ -111,7 +113,7 @@ class CircuitBreaker:
             return True
         return time.time() - self.last_failure_time >= self.config.recovery_timeout
 
-    async def _on_success(self):
+    async def _on_success(self) -> None:
         """Handle successful operation."""
         async with self._lock:
             self.failure_count = 0
@@ -125,7 +127,7 @@ class CircuitBreaker:
                     )
             # CLOSED state: no action needed
 
-    async def _on_failure(self):
+    async def _on_failure(self) -> None:
         """Handle failed operation."""
         async with self._lock:
             self.failure_count += 1
@@ -149,7 +151,7 @@ class CircuitBreaker:
         """Get current circuit breaker state."""
         return self.state
 
-    def reset(self):
+    def reset(self) -> None:
         """Manually reset circuit breaker to closed state."""
         self.state = CircuitState.CLOSED
         self.failure_count = 0
@@ -185,7 +187,7 @@ def get_circuit_breaker(
     return _circuit_breakers[name]
 
 
-def reset_all_circuit_breakers():
+def reset_all_circuit_breakers() -> None:
     """Reset all circuit breakers to closed state."""
     for breaker in _circuit_breakers.values():
         breaker.reset()

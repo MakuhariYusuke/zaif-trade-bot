@@ -49,11 +49,14 @@ def sharpe_ratio(
     Returns:
         Sharpe ratio
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _sharpe_ratio(np.asarray(returns), rf, period_per_year),
-        context="sharpe_ratio_calculation",
-        default_result=0.0,  # Return 0.0 on failure
+    return cast(
+        float,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _sharpe_ratio(np.asarray(returns), rf, period_per_year),
+            context="sharpe_ratio_calculation",
+            default_result=0.0,  # Return 0.0 on failure
+        )
     )
 
 
@@ -75,11 +78,14 @@ def sortino_ratio(
     Returns:
         Sortino ratio
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _sortino_ratio_impl(returns, rf, period_per_year, downside_floor),
-        context="sortino_ratio_calculation",
-        default_result=0.0,  # Return 0.0 on failure
+    return cast(
+        float,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _sortino_ratio_impl(returns, rf, period_per_year, downside_floor),
+            context="sortino_ratio_calculation",
+            default_result=0.0,  # Return 0.0 on failure
+        )
     )
 
 
@@ -131,11 +137,14 @@ def max_drawdown(equity_curve: Union[pd.Series, NDArray[Any]]) -> float:
     Returns:
         Maximum drawdown (negative value)
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _max_drawdown_impl(equity_curve),
-        context="max_drawdown_calculation",
-        default_result=0.0,  # Return 0.0 on failure
+    return cast(
+        float,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _max_drawdown_impl(equity_curve),
+            context="max_drawdown_calculation",
+            default_result=0.0,  # Return 0.0 on failure
+        )
     )
 
 
@@ -178,11 +187,14 @@ def calmar_ratio(
     Returns:
         Calmar ratio
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _calmar_ratio_impl(returns, rf, period_per_year),
-        context="calmar_ratio_calculation",
-        default_result=0.0,  # Return 0.0 on failure
+    return cast(
+        float,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _calmar_ratio_impl(returns, rf, period_per_year),
+            context="calmar_ratio_calculation",
+            default_result=0.0,  # Return 0.0 on failure
+        ),
     )
 
 
@@ -228,11 +240,14 @@ def win_rate(returns: Union[pd.Series, NDArray[Any]]) -> float:
     Returns:
         Win rate (0 to 1)
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _win_rate_impl(returns),
-        context="win_rate_calculation",
-        default_result=0.0,  # Return 0.0 on failure
+    return cast(
+        float,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _win_rate_impl(returns),
+            context="win_rate_calculation",
+            default_result=0.0,  # Return 0.0 on failure
+        ),
     )
 
 
@@ -263,11 +278,14 @@ def profit_factor(returns: Union[pd.Series, NDArray[Any]]) -> float:
     Returns:
         Profit factor
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _profit_factor_impl(returns),
-        context="profit_factor_calculation",
-        default_result=1.0,  # Return 1.0 on failure (neutral)
+    return cast(
+        float,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _profit_factor_impl(returns),
+            context="profit_factor_calculation",
+            default_result=1.0,  # Return 1.0 on failure (neutral)
+        ),
     )
 
 
@@ -309,22 +327,25 @@ def calculate_all_metrics(
     Returns:
         Dictionary with all metrics
     """
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _calculate_all_metrics_impl(returns, rf, period_per_year),
-        context="all_metrics_calculation",
-        default_result=MetricsResult(
-            total_return=0.0,
-            annual_return=0.0,
-            volatility=0.0,
-            sharpe_ratio=0.0,
-            sortino_ratio=0.0,
-            calmar_ratio=0.0,
-            max_drawdown=0.0,
-            win_rate=0.0,
-            profit_factor=1.0,
-            num_periods=0,
-        ),  # Return default metrics on failure
+    return cast(
+        MetricsResult,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _calculate_all_metrics_impl(returns, rf, period_per_year),
+            context="all_metrics_calculation",
+            default_result=MetricsResult(
+                total_return=0.0,
+                annual_return=0.0,
+                volatility=0.0,
+                sharpe_ratio=0.0,
+                sortino_ratio=0.0,
+                calmar_ratio=0.0,
+                max_drawdown=0.0,
+                win_rate=0.0,
+                profit_factor=1.0,
+                num_periods=0,
+            ),  # Return default metrics on failure
+        ),
     )
 
 

@@ -25,11 +25,14 @@ class DataLoader:
         self, key: str, load_func: Callable[[], pd.DataFrame]
     ) -> pd.DataFrame:
         """Load data with caching"""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: self._load_with_cache_impl(key, load_func),
-            context="data_loading_with_cache",
-            default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+        return cast(
+            pd.DataFrame,
+            safe_operation(
+                logger=None,  # Use default logger
+                operation=lambda: self._load_with_cache_impl(key, load_func),
+                context="data_loading_with_cache",
+                default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+            ),
         )
 
     def _load_with_cache_impl(
@@ -58,11 +61,14 @@ class DataLoader:
         self, keys_and_loaders: Dict[str, Callable[[], pd.DataFrame]]
     ) -> Dict[str, pd.DataFrame]:
         """Load multiple datasets with caching"""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: self._load_multiple_impl(keys_and_loaders),
-            context="multiple_data_loading",
-            default_result={},  # Return empty dict on failure
+        return cast(
+            Dict[str, pd.DataFrame],
+            safe_operation(
+                logger=None,  # Use default logger
+                operation=lambda: self._load_multiple_impl(keys_and_loaders),
+                context="multiple_data_loading",
+                default_result={},  # Return empty dict on failure
+            ),
         )
 
     def _load_multiple_impl(

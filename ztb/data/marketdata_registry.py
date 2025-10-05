@@ -8,7 +8,7 @@ with factory pattern for instantiation and configuration.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Protocol
+from typing import Any, Dict, Protocol, Optional, cast
 
 from ztb.data.coin_gecko_stream import CoinGeckoStream
 from ztb.data.streaming_pipeline import StreamingPipeline
@@ -45,10 +45,10 @@ class CachedMarketDataFactory(MarketDataSourceFactory):
         if not cache_path:
             raise ValueError("cache_path is required")
         # Import here to avoid circular imports
-        from ztb.cache.price_cache import PriceCache  # type: ignore[import]
+        from ztb.cache.price_cache import PriceCache  # type: ignore[import-not-found]
 
         cache = PriceCache(cache_path)
-        return cache
+        return cast(MarketDataSource, cache)
 
 
 class StreamingMarketDataFactory(MarketDataSourceFactory):
@@ -87,7 +87,7 @@ class ReplayMarketDataFactory(MarketDataSourceFactory):
         # This would be expanded to support actual replay functionality
 
         replay = ReplayMarket(str(data_path), **kwargs)
-        return replay
+        return cast(MarketDataSource, replay)
 
 
 class MarketDataSourceRegistry:
@@ -132,7 +132,7 @@ class MarketDataSourceRegistry:
 
 
 # Global registry instance
-_registry = None
+_registry: Optional[MarketDataSourceRegistry] = None
 
 
 def get_market_data_registry() -> MarketDataSourceRegistry:

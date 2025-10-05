@@ -5,17 +5,15 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 import numpy.ma as ma
 import pandas as pd
 from scipy import stats
 
-from ztb.utils.data.outlier_detection import (
-    detect_outliers_iqr,
-    detect_outliers_zscore,
-)
+# Local wrappers below import implementations on demand to keep runtime
+# import costs low and to avoid name collisions/redefinitions in this module.
 from ztb.utils.errors import safe_operation
 
 logger = logging.getLogger(__name__)
@@ -42,11 +40,14 @@ def detect_outliers_zscore(
 
 def get_project_root() -> Path:
     """プロジェクトルートのパスを取得（環境変数や設定ファイルで上書き可能）"""
-    return safe_operation(
-        logger,
-        _get_project_root_impl,
-        "get_project_root",
-        Path(__file__).parent.parent.parent  # Default fallback
+    return cast(
+        Path,
+        safe_operation(
+            logger,
+            _get_project_root_impl,
+            "get_project_root",
+            Path(__file__).parent.parent.parent,  # Default fallback
+        ),
     )
 
 

@@ -12,7 +12,7 @@ import time
 import tracemalloc
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -29,13 +29,16 @@ if project_root.exists():
 
 def load_real_data(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFrame:
     """実データを読み込み"""
-    return safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _load_real_data_impl(sample_path, n_rows),
-        context="real_data_loading",
-        default_result=generate_synthetic_data(
-            n_rows or 1000, freq="1min", episode_length=None, volume_range=(100, 1000)
-        ),  # Fallback to synthetic data
+    return cast(
+        pd.DataFrame,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _load_real_data_impl(sample_path, n_rows),
+            context="real_data_loading",
+            default_result=generate_synthetic_data(
+                n_rows or 1000, freq="1min", episode_length=None, volume_range=(100, 1000)
+            ),  # Fallback to synthetic data
+        ),
     )
 
 
@@ -68,11 +71,11 @@ def benchmark_feature(
     memories = []
 
     # 特徴量オブジェクトを取得
-    if feature_name not in manager.features:
+    if feature_name not in manager.features:  # type: ignore[attr-defined]
         print(f"Feature {feature_name} not found in manager")
         return {"ms_real": 0.0, "peak_MB": 0.0}
-    feature = manager.features[feature_name]
-    params = manager.get_feature_info(feature_name).get("params", {})
+    feature = manager.features[feature_name]  # type: ignore[attr-defined]
+    params = manager.get_feature_info(feature_name).get("params", {})  # type: ignore[attr-defined]
 
     for _ in range(n_runs):
         # メモリ追跡開始
@@ -109,7 +112,7 @@ def benchmark_bundle(
         start_time = time.perf_counter()
 
         for wave in waves:
-            manager.compute_features(df, wave=wave)
+            manager.compute_features(df, wave=wave)  # type: ignore[call-arg]
 
         end_time = time.perf_counter()
         _, peak = tracemalloc.get_traced_memory()

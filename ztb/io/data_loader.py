@@ -13,7 +13,7 @@ All data loading should go through this module to ensure consistency.
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, cast
 
 import pandas as pd
 
@@ -26,11 +26,14 @@ class DataLoader:
     @staticmethod
     def load_parquet(file_path: Union[str, Path]) -> pd.DataFrame:
         """Load data from Parquet file."""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: DataLoader._load_parquet_impl(file_path),
-            context="parquet_data_loading",
-            default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+        return cast(
+            pd.DataFrame,
+            safe_operation(
+                logger=None,  # Use default logger
+                operation=lambda: DataLoader._load_parquet_impl(file_path),
+                context="parquet_data_loading",
+                default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+            ),
         )
 
     @staticmethod
@@ -45,11 +48,14 @@ class DataLoader:
     @staticmethod
     def load_json(file_path: Union[str, Path]) -> Dict[str, Any]:
         """Load data from JSON file."""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: DataLoader._load_json_impl(file_path),
-            context="json_data_loading",
-            default_result={},  # Return empty dict on failure
+        return cast(
+            Dict[str, Any],
+            safe_operation(
+                logger=None,  # Use default logger
+                operation=lambda: DataLoader._load_json_impl(file_path),
+                context="json_data_loading",
+                default_result={},  # Return empty dict on failure
+            ),
         )
 
     @staticmethod
@@ -60,16 +66,19 @@ class DataLoader:
             raise FileNotFoundError(f"JSON file not found: {file_path}")
 
         with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)  # type: ignore[no-any-return]
+            return cast(Dict[str, Any], json.load(f))
 
     @staticmethod
     def load_sqlite(db_path: Union[str, Path], query: str) -> pd.DataFrame:
         """Load data from SQLite database."""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: DataLoader._load_sqlite_impl(db_path, query),
-            context="sqlite_data_loading",
-            default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+        return cast(
+            pd.DataFrame,
+            safe_operation(
+                logger=None,  # Use default logger
+                operation=lambda: DataLoader._load_sqlite_impl(db_path, query),
+                context="sqlite_data_loading",
+                default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+            ),
         )
 
     @staticmethod
@@ -85,11 +94,14 @@ class DataLoader:
     @staticmethod
     def load_csv(file_path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
         """Load data from CSV file."""
-        return safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: DataLoader._load_csv_impl(file_path, **kwargs),
-            context="csv_data_loading",
-            default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+        return cast(
+            pd.DataFrame,
+            safe_operation(
+                logger=None,  # Use default logger
+                operation=lambda: DataLoader._load_csv_impl(file_path, **kwargs),
+                context="csv_data_loading",
+                default_result=pd.DataFrame(),  # Return empty DataFrame on failure
+            ),
         )
 
     @staticmethod
