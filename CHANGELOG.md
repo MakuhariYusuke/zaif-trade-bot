@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.7.0 - 2025-10-05
+
+### Added
+
+- **Utility Function Horizontal Expansion**: Systematic expansion of existing utility functions across the codebase
+  - Applied `get_config_value()` for type-safe configuration extraction in `ztb/risk/profiles.py`
+  - Integrated `RunMetadata` class for comprehensive system information capture in `ztb/trading/backtest/runner.py`
+  - Standardized correlation ID generation using `generate_correlation_id()` in `ztb/trading/live/orders/submission.py`
+
+### Technical
+
+- **Type Safety and Code Quality Improvements**: Enhanced type checking and utility consolidation
+  - Reduced mypy errors from 103 to 5 through systematic fixes and utility improvements
+  - Improved code maintainability through centralized utility functions
+  - Enhanced error handling and type validation across configuration and metadata management
+
 ## 3.6.0 - 2025-10-04
 
 ### Added

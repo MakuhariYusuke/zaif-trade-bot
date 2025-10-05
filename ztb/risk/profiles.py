@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict
 
+from ztb.utils.config import get_config_value
+
 
 class RiskProfile(Enum):
     """Risk profile levels."""
@@ -114,14 +116,14 @@ def create_custom_risk_profile(**kwargs: Any) -> RiskLimits:
     config = {**defaults, **kwargs}
 
     return RiskLimits(
-        max_position_notional=float(config["max_position_notional"]),
-        max_single_trade_pct=float(config["max_single_trade_pct"]),
-        daily_loss_limit_pct=float(config["daily_loss_limit_pct"]),
-        max_drawdown_pct=float(config["max_drawdown_pct"]),
-        max_trades_per_hour=int(config["max_trades_per_hour"]),
-        min_trade_interval_sec=int(config["min_trade_interval_sec"]),
-        max_volatility_pct=float(config["max_volatility_pct"]),
-        required_sharpe_ratio=float(config["required_sharpe_ratio"]),
-        stop_loss_pct=float(config["stop_loss_pct"]),
-        take_profit_pct=float(config["take_profit_pct"]),
+        max_position_notional=get_config_value(config, "max_position_notional", float),
+        max_single_trade_pct=get_config_value(config, "max_single_trade_pct", float),
+        daily_loss_limit_pct=get_config_value(config, "daily_loss_limit_pct", float),
+        max_drawdown_pct=get_config_value(config, "max_drawdown_pct", float),
+        max_trades_per_hour=get_config_value(config, "max_trades_per_hour", int),
+        min_trade_interval_sec=get_config_value(config, "min_trade_interval_sec", int),
+        max_volatility_pct=get_config_value(config, "max_volatility_pct", float),
+        required_sharpe_ratio=get_config_value(config, "required_sharpe_ratio", float),
+        stop_loss_pct=get_config_value(config, "stop_loss_pct", float),
+        take_profit_pct=get_config_value(config, "take_profit_pct", float),
     )

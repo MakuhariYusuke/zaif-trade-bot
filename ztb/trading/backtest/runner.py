@@ -9,12 +9,13 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast, List, Dict, Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.utils.observability import generate_correlation_id, setup_observability
+from ztb.utils.run_metadata import RunMetadata
 
 from ..risk.circuit_breakers import (  # type: ignore[import-not-found]
     get_global_kill_switch,
@@ -307,11 +308,9 @@ def main() -> None:
         )
 
         # Create run metadata
-        import platform
-
-        run_metadata = {
+        run_metadata = RunMetadata()
+        run_metadata.metadata.update({
             "correlation_id": correlation_id,
-            "timestamp": datetime.utcnow().isoformat(),
             "run_id": f"backtest_{args.policy}_{timestamp}",
             "type": "backtest",
             "config": {
@@ -323,17 +322,14 @@ def main() -> None:
                 "risk_profile": args.risk_profile,
                 "target_vol": args.target_vol,
             },
-            "environment": {
-                "python_version": platform.python_version(),
-                "platform": platform.platform(),
-                "cpu_count": platform.os.cpu_count(),
-            },
             "seeds": {
                 "numpy": 42,  # From load_data
                 "random": None,
             },
             "package_hashes": {},  # TODO: Add package hashes
-        }
+        })
+        # Add system info
+        run_metadata.metadata["environment"] = run_metadata.capture_system_info()
 
         # Save run metadata
         obs_client.export_artifact("run_metadata", run_metadata)
@@ -349,22 +345,22 @@ def main() -> None:
         equity_list = [
             {"timestamp": ts, "equity": eq} for ts, eq in equity_curve.items()
         ]
-        orders_list = orders.to_dict("records") if not orders.empty else []
+        orders_list = cast(List[Dict[str, Any]], orders.to_dict("records") if not orders.empty else [])
 
         # Generate outputs
         ReportGenerator.generate_json_report(
-            metrics, equity_list, orders_list, metadata, output_dir / "metrics.json"
+            metrics, equity_list, orders_list, metadata, str(output_dir / "metrics.json")
         )
 
         ReportGenerator.generate_markdown_report(
-            metrics, metadata, output_dir / "report.md"
+            metrics, metadata, str(output_dir / "report.md")
         )
 
         ReportGenerator.generate_equity_csv(
-            equity_list, output_dir / "equity_curve.csv"
+            equity_list, str(output_dir / "equity_curve.csv")
         )
 
-        ReportGenerator.generate_orders_csv(orders_list, output_dir / "orders.csv")
+        ReportGenerator.generate_orders_csv(orders_list, str(output_dir / "orders.csv"))
 
         print("Backtest completed successfully!")
         print(f"Sharpe Ratio: {metrics.sharpe_ratio:.3f}")
