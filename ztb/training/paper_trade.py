@@ -2,23 +2,7 @@
 """
 Paper Trading Evaluation for Trained PPO Models.
 
-Loa            # Load state dict - checkpoint_data might be a dict or CheckpointData object
-            try:
-                # Try as dict first
-                policy_state = checkpoint_data["policy"]
-                value_state = checkpoint_data.get("value_net")
-            except (TypeError, KeyError):
-                # Try as object
-                try:
-                    policy_state = checkpoint_data.policy
-                    value_state = getattr(checkpoint_data, 'value_net', None)
-                except AttributeError:
-                    raise ValueError("Unable to parse checkpoint data format")
-
-            if policy_state:
-                self.model.policy.load_state_dict(policy_state)
-            if value_state and hasattr(self.model, "value_net"):
-                self.model.value_net.load_state_dict(value_state)  # type: ignoreel and simulates trading on test data to evaluate performance.
+Loads and simulates trading on test data to evaluate performance.
 """
 
 import argparse
@@ -42,9 +26,10 @@ sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
 from ztb.training.ppo_config import get_ppo_config
-from ztb.trading.env_config import get_trading_env_config
+from ztb.trading.env_config import get_trading_env_config, TradingEnvConfig
 from ztb.utils import DiscordNotifier
 from ztb.utils.file_utils import safe_json_load
+from ztb.inference.decode import decode_action, InferenceConfig
 
 
 class PaperTrader:
@@ -67,25 +52,27 @@ class PaperTrader:
         # Initialize instance variables
         self.test_df: Optional[pd.DataFrame] = None
         self.model: Optional[MaskablePPO] = None
-        self.env: DummyVecEnv = None  # type: ignore
+        self.env: DummyVecEnv
         self.episode_results: List[Dict[str, Any]] = []
         self._normalization_stats: Optional[Any] = None  # Store loaded normalization stats
-
-        # Load test data first
-        self._load_test_data()
-
-        # Load model
-        self._load_model()
 
         # Initialize environment
         self.env = self._create_env()
 
         # Trading results
         self.trades: List[Dict[str, Any]] = []
-        self.portfolio_value = 10000.0  # Starting capital
-        self.position = 0.0  # Current position size
+        self.portfolio_value: float = 10000.0  # Starting capital
+        self.position: float = 0.0  # Current position size
 
-    def _get_default_config(self) -> Dict[str, Any]:
+        # Inference configuration
+        self.inference_config = InferenceConfig(
+            temperature=float(self.config.get("temperature", 0.7)),
+            tiebreaker_tau=float(self.config.get("tiebreaker_tau", 0.05)),
+            enable_tiebreaker=bool(self.config.get("enable_tiebreaker", True)),
+            deterministic=bool(self.config.get("deterministic", False)),
+        )
+
+    def _get_default_config(self) -> TradingEnvConfig:
         """Get default configuration for paper trading."""
         return get_trading_env_config({
             "reward_scaling": 1.0,  # Override for paper trading
@@ -120,7 +107,8 @@ class PaperTrader:
         dummy_env = self._create_env()
 
         # Get policy_kwargs from config
-        policy_kwargs = self.config.get("policy_kwargs", {})
+        policy_kwargs_raw = self.config.get("policy_kwargs", {})
+        policy_kwargs: Dict[str, Any] = policy_kwargs_raw if isinstance(policy_kwargs_raw, dict) else {}
 
         # Get PPO config from common configuration
         ppo_config = get_ppo_config()
@@ -158,9 +146,8 @@ class PaperTrader:
             )
 
             # Fallback to custom checkpoint loading (LZ4/ZSTD compressed)
-            import pickle
-
             try:
+                import pickle
                 import lz4.frame
                 import zstandard as zstd
 
@@ -217,33 +204,6 @@ class PaperTrader:
                 raise RuntimeError(
                     f"Failed to load model with both Stable Baselines3 and custom formats: SB3: {sb3_error}, Custom: {custom_error}"
                 )
-            # Try to load checkpoint data
-            try:
-                checkpoint_data = pickle.loads(decompressed_data)
-            except AttributeError as e:
-                if "CheckpointData" in str(e):
-                    # Try loading again with the class available (already imported globally)
-                    checkpoint_data = pickle.loads(decompressed_data)
-                else:
-                    raise
-
-            # Load state dict - checkpoint_data might be a dict or CheckpointData object
-            if hasattr(checkpoint_data, "policy"):
-                # It's a CheckpointData object
-                policy_state = checkpoint_data.policy
-                value_state = getattr(checkpoint_data, "value_net", None)
-            else:
-                # It's a dict
-                policy_state = checkpoint_data.get("policy")
-                value_state = checkpoint_data.get("value_net")
-
-            if policy_state:
-                self.model.policy.load_state_dict(policy_state)
-            if value_state and hasattr(self.model, "value_net"):
-                self.model.value_net.load_state_dict(value_state)
-
-        except ImportError:
-            raise ImportError("lz4 is required to load compressed checkpoints")
 
         assert self.model is not None, "Model failed to load"
 
@@ -402,29 +362,36 @@ class PaperTrader:
                 TradingEnvironment, self.env.envs[0]
             ).get_legal_actions()
 
-            action, _ = cast(MaskablePPO, self.model).predict(
-                predict_obs, action_masks=action_masks, deterministic=False
-            )  # Use stochastic for scalping
+            # Get logits from policy network
+            with torch.no_grad():
+                obs_tensor = torch.from_numpy(predict_obs).float()
+                features = self.model.policy.extract_features(obs_tensor, self.model.policy.features_extractor)  # type: ignore[union-attr]
+                if self.model.policy.share_features_extractor:  # type: ignore[union-attr]
+                    latent_pi, _ = self.model.policy.mlp_extractor(features)  # type: ignore[union-attr]
+                else:
+                    latent_pi = self.model.policy.mlp_extractor.forward_actor(features[0])  # type: ignore[union-attr]
+                logits = self.model.policy.action_net(latent_pi).cpu().numpy()  # type: ignore[union-attr]
+
+            # Use unified decode_action for strict decode order
+            action, decode_info = decode_action(
+                logits[0] if logits.ndim > 1 else logits,
+                action_masks,
+                self.inference_config,
+            )
+            action = np.array([action])  # Wrap for env.step()
 
             # Debug: Log action distribution for first few steps
             if self.verbose and steps < 10:
-                print(f"Verbose is enabled, step {steps}")
-                try:
-                    # Get action probabilities if available
-                    dist = cast(MaskablePPO, self.model).policy.get_distribution(
-                        torch.from_numpy(predict_obs).float()
-                    )
-                    if (
-                        hasattr(dist, "distribution")
-                        and dist.distribution is not None
-                        and hasattr(dist.distribution, "probs")
-                    ):
-                        probs = dist.distribution.probs.detach().cpu().numpy()
-                        print(f"Step {steps}: Action probabilities: {probs}")
-                    print(f"Step {steps}: Selected action: {action}")
-                except Exception as e:
-                    print(f"Could not get action distribution: {e}")
-                    print(f"Step {steps}: Selected action: {action}")
+                print(f"\nStep {steps} (Unified Decode Diagnostics):")
+                print(f"  Action selected: {action[0]} ({'HOLD' if action[0] == 0 else 'BUY' if action[0] == 1 else 'SELL'})")
+                print(f"  Probabilities: HOLD={decode_info['probabilities'][0]:.4f}, "
+                      f"BUY={decode_info['probabilities'][1]:.4f}, "
+                      f"SELL={decode_info['probabilities'][2]:.4f}")
+                print(f"  Top2 actions: {decode_info['top2_actions']}")
+                print(f"  Top2 probs: [{decode_info['top2_probs'][0]:.4f}, {decode_info['top2_probs'][1]:.4f}]")
+                print(f"  Margin: {decode_info['margin']:.4f}")
+                print(f"  Tiebreaker activated: {decode_info['tiebreaker_activated']}")
+                print(f"  Legal actions mask: {action_masks}")
 
             # Record state before action
             prev_portfolio = self.portfolio_value
@@ -493,7 +460,7 @@ class PaperTrader:
         self, rewards: List[float], lengths: List[int]
     ) -> Dict[str, Any]:
         """Calculate comprehensive trading statistics."""
-        initial_portfolio = self.config.get("initial_portfolio_value", 10000.0)
+        initial_portfolio = float(cast(float, self.config.get("initial_portfolio_value", 10000.0)))
 
         # Calculate average final portfolio across episodes
         if self.episode_results:
@@ -504,7 +471,7 @@ class PaperTrader:
         else:
             avg_final_portfolio = initial_portfolio
 
-        stats = {
+        stats: Dict[str, Any] = {
             "episodes": len(rewards),
             "mean_reward": float(np.mean(rewards)),
             "std_reward": float(np.std(rewards)),
