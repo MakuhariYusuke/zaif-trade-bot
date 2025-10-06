@@ -17,11 +17,11 @@ from typing import Any, Dict, Optional, cast
 import numpy as np
 import pandas as pd
 
-from ztb.features.registry import FeatureRegistry
-from ztb.utils.path_utils import ensure_dir
 from ztb.features import get_feature_manager
+from ztb.features.registry import FeatureRegistry
 from ztb.utils.data.data_generation import generate_synthetic_data
 from ztb.utils.errors import safe_operation
+from ztb.utils.path_utils import ensure_dir
 
 project_root = Path(__file__).resolve().parent.parent
 if project_root.exists():
@@ -37,13 +37,18 @@ def load_real_data(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFr
             operation=lambda: _load_real_data_impl(sample_path, n_rows),
             context="real_data_loading",
             default_result=generate_synthetic_data(
-                n_rows or 1000, freq="1min", episode_length=None, volume_range=(100, 1000)
+                n_rows or 1000,
+                freq="1min",
+                episode_length=None,
+                volume_range=(100, 1000),
             ),  # Fallback to synthetic data
         ),
     )
 
 
-def _load_real_data_impl(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFrame:
+def _load_real_data_impl(
+    sample_path: Path, n_rows: Optional[int] = None
+) -> pd.DataFrame:
     """Implementation of real data loading."""
     if sample_path.exists():
         df = pd.read_parquet(sample_path)

@@ -149,8 +149,6 @@ class CircuitBreaker:
 class CircuitBreakerOpenError(Exception):
     """Exception raised when circuit breaker is open."""
 
-    pass
-
 
 class KillSwitch:
     """Global kill switch for emergency shutdown."""
@@ -224,8 +222,6 @@ class KillSwitch:
 
 class KillSwitchActivatedError(Exception):
     """Exception raised when kill switch is active."""
-
-    pass
 
 
 class CircuitBreakerRegistry:

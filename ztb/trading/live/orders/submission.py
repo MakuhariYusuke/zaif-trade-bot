@@ -143,4 +143,3 @@ class OrderPreparer:
 
         # For now, skip notional checks - would need venue-specific min_notional
         # This can be added when venue APIs provide this information
-        pass

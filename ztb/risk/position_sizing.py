@@ -12,8 +12,9 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
-from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 from ztb.utils.errors import safe_operation
+
+from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 
 # 年間取引日数（一般的に252日）
 TRADING_DAYS_PER_YEAR = 252
@@ -84,7 +85,11 @@ class PositionSizer:
             safe_operation(
                 logger=None,  # Will use default logger
                 operation=lambda: self._calculate_position_sizes_impl(
-                    signals, current_prices, portfolio_value, asset_volatilities, correlation_matrix
+                    signals,
+                    current_prices,
+                    portfolio_value,
+                    asset_volatilities,
+                    correlation_matrix,
                 ),
                 context="position_size_calculation",
                 default_result=[],

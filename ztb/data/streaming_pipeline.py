@@ -23,12 +23,11 @@ except ImportError:
 
 from ztb.features import FeatureRegistry
 from ztb.features.feature_engine import compute_features_batch
+from ztb.utils.logging_utils import get_logger
 from ztb.utils.observability import ObservabilityClient
 
 from .coin_gecko_stream import CoinGeckoStream, MarketDataBatch, StreamConfig
 from .stream_buffer import BufferStats, StreamBuffer
-
-from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,7 +51,10 @@ def _default_validator(df: pd.DataFrame) -> pd.DataFrame:
         result = result.drop_duplicates(subset="timestamp").sort_values("timestamp")
         return result.reset_index(drop=True)
 
-    return cast(pd.DataFrame, safe_operation(logger, perform_validation, "_default_validator()", df))
+    return cast(
+        pd.DataFrame,
+        safe_operation(logger, perform_validation, "_default_validator()", df),
+    )
 
 
 @dataclass
@@ -378,12 +380,15 @@ class StreamingPipeline:
         return self._compute_features_core(history, rows)
 
     def _compute_features_core(self, history: pd.DataFrame, rows: int) -> pd.DataFrame:
-        features_df = cast(pd.DataFrame, compute_features_batch(
-            history.copy(),
-            feature_names=list(self.feature_names),
-            report_interval=(rows + self.lookback_rows) + 1,
-            verbose=False,
-        ))
+        features_df = cast(
+            pd.DataFrame,
+            compute_features_batch(
+                history.copy(),
+                feature_names=list(self.feature_names),
+                report_interval=(rows + self.lookback_rows) + 1,
+                verbose=False,
+            ),
+        )
 
         combined = pd.concat([history.reset_index(drop=True), features_df], axis=1)
         if rows >= len(combined):

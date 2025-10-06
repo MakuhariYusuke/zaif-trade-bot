@@ -7,8 +7,17 @@ import math
 import time
 from collections import deque
 from pathlib import Path
-from typing import (TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypedDict,
-                    Union, cast)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    TypedDict,
+    Union,
+    cast,
+)
 
 import gymnasium as gym
 import numpy as np
@@ -31,6 +40,7 @@ Info = Dict[str, Any]
 
 class RewardSettings(TypedDict, total=False):
     """Type-safe reward settings configuration."""
+
     position_soft_cap: float
     position_penalty_scale: float
     position_penalty_exp: float
@@ -199,14 +209,34 @@ if TYPE_CHECKING:
 
 class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
     """
-    重特徴量ベースの取引環境
+    Heavy Feature-Based Trading Environment for Reinforcement Learning.
 
-    特徴:
-    - 状態: 価格系・テクニカル系・リスク系のすべての特徴量を使用
-    - 行動: 0=hold, 1=buy, 2=sell
-    - リワード: (position * pnl) / (atr_14 + 1e-6) - リスク調整型
-    - position: -1 (short) / 0 (flat) / 1 (long)
-    - NaN処理: ゼロ埋め
+    This environment implements a sophisticated trading simulation using comprehensive
+    feature sets including price, technical, and risk indicators. It supports both
+    long and short positions with realistic trading mechanics.
+
+    Features:
+    - State: All price, technical, and risk features from FeatureRegistry
+    - Actions: 0=hold, 1=buy (open long/close short), 2=sell (close long/open short)
+    - Reward: Position-adjusted PnL normalized by ATR, with risk penalties
+    - Position: -1.0 (short), 0.0 (neutral), 1.0 (long)
+    - NaN Handling: Zero-filling for missing values
+    - Action Masking: Prevents illegal actions based on current position
+
+    Reward Function:
+    - Base: (position * step_pnl) / (atr_14 + epsilon)
+    - Penalties: Position size limits, trade frequency, inventory costs
+    - Normalization: ATR-based scaling for market volatility adaptation
+
+    Action Space Details:
+    - BUY (1): Legal when position ≤ 0, opens long or closes short
+    - SELL (2): Legal when position ≥ 0, closes long or opens short
+    - HOLD (0): Always legal, maintains current position
+
+    Observation Space:
+    - Shape: (n_features,) where n_features varies by configuration
+    - Dtype: float32 for neural network compatibility
+    - Features: Price data, technical indicators, risk metrics, position info
     """
 
     _current_episode_actions: List[int]
@@ -284,8 +314,12 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
             "volatility_window": self.config.reward_volatility_window,
             "volatility_penalty_scale": self.config.reward_volatility_penalty_scale,
             "sharpe_bonus_scale": self.config.reward_sharpe_bonus_scale,
-            "sortino_bonus_scale": getattr(self.config, "reward_sortino_bonus_scale", 0.01),
-            "calmar_bonus_scale": getattr(self.config, "reward_calmar_bonus_scale", 0.005),
+            "sortino_bonus_scale": getattr(
+                self.config, "reward_sortino_bonus_scale", 0.01
+            ),
+            "calmar_bonus_scale": getattr(
+                self.config, "reward_calmar_bonus_scale", 0.005
+            ),
             "reward_clip_value": self.config.reward_clip_value,
             "profit_bonus_multipliers": self.config.reward_profit_bonus_multipliers,
             "enable_forced_diversity": self.config.enable_forced_diversity,
@@ -293,7 +327,9 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
 
         # configからreward_settingsをマージ（上書き）
         if hasattr(self.config, "reward_settings") and self.config.reward_settings:
-            self.reward_settings = cast(RewardSettings, {**self.reward_settings, **self.config.reward_settings})
+            self.reward_settings = cast(
+                RewardSettings, {**self.reward_settings, **self.config.reward_settings}
+            )
 
         # 取引コストを動的に設定（取引所に基づく）
         self.fee_model = ExchangeFeeModel()
@@ -305,9 +341,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
         self.initial_portfolio_value = float(self.config.initial_portfolio_value)
         self.portfolio_value = self.initial_portfolio_value
 
-        inventory_window = max(
-            8, self._get_reward_setting_int("inventory_window", 128)
-        )
+        inventory_window = max(8, self._get_reward_setting_int("inventory_window", 128))
         volatility_window = max(
             8, self._get_reward_setting_int("volatility_window", 32)
         )
@@ -1260,7 +1294,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
                 else 0.0
             )
             inventory_penalty = (
-                self._get_reward_setting_float("inventory_penalty_scale", 0.1) * avg_inventory
+                self._get_reward_setting_float("inventory_penalty_scale", 0.1)
+                * avg_inventory
             )
 
             position_changed = abs(position - old_position) > 1e-6
@@ -1285,8 +1320,10 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
                 trade_penalty = self._get_reward_setting_float(
                     "trade_frequency_penalty", 0.2
                 ) * math.exp(-(delta_steps or halflife) / halflife)
-                if delta_steps is not None and delta_steps < self._get_reward_setting_int(
-                    "trade_cooldown_steps", 2
+                if (
+                    delta_steps is not None
+                    and delta_steps
+                    < self._get_reward_setting_int("trade_cooldown_steps", 2)
                 ):
                     trade_penalty += self._get_reward_setting_float(
                         "trade_cooldown_penalty", 0.2
@@ -1479,7 +1516,9 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
         avg_inventory = (
             sum(recent_positions) / len(recent_positions) if recent_positions else 0.0
         )
-        inventory_penalty = self.reward_settings.get("inventory_penalty_scale", 0.1) * avg_inventory
+        inventory_penalty = (
+            self.reward_settings.get("inventory_penalty_scale", 0.1) * avg_inventory
+        )
 
         position_changed = abs(position - old_position) > 1e-6
         trade_penalty = 0.0
@@ -1543,7 +1582,9 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
                         sortino_ratio = mean_return / (downside_std + eps)
                         if sortino_ratio > 0:
                             sortino_bonus = (
-                                self._get_reward_setting_float("sortino_bonus_scale", 0.01)
+                                self._get_reward_setting_float(
+                                    "sortino_bonus_scale", 0.01
+                                )
                                 * sortino_ratio
                             )
                             sharpe_bonus += sortino_bonus

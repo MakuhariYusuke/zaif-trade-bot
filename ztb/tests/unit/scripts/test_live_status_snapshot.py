@@ -10,11 +10,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import sys
-import unittest
-from pathlib import Path
-from unittest.mock import patch
-
 from ztb.utils.path_utils import get_project_root
 
 # Add scripts directory to path for importing

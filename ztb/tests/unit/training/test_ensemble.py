@@ -2,9 +2,10 @@
 Unit tests for ensemble.py module.
 """
 
+from unittest.mock import Mock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch
 
 from ztb.training.ensemble import EnsemblePredictor
 
@@ -16,10 +17,10 @@ class TestEnsemblePredictor:
         """Test initialization with valid model configurations."""
         model_configs = [
             {"path": "model1.zip", "weight": 1.0, "feature_set": "full"},
-            {"path": "model2.zip", "weight": 2.0, "feature_set": "reduced"}
+            {"path": "model2.zip", "weight": 2.0, "feature_set": "reduced"},
         ]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model1 = Mock()
             mock_model2 = Mock()
             mock_load.side_effect = [mock_model1, mock_model2]
@@ -30,17 +31,17 @@ class TestEnsemblePredictor:
             assert len(predictor.weights) == 2
             assert len(predictor.feature_sets) == 2
             assert predictor.models == [mock_model1, mock_model2]
-            assert predictor.weights == [1/3, 2/3]  # Normalized weights
+            assert predictor.weights == [1 / 3, 2 / 3]  # Normalized weights
             assert predictor.feature_sets == ["full", "reduced"]
 
     def test_init_with_invalid_model(self):
         """Test initialization when one model fails to load."""
         model_configs = [
             {"path": "model1.zip", "weight": 1.0},
-            {"path": "invalid.zip", "weight": 1.0}
+            {"path": "invalid.zip", "weight": 1.0},
         ]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model = Mock()
             mock_load.side_effect = [mock_model, Exception("Load failed")]
 
@@ -54,7 +55,7 @@ class TestEnsemblePredictor:
         """Test initialization with no valid models."""
         model_configs = [{"path": "invalid.zip"}]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_load.side_effect = Exception("Load failed")
 
             predictor = EnsemblePredictor(model_configs)
@@ -66,7 +67,7 @@ class TestEnsemblePredictor:
         """Test prediction with continuous actions."""
         model_configs = [{"path": "model1.zip"}, {"path": "model2.zip"}]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model1 = Mock()
             mock_model2 = Mock()
 
@@ -87,9 +88,13 @@ class TestEnsemblePredictor:
 
     def test_predict_discrete_actions(self):
         """Test prediction with discrete actions."""
-        model_configs = [{"path": "model1.zip"}, {"path": "model2.zip"}, {"path": "model3.zip"}]
+        model_configs = [
+            {"path": "model1.zip"},
+            {"path": "model2.zip"},
+            {"path": "model3.zip"},
+        ]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model1 = Mock()
             mock_model2 = Mock()
             mock_model3 = Mock()
@@ -121,7 +126,7 @@ class TestEnsemblePredictor:
         """Test prediction when all models fail."""
         model_configs = [{"path": "model1.zip"}]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model = Mock()
             mock_model.predict.side_effect = Exception("Prediction failed")
             mock_load.return_value = mock_model
@@ -136,7 +141,7 @@ class TestEnsemblePredictor:
         """Test prediction returns state from first successful model."""
         model_configs = [{"path": "model1.zip"}, {"path": "model2.zip"}]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model1 = Mock()
             mock_model2 = Mock()
 
@@ -155,12 +160,12 @@ class TestEnsemblePredictor:
 
             assert state == mock_state1  # Should return state from first model
 
-    @patch('ztb.training.ensemble.logger')
+    @patch("ztb.training.ensemble.logger")
     def test_predict_logs_warnings_on_failure(self, mock_logger):
         """Test that prediction logs warnings when individual models fail."""
         model_configs = [{"path": "model1.zip"}, {"path": "model2.zip"}]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model1 = Mock()
             mock_model2 = Mock()
 
@@ -192,7 +197,7 @@ class TestEnsemblePredictorGetActionProbabilities:
         """Test action probabilities when models don't have policy."""
         model_configs = [{"path": "model1.zip"}]
 
-        with patch('ztb.training.ensemble.PPO.load') as mock_load:
+        with patch("ztb.training.ensemble.PPO.load") as mock_load:
             mock_model = Mock()
             # Remove policy attribute
             del mock_model.policy

@@ -7,7 +7,6 @@ Reusable utility for aggregating trade data into OHLCV bars.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 

@@ -9,7 +9,7 @@ import io
 import pstats
 import time
 from contextlib import contextmanager
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, Generator, List, Optional
 
 import pandas as pd
 import psutil
@@ -48,7 +48,7 @@ class PerformanceProfiler:
 
             # Store stats for later analysis
             s = io.StringIO()
-            ps = pstats.Stats(profiler, stream=s).sort_stats('cumulative')
+            ps = pstats.Stats(profiler, stream=s).sort_stats("cumulative")
             ps.print_stats(20)  # Top 20 functions
             self._profile_stats = ps
 
@@ -66,7 +66,7 @@ class PerformanceProfiler:
         self,
         df: pd.DataFrame,
         feature_names: Optional[List[str]] = None,
-        iterations: int = 3
+        iterations: int = 3,
     ) -> Dict[str, Dict[str, float]]:
         """
         Benchmark individual feature computation performance
@@ -106,13 +106,18 @@ class PerformanceProfiler:
             avg_memory = sum(memories) / len(memories)
 
             results[feature_name] = {
-                'avg_time_ms': avg_time * 1000,
-                'min_time_ms': min_time * 1000,
-                'max_time_ms': max_time * 1000,
-                'avg_memory_mb': avg_memory,
-                'per_sample_us': (avg_time / len(df)) * 1_000_000,  # microseconds per sample
-                'output_shape': result.shape if hasattr(result, 'shape') else len(result),
-                'output_dtype': str(result.dtype) if hasattr(result, 'dtype') else 'unknown'
+                "avg_time_ms": avg_time * 1000,
+                "min_time_ms": min_time * 1000,
+                "max_time_ms": max_time * 1000,
+                "avg_memory_mb": avg_memory,
+                "per_sample_us": (avg_time / len(df))
+                * 1_000_000,  # microseconds per sample
+                "output_shape": (
+                    result.shape if hasattr(result, "shape") else len(result)
+                ),
+                "output_dtype": (
+                    str(result.dtype) if hasattr(result, "dtype") else "unknown"
+                ),
             }
 
         return results
@@ -121,7 +126,7 @@ class PerformanceProfiler:
         self,
         benchmark_results: Dict[str, Dict[str, float]],
         time_threshold_ms: float = 1.0,
-        memory_threshold_mb: float = 10.0
+        memory_threshold_mb: float = 10.0,
     ) -> Dict[str, List[str]]:
         """
         Identify performance bottlenecks based on benchmarks
@@ -133,21 +138,21 @@ class PerformanceProfiler:
         memory_hungry_features = []
 
         for feature_name, metrics in benchmark_results.items():
-            if metrics['avg_time_ms'] > time_threshold_ms:
+            if metrics["avg_time_ms"] > time_threshold_ms:
                 slow_features.append(f"{feature_name} ({metrics['avg_time_ms']:.2f}ms)")
 
-            if metrics['avg_memory_mb'] > memory_threshold_mb:
-                memory_hungry_features.append(f"{feature_name} ({metrics['avg_memory_mb']:.2f}MB)")
+            if metrics["avg_memory_mb"] > memory_threshold_mb:
+                memory_hungry_features.append(
+                    f"{feature_name} ({metrics['avg_memory_mb']:.2f}MB)"
+                )
 
         return {
-            'slow_features': slow_features,
-            'memory_hungry_features': memory_hungry_features
+            "slow_features": slow_features,
+            "memory_hungry_features": memory_hungry_features,
         }
 
     def print_benchmark_report(
-        self,
-        benchmark_results: Dict[str, Dict[str, float]],
-        top_n: int = 10
+        self, benchmark_results: Dict[str, Dict[str, float]], top_n: int = 10
     ) -> None:
         """Print a formatted benchmark report"""
         print("=" * 80)
@@ -156,49 +161,55 @@ class PerformanceProfiler:
 
         # Sort by average time (slowest first)
         sorted_by_time = sorted(
-            benchmark_results.items(),
-            key=lambda x: x[1]['avg_time_ms'],
-            reverse=True
+            benchmark_results.items(), key=lambda x: x[1]["avg_time_ms"], reverse=True
         )
 
         print(f"\nTOP {top_n} SLOWEST FEATURES:")
         print("-" * 60)
         for i, (name, metrics) in enumerate(sorted_by_time[:top_n]):
-            print(f"{i+1:2d}. {name:<25} {metrics['avg_time_ms']:>8.2f}ms "
-                  f"({metrics['per_sample_us']:>6.1f}μs/sample)")
+            print(
+                f"{i+1:2d}. {name:<25} {metrics['avg_time_ms']:>8.2f}ms "
+                f"({metrics['per_sample_us']:>6.1f}μs/sample)"
+            )
 
         # Sort by memory usage
         sorted_by_memory = sorted(
-            benchmark_results.items(),
-            key=lambda x: x[1]['avg_memory_mb'],
-            reverse=True
+            benchmark_results.items(), key=lambda x: x[1]["avg_memory_mb"], reverse=True
         )
 
         print(f"\nTOP {top_n} MEMORY-HUNGRIEST FEATURES:")
         print("-" * 60)
         for i, (name, metrics) in enumerate(sorted_by_memory[:top_n]):
-            print(f"{i+1:2d}. {name:<25} {metrics['avg_memory_mb']:>8.2f}MB "
-                  f"({metrics['output_dtype']})")
+            print(
+                f"{i+1:2d}. {name:<25} {metrics['avg_memory_mb']:>8.2f}MB "
+                f"({metrics['output_dtype']})"
+            )
 
         # Summary statistics
         if benchmark_results:
-            times = [m['avg_time_ms'] for m in benchmark_results.values()]
-            memories = [m['avg_memory_mb'] for m in benchmark_results.values()]
+            times = [m["avg_time_ms"] for m in benchmark_results.values()]
+            memories = [m["avg_memory_mb"] for m in benchmark_results.values()]
 
             print(f"\nSUMMARY STATISTICS:")
             print("-" * 60)
             print(f"Total features tested: {len(benchmark_results)}")
             print(f"Average time per feature: {sum(times)/len(times):.2f}ms")
             print(f"Average memory per feature: {sum(memories)/len(memories):.2f}MB")
-            print(f"Slowest feature: {sorted_by_time[0][0]} ({sorted_by_time[0][1]['avg_time_ms']:.2f}ms)")
-            print(f"Most memory hungry: {sorted_by_memory[0][0]} ({sorted_by_memory[0][1]['avg_memory_mb']:.2f}MB)")
+            print(
+                f"Slowest feature: {sorted_by_time[0][0]} ({sorted_by_time[0][1]['avg_time_ms']:.2f}ms)"
+            )
+            print(
+                f"Most memory hungry: {sorted_by_memory[0][0]} ({sorted_by_memory[0][1]['avg_memory_mb']:.2f}MB)"
+            )
         else:
             print("\nSUMMARY STATISTICS:")
             print("-" * 60)
             print("No features were successfully tested")
 
 
-def run_performance_analysis(df: pd.DataFrame, feature_subset: Optional[List[str]] = None) -> None:
+def run_performance_analysis(
+    df: pd.DataFrame, feature_subset: Optional[List[str]] = None
+) -> None:
     """
     Run complete performance analysis on feature computation
 
@@ -210,8 +221,6 @@ def run_performance_analysis(df: pd.DataFrame, feature_subset: Optional[List[str
     print("=" * 50)
 
     # Initialize features
-    from ztb.features import (momentum, scalping, trend, utils, volatility,
-                              volume)
     FeatureRegistry.initialize()
 
     profiler = PerformanceProfiler()
@@ -228,16 +237,18 @@ def run_performance_analysis(df: pd.DataFrame, feature_subset: Optional[List[str
     print("\nBOTTLENECK ANALYSIS:")
     print("-" * 60)
 
-    if bottlenecks['slow_features']:
+    if bottlenecks["slow_features"]:
         print(f"⚠️  Slow features (>1ms): {len(bottlenecks['slow_features'])}")
-        for feature in bottlenecks['slow_features'][:5]:  # Show top 5
+        for feature in bottlenecks["slow_features"][:5]:  # Show top 5
             print(f"   • {feature}")
     else:
         print("✅ No slow features detected")
 
-    if bottlenecks['memory_hungry_features']:
-        print(f"⚠️  Memory hungry features (>10MB): {len(bottlenecks['memory_hungry_features'])}")
-        for feature in bottlenecks['memory_hungry_features'][:5]:  # Show top 5
+    if bottlenecks["memory_hungry_features"]:
+        print(
+            f"⚠️  Memory hungry features (>10MB): {len(bottlenecks['memory_hungry_features'])}"
+        )
+        for feature in bottlenecks["memory_hungry_features"][:5]:  # Show top 5
             print(f"   • {feature}")
     else:
         print("✅ No memory hungry features detected")
@@ -252,26 +263,34 @@ if __name__ == "__main__":
     # Generate test data
     np.random.seed(42)
     n_samples = 5000
-    dates = pd.date_range('2023-01-01', periods=n_samples, freq='1min')
-    df = pd.DataFrame({
-        'close': np.random.uniform(100, 200, n_samples),
-        'high': np.random.uniform(105, 210, n_samples),
-        'low': np.random.uniform(95, 190, n_samples),
-        'open': np.random.uniform(98, 202, n_samples),
-        'volume': np.random.uniform(1000, 10000, n_samples),
-    }, index=dates)
+    dates = pd.date_range("2023-01-01", periods=n_samples, freq="1min")
+    df = pd.DataFrame(
+        {
+            "close": np.random.uniform(100, 200, n_samples),
+            "high": np.random.uniform(105, 210, n_samples),
+            "low": np.random.uniform(95, 190, n_samples),
+            "open": np.random.uniform(98, 202, n_samples),
+            "volume": np.random.uniform(1000, 10000, n_samples),
+        },
+        index=dates,
+    )
 
     # Add technical indicators
-    df['rsi_14'] = np.random.uniform(20, 80, n_samples)
-    df['macd'] = np.random.uniform(-5, 5, n_samples)
-    df['macd_hist'] = np.random.uniform(-2, 2, n_samples)
-    df['atr_14'] = np.random.uniform(1, 5, n_samples)
+    df["rsi_14"] = np.random.uniform(20, 80, n_samples)
+    df["macd"] = np.random.uniform(-5, 5, n_samples)
+    df["macd_hist"] = np.random.uniform(-2, 2, n_samples)
+    df["atr_14"] = np.random.uniform(1, 5, n_samples)
 
     # Initialize features
-    from ztb.features import (momentum, scalping, trend, utils, volatility,
-                              volume)
     FeatureRegistry.initialize()
 
     # Run analysis on key features
-    key_features = ['RegimeClustering', 'KalmanFilter', 'KalmanVelocity', 'ADX', 'RSI', 'MACD']
+    key_features = [
+        "RegimeClustering",
+        "KalmanFilter",
+        "KalmanVelocity",
+        "ADX",
+        "RSI",
+        "MACD",
+    ]
     run_performance_analysis(df, key_features)

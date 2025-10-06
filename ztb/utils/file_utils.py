@@ -7,7 +7,7 @@ File I/O utilities for ZTB system
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, TextIO, Union
+from typing import Any, Dict, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
         Parsed JSON data or default value
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.warning(f"Failed to load JSON from {file_path}: {e}")
@@ -40,7 +40,9 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
         return default
 
 
-def safe_json_dump(data: Any, file_path: Union[str, Path], indent: int = 2, default: Any = None) -> bool:
+def safe_json_dump(
+    data: Any, file_path: Union[str, Path], indent: int = 2, default: Any = None
+) -> bool:
     """
     Safely dump data to JSON file with error handling.
 
@@ -57,11 +59,11 @@ def safe_json_dump(data: Any, file_path: Union[str, Path], indent: int = 2, defa
         # Convert to Path if it's a string
         if isinstance(file_path, str):
             file_path = Path(file_path)
-        
+
         # Ensure parent directory exists
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=indent, ensure_ascii=False, default=default)
         return True
     except Exception as e:
@@ -104,7 +106,7 @@ def save_config_file(config: Dict[str, Any], file_path: Path) -> bool:
     return safe_json_dump(config, file_path)
 
 
-def read_text_file(file_path: Path, encoding: str = 'utf-8') -> Optional[str]:
+def read_text_file(file_path: Path, encoding: str = "utf-8") -> Optional[str]:
     """
     Read text content from a file.
 
@@ -122,7 +124,7 @@ def read_text_file(file_path: Path, encoding: str = 'utf-8') -> Optional[str]:
         return None
 
 
-def write_text_file(content: str, file_path: Path, encoding: str = 'utf-8') -> bool:
+def write_text_file(content: str, file_path: Path, encoding: str = "utf-8") -> bool:
     """
     Write text content to a file.
 
@@ -143,7 +145,7 @@ def write_text_file(content: str, file_path: Path, encoding: str = 'utf-8') -> b
         return False
 
 
-def append_text_file(content: str, file_path: Path, encoding: str = 'utf-8') -> bool:
+def append_text_file(content: str, file_path: Path, encoding: str = "utf-8") -> bool:
     """
     Append text content to a file.
 
@@ -157,7 +159,7 @@ def append_text_file(content: str, file_path: Path, encoding: str = 'utf-8') -> 
     """
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(file_path, 'a', encoding=encoding) as f:
+        with open(file_path, "a", encoding=encoding) as f:
             f.write(content)
         return True
     except Exception as e:
@@ -201,7 +203,7 @@ def get_file_size(file_path: Path) -> Optional[int]:
         return None
 
 
-def backup_file(file_path: Path, suffix: str = '.backup') -> Optional[Path]:
+def backup_file(file_path: Path, suffix: str = ".backup") -> Optional[Path]:
     """
     Create a backup of a file.
 
@@ -220,6 +222,7 @@ def backup_file(file_path: Path, suffix: str = '.backup') -> Optional[Path]:
 
     try:
         import shutil
+
         shutil.copy2(file_path, backup_path)
         return backup_path
     except Exception as e:

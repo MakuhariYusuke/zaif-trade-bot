@@ -608,14 +608,12 @@ class CoverageValidator:
                 _ = rules["min_series_length"]
                 # Note: Actual series length validation would require data access
                 # This is a placeholder for future implementation
-                pass
 
             # Validate maximum skew tolerance
             if "max_skew_tolerance" in rules:
                 _ = rules["max_skew_tolerance"]
                 # Note: Actual skew validation would require statistical analysis
                 # This is a placeholder for future implementation
-                pass
 
         return errors
 

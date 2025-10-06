@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     if ppo_impl is not None:
         from ztb.trading.ppo_trainer import PPOTrainer  # type: ignore[attr-defined]
     else:  # pragma: no cover - fallback for type checkers
+
         class PPOTrainer:  # type: ignore
             def __init__(self, *args, **kwargs) -> None: ...
             def train(self, *args, **kwargs) -> object: ...
@@ -29,6 +30,7 @@ else:
     try:
         from ztb.trading.ppo_trainer import PPOTrainer  # type: ignore
     except Exception:  # pragma: no cover - runtime fallback
+
         class PPOTrainer:
             """Minimal runtime stub used only when the full trainer isn't
             installed. This stub raises at train time to avoid silent
@@ -40,5 +42,6 @@ else:
 
             def train(self, *args, **kwargs) -> object:  # pragma: no cover
                 raise RuntimeError("PPOTrainer implementation not available")
+
 
 __all__ = ["PPOTrainer"]

@@ -9,7 +9,7 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, cast, List, Dict, Any
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -310,25 +310,27 @@ def main() -> None:
 
         # Create run metadata
         run_metadata = RunMetadata()
-        run_metadata.metadata.update({
-            "correlation_id": correlation_id,
-            "run_id": f"backtest_{args.policy}_{timestamp}",
-            "type": "backtest",
-            "config": {
-                "policy": args.policy,
-                "dataset": args.dataset,
-                "slippage_bps": args.slippage_bps,
-                "initial_capital": args.initial_capital,
-                "enable_risk": args.enable_risk,
-                "risk_profile": args.risk_profile,
-                "target_vol": args.target_vol,
-            },
-            "seeds": {
-                "numpy": 42,  # From load_data
-                "random": None,
-            },
-            "package_hashes": {},  # TODO: Add package hashes
-        })
+        run_metadata.metadata.update(
+            {
+                "correlation_id": correlation_id,
+                "run_id": f"backtest_{args.policy}_{timestamp}",
+                "type": "backtest",
+                "config": {
+                    "policy": args.policy,
+                    "dataset": args.dataset,
+                    "slippage_bps": args.slippage_bps,
+                    "initial_capital": args.initial_capital,
+                    "enable_risk": args.enable_risk,
+                    "risk_profile": args.risk_profile,
+                    "target_vol": args.target_vol,
+                },
+                "seeds": {
+                    "numpy": 42,  # From load_data
+                    "random": None,
+                },
+                "package_hashes": {},  # TODO: Add package hashes
+            }
+        )
         # Add system info
         run_metadata.metadata["environment"] = run_metadata.capture_system_info()
 
@@ -346,11 +348,17 @@ def main() -> None:
         equity_list = [
             {"timestamp": ts, "equity": eq} for ts, eq in equity_curve.items()
         ]
-        orders_list = cast(List[Dict[str, Any]], orders.to_dict("records") if not orders.empty else [])
+        orders_list = cast(
+            List[Dict[str, Any]], orders.to_dict("records") if not orders.empty else []
+        )
 
         # Generate outputs
         ReportGenerator.generate_json_report(
-            metrics, equity_list, orders_list, metadata, str(output_dir / "metrics.json")
+            metrics,
+            equity_list,
+            orders_list,
+            metadata,
+            str(output_dir / "metrics.json"),
         )
 
         ReportGenerator.generate_markdown_report(

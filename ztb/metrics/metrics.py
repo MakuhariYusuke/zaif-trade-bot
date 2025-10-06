@@ -10,9 +10,8 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from ztb.utils.metrics.trading_metrics import sharpe_ratio as _sharpe_ratio
-
 from ztb.utils.errors import safe_operation
+from ztb.utils.metrics.trading_metrics import sharpe_ratio as _sharpe_ratio
 
 # 年間取引日数（一般的に252日）
 TRADING_DAYS_PER_YEAR = 252
@@ -56,7 +55,7 @@ def sharpe_ratio(
             operation=lambda: _sharpe_ratio(np.asarray(returns), rf, period_per_year),
             context="sharpe_ratio_calculation",
             default_result=0.0,  # Return 0.0 on failure
-        )
+        ),
     )
 
 
@@ -82,10 +81,12 @@ def sortino_ratio(
         float,
         safe_operation(
             logger=None,  # Use default logger
-            operation=lambda: _sortino_ratio_impl(returns, rf, period_per_year, downside_floor),
+            operation=lambda: _sortino_ratio_impl(
+                returns, rf, period_per_year, downside_floor
+            ),
             context="sortino_ratio_calculation",
             default_result=0.0,  # Return 0.0 on failure
-        )
+        ),
     )
 
 
@@ -144,7 +145,7 @@ def max_drawdown(equity_curve: Union[pd.Series, NDArray[Any]]) -> float:
             operation=lambda: _max_drawdown_impl(equity_curve),
             context="max_drawdown_calculation",
             default_result=0.0,  # Return 0.0 on failure
-        )
+        ),
     )
 
 

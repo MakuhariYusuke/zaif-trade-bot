@@ -9,11 +9,12 @@ from typing import Dict, List, cast
 
 # Type alias for configuration
 ConfigType = Dict[str, str | float]
-import pandas as pd
+from collections import Counter
+
 import numpy as np
+import pandas as pd
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from collections import Counter
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent
@@ -21,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from ztb.trading.environment import HeavyTradingEnv
+
 
 class TrainingCallback(BaseCallback):
     """Callback for logging training progress"""
@@ -38,28 +40,34 @@ class TrainingCallback(BaseCallback):
 
     def _on_rollout_end(self) -> None:
         # Log episode info
-        episode_reward = sum(self.locals['rewards'])
-        episode_length = len(self.locals['rewards'])
-        actions = self.locals.get('actions', [])
+        episode_reward = sum(self.locals["rewards"])
+        episode_length = len(self.locals["rewards"])
+        actions = self.locals.get("actions", [])
 
         self.episode_rewards.append(episode_reward)
         self.episode_lengths.append(episode_length)
         self.episode_count += 1
 
         # Count actions
-        actions_list = [int(a) for a in actions] if hasattr(actions, '__iter__') else []
+        actions_list = [int(a) for a in actions] if hasattr(actions, "__iter__") else []
         action_count = Counter(actions_list)
-        self.action_counts.append({
-            'HOLD': action_count.get(0, 0),
-            'BUY': action_count.get(1, 0),
-            'SELL': action_count.get(2, 0)
-        })
+        self.action_counts.append(
+            {
+                "HOLD": action_count.get(0, 0),
+                "BUY": action_count.get(1, 0),
+                "SELL": action_count.get(2, 0),
+            }
+        )
 
         # Get portfolio value from info if available
-        if hasattr(self.locals, 'infos') and self.locals['infos']:
-            info = self.locals['infos'][0] if isinstance(self.locals['infos'], list) else self.locals['infos']
-            if isinstance(info, dict) and 'portfolio_value' in info:
-                self.portfolio_values.append(info['portfolio_value'])
+        if hasattr(self.locals, "infos") and self.locals["infos"]:
+            info = (
+                self.locals["infos"][0]
+                if isinstance(self.locals["infos"], list)
+                else self.locals["infos"]
+            )
+            if isinstance(info, dict) and "portfolio_value" in info:
+                self.portfolio_values.append(info["portfolio_value"])
 
         # Log to TensorBoard every 10 episodes
         if self.episode_count % 10 == 0:
@@ -72,19 +80,33 @@ class TrainingCallback(BaseCallback):
             # Log action distribution
             total_actions = sum(action_count.values())
             if total_actions > 0:
-                self.logger.record("actions/hold_ratio", action_count.get(0, 0) / total_actions)
-                self.logger.record("actions/buy_ratio", action_count.get(1, 0) / total_actions)
-                self.logger.record("actions/sell_ratio", action_count.get(2, 0) / total_actions)
+                self.logger.record(
+                    "actions/hold_ratio", action_count.get(0, 0) / total_actions
+                )
+                self.logger.record(
+                    "actions/buy_ratio", action_count.get(1, 0) / total_actions
+                )
+                self.logger.record(
+                    "actions/sell_ratio", action_count.get(2, 0) / total_actions
+                )
 
-            print(f"Episode {self.episode_count}: Reward={episode_reward:.4f}, "
-                  f"Length={episode_length}, Portfolio={self.portfolio_values[-1] if self.portfolio_values else 'N/A'}, "
-                  f"Actions: H={action_count.get(0, 0)}, B={action_count.get(1, 0)}, S={action_count.get(2, 0)}")
+            print(
+                f"Episode {self.episode_count}: Reward={episode_reward:.4f}, "
+                f"Length={episode_length}, Portfolio={self.portfolio_values[-1] if self.portfolio_values else 'N/A'}, "
+                f"Actions: H={action_count.get(0, 0)}, B={action_count.get(1, 0)}, S={action_count.get(2, 0)}"
+            )
 
         if len(self.episode_rewards) % 10 == 0:
             avg_reward = np.mean(self.episode_rewards[-10:])
             print(f"Episode {len(self.episode_rewards)}: Avg Reward = {avg_reward:.4f}")
 
-def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.0, entropy_coef: float = 0.01, learning_rate: float = 3e-4) -> str:
+
+def train_simple_reward(
+    config_name: str = "default",
+    reward_scaling: float = 1.0,
+    entropy_coef: float = 0.01,
+    learning_rate: float = 3e-4,
+) -> str:
     """Train with simple portfolio reward for 100k steps with configurable parameters"""
 
     # Load data
@@ -107,7 +129,7 @@ def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.
         config=env_config,
         streaming_pipeline=None,
         stream_batch_size=1000,
-        max_features=68
+        max_features=68,
     )
 
     # Create PPO model with TensorBoard logging
@@ -132,7 +154,9 @@ def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.
     callback = TrainingCallback()
 
     print(f"Starting training with config: {config_name}")
-    print(f"Reward scaling: {reward_scaling}, Entropy coef: {entropy_coef}, Learning rate: {learning_rate}")
+    print(
+        f"Reward scaling: {reward_scaling}, Entropy coef: {entropy_coef}, Learning rate: {learning_rate}"
+    )
     print("Training for 100,000 steps...")
 
     # Train for 100k steps
@@ -147,7 +171,7 @@ def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.
 
     # Analyze action distribution
     if callback.action_counts:
-        total_actions = {'HOLD': 0, 'BUY': 0, 'SELL': 0}
+        total_actions = {"HOLD": 0, "BUY": 0, "SELL": 0}
         for counts in callback.action_counts:
             for action, count in counts.items():
                 total_actions[action] += count
@@ -167,17 +191,53 @@ def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.
     env.close()
     return str(model_path)
 
+
 if __name__ == "__main__":
     # Define fine-tuned reward scaling configurations
     configs: List[ConfigType] = [
         # Fine-tune reward_scaling around optimal value (7.5)
-        {"name": "reward_scale_6_0", "reward_scaling": 6.0, "entropy_coef": 0.03, "learning_rate": 1e-3},
-        {"name": "reward_scale_6_5", "reward_scaling": 6.5, "entropy_coef": 0.03, "learning_rate": 1e-3},
-        {"name": "reward_scale_7_0", "reward_scaling": 7.0, "entropy_coef": 0.03, "learning_rate": 1e-3},
-        {"name": "reward_scale_7_5", "reward_scaling": 7.5, "entropy_coef": 0.03, "learning_rate": 1e-3},
-        {"name": "reward_scale_8_0", "reward_scaling": 8.0, "entropy_coef": 0.03, "learning_rate": 1e-3},
-        {"name": "reward_scale_8_5", "reward_scaling": 8.5, "entropy_coef": 0.03, "learning_rate": 1e-3},
-        {"name": "reward_scale_9_0", "reward_scaling": 9.0, "entropy_coef": 0.03, "learning_rate": 1e-3},
+        {
+            "name": "reward_scale_6_0",
+            "reward_scaling": 6.0,
+            "entropy_coef": 0.03,
+            "learning_rate": 1e-3,
+        },
+        {
+            "name": "reward_scale_6_5",
+            "reward_scaling": 6.5,
+            "entropy_coef": 0.03,
+            "learning_rate": 1e-3,
+        },
+        {
+            "name": "reward_scale_7_0",
+            "reward_scaling": 7.0,
+            "entropy_coef": 0.03,
+            "learning_rate": 1e-3,
+        },
+        {
+            "name": "reward_scale_7_5",
+            "reward_scaling": 7.5,
+            "entropy_coef": 0.03,
+            "learning_rate": 1e-3,
+        },
+        {
+            "name": "reward_scale_8_0",
+            "reward_scaling": 8.0,
+            "entropy_coef": 0.03,
+            "learning_rate": 1e-3,
+        },
+        {
+            "name": "reward_scale_8_5",
+            "reward_scaling": 8.5,
+            "entropy_coef": 0.03,
+            "learning_rate": 1e-3,
+        },
+        {
+            "name": "reward_scale_9_0",
+            "reward_scaling": 9.0,
+            "entropy_coef": 0.03,
+            "learning_rate": 1e-3,
+        },
     ]
 
     trained_models = []
@@ -192,7 +252,7 @@ if __name__ == "__main__":
                 config_name=cast(str, config["name"]),
                 reward_scaling=cast(float, config["reward_scaling"]),
                 entropy_coef=cast(float, config["entropy_coef"]),
-                learning_rate=cast(float, config["learning_rate"])
+                learning_rate=cast(float, config["learning_rate"]),
             )
             trained_models.append((config["name"], model_path))
             print(f"✅ Successfully trained: {config['name']}")

@@ -76,7 +76,6 @@ class BaseFeature(ABC):
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute feature"""
-        pass
 
 
 class ParameterizedFeature(BaseFeature):
@@ -99,7 +98,6 @@ class ParameterizedFeature(BaseFeature):
     @abstractmethod
     def _compute_with_params(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
         """Actual computation with parameters"""
-        pass
 
 
 class MovingAverageFeature(BaseFeature):
@@ -111,7 +109,6 @@ class MovingAverageFeature(BaseFeature):
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute moving average based feature"""
-        pass
 
 
 class OscillatorFeature(BaseFeature):
@@ -123,7 +120,6 @@ class OscillatorFeature(BaseFeature):
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute oscillator based feature"""
-        pass
 
 
 class ChannelFeature(BaseFeature):
@@ -135,7 +131,6 @@ class ChannelFeature(BaseFeature):
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute channel based feature"""
-        pass
 
 
 class CommonPreprocessor:

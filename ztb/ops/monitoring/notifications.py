@@ -6,15 +6,21 @@ static type checking (mypy) does not raise import-not-found errors.
 At runtime the project may use ztb.ops.alerts.notifications or other
 pluggable notification systems; this module is a safe fallback.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
 import logging
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
-def send_notification(title: str, message: str, priority: str = "normal", fields: Optional[Dict[str, Any]] = None) -> bool:
+def send_notification(
+    title: str,
+    message: str,
+    priority: str = "normal",
+    fields: Optional[Dict[str, Any]] = None,
+) -> bool:
     """Send a lightweight notification. Returns True on success.
 
     This implementation logs the notification and returns True so callers

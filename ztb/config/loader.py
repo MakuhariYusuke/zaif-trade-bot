@@ -7,14 +7,11 @@ Supports merging configurations from multiple sources with proper precedence.
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
-import time
 
 import yaml
 from pydantic import ValidationError
 
 from .schema import GlobalConfig
-
- 
 
 
 class ConfigLoader:
@@ -71,38 +68,40 @@ class ConfigLoader:
 
     def load_yaml_with_env_fallback(self, base_config_path: str) -> Dict[str, Any]:
         """Load YAML config with environment-specific fallback.
-        
+
         Tries to load {base_config_path}.{environment}.yaml first,
         then falls back to {base_config_path}.yaml.
         """
         env_config_path = f"{base_config_path}.{self.environment}.yaml"
         base_path = f"{base_config_path}.yaml"
-        
+
         # Try environment-specific config first
         if Path(env_config_path).exists():
             config = self.load_yaml(env_config_path)
             if config:
                 return config
-        
+
         # Fallback to base config
         return self.load_yaml(base_path)
 
-    def validate_config(self, config: Dict[str, Any], schema: Any = None) -> Dict[str, Any]:
+    def validate_config(
+        self, config: Dict[str, Any], schema: Any = None
+    ) -> Dict[str, Any]:
         """Validate configuration against a schema.
-        
+
         Args:
             config: Configuration dictionary to validate
             schema: Pydantic model class for validation (optional)
-            
+
         Returns:
             Validated configuration dictionary
-            
+
         Raises:
             ValidationError: If configuration doesn't match schema
         """
         if schema is None:
             schema = GlobalConfig
-            
+
         try:
             validated = schema(**config)
             # model_dump() is typed as Any by pydantic in some versions; cast to a concrete dict

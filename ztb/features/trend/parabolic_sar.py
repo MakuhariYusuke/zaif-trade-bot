@@ -77,7 +77,7 @@ class ParabolicSAR(BaseFeature):
         low: NDArray[np.floating[Any]],
         close: NDArray[np.floating[Any]],
         acceleration: float,
-        max_acceleration: float
+        max_acceleration: float,
     ) -> tuple[NDArray[np.floating[Any]], NDArray[np.int32], NDArray[np.floating[Any]]]:
         """
         Calculate Parabolic SAR using pure numpy (no numba).

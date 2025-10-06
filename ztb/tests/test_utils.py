@@ -4,7 +4,6 @@ Common test utilities for ztb testing.
 
 import sys
 import types
-from typing import Any
 
 import pandas as pd
 

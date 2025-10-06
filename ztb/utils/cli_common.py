@@ -121,7 +121,9 @@ class CommonArgs:
         parser.add_argument(
             "--venue",
             default=default,
-            help=CLIFormatter.format_help("Trading venue", default, ["coincheck", "bitflyer", "binance"]),
+            help=CLIFormatter.format_help(
+                "Trading venue", default, ["coincheck", "bitflyer", "binance"]
+            ),
         )
 
     @staticmethod

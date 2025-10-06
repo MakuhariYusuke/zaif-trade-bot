@@ -14,13 +14,15 @@ from ztb.trading.environment.environment import HeavyTradingEnv
 @pytest.fixture
 def sample_df():
     """Create a sample DataFrame for testing"""
-    return pd.DataFrame({
-        'open': [100, 101, 102],
-        'high': [105, 106, 107],
-        'low': [95, 96, 97],
-        'close': [102, 103, 104],
-        'volume': [1000, 1100, 1200]
-    })
+    return pd.DataFrame(
+        {
+            "open": [100, 101, 102],
+            "high": [105, 106, 107],
+            "low": [95, 96, 97],
+            "close": [102, 103, 104],
+            "volume": [1000, 1100, 1200],
+        }
+    )
 
 
 class TestEnvironmentDynamicFee:
@@ -50,7 +52,7 @@ class TestEnvironmentDynamicFee:
         """Test that ExchangeFeeModel is properly initialized"""
         config = {}
         env = HeavyTradingEnv(df=sample_df, config=config)
-        assert hasattr(env, 'fee_model')
+        assert hasattr(env, "fee_model")
         assert env.fee_model.current_exchange == "coincheck"
 
     def test_transaction_cost_coincheck_zero(self, sample_df):
@@ -106,7 +108,7 @@ class TestEnvironmentDynamicFee:
         # Will use binance rate
         assert env.config["transaction_cost"] == env.fee_model.get_fee_rate("buy")
 
-    @patch('ztb.trading.environment.environment.ExchangeFeeModel')
+    @patch("ztb.trading.environment.environment.ExchangeFeeModel")
     def test_fee_model_mock(self, mock_fee_model_class: MagicMock, sample_df):
         """Test with mocked ExchangeFeeModel"""
         mock_fee_model = MagicMock()
@@ -131,7 +133,7 @@ class TestEnvironmentDynamicFee:
             "exchange": "bitflyer",
             "reward_scaling": 2.0,
             "max_position_size": 0.5,
-            "timeframe": "5m"
+            "timeframe": "5m",
         }
         env = HeavyTradingEnv(df=sample_df, config=config)
 
@@ -148,7 +150,7 @@ class TestEnvironmentDynamicFee:
         """Test that fee_model is properly configured even when transaction_cost is manually set"""
         config = {
             "exchange": "bitflyer",
-            "transaction_cost": 0.005  # Manual override (will be overwritten by fee_model)
+            "transaction_cost": 0.005,  # Manual override (will be overwritten by fee_model)
         }
         env = HeavyTradingEnv(df=sample_df, config=config)
 

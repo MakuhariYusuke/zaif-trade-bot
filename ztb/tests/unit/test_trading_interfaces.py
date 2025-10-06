@@ -3,11 +3,12 @@ Unit tests for trading core interfaces
 取引コアインターフェースの単体テスト
 """
 
-import pytest
+from typing import Any, Dict
+
 import pandas as pd
-from unittest.mock import AsyncMock
-from typing import Dict, Any
-from ztb.trading.core.interfaces import TradingStrategy, DataProvider, OrderManager
+import pytest
+
+from ztb.trading.core.interfaces import DataProvider, OrderManager, TradingStrategy
 
 
 class TestTradingStrategy:
@@ -18,8 +19,8 @@ class TestTradingStrategy:
 
     def test_trading_strategy_abstract_methods(self):
         """Test that TradingStrategy has required abstract methods"""
-        assert hasattr(TradingStrategy, 'generate_signal')
-        assert hasattr(TradingStrategy, 'get_required_columns')
+        assert hasattr(TradingStrategy, "generate_signal")
+        assert hasattr(TradingStrategy, "get_required_columns")
 
 
 class TestDataProvider:
@@ -30,8 +31,8 @@ class TestDataProvider:
 
     def test_data_provider_abstract_methods(self):
         """Test that DataProvider has required abstract methods"""
-        assert hasattr(DataProvider, 'get_historical_data')
-        assert hasattr(DataProvider, 'get_current_price')
+        assert hasattr(DataProvider, "get_historical_data")
+        assert hasattr(DataProvider, "get_current_price")
 
 
 class TestOrderManager:
@@ -42,12 +43,15 @@ class TestOrderManager:
 
     def test_order_manager_abstract_methods(self):
         """Test that OrderManager has required abstract method"""
-        assert hasattr(OrderManager, 'place_order')
+        assert hasattr(OrderManager, "place_order")
 
 
 class ConcreteTradingStrategy(TradingStrategy):
     """Concrete implementation for testing"""
-    def generate_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
         return {"action": "buy", "quantity": 1}
 
     def get_required_columns(self) -> list[str]:
@@ -56,7 +60,10 @@ class ConcreteTradingStrategy(TradingStrategy):
 
 class ConcreteDataProvider(DataProvider):
     """Concrete implementation for testing"""
-    async def get_historical_data(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+
+    async def get_historical_data(
+        self, symbol: str, start_date: str, end_date: str
+    ) -> pd.DataFrame:
         return pd.DataFrame({"close": [100, 101], "volume": [1000, 1100]})
 
     async def get_current_price(self, symbol: str) -> float:
@@ -65,6 +72,7 @@ class ConcreteDataProvider(DataProvider):
 
 class ConcreteOrderManager(OrderManager):
     """Concrete implementation for testing"""
+
     async def place_order(self, order: Dict[str, Any]) -> str:
         return "order_123"
 

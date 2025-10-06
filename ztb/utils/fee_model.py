@@ -26,7 +26,6 @@ class FeeModel(ABC):
         Returns:
             Fee amount
         """
-        pass
 
     @abstractmethod
     def get_fee_rate(self, trade_type: str = "buy") -> float:
@@ -39,7 +38,6 @@ class FeeModel(ABC):
         Returns:
             Fee rate as decimal
         """
-        pass
 
 
 class FixedFeeModel(FeeModel):

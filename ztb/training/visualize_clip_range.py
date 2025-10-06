@@ -56,7 +56,7 @@ def simulate_policy_updates(
         }
 
         from ztb.utils.config import get_config_value
-        
+
         trainer = PPOTrainer(
             data_path=get_config_value(config, "data_path", str),
             config=config,

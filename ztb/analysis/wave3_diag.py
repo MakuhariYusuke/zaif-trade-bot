@@ -27,9 +27,8 @@ project_root = str(get_project_root())
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from ztb.utils.errors import safe_operation
-
 from ztb.features import get_feature_manager
+from ztb.utils.errors import safe_operation
 
 
 def generate_synthetic_data(n_rows: int = 10000) -> pd.DataFrame:
@@ -52,7 +51,7 @@ def generate_synthetic_data(n_rows: int = 10000) -> pd.DataFrame:
 
     df = pd.DataFrame(
         {
-            "ts": (dates.astype('int64') // 10**9),
+            "ts": (dates.astype("int64") // 10**9),
             "close": close,
             "high": high,
             "low": low,
@@ -77,7 +76,7 @@ def calculate_correlations(
             operation=lambda: _calculate_correlations_impl(df, target_col),
             context="correlation_calculation",
             default_result={"pearson": pd.DataFrame(), "spearman": pd.DataFrame()},
-        )
+        ),
     )
 
 
@@ -105,7 +104,7 @@ def calculate_vif(df: pd.DataFrame) -> pd.DataFrame:
             operation=lambda: _calculate_vif_impl(df),
             context="vif_calculation",
             default_result=pd.DataFrame(columns=["feature", "vif", "high_vif"]),
-        )
+        ),
     )
 
 
@@ -144,8 +143,10 @@ def calculate_mutual_info(
             logger=None,  # Use default logger
             operation=lambda: _calculate_mutual_info_impl(df, horizons),
             context="mutual_info_calculation",
-            default_result={f"h{h}": pd.DataFrame(columns=["feature", "mi"]) for h in horizons},
-        )
+            default_result={
+                f"h{h}": pd.DataFrame(columns=["feature", "mi"]) for h in horizons
+            },
+        ),
     )
 
 
@@ -185,8 +186,10 @@ def check_leaks(df: pd.DataFrame) -> pd.DataFrame:
             logger=None,  # Use default logger
             operation=lambda: _check_leaks_impl(df),
             context="leak_check",
-            default_result=pd.DataFrame(columns=["feature", "corr_current", "corr_future", "warning", "reason"]),
-        )
+            default_result=pd.DataFrame(
+                columns=["feature", "corr_current", "corr_future", "warning", "reason"]
+            ),
+        ),
     )
 
 

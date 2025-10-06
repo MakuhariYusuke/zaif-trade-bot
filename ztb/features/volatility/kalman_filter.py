@@ -36,7 +36,7 @@ class KalmanFilter:
         self,
         process_noise: float = 0.001,
         measurement_noise: float = 0.1,
-        initial_velocity: float = 0.0
+        initial_velocity: float = 0.0,
     ) -> None:
         self._name = "KalmanFilter"
         self._deps = ["close"]
@@ -60,8 +60,10 @@ class KalmanFilter:
                 logger=None,
                 operation=lambda: self._compute_kalman_filter(df),
                 context="kalman_filter_computation",
-                default_result=pd.DataFrame(index=df.index, columns=["kalman_price", "kalman_velocity"])
-            )
+                default_result=pd.DataFrame(
+                    index=df.index, columns=["kalman_price", "kalman_velocity"]
+                ),
+            ),
         )
 
     def _compute_kalman_filter(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -70,10 +72,9 @@ class KalmanFilter:
         n = len(prices)
 
         if n == 0:
-            return pd.DataFrame({
-                "kalman_price": [],
-                "kalman_velocity": []
-            }, index=df.index)
+            return pd.DataFrame(
+                {"kalman_price": [], "kalman_velocity": []}, index=df.index
+            )
 
         # Initialize Kalman filter state
         # State: [price, velocity]
@@ -104,8 +105,8 @@ class KalmanFilter:
         # Run Kalman filter
         for k in range(1, n):
             # Prediction step
-            x_pred = F @ x[:, k-1]
-            P_pred = F @ P[:, :, k-1] @ F.T + Q
+            x_pred = F @ x[:, k - 1]
+            P_pred = F @ P[:, :, k - 1] @ F.T + Q
 
             # Update step
             y = prices[k] - H @ x_pred  # Measurement residual
@@ -117,10 +118,13 @@ class KalmanFilter:
             # Update covariance
             P[:, :, k] = (np.eye(2) - K @ H) @ P_pred
 
-        return pd.DataFrame({
-            "kalman_price": x[0, :].astype(np.float32),
-            "kalman_velocity": x[1, :].astype(np.float32)
-        }, index=df.index)
+        return pd.DataFrame(
+            {
+                "kalman_price": x[0, :].astype(np.float32),
+                "kalman_velocity": x[1, :].astype(np.float32),
+            },
+            index=df.index,
+        )
 
 
 @FeatureRegistry.register("KalmanTrend")

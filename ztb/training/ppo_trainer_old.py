@@ -2,18 +2,17 @@
 PPO Trainer with auto-halt functionality for training gates.
 """
 
+import math
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
-import math
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
-from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
 from ztb.utils.file_utils import safe_json_load
-
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -299,6 +298,7 @@ class PPOTrainer:
 
     def _create_callback(self) -> BaseCallback:
         """Create training callback."""
+
         class TrainingCallback(BaseCallback):
             def __init__(self, trainer: "PPOTrainer"):
                 super().__init__()
@@ -314,15 +314,20 @@ class PPOTrainer:
                 if ent_coef_schedule == "cosine_decay":
                     total_timesteps = self.trainer.config.get("total_timesteps", 100000)
                     ent_coef_initial = self.trainer.config.get("ent_coef", 0.0)
-                    ent_coef_final = self.trainer.config.get("ent_coef_final", ent_coef_initial)
+                    ent_coef_final = self.trainer.config.get(
+                        "ent_coef_final", ent_coef_initial
+                    )
 
                     # Cosine decay: ent_coef = ent_coef_final + (ent_coef_initial - ent_coef_final) * (1 + cos(pi * t / T)) / 2
                     progress = min(self.num_timesteps / total_timesteps, 1.0)
                     cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
-                    new_ent_coef = ent_coef_final + (ent_coef_initial - ent_coef_final) * cosine_decay
+                    new_ent_coef = (
+                        ent_coef_final
+                        + (ent_coef_initial - ent_coef_final) * cosine_decay
+                    )
 
                     # Update model's entropy coefficient
-                    if hasattr(self.model, 'ent_coef'):
+                    if hasattr(self.model, "ent_coef"):
                         self.model.ent_coef = new_ent_coef
 
                 return not self.trainer.halt_reason
@@ -334,6 +339,7 @@ class PPOTrainer:
         if self.model is None:
             # Load data
             import pandas as pd
+
             df = pd.read_csv(self.data_path)
 
             # Create environment

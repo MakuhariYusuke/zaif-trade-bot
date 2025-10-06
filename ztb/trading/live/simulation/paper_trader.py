@@ -28,8 +28,8 @@ from ztb.utils.cli_common import (
     CommonArgs,
     create_standard_parser,
 )
-from ztb.utils.path_utils import ensure_dir
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.path_utils import ensure_dir
 
 from .sim_broker import SimBroker
 
@@ -210,6 +210,7 @@ class PaperTrader:
         # capture_run_metadata(str(metadata_path))
         # Create dummy metadata for canary test
         from ztb.utils.run_metadata import RunMetadata
+
         metadata_capturer = RunMetadata(random_seed=42)
         dummy_metadata = {
             "correlation_id": "dummy",

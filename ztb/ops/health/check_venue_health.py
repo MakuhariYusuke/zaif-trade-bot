@@ -83,10 +83,14 @@ class VenueHealthChecker:
                 rate_reset_header = "X-RateLimit-Reset"
             elif self.venue == "bitflyer":
                 url = f"{self.rest_base}/v1/ticker"
-                rate_limit_header = None  # bitFlyer doesn't use standard rate limit headers
+                rate_limit_header = (
+                    None  # bitFlyer doesn't use standard rate limit headers
+                )
                 rate_reset_header = None
             elif self.venue == "binance":
-                url = f"{self.rest_base}/api/v3/ticker/price?symbol={self.symbol.upper()}"
+                url = (
+                    f"{self.rest_base}/api/v3/ticker/price?symbol={self.symbol.upper()}"
+                )
                 rate_limit_header = "X-MBX-USED-WEIGHT-1M"
                 rate_reset_header = None
             else:

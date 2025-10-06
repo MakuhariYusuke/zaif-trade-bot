@@ -9,7 +9,7 @@ import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from ztb.risk.advanced_auto_stop import create_production_auto_stop
 

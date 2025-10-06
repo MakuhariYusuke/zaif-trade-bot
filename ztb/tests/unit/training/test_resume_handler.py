@@ -17,7 +17,7 @@ class TestResumeHandler:
 
         handler = ResumeHandler(
             checkpoint_manager=mock_checkpoint_manager,
-            streaming_pipeline=mock_streaming_pipeline
+            streaming_pipeline=mock_streaming_pipeline,
         )
 
         assert handler.checkpoint_manager == mock_checkpoint_manager
@@ -61,7 +61,7 @@ class TestResumeHandler:
 
         handler = ResumeHandler(
             checkpoint_manager=mock_checkpoint_manager,
-            streaming_pipeline=mock_streaming_pipeline
+            streaming_pipeline=mock_streaming_pipeline,
         )
 
         # Mock model and custom apply function
@@ -99,7 +99,9 @@ class TestResumeHandler:
 
         # Verify calls
         mock_checkpoint_manager.load_latest.assert_called_once()
-        mock_checkpoint_manager.apply_snapshot.assert_called_once_with(mock_model, mock_snapshot)
+        mock_checkpoint_manager.apply_snapshot.assert_called_once_with(
+            mock_model, mock_snapshot
+        )
 
         # Verify result
         assert isinstance(result, ResumeState)
@@ -108,7 +110,7 @@ class TestResumeHandler:
         assert result.metadata == {"batch": 5}
         assert result.streaming_state is None
 
-    @patch('ztb.training.resume_handler.logger')
+    @patch("ztb.training.resume_handler.logger")
     def test_restore_streaming_state_with_data(self, mock_logger):
         """Test _restore_streaming_state with buffer data."""
         import pandas as pd
@@ -125,8 +127,7 @@ class TestResumeHandler:
         stream_state = {"buffer": buffer_data}
 
         handler = ResumeHandler(
-            checkpoint_manager=Mock(),
-            streaming_pipeline=mock_streaming_pipeline
+            checkpoint_manager=Mock(), streaming_pipeline=mock_streaming_pipeline
         )
 
         handler._restore_streaming_state(stream_state)
@@ -140,8 +141,7 @@ class TestResumeHandler:
 
         # Verify logging
         mock_logger.info.assert_called_once_with(
-            "Streaming pipeline restored with %s rows (capacity %s)",
-            100, 1000
+            "Streaming pipeline restored with %s rows (capacity %s)", 100, 1000
         )
 
     def test_restore_streaming_state_no_pipeline(self):
@@ -156,8 +156,7 @@ class TestResumeHandler:
         mock_streaming_pipeline = Mock()
 
         handler = ResumeHandler(
-            checkpoint_manager=Mock(),
-            streaming_pipeline=mock_streaming_pipeline
+            checkpoint_manager=Mock(), streaming_pipeline=mock_streaming_pipeline
         )
 
         handler._restore_streaming_state(None)
@@ -177,8 +176,7 @@ class TestResumeHandler:
         stream_state = {"buffer": empty_df}
 
         handler = ResumeHandler(
-            checkpoint_manager=Mock(),
-            streaming_pipeline=mock_streaming_pipeline
+            checkpoint_manager=Mock(), streaming_pipeline=mock_streaming_pipeline
         )
 
         handler._restore_streaming_state(stream_state)

@@ -8,7 +8,6 @@ import pandas as pd
 from ztb.features.registry import FeatureRegistry
 
 # Import extended time features
-from . import time_features
 
 
 @FeatureRegistry.register("DOW")

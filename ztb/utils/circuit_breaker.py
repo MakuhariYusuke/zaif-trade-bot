@@ -36,8 +36,6 @@ class CircuitBreakerConfig:
 class CircuitBreakerOpenException(Exception):
     """Exception raised when circuit breaker is open."""
 
-    pass
-
 
 class CircuitBreaker:
     """Circuit breaker implementation."""

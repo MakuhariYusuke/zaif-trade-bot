@@ -23,13 +23,16 @@ def get_project_root() -> Path:
 
     # Look for project root markers
     for parent in [current] + list(current.parents):
-        if any((parent / marker).exists() for marker in [
-            'pyproject.toml',
-            'setup.py',
-            '.git',
-            'requirements.txt',
-            'package.json'
-        ]):
+        if any(
+            (parent / marker).exists()
+            for marker in [
+                "pyproject.toml",
+                "setup.py",
+                ".git",
+                "requirements.txt",
+                "package.json",
+            ]
+        ):
             return parent
 
     # Fallback: assume we're in ztb/utils/, so go up 2 levels
@@ -99,10 +102,10 @@ def find_files_by_extension(directory: Path, extension: str) -> list[Path]:
     Returns:
         List of matching file paths
     """
-    if not extension.startswith('.'):
-        extension = f'.{extension}'
+    if not extension.startswith("."):
+        extension = f".{extension}"
 
-    return list(directory.rglob(f'*{extension}'))
+    return list(directory.rglob(f"*{extension}"))
 
 
 def get_cache_dir(subdir: Optional[str] = None) -> Path:
@@ -115,7 +118,7 @@ def get_cache_dir(subdir: Optional[str] = None) -> Path:
     Returns:
         Cache directory path
     """
-    cache_dir = get_project_root() / 'cache'
+    cache_dir = get_project_root() / "cache"
     if subdir:
         cache_dir = cache_dir / subdir
     return ensure_dir(cache_dir)
@@ -131,7 +134,7 @@ def get_models_dir(subdir: Optional[str] = None) -> Path:
     Returns:
         Models directory path
     """
-    models_dir = get_project_root() / 'models'
+    models_dir = get_project_root() / "models"
     if subdir:
         models_dir = models_dir / subdir
     return ensure_dir(models_dir)
@@ -147,7 +150,7 @@ def get_results_dir(subdir: Optional[str] = None) -> Path:
     Returns:
         Results directory path
     """
-    results_dir = get_project_root() / 'results'
+    results_dir = get_project_root() / "results"
     if subdir:
         results_dir = results_dir / subdir
     return ensure_dir(results_dir)

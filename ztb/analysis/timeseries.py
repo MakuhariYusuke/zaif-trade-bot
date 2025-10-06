@@ -25,7 +25,9 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, 
     )
 
 
-def _compute_lag_correlations_impl(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
+def _compute_lag_correlations_impl(
+    frames: Dict[str, pd.DataFrame],
+) -> List[Dict[str, Any]]:
     """Implementation of lag correlation computation."""
     if not frames:
         return []
