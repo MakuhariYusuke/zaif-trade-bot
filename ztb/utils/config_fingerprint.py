@@ -230,7 +230,7 @@ class ConfigFingerprint:
 
         return self_hash == other_hash
 
-    def diff(self, other: "ConfigFingerprint") -> Dict[str, tuple]:
+    def diff(self, other: "ConfigFingerprint") -> Dict[str, tuple[str, Any]]:
         """Compute differences between two fingerprints.
 
         Args:

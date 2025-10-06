@@ -251,6 +251,56 @@ class PaperTrader:
             test_size = int(len(self.test_df) * 0.2)
             self.test_df = self.test_df.tail(test_size)
             self.logger.info(f"Using {len(self.test_df)} test samples")
+
+            # Validate feature schema against training schema
+            try:
+                from ztb.utils.feature_schema import load_and_validate_schema
+
+                # Assume model is in models/ directory, schema is alongside model zip
+                model_dir = self.model_path.parent
+                schema_path = model_dir / "features_schema.json"
+
+                if schema_path.exists():
+                    # Auto-detect feature columns (exclude meta columns)
+                    exclude_cols = {
+                        "ts",
+                        "timestamp",
+                        "exchange",
+                        "pair",
+                        "episode_id",
+                        "side",
+                        "source",
+                    }
+                    feature_columns = [
+                        col
+                        for col in self.test_df.columns
+                        if col not in exclude_cols
+                        and pd.api.types.is_numeric_dtype(self.test_df[col])
+                    ]
+
+                    # Validate schema (strict=True will raise on mismatch)
+                    schema = load_and_validate_schema(
+                        model_dir, self.test_df, feature_columns, strict=True
+                    )
+                    self.logger.info(
+                        f"Feature schema validated successfully "
+                        f"({len(feature_columns)} features, "
+                        f"hash: {schema.compute_hash()[:16]}...)"
+                    )
+                else:
+                    self.logger.warning(
+                        f"Feature schema not found: {schema_path}. "
+                        "Skipping validation (may cause silent errors!)"
+                    )
+            except ValueError as e:
+                # Schema validation failed - this is CRITICAL
+                self.logger.error(f"Feature schema validation FAILED: {e}")
+                raise RuntimeError(
+                    f"Feature schema mismatch detected. Evaluation aborted to prevent "
+                    f"silent errors. Please retrain model or fix data schema.\n{e}"
+                )
+            except Exception as e:
+                self.logger.warning(f"Could not validate feature schema: {e}")
         else:
             self.test_df = None
             self.logger.warning(f"Test data not found: {self.test_data_path}")
