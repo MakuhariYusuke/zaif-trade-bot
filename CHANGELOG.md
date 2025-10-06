@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+- **Feature Drift Detection** (Phase 3B補): New module `ztb/utils/drift_detection.py` and script `scripts/feature_drift_report.py` for detecting distribution shifts (Task 2)
+  - **PSI (Population Stability Index)**: Measures overall distribution shift (threshold: >0.2 = significant drift)
+  - **KS (Kolmogorov-Smirnov) test**: Statistical test for distribution difference (threshold: p<0.01 = significant)
+  - `calculate_psi()`: Bins distributions and computes PSI
+  - `calculate_ks()`: Runs KS test with p-value
+  - `detect_drift_all_features()`: Detects drift across all features in train vs eval datasets
+  - `generate_drift_report_html()`: Generates HTML report with color-coded drift indicators
+  - CLI: `feature_drift_report.py --train-features train.parquet --eval-features eval.parquet --fail-on-drift`
+  - 16/16 tests PASS (test_drift_detection.py)
+  - Integration: Run after Preflight in CI, fail pipeline if drift detected
+
 - **Warmup Auto-Calculation** (Phase 3B補): New module `ztb/utils/warmup_calculator.py` for automatic warmup period calculation (Task 1)
   - `get_max_lookback()`: Returns maximum lookback period from feature definitions (200 for SMA_200)
   - `calculate_warmup()`: Computes warmup = ceil(max_lookback * 1.1) with 10% safety margin (default: 220)
