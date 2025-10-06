@@ -3,6 +3,21 @@
 ## [Unreleased]
 
 ### Added
+- **Warmup Auto-Calculation** (Phase 3B補): New module `ztb/utils/warmup_calculator.py` for automatic warmup period calculation (Task 1)
+  - `get_max_lookback()`: Returns maximum lookback period from feature definitions (200 for SMA_200)
+  - `calculate_warmup()`: Computes warmup = ceil(max_lookback * 1.1) with 10% safety margin (default: 220)
+  - `validate_warmup()`: Validates provided warmup against minimum requirement
+  - 16/16 tests PASS (test_warmup_calculator.py)
+  - Eliminates manual warmup specification errors
+
+- **Inference Robustness Guards** (Phase 3B補): Enhanced `decode.py` with production-grade safety mechanisms (Task 3)
+  - **Logits Clipping**: Clip to [-20, +20] before softmax to prevent overflow/underflow
+  - **Temperature Clamping**: Enforce T ∈ [0.5, 1.5] with warning if out of range
+  - **NaN/Inf Detection**: Auto-retry with T=1.0 if softmax produces NaN, fallback to uniform over legal actions
+  - **All-Illegal Fallback**: When all actions masked, fall back to HOLD (action 0) with warning
+  - 11/11 tests PASS (test_robustness_guards.py): extreme logits, edge temperatures, NaN handling, all-illegal scenarios
+  - Ensures numerical stability under adversarial inputs
+
 - **Short-distance A/B diagnostics**: New script `scripts/short_distance_ab_diagnostics.py` for validating action selection behavior on synthetic and real data (Phase 3B Task 7)
   - Tests probability time-variance (std > 0)
   - Tests legal SELL rate ≥ 15%

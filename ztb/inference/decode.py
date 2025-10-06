@@ -30,6 +30,12 @@ class InferenceConfig:
     tiebreaker_tau: float = 0.05  # Margin threshold for tiebreaker
     enable_tiebreaker: bool = True  # Enable tiebreaker logic
     deterministic: bool = True  # Use argmax (True) or sample (False)
+    
+    # Robustness guards
+    min_temperature: float = 0.5  # Minimum safe temperature
+    max_temperature: float = 1.5  # Maximum safe temperature
+    logits_clip_value: float = 20.0  # Clip logits to [-clip, +clip]
+    fallback_action: int = 0  # Fallback action when all actions illegal (HOLD)
 
 
 def decode_action(
@@ -69,6 +75,18 @@ def decode_action(
     if config is None:
         config = InferenceConfig()
 
+    # Guard: Validate temperature range
+    if not (config.min_temperature <= config.temperature <= config.max_temperature):
+        import warnings
+        warnings.warn(
+            f"Temperature {config.temperature} outside safe range "
+            f"[{config.min_temperature}, {config.max_temperature}]. "
+            f"Clamping to range."
+        )
+        config.temperature = np.clip(
+            config.temperature, config.min_temperature, config.max_temperature
+        )
+
     # Convert to numpy if torch tensor
     is_torch = isinstance(logits, torch.Tensor)
     if is_torch:
@@ -78,6 +96,9 @@ def decode_action(
         logits_np = np.asarray(logits)
         mask_np = np.asarray(legal_mask)
 
+    # Guard: Clip logits to safe range (prevent overflow in exp)
+    logits_np = np.clip(logits_np, -config.logits_clip_value, config.logits_clip_value)
+
     # Handle single observation (add batch dimension)
     single_obs = logits_np.ndim == 1
     if single_obs:
@@ -86,9 +107,18 @@ def decode_action(
 
     batch_size, n_actions = logits_np.shape
 
-    # Validate masks (at least one legal action per observation)
-    if not np.all(mask_np.sum(axis=1) > 0):
-        raise ValueError("At least one observation has no legal actions")
+    # Guard: Handle all-illegal-actions case
+    # If all actions are illegal, fall back to fallback_action (HOLD)
+    mask_sums = mask_np.sum(axis=1)
+    if not np.all(mask_sums > 0):
+        import warnings
+        all_illegal_mask = mask_sums == 0
+        warnings.warn(
+            f"{all_illegal_mask.sum()} observations have no legal actions. "
+            f"Falling back to action {config.fallback_action} (HOLD)."
+        )
+        # Set fallback action as legal for these observations
+        mask_np[all_illegal_mask, config.fallback_action] = 1
 
     # Step 1: Apply mask (illegal actions → -1e9)
     masked_logits = np.where(mask_np, logits_np, -1e9)
@@ -100,7 +130,31 @@ def decode_action(
     # Use logsumexp trick: softmax(x) = exp(x - logsumexp(x))
     max_logits = np.max(scaled_logits, axis=1, keepdims=True)
     exp_logits = np.exp(scaled_logits - max_logits)
-    probabilities = exp_logits / exp_logits.sum(axis=1, keepdims=True)
+    sum_exp = exp_logits.sum(axis=1, keepdims=True)
+    
+    # Guard: Detect NaN/Inf in softmax and retry with higher temperature
+    if np.any(~np.isfinite(sum_exp)) or np.any(sum_exp == 0):
+        import warnings
+        warnings.warn(
+            "NaN or Inf detected in softmax. Retrying with temperature=1.0."
+        )
+        # Retry with temperature = 1.0
+        scaled_logits = masked_logits / 1.0
+        max_logits = np.max(scaled_logits, axis=1, keepdims=True)
+        exp_logits = np.exp(scaled_logits - max_logits)
+        sum_exp = exp_logits.sum(axis=1, keepdims=True)
+        
+        # If still broken, fall back to uniform distribution over legal actions
+        if np.any(~np.isfinite(sum_exp)) or np.any(sum_exp == 0):
+            warnings.warn(
+                "Softmax still invalid after retry. Falling back to uniform over legal actions."
+            )
+            probabilities = mask_np.astype(np.float32)
+            probabilities = probabilities / probabilities.sum(axis=1, keepdims=True)
+        else:
+            probabilities = exp_logits / sum_exp
+    else:
+        probabilities = exp_logits / sum_exp
 
     # Step 4 & 5: Action selection with tiebreaker
     actions = np.zeros(batch_size, dtype=np.int32)
