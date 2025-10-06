@@ -31,16 +31,19 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 import torch
-from stable_baselines3 import PPO
+from sb3_contrib import MaskablePPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.utils.path_utils import ensure_dir, get_project_root
+
 # Add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
-from ztb.training.entrypoints.base_ml_reinforcement import CheckpointData, StepResult
+from ztb.trading.environment.environment import \
+    HeavyTradingEnv as TradingEnvironment
 from ztb.utils import DiscordNotifier
+from ztb.utils.file_utils import safe_json_load
 
 
 class PaperTrader:
@@ -51,15 +54,18 @@ class PaperTrader:
         model_path: str,
         test_data_path: str,
         config: Optional[Dict[str, Any]] = None,
+        verbose: bool = False,
     ):
         self.model_path = Path(model_path)
         self.test_data_path = Path(test_data_path)
         self.config = config or self._get_default_config()
+        self.verbose = verbose
+        print(f"PaperTrader verbose: {self.verbose}")
         self.logger = logging.getLogger(__name__)
 
         # Initialize instance variables
         self.test_df: Optional[pd.DataFrame] = None
-        self.model: Optional[PPO] = None
+        self.model: Optional[MaskablePPO] = None
         self.env: DummyVecEnv = None  # type: ignore
         self.episode_results: List[Dict[str, Any]] = []
 
@@ -101,6 +107,7 @@ class PaperTrader:
                 "initial_portfolio_value": self.config.get(
                     "initial_portfolio_value", 10000.0
                 ),
+                "verbose": self.config.get("verbose", 1),
             },
         )
 
@@ -111,7 +118,11 @@ class PaperTrader:
         self.logger.info(f"Loading model from {self.model_path}")
         # Create a dummy model first, then load checkpoint
         dummy_env = self._create_env()
-        self.model = PPO(
+        
+        # Get policy_kwargs from config
+        policy_kwargs = self.config.get("policy_kwargs", {})
+        
+        self.model = MaskablePPO(
             "MlpPolicy",
             dummy_env,
             learning_rate=3e-4,
@@ -126,12 +137,13 @@ class PaperTrader:
             max_grad_norm=0.5,
             verbose=0,
             seed=42,
+            policy_kwargs=policy_kwargs,
         )
 
         # Load model using Stable Baselines3's load method for zip files
         try:
             # Try loading as Stable Baselines3 zip format first
-            self.model = PPO.load(str(self.model_path), env=dummy_env)
+            self.model = MaskablePPO.load(str(self.model_path), env=dummy_env, custom_objects={"policy_kwargs": policy_kwargs})
             print("Successfully loaded model using Stable Baselines3 load method")
         except Exception as sb3_error:
             print(
@@ -282,15 +294,20 @@ class PaperTrader:
         while not done and steps < 10000:  # Max steps per episode
             # Get action from model
             predict_obs = obs[0] if isinstance(obs, tuple) else obs
-            action, _ = cast(PPO, self.model).predict(
-                predict_obs, deterministic=False
+            
+            # Get legal actions mask for MaskablePPO
+            action_masks = cast(TradingEnvironment, self.env.envs[0]).get_legal_actions()
+            
+            action, _ = cast(MaskablePPO, self.model).predict(
+                predict_obs, action_masks=action_masks, deterministic=False
             )  # Use stochastic for scalping
 
             # Debug: Log action distribution for first few steps
-            if steps < 3:
+            if self.verbose and steps < 10:
+                print(f"Verbose is enabled, step {steps}")
                 try:
                     # Get action probabilities if available
-                    dist = cast(PPO, self.model).policy.get_distribution(torch.from_numpy(predict_obs).float())
+                    dist = cast(MaskablePPO, self.model).policy.get_distribution(torch.from_numpy(predict_obs).float())
                     if hasattr(dist, "distribution") and dist.distribution is not None and hasattr(
                         dist.distribution, "probs"
                     ):
@@ -437,7 +454,7 @@ class PaperTrader:
     def _save_trade_log(self, stats: Dict[str, Any]) -> None:
         """Save detailed trade log and statistics."""
         results_dir = Path("results") / "paper_trading"
-        results_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(results_dir)
 
         # Save statistics
         stats_file = results_dir / "trading_stats.json"
@@ -532,8 +549,7 @@ def main() -> int:
 
         # Load config file if provided
         if args.config:
-            with open(args.config, "r") as f:
-                file_config = json.load(f)
+            file_config = safe_json_load(Path(args.config))
             # Merge configs, file config takes precedence
             custom_config.update(file_config.get("environment", {}))
             custom_config.update(file_config.get("data", {}))
@@ -543,6 +559,7 @@ def main() -> int:
             args.model_path,
             custom_config.get("test_data", args.test_data),
             config=custom_config,
+            verbose=args.verbose,
         )
 
         # Send start notification

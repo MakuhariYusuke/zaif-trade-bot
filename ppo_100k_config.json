@@ -1,0 +1,38 @@
+{
+  "algorithm": "ppo",
+  "data_path": "ml-dataset-enhanced.csv",
+  "session_id": "ppo_100k_tuned",
+  "total_timesteps": 100000,
+  "learning_rate": 0.001,
+  "batch_size": 128,
+  "gamma": 0.995,
+  "gae_lambda": 0.95,
+  "clip_range": 0.2,
+  "ent_coef": 0.05,
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "n_epochs": 10,
+  "n_steps": 1024,
+  "reward_scaling": 0.1,
+  "target_kl": 0.05,
+  "normalize_advantage": true,
+  "transaction_cost": 0.00505,
+  "max_position_size": 1.05,
+  "risk_free_rate": 0.05,
+  "checkpoint_dir": "checkpoints",
+  "log_dir": "logs",
+  "model_dir": "models",
+  "verbose": 1,
+  "offline_mode": true,
+  "curriculum_stage": "simple_portfolio",
+  "reward_settings": {
+    "custom_reward_params": {
+      "no_position_buy_reward": -1.0,
+      "no_position_sell_penalty": -5.0,
+      "no_position_hold_penalty": -1.0,
+      "has_position_sell_reward": 20.0,
+      "has_position_buy_penalty": -2.0,
+      "has_position_hold_penalty": -1.0
+    }
+  }
+}
