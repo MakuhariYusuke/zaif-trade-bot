@@ -76,6 +76,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
 
+import numpy as np
+
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.path_utils import get_project_root
 
@@ -275,6 +277,32 @@ class UnifiedTrainer:
                         f"Feature schema saved ({len(feature_columns)} features, "
                         f"hash: {schema.compute_hash()[:16]}...)"
                     )
+
+                    # Save normalization statistics
+                    try:
+                        from ztb.utils.normalization import NormalizationStats, save_scaler
+
+                        # Compute normalization stats from training data
+                        feature_data = df[feature_columns].values
+                        mean = np.mean(feature_data, axis=0)
+                        std = np.std(feature_data, axis=0)
+                        n_samples = len(df)
+
+                        norm_stats = NormalizationStats(
+                            feature_names=feature_columns,
+                            mean=mean,
+                            std=std,
+                            n_samples=n_samples,
+                            metadata={"data_path": str(data_path)},
+                        )
+                        save_scaler(model_dir, norm_stats)
+                        self.logger.info(
+                            f"Normalization stats saved ({n_samples} samples, "
+                            f"hash: {norm_stats.compute_hash()[:16]}...)"
+                        )
+                    except Exception as norm_error:
+                        self.logger.warning(f"Failed to save normalization stats: {norm_error}")
+
             except Exception as e:
                 self.logger.warning(f"Failed to save feature schema: {e}")
 
