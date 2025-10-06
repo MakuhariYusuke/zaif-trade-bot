@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.10.0 - 2025-10-06
+
+### Added
+
+- **Unified Action Decoding with Tiebreaker**: Standardized inference pipeline for consistent action selection
+  - Created `ztb/inference/decode.py` (200 lines) for strict decode order: mask → softmax(T) → argmax
+  - Tiebreaker logic: top1==HOLD AND (p1-p2)<tau AND legal(top2) → select top2
+  - Temperature scaling (default T=0.7) for exploration control
+  - Comprehensive test coverage: 19/19 tests PASS in 8.31 seconds
+  - Key tests: mask before softmax, tiebreaker activation, numerical stability, batch processing
+  - Addresses "identical probabilities" issue by enforcing strict decode order
+  - Legal SELL rate computation for acceptance criteria validation (target: ≥15%)
+
+### Technical
+
+- **Phase 3A: Decode Order Unification (Task 4 Complete)**
+  - InferenceConfig dataclass: temperature=0.7, tiebreaker_tau=0.05, enable_tiebreaker=True
+  - decode_action() function: handles single/batch observations, torch/numpy inputs
+  - Numerical stability: logsumexp trick for softmax normalization
+  - Output metadata: probabilities, top2_actions, top2_probs, margin, tiebreaker_activated
+  - compute_legal_sell_rate() for diagnostic reporting
+  - Next: Integrate into paper_trade.py and action_diagnostics.py
+
 ## 3.9.0 - 2025-10-06
 
 ### Added
