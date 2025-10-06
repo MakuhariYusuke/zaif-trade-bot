@@ -10,6 +10,34 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import hashlib
+from dataclasses import asdict, is_dataclass
+
+
+def inference_config_to_dict(config: Any) -> Dict[str, Any]:
+    """
+    Convert InferenceConfig to dictionary for serialization.
+    
+    Args:
+        config: InferenceConfig instance or dict
+        
+    Returns:
+        Dictionary representation
+    """
+    if config is None:
+        return {}
+    
+    if isinstance(config, dict):
+        return config
+    
+    if is_dataclass(config):
+        return asdict(config)
+    
+    # Fallback: try to extract attributes
+    return {
+        k: v for k, v in config.__dict__.items()
+        if not k.startswith("_")
+    }
+
 
 
 def get_git_sha() -> str:
@@ -79,6 +107,7 @@ def generate_manifest(
     scaler_hash: Optional[str] = None,
     fingerprint: Optional[str] = None,
     additional_metadata: Optional[Dict[str, Any]] = None,
+    inference_config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Generate complete manifest for a training run.
@@ -92,6 +121,7 @@ def generate_manifest(
         scaler_hash: Hash of normalization scaler (optional, will compute if scaler file exists)
         fingerprint: Configuration fingerprint (optional, will compute from config)
         additional_metadata: Additional metadata to include (optional)
+        inference_config: Inference configuration (temperature, tau, tiebreaker, etc.) for reproducibility
         
     Returns:
         Dictionary with complete manifest
@@ -140,6 +170,10 @@ def generate_manifest(
             "n_features": len(feature_names),
         },
     }
+    
+    # Add inference config if provided (for reproducibility in sweeps/evaluations)
+    if inference_config:
+        manifest["inference"] = inference_config
     
     # Add additional metadata if provided
     if additional_metadata:
