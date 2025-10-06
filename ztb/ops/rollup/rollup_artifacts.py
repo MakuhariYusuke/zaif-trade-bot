@@ -28,11 +28,13 @@ Validates with schema/results_schema.json.
 """
 
 import argparse
-import json
+import copy
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
+
+from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
 jsonschema: Optional[Any] = None
 
@@ -51,8 +53,7 @@ from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
 
 def load_json_file(path: Path) -> Dict[str, Any]:
     """Load JSON file."""
-    with open(path) as f:
-        return cast(Dict[str, Any], json.load(f))
+    return cast(Dict[str, Any], safe_json_load(path))
 
 
 def load_cost_estimate(correlation_id: str) -> Optional[Dict[str, Any]]:
@@ -260,8 +261,7 @@ def validate_summary(summary: Dict[str, Any]) -> bool:
         print(f"Schema file not found: {schema_path}", file=sys.stderr)
         return False
 
-    with open(schema_path, "r") as f:
-        schema = json.load(f)
+    schema = safe_json_load(schema_path)
 
     if HAS_JSONSCHEMA:
         try:
@@ -278,7 +278,7 @@ def validate_summary(summary: Dict[str, Any]) -> bool:
 def redact_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
     """Redact secrets from summary."""
     # Placeholder: remove sensitive fields
-    redacted = cast(Dict[str, Any], json.loads(json.dumps(summary)))  # Deep copy
+    redacted = copy.deepcopy(summary)  # Deep copy
     # Remove any fields that might contain secrets
     if "metadata" in redacted and "config" in redacted["metadata"]:
         config = redacted["metadata"]["config"]
@@ -311,8 +311,7 @@ def process_rollup(correlation_id: str) -> int:
     # Write summary.json
     artifacts_dir = Path("artifacts") / correlation_id
     summary_json = artifacts_dir / "summary.json"
-    with open(summary_json, "w") as f:
-        json.dump(summary, f, indent=2)
+    safe_json_dump(summary, summary_json, indent=2)
 
     # Write summary.md
     summary_md = artifacts_dir / "summary.md"

@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from ztb.utils.file_utils import safe_json_load
+
 
 class TestWeeklyReportGeneration:
     """Test weekly report generation functionality"""
@@ -49,10 +51,10 @@ class TestWeeklyReportGeneration:
 
         import importlib.util
         import sys
-        from pathlib import Path
 
+        from ztb.utils.path_utils import get_project_root
         reports_path = (
-            Path(__file__).parent.parent.parent
+            get_project_root()
             / "reports"
             / "generate_weekly_report.py"
         )
@@ -127,8 +129,7 @@ class TestWeeklyReportGeneration:
         # Verify file exists and has correct content
         assert json_path.exists()
 
-        with open(json_path, "r") as f:
-            loaded_data = json.load(f)
+        loaded_data = safe_json_load(json_path)
 
         assert loaded_data == unverified_data
         assert "FeatureA" in loaded_data
@@ -247,8 +248,7 @@ class TestWeeklyReportGeneration:
             json.dump(feature_details, f, indent=2)
 
         # Verify structure
-        with open(json_path, "r") as f:
-            loaded_data = json.load(f)
+        loaded_data = safe_json_load(json_path)
 
         assert "metadata" in loaded_data
         assert "verified_features" in loaded_data
@@ -270,10 +270,10 @@ class TestWeeklyReportGeneration:
     def test_error_handling_in_report_generation(self):
         """Test error handling when report generation fails"""
         import importlib.util
-        from pathlib import Path
 
+        from ztb.utils.path_utils import get_project_root
         reports_path = (
-            Path(__file__).parent.parent.parent
+            get_project_root()
             / "reports"
             / "generate_weekly_report.py"
         )

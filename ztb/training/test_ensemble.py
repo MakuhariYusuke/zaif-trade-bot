@@ -8,12 +8,14 @@ Basic test script for ensemble trading system.
 import logging
 import sys
 from pathlib import Path
+from typing import List
 
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+from ztb.utils.project_setup import setup_project_path
 
-from ztb.training.ensemble import EnsembleTradingSystem
+# Setup project path
+setup_project_path(Path(__file__))
+
+from ztb.training.ensemble import EnsembleTradingSystem, ModelConfig
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 def test_ensemble_basic() -> bool:
     """Test basic ensemble functionality."""
     # Example model configurations (replace with actual paths)
-    model_configs = [
+    model_configs: List[ModelConfig] = [
         {
             "path": "models/scalping_15s_balance_test12_balanced_data.zip",
             "weight": 1.0,

@@ -122,12 +122,12 @@ class MetricsCalculator:
         if max_dd >= 0:  # No drawdown
             return 0.0
 
-        total_return = cast(float, (1 + returns).prod() - 1)  # type: ignore[operator]
+        total_return = cast(float, (1.0 + returns).prod() - 1.0)  # type: ignore[operator]
         years = len(returns) / TRADING_DAYS_PER_YEAR
         if years == 0:
             return 0.0
 
-        annualized_return = float((1 + total_return) ** (1 / years) - 1)
+        annualized_return = float((1.0 + total_return) ** (1.0 / years) - 1.0)
         calmar = annualized_return / abs(max_dd)
         return float(calmar)
 

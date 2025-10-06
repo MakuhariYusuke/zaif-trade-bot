@@ -6,13 +6,13 @@ Runs in paper/replay mode to ensure safe testing.
 """
 
 import asyncio
-import json
 import time
 from pathlib import Path
 
 import pytest
 
 from ztb.utils.fault_injection import FaultInjectionConfig, get_fault_injector
+from ztb.utils.file_utils import safe_json_load
 
 
 class TestCanaryHarness:
@@ -22,8 +22,7 @@ class TestCanaryHarness:
     def canary_cases(self):
         """Load canary test cases from JSON."""
         cases_path = Path(__file__).parent / "canary_cases.json"
-        with open(cases_path, "r") as f:
-            return [FaultInjectionConfig(**case) for case in json.load(f)]
+        return [FaultInjectionConfig(**case) for case in safe_json_load(cases_path)]
 
     @pytest.fixture
     def fault_injector(self):

@@ -11,14 +11,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-# Ensure project root is on sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
 from ztb.training.ppo_trainer import (  # noqa: E402  pylint: disable=wrong-import-position
     PPOTrainer,
 )
+from ztb.utils.path_utils import ensure_dir
+from ztb.utils.project_setup import setup_project_path
+
+# Setup project path
+setup_project_path(Path(__file__))
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,9 +95,9 @@ def train_model(
         }
     )
 
-    args.logs_dir.mkdir(parents=True, exist_ok=True)
-    args.models_dir.mkdir(parents=True, exist_ok=True)
-    args.checkpoints_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(args.logs_dir)
+    ensure_dir(args.models_dir)
+    ensure_dir(args.checkpoints_dir)
 
     LOGGER.info("Starting training for %s", spec["session_id"])
     start_time = datetime.now()

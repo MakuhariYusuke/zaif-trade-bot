@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 
 from ztb.ops.monitoring.monitoring import get_exporter
+from ztb.utils.file_utils import safe_json_load
 
 logger = logging.getLogger(__name__)
 
@@ -223,8 +224,7 @@ class JobManager:
         """Load job manifest from file"""
         manifest_file = self.manifest_dir / f"{job_id}.json"
         if manifest_file.exists():
-            with open(manifest_file, "r") as f:
-                return json.load(f)
+            return safe_json_load(manifest_file)
         return None
 
     def _can_skip_job(self, job_config: Dict[str, Any]) -> bool:
@@ -248,9 +248,8 @@ class JobManager:
 
         # Verify result file is not corrupted
         try:
-            with open(result_file, "r") as f:
-                result = json.load(f)
-                return result.get("status") == "completed"
+            result = safe_json_load(result_file)
+            return result.get("status") == "completed"
         except Exception:
             return False
 
@@ -557,13 +556,12 @@ class JobManager:
             output_file = job["output_file"]
             if output_file.exists():
                 try:
-                    with open(output_file, "r") as f:
-                        result = json.load(f)
-                        if result.get("status") == "completed":
-                            completed += 1
-                        else:
-                            # Failed or timeout
-                            pass
+                    result = safe_json_load(output_file)
+                    if result.get("status") == "completed":
+                        completed += 1
+                    else:
+                        # Failed or timeout
+                        pass
                 except Exception:
                     # Corrupted file
                     pass

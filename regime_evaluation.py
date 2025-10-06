@@ -18,6 +18,9 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
+from ztb.utils.path_utils import ensure_dir
+from ztb.utils.file_utils import safe_json_dump
+
 @dataclass
 class RegimeMetrics:
     """レジームごとのメトリクス"""
@@ -27,11 +30,13 @@ class RegimeMetrics:
     max_drawdown: float
     volatility: float
     trade_count: int
+    action_distribution: Dict[str, float]  # BUY/SELL/HOLD の割合
+    illegal_actions: int  # 非法アクションの数
 
 @dataclass
 class RegimeAnalysisResult:
     """レジーム分析結果"""
-    regime_labels: NDArray[np.int_]  # np.ndarray
+    regime_labels: NDArray[np.str_]
     regime_counts: Dict[str, int]
     regime_metrics: Dict[str, Dict[str, RegimeMetrics]]
     regime_transitions: pd.DataFrame
@@ -48,7 +53,7 @@ class RegimeEvaluator:
         self.volatility_window = volatility_window
         self.trend_window = trend_window
 
-    def classify_market_regime(self, price_data: pd.DataFrame) -> Tuple[NDArray[np.int_], Dict[str, int]]:
+    def classify_market_regime(self, price_data: pd.DataFrame) -> Tuple[NDArray[np.str_], Dict[str, int]]:
         """
         市場レジームを分類
 
@@ -108,8 +113,55 @@ class RegimeEvaluator:
 
         return regime_array, regime_counts
 
-    def calculate_regime_metrics(self, returns: pd.Series, regime_labels: NDArray[np.int_],
-                               regime: str) -> RegimeMetrics:
+    def get_model_actions(self, model_path: str, price_data: pd.DataFrame) -> Tuple[NDArray[np.int_], int]:
+        """
+        モデルからアクションを生成
+
+        Args:
+            model_path: モデルファイルのパス
+            price_data: 価格データ
+
+        Returns:
+            アクション配列と非法アクション数
+        """
+        from sb3_contrib import MaskablePPO
+        from sb3_contrib.common.wrappers import ActionMasker
+        from ztb.trading import HeavyTradingEnv
+
+        # モデルをロード
+        model = MaskablePPO.load(model_path)
+
+        # 環境を作成
+        env = HeavyTradingEnv(df=price_data, config={})
+
+        # Wrap with ActionMasker
+        def mask_fn(env):
+            return env.get_legal_actions().astype(bool)
+        env = ActionMasker(env, mask_fn)
+
+        # アクションを生成
+        actions = []
+        illegal_count = 0
+        obs, _ = env.reset()
+
+        for _ in range(len(price_data)):
+            action, _ = model.predict(obs, deterministic=False)
+            actions.append(int(action))
+
+            # ActionMasker適用後は非法アクションが発生しないはず
+            # legal_actions = env.env.get_legal_actions()
+            # if not legal_actions[action]:
+            #     illegal_count += 1
+
+            # 次の観測を取得
+            obs, _, done, truncated, _ = env.step(action.item())
+            if done or truncated:
+                obs, _ = env.reset()
+
+        return np.array(actions), illegal_count
+
+    def calculate_regime_metrics(self, returns: pd.Series, regime_labels: NDArray[np.str_],
+                               regime: str, actions: Optional[NDArray[np.int_]] = None, illegal_actions: int = 0) -> RegimeMetrics:
         """
         指定レジームのメトリクスを計算
 
@@ -126,7 +178,7 @@ class RegimeEvaluator:
         regime_returns = returns[regime_mask]
 
         if len(regime_returns) == 0:
-            return RegimeMetrics(0, 0, 0, 0, 0, 0)
+            return RegimeMetrics(0, 0, 0, 0, 0, 0, {'BUY': 0, 'SELL': 0, 'HOLD': 0}, 0)
 
         # 基本メトリクス計算
         regime_returns_array = regime_returns.values
@@ -146,17 +198,34 @@ class RegimeEvaluator:
         drawdown = (cumulative - running_max) / running_max
         max_drawdown = drawdown.min()
 
+        # アクション分布の計算
+        action_distribution = {'BUY': 0.0, 'SELL': 0.0, 'HOLD': 0.0}
+        if actions is not None and len(actions) == len(regime_labels):
+            regime_actions = actions[regime_mask]
+            total_actions = len(regime_actions)
+            if total_actions > 0:
+                buy_count = np.sum(regime_actions == 1)
+                sell_count = np.sum(regime_actions == 2)
+                hold_count = np.sum(regime_actions == 0)
+                action_distribution = {
+                    'BUY': buy_count / total_actions * 100,
+                    'SELL': sell_count / total_actions * 100,
+                    'HOLD': hold_count / total_actions * 100,
+                }
+
         return RegimeMetrics(
             sharpe_ratio=sharpe_ratio,
             win_rate=win_rate,
             total_return=cumulative_return,
             max_drawdown=max_drawdown,
             volatility=volatility,
-            trade_count=len(regime_returns)
+            trade_count=len(regime_returns),
+            action_distribution=action_distribution,
+            illegal_actions=illegal_actions
         )
 
     def analyze_regime_performance(self, models: Dict[str, str], price_data: pd.DataFrame,
-                                 regime_labels: NDArray[np.int_]) -> RegimeAnalysisResult:
+                                 regime_labels: NDArray[np.str_], actions_dict: Optional[Dict[str, Tuple[NDArray[np.int_], int]]] = None) -> RegimeAnalysisResult:
         """
         全モデルのレジーム別性能を分析
 
@@ -164,6 +233,7 @@ class RegimeEvaluator:
             models: モデル名 -> パス の辞書
             price_data: 価格データ
             regime_labels: レジームラベル
+            actions_dict: モデル名 -> アクション配列 の辞書
 
         Returns:
             レジーム分析結果
@@ -182,7 +252,11 @@ class RegimeEvaluator:
             model_regime_metrics = {}
 
             for regime in ['trend', 'range', 'high_vol', 'low_vol']:
-                metrics = self.calculate_regime_metrics(returns, regime_labels, regime)
+                actions = None
+                illegal_actions = 0
+                if actions_dict and model_name in actions_dict:
+                    actions, illegal_actions = actions_dict[model_name]
+                metrics = self.calculate_regime_metrics(returns, regime_labels, regime, actions, illegal_actions)
                 model_regime_metrics[regime] = metrics
 
             regime_metrics[model_name] = model_regime_metrics
@@ -197,7 +271,7 @@ class RegimeEvaluator:
             regime_transitions=regime_transitions
         )
 
-    def _calculate_regime_transitions(self, regime_labels: NDArray[np.int_]) -> pd.DataFrame:
+    def _calculate_regime_transitions(self, regime_labels: NDArray[np.str_]) -> pd.DataFrame:
         """レジーム遷移マトリックスを計算"""
         regimes = ['trend', 'range', 'high_vol', 'low_vol']
         transition_matrix = pd.DataFrame(0, index=regimes, columns=regimes)
@@ -263,7 +337,7 @@ class RegimeEvaluator:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Regime analysis plot saved to {save_path}")
 
-        plt.show()
+        # plt.show()  # Suppress popup for better usability
 
 def main():
     """メイン実行関数"""
@@ -283,7 +357,7 @@ def main():
 
     # 出力ディレクトリ作成
     output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_dir)
 
     # モデル辞書の作成
     models = {}
@@ -314,9 +388,21 @@ def main():
     regime_labels, regime_counts = evaluator.classify_market_regime(price_data)
     print(f"Regime distribution: {regime_counts}")
 
+    # モデルからアクションを取得
+    print("Loading models and generating actions...")
+    actions_dict = {}
+    for model_name, model_path in models.items():
+        try:
+            actions, illegal_count = evaluator.get_model_actions(model_path, price_data)
+            actions_dict[model_name] = (actions, illegal_count)
+            print(f"Generated actions for {model_name}: {len(actions)} steps, illegal actions: {illegal_count}")
+        except Exception as e:
+            print(f"Error loading model {model_name}: {e}")
+            continue
+
     # レジーム別性能分析
     print("Analyzing regime-specific performance...")
-    result = evaluator.analyze_regime_performance(models, price_data, regime_labels)
+    result = evaluator.analyze_regime_performance(models, price_data, regime_labels, actions_dict)
 
     # 結果の保存
     result_file = output_dir / 'regime_analysis_results.json'
@@ -336,13 +422,13 @@ def main():
                 'total_return': metric.total_return,
                 'max_drawdown': metric.max_drawdown,
                 'volatility': metric.volatility,
-                'trade_count': metric.trade_count
+                'trade_count': metric.trade_count,
+                'action_distribution': metric.action_distribution,
+                'illegal_actions': metric.illegal_actions
             }
 
     # JSONとして保存
-    import json
-    with open(result_file, 'w') as f:
-        json.dump(result_dict, f, indent=2, default=str)
+    safe_json_dump(result_dict, Path(result_file), indent=2, default=str)
 
     print(f"Results saved to {result_file}")
 

@@ -8,8 +8,10 @@ import sys
 from pathlib import Path
 from typing import Optional, Union
 
+from ztb.utils.path_utils import get_project_root
+
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(get_project_root()))
 
 from ztb.training.binary_search.base_optimizer import BinarySearchArgumentParser, HyperparameterOptimizer
 
@@ -52,10 +54,10 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
         balance_score = abs(hold_pct - ideal_pct) + abs(buy_pct - ideal_pct) + abs(sell_pct - ideal_pct)
 
         # Combine reward and balance (higher reward is better, lower balance score is better)
-        reward_score = stats["avg_reward"]
+        reward_score = float(stats["avg_reward"])
         combined_score = reward_score - balance_score * 0.01  # Weight balance penalty
 
-        return combined_score  # type: ignore[no-any-return]
+        return float(combined_score)
 
 
 def main() -> None:

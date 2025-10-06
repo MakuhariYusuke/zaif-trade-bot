@@ -3,12 +3,15 @@ Common rolling operations and missing value handling.
 共通ローリング処理と欠損値処理
 """
 
+from pathlib import Path
 from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from ztb.utils.memory.dtypes import OptimizationReport, optimize_dtypes
+from ztb.utils.path_utils import ensure_dir
+from ztb.utils.file_utils import safe_json_dump
 
 
 def rolling_mean(
@@ -129,9 +132,8 @@ def generate_intermediate_report(
 
     # Create reports directory if it doesn't exist
     reports_dir = Path("reports")
-    reports_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(reports_dir)
 
     # Save report
     report_path = reports_dir / f"intermediate_features_step_{step:05d}.json"
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
+    safe_json_dump(report, report_path, indent=2)

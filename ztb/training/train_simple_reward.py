@@ -5,6 +5,10 @@ Simple reward function training test
 
 import sys
 from pathlib import Path
+from typing import Dict, List, cast
+
+# Type alias for configuration
+ConfigType = Dict[str, str | float]
 import pandas as pd
 import numpy as np
 from stable_baselines3 import PPO
@@ -16,17 +20,17 @@ PROJECT_ROOT = Path(__file__).parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ztb.trading.environment import HeavyTradingEnv  # type: ignore[import-not-found]
+from ztb.trading.environment import HeavyTradingEnv
 
 class TrainingCallback(BaseCallback):
     """Callback for logging training progress"""
 
     def __init__(self, verbose: int = 0) -> None:
         super().__init__(verbose)
-        self.episode_rewards = []
-        self.episode_lengths = []
-        self.action_counts = []
-        self.portfolio_values = []
+        self.episode_rewards: list[float] = []
+        self.episode_lengths: list[int] = []
+        self.action_counts: list[dict[str, int]] = []
+        self.portfolio_values: list[float] = []
         self.episode_count = 0
 
     def _on_step(self) -> bool:
@@ -125,7 +129,7 @@ def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.
     )
 
     # Create callback
-    callback = TrainingCallback()  # type: ignore[no-untyped-call]
+    callback = TrainingCallback()
 
     print(f"Starting training with config: {config_name}")
     print(f"Reward scaling: {reward_scaling}, Entropy coef: {entropy_coef}, Learning rate: {learning_rate}")
@@ -165,7 +169,7 @@ def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.
 
 if __name__ == "__main__":
     # Define fine-tuned reward scaling configurations
-    configs = [
+    configs: List[ConfigType] = [
         # Fine-tune reward_scaling around optimal value (7.5)
         {"name": "reward_scale_6_0", "reward_scaling": 6.0, "entropy_coef": 0.03, "learning_rate": 1e-3},
         {"name": "reward_scale_6_5", "reward_scaling": 6.5, "entropy_coef": 0.03, "learning_rate": 1e-3},
@@ -184,11 +188,11 @@ if __name__ == "__main__":
         print(f"{'='*60}")
 
         try:
-            model_path = train_simple_reward(  # type: ignore[no-untyped-call]
-                config_name=config["name"],
-                reward_scaling=config["reward_scaling"],
-                entropy_coef=config["entropy_coef"],
-                learning_rate=config["learning_rate"]
+            model_path = train_simple_reward(
+                config_name=cast(str, config["name"]),
+                reward_scaling=cast(float, config["reward_scaling"]),
+                entropy_coef=cast(float, config["entropy_coef"]),
+                learning_rate=cast(float, config["learning_rate"])
             )
             trained_models.append((config["name"], model_path))
             print(f"✅ Successfully trained: {config['name']}")

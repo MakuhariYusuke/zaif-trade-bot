@@ -4,13 +4,11 @@ Kalman Filter features for price smoothing and prediction.
 This module implements Kalman filter-based price smoothing and trend detection.
 """
 
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import List, cast
 
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 
-from ztb.features.base import ComputableFeature
 from ztb.features.registry import FeatureRegistry
 from ztb.utils.errors import safe_operation
 
@@ -151,4 +149,4 @@ def compute_kalman_residual(df: pd.DataFrame) -> "pd.Series[float]":
     # Normalize by price for scale invariance
     residual_norm = residual / actual_price.replace(0, 1)
 
-    return cast("pd.Series[float]", pd.Series(residual_norm.astype(np.float32), index=df.index))
+    return pd.Series(residual_norm.astype(np.float32), index=df.index)

@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ztb.utils.path_utils import ensure_dir
+
 
 def generate_correlation_id() -> str:
     """Return a random correlation identifier."""
@@ -72,11 +74,11 @@ class ObservabilityClient:
                 lines.append(
                     f'{key}{{correlation_id="{self.correlation_id}"}} {numeric}'
                 )
-            self.metrics_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(self.metrics_path.parent)
             self.metrics_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def export_artifact(self, name: str, data: Any) -> Path:
-        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self.artifacts_dir)
         artifact_path = self.artifacts_dir / f"{name}.json"
         wrapped = {
             "correlation_id": self.correlation_id,

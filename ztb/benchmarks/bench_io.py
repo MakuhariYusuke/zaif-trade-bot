@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,6 +21,20 @@ import psutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ztb.cache.parquet_io import read_parquet, write_parquet
+
+
+class ParquetConfig(TypedDict):
+    """Configuration for Parquet I/O operations."""
+    compression: str
+    row_group_size: int
+    use_columns: List[str]
+    engine: str
+
+
+class BenchmarkConfig(TypedDict):
+    """Configuration for benchmark runs."""
+    parquet: ParquetConfig
+    limits: Dict[str, int]
 
 
 def generate_test_data(n_rows: int = 100000) -> pd.DataFrame:
@@ -50,7 +64,7 @@ def generate_test_data(n_rows: int = 100000) -> pd.DataFrame:
 
 
 def measure_io_performance(
-    df: pd.DataFrame, config: Dict[str, Any], temp_dir: Path
+    df: pd.DataFrame, config: BenchmarkConfig, temp_dir: Path
 ) -> Dict[str, Any]:
     """Measure I/O performance for given config"""
     process = psutil.Process(os.getpid())
@@ -65,7 +79,7 @@ def measure_io_performance(
         temp_dir
         / f"test_{config['parquet']['compression']}_{config['parquet']['row_group_size']}.parquet"
     )
-    write_parquet(df, parquet_path, config)
+    write_parquet(df, parquet_path, cast(Dict[str, Any], config))
 
     write_time = time.time() - write_start
     mem_after_write = process.memory_info().rss
@@ -76,7 +90,7 @@ def measure_io_performance(
     mem_before_read = process.memory_info().rss
     psutil.cpu_percent(interval=None)
 
-    _ = read_parquet(parquet_path, config)
+    _ = read_parquet(parquet_path, cast(Dict[str, Any], config))
 
     read_time = time.time() - read_start
     mem_after_read = process.memory_info().rss
@@ -114,7 +128,7 @@ def run_benchmark(
     print(f"Generated test data: {len(df)} rows, {len(df.columns)} columns")
 
     # Benchmark configurations
-    configs = []
+    configs: List[BenchmarkConfig] = []
 
     # Compression types
     compressions = ["snappy", "lz4"]
@@ -138,7 +152,7 @@ def run_benchmark(
     for compression in compressions:
         for row_group_size in row_group_sizes:
             for use_columns in column_configs:
-                config = {
+                config: BenchmarkConfig = {
                     "parquet": {
                         "compression": compression,
                         "row_group_size": row_group_size,

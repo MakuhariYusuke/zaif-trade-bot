@@ -12,6 +12,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 
 from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.utils.file_utils import safe_json_load
 
 from ztb.utils.logging_utils import get_logger
 
@@ -287,10 +288,7 @@ class PPOTrainer:
             logger.warning(f"Checkpoint not found: {checkpoint_path}")
             return
 
-        with open(checkpoint_path, "r") as f:
-            import json
-
-            checkpoint_data = json.load(f)
+        checkpoint_data = safe_json_load(Path(checkpoint_path))
 
         self.current_step = checkpoint_data.get("current_step", 0)
         self.rewards_history = checkpoint_data.get("rewards_history", [])

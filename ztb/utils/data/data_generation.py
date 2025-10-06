@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
+from ztb.utils.path_utils import ensure_dir
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ def load_sample_data(
     # Save to disk cache
     if cache_dir:
         cache_path = _get_cache_path(cache_dir, dataset)
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(cache_path.parent)
         try:
             with open(cache_path, "wb") as f:
                 pickle.dump(df, f)
@@ -249,7 +250,7 @@ def save_parquet_chunked(
                 f"{col}={val}" for col, val in zip(partition_cols, partition_values)
             )
 
-            partition_path.mkdir(parents=True, exist_ok=True)
+            ensure_dir(partition_path)
 
             # Chunk large partitions
             for i, chunk_start in enumerate(range(0, len(group_df), chunk_rows)):
@@ -332,7 +333,7 @@ def save_parquet_monthly_chunked(
 
     saved_files = []
     base_path = Path(path)
-    base_path.mkdir(parents=True, exist_ok=True)
+    ensure_dir(base_path)
 
     # Group by chunk period
     for period, group_df in df.groupby(pd.Grouper(freq=chunk.replace("M", "ME"))):

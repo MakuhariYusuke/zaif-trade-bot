@@ -19,6 +19,8 @@ from pathlib import Path
 from queue import Queue
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
+from ztb.utils.path_utils import ensure_dir
+
 try:
     import lz4.frame as lz4_frame
 
@@ -60,7 +62,7 @@ class CheckpointManager:
         differential: bool = False,
     ):
         self.save_dir = Path(save_dir)
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self.save_dir)
         self.keep_last = keep_last
         self.keep_every_nth = keep_every_nth
         self.compress = compress
@@ -492,7 +494,7 @@ class HierarchicalCheckpointManager:
         archive_freq: int = 50000,
     ):
         self.save_dir = Path(save_dir)
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self.save_dir)
         self.compress = compress
 
         # Checkpoint frequencies

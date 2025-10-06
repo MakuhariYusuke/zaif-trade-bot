@@ -8,9 +8,9 @@ import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 
-from .eval_gates import EvalGates
-
 from ztb.utils.logging_utils import get_logger
+
+from .eval_gates import EvalGates
 
 logger = get_logger(__name__)
 
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class FunctionCallback(BaseCallback):
     """Wrapper to make a function callable as a BaseCallback."""
 
-    def __init__(self, func: Optional[Callable[[], None]]):
+    def __init__(self, func: Optional[Callable[[], None]]) -> None:
         super().__init__()
         self.func = func
 
@@ -55,7 +55,7 @@ class DSREvaluationCallback(EvalCallback):
         bootstrap_samples: int = 1000,
         dsr_trials: int = 50,
         gates_enabled: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             eval_env=eval_env,
             callback_on_new_best=FunctionCallback(callback_on_new_best) if callback_on_new_best else None,
@@ -117,7 +117,7 @@ class DSREvaluationCallback(EvalCallback):
 
                     # Run evaluation gates
                     gate_results = self.eval_gates.evaluate_all(
-                        final_eval_reward=mean_return,
+                        final_eval_reward=mean_return,  # type: ignore[arg-type]
                         rewards=self.eval_returns_history,
                         steps=(
                             self.evaluations_timesteps
