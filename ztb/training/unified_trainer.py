@@ -236,6 +236,8 @@ class UnifiedTrainer:
             import os
             from pathlib import Path
 
+            import pandas as pd
+
             model_dir = Path(self.config.get("model_dir", "models"))
             model_dir.mkdir(exist_ok=True)
             model_path = (
@@ -243,6 +245,38 @@ class UnifiedTrainer:
             )
             model.save(str(model_path))
             self.logger.info(f"Final model saved to {model_path}")
+
+            # Save feature schema for evaluation consistency
+            try:
+                from ztb.utils.feature_schema import create_and_save_schema
+
+                data_path = self.config.get("data_path")
+                if data_path:
+                    df = pd.read_csv(data_path)
+                    # Auto-detect feature columns (exclude meta columns)
+                    exclude_cols = {
+                        "ts",
+                        "timestamp",
+                        "exchange",
+                        "pair",
+                        "episode_id",
+                        "side",
+                        "source",
+                    }
+                    feature_columns = [
+                        col
+                        for col in df.columns
+                        if col not in exclude_cols
+                        and pd.api.types.is_numeric_dtype(df[col])
+                    ]
+                    
+                    schema = create_and_save_schema(df, model_dir, feature_columns)
+                    self.logger.info(
+                        f"Feature schema saved ({len(feature_columns)} features, "
+                        f"hash: {schema.compute_hash()[:16]}...)"
+                    )
+            except Exception as e:
+                self.logger.warning(f"Failed to save feature schema: {e}")
 
         return model
 
