@@ -30,6 +30,7 @@ sys.path.insert(0, str(project_root))
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.inference.decode import decode_action, InferenceConfig, compute_legal_sell_rate
 from ztb.utils.normalization import NormalizationStats
+from ztb.utils.calibration import compute_full_calibration_report
 
 
 def generate_synthetic_uptrend(n_steps: int = 300, base_price: float = 100.0) -> pd.DataFrame:
@@ -178,6 +179,13 @@ def run_diagnostic(
     action_counts = np.bincount(actions_array, minlength=3)
     action_dist = action_counts / len(actions_array)
     
+    # Compute calibration diagnostics (Brier score and reliability curves)
+    calibration_report = compute_full_calibration_report(
+        probabilities_array,
+        actions_array,
+        n_bins=10,
+    )
+    
     results = {
         "data_name": data_name,
         "total_steps": len(actions_array),
@@ -203,6 +211,7 @@ def run_diagnostic(
             "activation_count": int(np.sum(tiebreaker_array)),
             "activation_rate": float(np.mean(tiebreaker_array)),
         },
+        "calibration": calibration_report,
         "acceptance_criteria": {
             "prob_std_positive": bool(np.mean(prob_stds) > 0),
             "legal_sell_rate_ok": bool(legal_sell_stats["legal_sell_rate"] >= 0.15),
@@ -217,6 +226,19 @@ def run_diagnostic(
     print(f"  Probability std (mean): {np.mean(prob_stds):.4f} (target: >0)")
     print(f"  Margin (mean±std): {np.mean(margins_array):.4f}±{np.std(margins_array):.4f}")
     print(f"  Tiebreaker activations: {np.sum(tiebreaker_array)}/{len(tiebreaker_array)} ({np.mean(tiebreaker_array):.1%})")
+    
+    # Print calibration diagnostics
+    print(f"\n  Calibration Diagnostics:")
+    print(f"    Brier score (overall): {calibration_report['brier_score']['overall']:.4f} (lower is better)")
+    print(f"    Brier score per action:")
+    for action_name, score in calibration_report['brier_score']['per_action'].items():
+        if score is not None:
+            print(f"      {action_name}: {score:.4f}")
+        else:
+            print(f"      {action_name}: N/A (no samples)")
+    print(f"    Expected Calibration Error (ECE):")
+    for action_name, curve in calibration_report['reliability_curves'].items():
+        print(f"      {action_name}: {curve['expected_calibration_error']:.4f}")
     
     # Check acceptance
     all_pass = all(results["acceptance_criteria"].values())
