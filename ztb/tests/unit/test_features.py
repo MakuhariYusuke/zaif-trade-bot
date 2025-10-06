@@ -2,12 +2,13 @@
 Feature validation tests for verified/pending/unverified status checking.
 """
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+
+from ztb.utils.file_utils import safe_json_load
 
 from .test_autogen import BaseFeatureTest
 
@@ -20,8 +21,7 @@ class TestFeatureValidation(BaseFeatureTest):
         """Load coverage.json data"""
         coverage_path = Path("coverage.json")
         if coverage_path.exists():
-            with open(coverage_path, "r") as f:
-                return json.load(f)
+            return safe_json_load(coverage_path)
         return {
             "verified": ["TestVerifiedFeature"],
             "pending": [

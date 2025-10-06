@@ -20,8 +20,10 @@ from sklearn.feature_selection import (
 )
 from sklearn.linear_model import LinearRegression
 
+from ztb.utils.path_utils import get_project_root
+
 # プロジェクトルートをパスに追加
-project_root = str(Path(__file__).parent.parent.parent)
+project_root = str(get_project_root())
 if project_root not in sys.path:
     sys.path.append(project_root)
 

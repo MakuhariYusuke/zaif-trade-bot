@@ -5,10 +5,11 @@ Unit tests for Japanese residential electricity tariff in cost_estimator.py
 
 import sys
 import unittest
-from pathlib import Path
+
+from ztb.utils.path_utils import get_project_root
 
 # Add scripts directory to path for importing
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "scripts"))
+sys.path.insert(0, str(get_project_root() / "scripts"))
 
 from cost_estimator import calculate_jp_residential_tiered, estimate_cost
 

@@ -3,7 +3,38 @@
 長時間学習・実運用を見据えた、**強化学習 + バックテスト + ペーパートレード**一体型の取引基盤。
 リポジトリ名に"Zaif"を含みますが、**取引所非依存（Zaif/Coincheck 等を切替可能）**な
 
-## プロジェクト進捗状況 (2025-10-04 更新)
+## 環境仕様
+
+### HeavyTradingEnv の設計原則
+
+1. **ショート対応・常時ドテン設計**
+   - Position states: `-1.0` (short), `0.0` (neutral), `+1.0` (long)
+   - **BUY action**: Opens long OR closes short position
+   - **SELL action**: Closes long + Opens short position (always flip)
+   - **Critical**: Both BUY and SELL are **legal at `position=0`**
+   - HOLD action: Maintains current position
+
+2. **Action Masking (合法性判定)**
+   - Position-dependent legal actions:
+     - `position = -1.0` (short): BUY, HOLD legal; SELL masked
+     - `position = 0.0` (neutral): **BUY, SELL, HOLD all legal**
+     - `position = +1.0` (long): SELL, HOLD legal; BUY masked
+   - Illegal actions are masked during inference (should never be selected)
+
+3. **評価KPI (Legal Action率)**
+   - **ポジション依存の指標を使用すること**
+   - 誤: Global SELL rate (denominator includes states where SELL is masked)
+   - 正: "SELL execution rate when `position ≥ 0`" (only legal states)
+   - Example: `SELL_count / steps_where_SELL_legal ≥ 15%` target
+
+4. **Paper Trading 必須要件**
+   - Minimum data length: **100+ steps**
+   - Warmup period: First **50 steps excluded** from metrics (technical indicators need history)
+   - Schema validation: `features_schema.json` must match training
+   - Scaler loading: Normalization statistics mandatory
+   - Config fingerprint: Environment settings must match training
+
+## Features
 
 ### ✅ 解決した課題
 

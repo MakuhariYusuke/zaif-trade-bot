@@ -1161,7 +1161,8 @@ class ComprehensiveFeatureReEvaluator:
 
         try:
             # Load coverage.json
-            coverage_path = Path(__file__).parent.parent.parent / "coverage.json"
+            from ztb.utils.path_utils import get_project_root
+            coverage_path = get_project_root() / "coverage.json"
             if coverage_path.exists():
                 with open(coverage_path, "r", encoding="utf-8") as f:
                     coverage = json.load(f)

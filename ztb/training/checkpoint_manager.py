@@ -10,7 +10,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -18,6 +18,7 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from ztb.utils.checkpoint import CheckpointManager
 from ztb.utils.errors import handle_error
 from ztb.utils.observability import ObservabilityClient
+from ztb.utils.path_utils import ensure_dir
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class TrainingCheckpointSnapshot:
 
     @property
     def metrics(self) -> Dict[str, Any]:
-        return self.payload.get("metrics", {})  # type: ignore[no-any-return]
+        return cast(Dict[str, Any], self.payload.get("metrics", {}))
 
 
 class TrainingCheckpointManager:
@@ -60,7 +61,7 @@ class TrainingCheckpointManager:
         observability: Optional[ObservabilityClient] = None,
     ) -> None:
         self.save_dir = Path(save_dir)
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self.save_dir)
         self.config = config or TrainingCheckpointConfig()
         self.observability = observability
         self.correlation_id = observability.correlation_id if observability else None

@@ -14,6 +14,9 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from ztb.utils.file_utils import safe_json_load
+from ztb.utils.path_utils import ensure_dir
+
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -115,8 +118,7 @@ def load_performance_history(history_path: str) -> Dict[str, float]:
         return {}
 
     try:
-        with open(history_path, "r") as f:
-            return json.load(f)
+        return safe_json_load(Path(history_path))
     except Exception as e:
         print(f"Warning: Could not load performance history: {e}")
         return {}
@@ -124,7 +126,7 @@ def load_performance_history(history_path: str) -> Dict[str, float]:
 
 def save_performance_history(history_path: str, benchmarks: Dict[str, float]):
     """Save current performance benchmarks"""
-    Path(history_path).parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(Path(history_path).parent)
 
     try:
         with open(history_path, "w") as f:
@@ -432,8 +434,7 @@ def test_verified_features():
         print("coverage.json not found")
         return False
 
-    with open(coverage_path, "r") as f:
-        coverage = json.load(f)
+    coverage = safe_json_load(coverage_path)
 
     verified_features = coverage.get("verified", [])
     if not verified_features:

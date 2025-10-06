@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.utils.observability import generate_correlation_id, setup_observability
+from ztb.utils.path_utils import ensure_dir
 from ztb.utils.run_metadata import RunMetadata
 
 from ..risk.circuit_breakers import (  # type: ignore[import-not-found]
@@ -272,7 +273,7 @@ def main() -> None:
     # Create output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path(args.output_dir) / f"{args.policy}_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_dir)
 
     print(f"Running backtest for {args.policy} strategy...")
     print(f"Output directory: {output_dir}")

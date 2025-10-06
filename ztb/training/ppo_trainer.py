@@ -8,23 +8,122 @@ PPO Trainer implementations:
 
 # --- 以下、trading/ppo_trainer.pyのPPOTrainerをPPOTrainerAutoHaltとして移植 ---
 
-from ztb.utils.path_utils import ensure_dir
+from dataclasses import asdict, dataclass
+from enum import Enum
+from typing import Any, Callable, Dict, Optional, Protocol
 
+import numpy as np
+from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback
-from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
+
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
+from ztb.utils.file_utils import safe_json_dump, safe_json_load
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.path_utils import ensure_dir
 
 logger = get_logger(__name__)
 
-class PPOTrainerAutoHalt:
+# Type aliases for better type safety
+Observation = NDArray[np.float32]
+Action = int
+PredictionResult = tuple[Action, Optional[Any]]  # (action, additional_info)
+
+
+class PPOTrainerProtocol(Protocol):
+    """Protocol for PPO Trainer implementations."""
+    
+    def train(self, session_id: str) -> Optional[MaskablePPO]:
+        """Train the model and return it."""
+        ...
+    
+    def get_reward_stats(self) -> Dict[str, float]:
+        """Get training reward statistics."""
+        ...
+    
+    def neutralize_policy_bias(self) -> None:
+        """Neutralize policy head bias."""
+        ...
+
+
+class PredictorProtocol(Protocol):
+    """Protocol for predictor implementations."""
+    
+    def predict(self, observation: Observation) -> PredictionResult:
+        """Make a prediction based on observation."""
+        ...
+
+
+class TradingSystemProtocol(Protocol):
+    """Protocol for trading system implementations."""
+    
+    def trade(self, observation: Observation) -> Dict[str, Any]:
+        """Execute a trade based on observation."""
+        ...
+
+
+class Algorithm(Enum):
+    """Supported training algorithms."""
+    PPO = "ppo"
+
+
+class FeatureSet(Enum):
+    """Supported feature sets for training."""
+    FULL = "full"
+    BASIC = "basic"
+    MINIMAL = "minimal"
+
+
+class Timeframe(Enum):
+    """Supported timeframes for training."""
+    M1 = "1m"
+    M5 = "5m"
+    M15 = "15m"
+    H1 = "1h"
+    H4 = "4h"
+    D1 = "1d"
+
+
+@dataclass
+class PPOConfig:
+    """Configuration for PPO training."""
+    algorithm: Algorithm = Algorithm.PPO
+    data_path: str = ""
+    total_timesteps: int = 1000000
+    n_steps: int = 2048
+    gamma: float = 0.99
+    vf_coef: float = 0.5
+    max_grad_norm: float = 0.5
+    ent_coef: float = 0.0
+    tensorboard_log: str = ""
+    model_dir: str = ""
+    checkpoint_dir: str = ""
+    log_dir: str = ""
+    offline_mode: bool = False
+    feature_set: FeatureSet = FeatureSet.FULL
+    timeframe: Timeframe = Timeframe.M1
+    reward_scaling: float = 1.0
+    transaction_cost: float = 0.0
+    max_position_size: float = 1.0
+    seed: int = 42
+    learning_rate: float = 3e-4
+    batch_size: int = 64
+    clip_range: float = 0.2
+    gae_lambda: float = 0.95
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Convert config to dictionary for compatibility."""
+        return asdict(self)
+
+
+class PPOTrainerAutoHalt(PPOTrainerProtocol):
     """PPO Trainer with evaluation gates and auto-halt functionality (旧trading/ppo_trainer.py)."""
     def __init__(
         self,
         data_path: str,
-        config: Dict[str, Any],
+        config: PPOConfig,
         checkpoint_dir: str,
         eval_gates: Optional[EvalGates] = None,
         halt_callback: Optional[Callable[[str], None]] = None,
@@ -144,8 +243,8 @@ class PPOTrainerAutoHalt:
         if self.eval_gates.enabled and self.rewards_history:
             stats = self.get_reward_stats()
             gate_results = self.eval_gates.evaluate_all(
-                rewards=list(self.rewards_history),
-                steps=list(self.steps_history),
+                rewards=self.rewards_history,
+                steps=self.steps_history,
                 final_eval_reward=(
                     self.rewards_history[-1] if self.rewards_history else 0.0
                 ),
@@ -172,16 +271,14 @@ class PPOTrainerAutoHalt:
             "is_training": self.is_training,
         }
         ensure_dir(Path(checkpoint_path).parent)
-        with open(checkpoint_path, "w") as f:
-            json.dump(checkpoint_data, f, indent=2)
+        safe_json_dump(checkpoint_data, Path(checkpoint_path), indent=2)
         logger.info(f"Checkpoint saved to {checkpoint_path}")
 
     def load_checkpoint(self, checkpoint_path: str) -> None:
         if not Path(checkpoint_path).exists():
             logger.warning(f"Checkpoint not found: {checkpoint_path}")
             return
-        with open(checkpoint_path, "r") as f:
-            checkpoint_data = json.load(f)
+        checkpoint_data = safe_json_load(Path(checkpoint_path))
         self.current_step = checkpoint_data.get("current_step", 0)
         self.rewards_history = checkpoint_data.get("rewards_history", [])
         self.steps_history = checkpoint_data.get("steps_history", [])
@@ -192,6 +289,7 @@ class PPOTrainerAutoHalt:
     def _create_callback(self) -> BaseCallback:
         class TrainingCallback(BaseCallback):
             def __init__(self, trainer: "PPOTrainerAutoHalt"):
+                super().__init__()
                 self.trainer = trainer
             def _on_step(self) -> bool:
                 # ここで進捗を更新
@@ -210,18 +308,22 @@ class PPOTrainerAutoHalt:
         # Try policy_net
         if hasattr(policy, 'policy_net'):
             policy_head = policy.policy_net[-1] if isinstance(policy.policy_net, list) else policy.policy_net
-            if hasattr(policy_head, 'bias') and policy_head.bias is not None:
-                policy_head.bias.data.zero_()  # type: ignore[operator]
-                logger.info("Policy head bias neutralized (policy_net)")
-                return
+            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
+                bias = getattr(policy_head, 'bias')
+                if hasattr(bias, 'data'):
+                    bias.data.zero_()
+                    logger.info("Policy head bias neutralized (policy_net)")
+                    return
 
         # Try mlp_extractor
         if hasattr(policy, 'mlp_extractor') and hasattr(policy.mlp_extractor, 'policy_net'):
             policy_head = policy.mlp_extractor.policy_net[-1]
-            if hasattr(policy_head, 'bias') and policy_head.bias is not None:
-                policy_head.bias.data.zero_()  # type: ignore[operator]
-                logger.info("Policy head bias neutralized (mlp_extractor)")
-                return
+            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
+                bias = getattr(policy_head, 'bias')
+                if hasattr(bias, 'data'):
+                    bias.data.zero_()
+                    logger.info("Policy head bias neutralized (mlp_extractor)")
+                    return
 
         # Try action_net
         if hasattr(policy, 'action_net'):
@@ -237,7 +339,7 @@ class PPOTrainerAutoHalt:
         if self.model is None:
             import pandas as pd
             df = pd.read_csv(self.data_path)
-            env = HeavyTradingEnv(df=df, config=self.config)
+            env = HeavyTradingEnv(df=df, config=self.config.as_dict())
             def mask_fn(env: Any) -> None:
                 # 必要に応じてaction maskを返す関数を実装
                 return None
@@ -245,7 +347,7 @@ class PPOTrainerAutoHalt:
             self.model = MaskablePPO("MlpPolicy", env, verbose=1)
         self.neutralize_policy_bias()
         self.start_training()
-        total_timesteps = self.config.get("total_timesteps", 100000)
+        total_timesteps = self.config.total_timesteps
         self.model.learn(
             total_timesteps=total_timesteps,
             callback=self._create_callback(),
@@ -256,27 +358,27 @@ class PPOTrainerAutoHalt:
 PPO Trainer with auto-halt functionality for training gates.
 """
 
+import math
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
-import math
 
+from rich.progress import Progress, TaskID
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback
 
-from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
 from ztb.trading.environment.environment import HeavyTradingEnv
-
+from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class PPOTrainer:
+class PPOTrainer(PPOTrainerProtocol):
     """PPO Trainer with evaluation gates and auto-halt functionality."""
 
-    def __init__(
+    def __init__(  # type: ignore[misc]  # mypy incorrectly reports missing super() for protocol implementations
         self,
         data_path: str,
         config: Dict[str, Any],
@@ -524,10 +626,7 @@ class PPOTrainer:
 
         # Save to file (simplified - in real implementation would use proper serialization)
         ensure_dir(Path(checkpoint_path).parent)
-        with open(checkpoint_path, "w") as f:
-            import json
-
-            json.dump(checkpoint_data, f, indent=2)
+        safe_json_dump(checkpoint_data, Path(checkpoint_path), indent=2)
 
         logger.info(f"Checkpoint saved to {checkpoint_path}")
 
@@ -542,10 +641,7 @@ class PPOTrainer:
             logger.warning(f"Checkpoint not found: {checkpoint_path}")
             return
 
-        with open(checkpoint_path, "r") as f:
-            import json
-
-            checkpoint_data = json.load(f)
+        checkpoint_data = safe_json_load(Path(checkpoint_path))
 
         self.current_step = checkpoint_data.get("current_step", 0)
         self.rewards_history = checkpoint_data.get("rewards_history", [])
@@ -560,11 +656,33 @@ class PPOTrainer:
             def __init__(self, trainer: "PPOTrainer"):
                 super().__init__()
                 self.trainer = trainer
+                self.progress: Optional[Progress] = None
+                self.task_id: Optional[TaskID] = None
+
+            def _on_training_start(self) -> None:
+                """Initialize progress bar when training starts."""
+                try:
+                    from rich.console import Console
+                    console = Console()
+                    self.progress = Progress(console=console)
+                    total_timesteps = self.trainer.config.get("total_timesteps", 100000)
+                    self.task_id = self.progress.add_task(
+                        "[green]Training PPO...",
+                        total=total_timesteps,
+                        completed=0
+                    )
+                    self.progress.start()
+                except ImportError:
+                    logger.warning("Rich not available, progress bar disabled")
 
             def _on_step(self) -> bool:
                 if self.locals.get("done"):
                     reward = self.locals.get("rewards", 0)
                     self.trainer.update_progress(self.num_timesteps, reward)
+
+                # Update progress bar
+                if self.progress and self.task_id is not None:
+                    self.progress.update(self.task_id, completed=self.num_timesteps)
 
                 # Update entropy coefficient with cosine decay if configured
                 ent_coef_schedule = self.trainer.config.get("ent_coef_schedule")
@@ -580,9 +698,14 @@ class PPOTrainer:
 
                     # Update model's entropy coefficient
                     if hasattr(self.model, 'ent_coef'):
-                        self.model.ent_coef = new_ent_coef
+                        setattr(self.model, 'ent_coef', new_ent_coef)
 
                 return not self.trainer.halt_reason
+
+            def _on_training_end(self) -> None:
+                """Clean up progress bar when training ends."""
+                if self.progress:
+                    self.progress.stop()
 
         return TrainingCallback(self)
 
@@ -598,18 +721,22 @@ class PPOTrainer:
         # Try policy_net
         if hasattr(policy, 'policy_net'):
             policy_head = policy.policy_net[-1] if isinstance(policy.policy_net, list) else policy.policy_net
-            if hasattr(policy_head, 'bias') and policy_head.bias is not None:
-                policy_head.bias.data.zero_()  # type: ignore[operator]
-                logger.info("Policy head bias neutralized (policy_net)")
-                return
+            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
+                bias = getattr(policy_head, 'bias')
+                if hasattr(bias, 'data'):
+                    bias.data.zero_()
+                    logger.info("Policy head bias neutralized (policy_net)")
+                    return
 
         # Try mlp_extractor
         if hasattr(policy, 'mlp_extractor') and hasattr(policy.mlp_extractor, 'policy_net'):
             policy_head = policy.mlp_extractor.policy_net[-1]
-            if hasattr(policy_head, 'bias') and policy_head.bias is not None:
-                policy_head.bias.data.zero_()  # type: ignore[operator]
-                logger.info("Policy head bias neutralized (mlp_extractor)")
-                return
+            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
+                bias = getattr(policy_head, 'bias')
+                if hasattr(bias, 'data'):
+                    bias.data.zero_()
+                    logger.info("Policy head bias neutralized (mlp_extractor)")
+                    return
 
         # Try action_net
         if hasattr(policy, 'action_net'):

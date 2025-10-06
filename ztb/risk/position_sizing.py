@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
-from ztb.utils.errors import handle_error, safe_operation
+from ztb.utils.errors import safe_operation
 
 # 年間取引日数（一般的に252日）
 TRADING_DAYS_PER_YEAR = 252

@@ -6,7 +6,7 @@ Central configuration management for ZTB system
 
 import logging
 import os
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +147,7 @@ def get_config_list(config_dict: dict[str, Any], key: str, default: Optional[lis
     """
     if default is None:
         default = []
-    return get_config_value(config_dict, key, list, default)
+    return cast(list[Any], get_config_value(config_dict, key, list, default))
 
 
 def get_config_dict(config_dict: dict[str, Any], key: str, default: Optional[dict[str, Any]] = None) -> dict[str, Any]:
@@ -164,7 +164,7 @@ def get_config_dict(config_dict: dict[str, Any], key: str, default: Optional[dic
     """
     if default is None:
         default = {}
-    return get_config_value(config_dict, key, dict, default)
+    return cast(dict[str, Any], get_config_value(config_dict, key, dict, default))
 
 
 def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> str:
@@ -179,7 +179,7 @@ def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> 
     Returns:
         String value or default
     """
-    return get_config_value(config_dict, key, str, default)
+    return cast(str, get_config_value(config_dict, key, str, default))
 
 
 def get_config_int(config_dict: dict[str, Any], key: str, default: int = 0) -> int:
@@ -194,7 +194,7 @@ def get_config_int(config_dict: dict[str, Any], key: str, default: int = 0) -> i
     Returns:
         Integer value or default
     """
-    return get_config_value(config_dict, key, int, default)
+    return cast(int, get_config_value(config_dict, key, int, default))
 
 
 def get_config_float(config_dict: dict[str, Any], key: str, default: float = 0.0) -> float:
@@ -209,7 +209,7 @@ def get_config_float(config_dict: dict[str, Any], key: str, default: float = 0.0
     Returns:
         Float value or default
     """
-    return get_config_value(config_dict, key, float, default)
+    return cast(float, get_config_value(config_dict, key, float, default))
 
 
 def get_config_bool(config_dict: dict[str, Any], key: str, default: bool = False) -> bool:
@@ -224,7 +224,7 @@ def get_config_bool(config_dict: dict[str, Any], key: str, default: bool = False
     Returns:
         Boolean value or default
     """
-    return get_config_value(config_dict, key, bool, default)
+    return cast(bool, get_config_value(config_dict, key, bool, default))
 
 
 # Global instance

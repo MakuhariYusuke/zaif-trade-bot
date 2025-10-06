@@ -20,6 +20,8 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 import psutil
 
+from ztb.utils.path_utils import ensure_dir
+
 # Type definitions for better type safety
 ConfigValue = Any  # Keep flexible for experiment configs
 ExperimentConfig = Dict[str, ConfigValue]
@@ -108,7 +110,7 @@ class ParallelExperimentRunner:
             import pickle
 
             cache_path = Path(self.config.shared_data_cache)
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(cache_path.parent)
             with open(cache_path, "wb") as f:
                 pickle.dump(self.shared_data, f)
             self.shared_logger.info(

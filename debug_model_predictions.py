@@ -11,13 +11,13 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import PPO
 
-from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading import HeavyTradingEnv
 
 def test_model_predictions():
     """Test what actions the trained model predicts."""
 
     # Load the latest trained model
-    model_path = Path("models/test_high_entropy_ent_coef_0_200.zip")
+    model_path = Path("models/scalping_15s_balance_quick_test_final.zip")
     if not model_path.exists():
         print(f"Model not found: {model_path}")
         return
@@ -38,8 +38,8 @@ def test_model_predictions():
         'initial_portfolio_value': 1000000.0,
         'curriculum_stage': 'simple_portfolio',
         'reward_settings': {
-            'enable_forced_diversity': False,
-            'profit_bonus_multipliers': [1.0, 1.0, 1.0]
+            'enable_forced_diversity': True,
+            'profit_bonus_multipliers': [1.0, 1.2, 0.8]
         },
     }
 

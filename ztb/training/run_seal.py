@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ztb.utils.file_utils import safe_json_load
+
 
 @dataclass
 class EnvironmentSnapshot:
@@ -98,10 +100,7 @@ class RunSealManager:
         if not seal_path.exists():
             return None
 
-        import json
-
-        with open(seal_path, "r") as f:
-            data = json.load(f)
+        data = safe_json_load(seal_path)
 
         environment = EnvironmentSnapshot(**data["environment"])
         return RunSeal(

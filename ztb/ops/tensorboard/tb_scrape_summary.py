@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
 
+from ztb.utils.file_utils import safe_json_load
+
 
 def find_tb_dirs(base_dir: Path) -> list[Path]:
     """Find TensorBoard directories in the base directory."""
@@ -42,9 +44,8 @@ def extract_scalars(tb_dir: Path) -> Dict[str, Any]:
     summary_file = tb_dir / "scalars_summary.json"
     if summary_file.exists():
         try:
-            with open(summary_file, "r", encoding="utf-8") as f:
-                return cast(Dict[str, Any], json.load(f))
-        except (json.JSONDecodeError, IOError):
+            return cast(Dict[str, Any], safe_json_load(summary_file))
+        except Exception:
             pass
 
     # Simulate extraction with dummy data

@@ -20,9 +20,9 @@ sys.path.insert(0, str(project_root))
 
 import numpy as np
 import pandas as pd
-from stable_baselines3 import PPO
+from sb3_contrib import MaskablePPO
 
-from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 def main() -> int:
@@ -31,6 +31,10 @@ def main() -> int:
         "--model-path",
         required=True,
         help="Path to trained model (.zip)",
+    )
+    parser.add_argument(
+        "--config",
+        help="Path to config file (.json)",
     )
     parser.add_argument(
         "--data-path",
@@ -89,9 +93,17 @@ def main() -> int:
 
     logger = logging.getLogger(__name__)
 
+    # Load config if provided
+    config_data = {}
+    if args.config:
+        import json
+        with open(args.config, 'r') as f:
+            config_data = json.load(f)
+        logger.info(f"Loaded config from {args.config}")
+
     # Load model
     logger.info(f"Loading model from {args.model_path}")
-    model = PPO.load(args.model_path)
+    model = MaskablePPO.load(args.model_path)
 
     # Load test data
     logger.info(f"Loading test data from {args.data_path}")
@@ -100,11 +112,24 @@ def main() -> int:
 
     # Create environment config
     env_config = {
-        "reward_scaling": 1.0,
-        "transaction_cost": 0.0,  # Coincheck has 0% fees
-        "max_position_size": 1.0,
+        "reward_scaling": config_data.get("reward_scaling", 6.0),
+        "transaction_cost": config_data.get("transaction_cost", 0.0),  # Coincheck has 0% fees
+        "max_position_size": config_data.get("max_position_size", 1.0),
         "feature_set": args.feature_set,
         "timeframe": args.timeframe,
+        "curriculum_stage": config_data.get("curriculum_stage", "simple_portfolio"),
+        "reward_settings": config_data.get("reward_settings", {
+            "enable_forced_diversity": True,
+            "profit_bonus_multipliers": [0.5, 1.0, 1.5],
+            "custom_reward_params": {
+                "no_position_buy_reward": 1.5,
+                "no_position_sell_penalty": -2.0,
+                "no_position_hold_penalty": -2.0,
+                "has_position_sell_reward": 2.0,
+                "has_position_buy_penalty": -2.0,
+                "has_position_hold_penalty": -2.0
+            }
+        })
     }
 
     # Run paper trading simulation (create fresh env for each episode)
@@ -144,11 +169,17 @@ def main() -> int:
                     int, action[0]
                 )  # Extract from array and convert to int
 
+                print(f"Step {_}: action={action_int}")
+
                 logger.debug(f"Step {_}, obs[:3]: {obs[:3]}, action: {action_int}")
+
+                print(f"Before step: position={env.position}, trades={env.trades_count}")
 
                 # Execute action
                 obs, reward, terminated, truncated, info = env.step(action_int)
                 done = terminated or truncated
+
+                print(f"After step: position={env.position}, reward={reward}, trades={env.trades_count}")
 
                 episode_reward += reward
                 episode_trades += (

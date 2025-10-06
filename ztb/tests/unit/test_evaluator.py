@@ -3,7 +3,6 @@
 Unit tests for evaluator and analysis components.
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -14,6 +13,7 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import safe_json_load
 
 from tools.evaluation.re_evaluate_features import (
     ComprehensiveFeatureReEvaluator,
@@ -114,8 +114,7 @@ class TestEvaluator:
         assert "computation_time_ms" in df.columns
 
         # Check JSON content
-        with open(benchmark_json, "r") as f:
-            data = json.load(f)
+        data = safe_json_load(benchmark_json)
         assert "top5_slow" in data
         assert "bottom5_slow" in data
         assert "average_time_ms" in data

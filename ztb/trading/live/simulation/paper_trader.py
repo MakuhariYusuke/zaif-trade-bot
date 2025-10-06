@@ -28,6 +28,7 @@ from ztb.utils.cli_common import (
     CommonArgs,
     create_standard_parser,
 )
+from ztb.utils.path_utils import ensure_dir
 from ztb.utils.data_utils import load_csv_data
 
 from .sim_broker import SimBroker
@@ -511,7 +512,7 @@ def main() -> None:
     # Create output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path(args.output_dir) / f"{args.mode}_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_dir)
 
     print(f"Starting paper trader in {args.mode} mode...")
     print(f"Strategy: {args.policy}")

@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ztb.utils.path_utils import ensure_dir
+
 
 class ReportGenerator:
     """Unified report generator"""
@@ -30,7 +32,7 @@ class ReportGenerator:
         if not results:
             return
 
-        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(Path(file_path).parent)
 
         # Get all unique keys
         all_keys: set[str] = set()
@@ -45,7 +47,7 @@ class ReportGenerator:
 
     def generate_json(self, results: List[Dict[str, Any]], file_path: str) -> None:
         """Generate JSON report"""
-        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(Path(file_path).parent)
 
         with open(file_path, "w", encoding="utf-8") as jsonfile:
             json.dump(results, jsonfile, indent=2, ensure_ascii=False, default=str)
@@ -55,7 +57,7 @@ class ReportGenerator:
         if not results:
             return
 
-        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(Path(file_path).parent)
 
         # Get all unique keys
         all_keys: set[str] = set()
@@ -91,7 +93,7 @@ class ReportGenerator:
     ) -> None:
         """Save minimal experiment dump on failure"""
         dump_dir = Path("logs/dumps")
-        dump_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(dump_dir)
 
         dump_data = {
             "experiment_id": experiment_id,

@@ -11,6 +11,8 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
+from ztb.utils.file_utils import safe_json_load
+
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -659,8 +661,7 @@ def update_coverage_json(results: List[Dict[str, Any]], dataset: str = "syntheti
 
     # Load existing coverage
     if coverage_path.exists():
-        with open(coverage_path, "r") as f:
-            coverage = json.load(f)
+        coverage = safe_json_load(coverage_path)
     else:
         coverage = {
             "verified": [],

@@ -10,7 +10,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
 # Add the ztb package to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
@@ -33,7 +33,7 @@ def load_gates(gates_path: Path) -> Dict[str, Any]:
 
     try:
         with open(gates_path, "r") as f:
-            return json.load(f)  # type: ignore[no-any-return]
+            return cast(Dict[str, Any], json.load(f))
     except Exception:
         return {}
 

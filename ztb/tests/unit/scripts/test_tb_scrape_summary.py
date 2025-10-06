@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ztb.scripts import tb_scrape_summary
+from ztb.utils.file_utils import safe_json_load
 
 
 class TestTBScrapeSummary(unittest.TestCase):
@@ -112,8 +113,7 @@ class TestTBScrapeSummary(unittest.TestCase):
             summaries = tb_scrape_summary.scrape_summaries(run_dir, output_file)
             self.assertTrue(output_file.exists())
 
-            with open(output_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            data = safe_json_load(output_file)
             self.assertEqual(data, summaries)
 
     def test_main_default_args(self):

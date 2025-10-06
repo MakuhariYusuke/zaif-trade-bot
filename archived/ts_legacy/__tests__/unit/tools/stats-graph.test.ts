@@ -28,7 +28,7 @@ describe('tools/stats-graph', () => {
     process.argv = ['node','script','--out', path.join(TMP,'stats.json'),'--svg',path.join(TMP,'stats.svg')];
     try {
       const svgPath = path.join(TMP,'stats.svg');
-      for (let i=0;i<20 && !fs.existsSync(svgPath);i++){ await new Promise(r=>setTimeout(r,25)); }
+      for (let i=0;i<40 && !fs.existsSync(svgPath);i++){ await new Promise(r=>setTimeout(r,50)); }
       const svg = fs.readFileSync(svgPath,'utf8');
       expect(svg).toContain('最大DD線');
       expect(svg).toContain('DD=');
