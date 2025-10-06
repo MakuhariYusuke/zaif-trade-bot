@@ -1,6 +1,24 @@
 # Changelog
 
-## 3.10.0 - 2025-10-06
+## [Unreleased]
+
+### Added
+- **Short-distance A/B diagnostics**: New script `scripts/short_distance_ab_diagnostics.py` for validating action selection behavior on synthetic and real data (Phase 3B Task 7)
+  - Tests probability time-variance (std > 0)
+  - Tests legal SELL rate ≥ 15%
+  - Tests tiebreaker activation
+  - Generates synthetic uptrend/downtrend data
+  - Runs deterministic and stochastic modes
+  - Outputs JSON results with acceptance criteria
+
+### Changed
+- **Paper Trading Integration**: Integrated `decode_action()` into `paper_trade.py` for evaluation consistency (Phase 3B)
+  - Replaced `model.predict()` with manual logits extraction + `decode_action()`
+  - Added `InferenceConfig` initialization with configurable parameters (temperature, tiebreaker_tau, enable_tiebreaker, deterministic)
+  - Updated verbose logging to show decode diagnostics (probabilities, top2, margin, tiebreaker status)
+  - Ensures strict decode order (mask → softmax(T) → argmax) across training and evaluation
+
+## [3.10.0] - 2025-01-06
 
 ### Added
 
