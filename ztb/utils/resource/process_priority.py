@@ -10,13 +10,14 @@ This module provides utilities for controlling p                    try:
 and other resource management features for parallel training.
 """
 
-import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 import psutil
+
+from ztb.utils.file_utils import safe_json_load
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ProcessPriorityManager:
     """Manager for process priority and CPU affinity settings"""
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[str] = None) -> None:
         """
         Initialize priority manager.
 
@@ -48,9 +49,8 @@ class ProcessPriorityManager:
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration"""
         if self.config_path.exists():
-            with open(self.config_path, "r") as f:
-                config = json.load(f)
-                return config  # type: ignore
+            config = safe_json_load(self.config_path)
+            return cast(Dict[str, Any], config)
         return {}
 
     def set_process_priority(self, model_type: str) -> Tuple[str, int]:
@@ -154,7 +154,7 @@ class ProcessPriorityManager:
         """Get current process nice value"""
         try:
             if hasattr(os, "nice"):
-                return os.nice(0)  # type: ignore
+                return cast(int, os.nice(0))
             else:
                 logger.info("Getting nice value: not supported on this platform")
                 return None

@@ -18,6 +18,7 @@ from typing import Any, Dict, Union, cast
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
+from ztb.utils.file_utils import safe_json_load
 
 
 class DataLoader:
@@ -65,8 +66,7 @@ class DataLoader:
         if not file_path.exists():
             raise FileNotFoundError(f"JSON file not found: {file_path}")
 
-        with open(file_path, "r", encoding="utf-8") as f:
-            return cast(Dict[str, Any], json.load(f))
+        return cast(Dict[str, Any], safe_json_load(file_path))
 
     @staticmethod
     def load_sqlite(db_path: Union[str, Path], query: str) -> pd.DataFrame:
@@ -111,7 +111,7 @@ class DataLoader:
         if not file_path.exists():
             raise FileNotFoundError(f"CSV file not found: {file_path}")
 
-        return pd.read_csv(file_path, **kwargs)  # type: ignore[no-any-return]
+        return cast(pd.DataFrame, pd.read_csv(file_path, **kwargs))
 
     @staticmethod
     def save_parquet(df: pd.DataFrame, file_path: Union[str, Path]) -> None:

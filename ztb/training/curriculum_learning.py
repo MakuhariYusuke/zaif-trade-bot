@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
+from ztb.utils.file_utils import safe_json_load
 from ztb.training.unified_trainer import UnifiedTrainer
 
 
@@ -17,8 +18,7 @@ def run_curriculum_stage(stage_name: str, config_updates: Dict[str, Any], base_c
     print(f"\n=== カリキュラム学習: {stage_name} ===")
 
     # ベース設定を読み込み
-    with open(base_config_path, 'r') as f:
-        config = json.load(f)
+    config = safe_json_load(Path(base_config_path))
 
     # ステージ固有の設定を更新
     config.update(config_updates)
@@ -42,6 +42,10 @@ def run_curriculum_stage(stage_name: str, config_updates: Dict[str, Any], base_c
         else:
             print(f"✗ {stage_name} 失敗")
             return False
+
+    except Exception as e:
+        print(f"✗ {stage_name} 失敗: {e}")
+        return False
 
     finally:
         # 一時ファイルを削除
@@ -128,8 +132,7 @@ def evaluate_stage_performance(stage_name: str) -> None:
         # 結果ファイルを解析
         results_file = Path("results/regime_analysis/regime_analysis_results.json")
         if results_file.exists():
-            with open(results_file, 'r') as f:
-                results = json.load(f)
+            results = safe_json_load(results_file)
 
             model_results = results.get("regime_metrics", {}).get(stage_name, {})
             for regime, metrics in model_results.items():

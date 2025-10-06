@@ -6,11 +6,12 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from pathlib import Path
 from typing import Union
 
+from ztb.utils.path_utils import get_project_root
+
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(get_project_root()))
 
 from ztb.training.binary_search.base_optimizer import BinarySearchArgumentParser, HyperparameterOptimizer
 

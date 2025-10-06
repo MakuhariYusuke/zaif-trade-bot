@@ -10,8 +10,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+from ztb.utils.file_utils import safe_json_load
+from ztb.utils.path_utils import ensure_dir, get_project_root
+
 # Add project root to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(get_project_root()))
 
 # ローカルモジュールのインポート
 from ztb.training.ppo_trainer import PPOTrainer
@@ -24,8 +27,7 @@ def load_config() -> dict:
     config_path = "config/training/test.json"
     config_file = Path(config_path)
     if config_file.exists():
-        with open(config_file, "r") as f:
-            config = json.load(f)
+        config = safe_json_load(config_file)
         # テスト実行時は必ず1000ステップに固定
         config["training"]["total_timesteps"] = 1000
         # experiment セクションを追加
@@ -41,8 +43,7 @@ def load_config() -> dict:
     # 環境設定の読み込み
     env_config_path = Path("config/environment/dev.json")
     if env_config_path.exists():
-        with open(env_config_path, "r") as f:
-            env_config = json.load(f)
+        env_config = safe_json_load(env_config_path)
         config.update(env_config)
         print(f"Loaded environment config from {env_config_path}")
 
@@ -110,7 +111,7 @@ def setup_directories(config: dict) -> None:
     """必要なディレクトリの作成"""
     paths = config["paths"]
     for path in paths.values():
-        Path(path).mkdir(parents=True, exist_ok=True)
+        ensure_dir(Path(path))
     print("Directories setup complete")
 
 
@@ -244,7 +245,7 @@ def run_comparison_pipeline(
 def save_experiment_config(config: dict) -> None:
     """実験設定の保存"""
     experiment_dir = Path(config["paths"]["log_dir"]) / config["experiment"]["name"]
-    experiment_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(experiment_dir)
 
     config_file = experiment_dir / "experiment_config.json"
     with open(config_file, "w") as f:

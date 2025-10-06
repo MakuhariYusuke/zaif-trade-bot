@@ -8,6 +8,7 @@ import pytest
 
 from ztb.evaluation.logging import EvaluationRecord
 from ztb.metrics.metrics import MetricsResult, calculate_all_metrics
+from ztb.utils.file_utils import safe_json_load
 
 from .test_autogen import BaseFeatureTest
 
@@ -157,7 +158,8 @@ class TestMypyIntegration:
         try:
             from ztb.evaluation.logging import EvaluationRecord
             from ztb.evaluation.re_evaluate_features import EvaluationResult
-            from ztb.metrics.metrics import MetricsResult, calculate_all_metrics
+            from ztb.metrics.metrics import (MetricsResult,
+                                             calculate_all_metrics)
 
             # If we get here, imports succeeded
             assert True
@@ -179,11 +181,8 @@ class TestMypyIntegration:
 
     def test_status_reason_enum_validation(self):
         """Test that status/reason enums work correctly"""
-        from ztb.evaluation.status import (
-            FeatureReason,
-            FeatureStatus,
-            validate_status_reason,
-        )
+        from ztb.evaluation.status import (FeatureReason, FeatureStatus,
+                                           validate_status_reason)
 
         # Test valid combinations
         assert validate_status_reason(FeatureStatus.VERIFIED, None) == True
@@ -228,8 +227,7 @@ class TestMypyIntegration:
         if not coverage_path.exists():
             pytest.skip("coverage.json not found")
 
-        with open(coverage_path, "r") as f:
-            data = json.load(f)
+        data = safe_json_load(coverage_path)
 
         # Check that all status keys are valid enums (excluding metadata)
         valid_statuses = {status.value for status in FeatureStatus}

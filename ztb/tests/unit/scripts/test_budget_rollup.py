@@ -11,8 +11,10 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
+from ztb.utils.path_utils import get_project_root
+
 # Add scripts directory to path for importing
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "scripts"))
+sys.path.insert(0, str(get_project_root() / "scripts"))
 
 import budget_rollup
 

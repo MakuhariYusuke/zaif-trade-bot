@@ -5,11 +5,12 @@
 """
 
 import sys
-from pathlib import Path
 from typing import Any, Dict
 
+from ztb.utils.path_utils import get_project_root
+
 # プロジェクトルートをパスに追加
-project_root = Path(__file__).parent.parent.parent
+project_root = get_project_root()
 sys.path.append(str(project_root))
 
 from ztb.utils import DiscordNotifier

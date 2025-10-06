@@ -13,6 +13,7 @@ from typing import Dict, Generator, List, Optional, Tuple
 
 import pandas as pd
 import psutil
+
 from ztb.features import FeatureRegistry
 
 
@@ -209,7 +210,8 @@ def run_performance_analysis(df: pd.DataFrame, feature_subset: Optional[List[str
     print("=" * 50)
 
     # Initialize features
-    from ztb.features import trend, volatility, momentum, scalping, utils, volume
+    from ztb.features import (momentum, scalping, trend, utils, volatility,
+                              volume)
     FeatureRegistry.initialize()
 
     profiler = PerformanceProfiler()
@@ -266,7 +268,8 @@ if __name__ == "__main__":
     df['atr_14'] = np.random.uniform(1, 5, n_samples)
 
     # Initialize features
-    from ztb.features import trend, volatility, momentum, scalping, utils, volume
+    from ztb.features import (momentum, scalping, trend, utils, volatility,
+                              volume)
     FeatureRegistry.initialize()
 
     # Run analysis on key features

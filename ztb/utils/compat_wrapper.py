@@ -11,8 +11,10 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
+from ztb.utils.path_utils import get_project_root
+
 # ztb モジュールのインポートのためパスを追加
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(get_project_root()))
 
 create_status_embed_func: Optional[Callable[[], Dict[str, Any]]] = None
 import_error_msg = ""

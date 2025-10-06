@@ -12,9 +12,12 @@ import platform
 import subprocess
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import pkg_resources
+
+from ztb.utils.file_utils import safe_json_load
 
 
 class RunMetadata:
@@ -266,8 +269,7 @@ class RunMetadata:
     def load_from_file(cls, file_path: str) -> "RunMetadata":
         """Load metadata from JSON file."""
         instance = cls()
-        with open(file_path, "r", encoding="utf-8") as f:
-            instance.metadata = json.load(f)
+        instance.metadata = safe_json_load(Path(file_path))
         return instance
 
     def get_summary(self) -> str:

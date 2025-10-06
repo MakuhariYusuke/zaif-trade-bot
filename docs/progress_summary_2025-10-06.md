@@ -254,8 +254,57 @@ pytest tests/unit/environment/test_forced_actions.py -v
 
 ---
 
+---
+
+## 📝 Operational Notes (2025-10-06)
+
+### Environment Specification
+
+- **Shorting Enabled, Always-Flip Design**: `position=0` allows both BUY/SELL (legal)
+  - BUY: Opens long (+1.0) or closes short
+  - SELL: Closes long + Opens short (-1.0)
+  - Both actions legal at neutral position
+- **Legal Action KPI**: Position-dependent metrics required
+  - Example: "SELL execution rate when position > 0" (not global SELL rate)
+
+### Paper Trading Minimum Requirements
+
+- **Data Length**: ≥100 steps minimum
+- **Warmup Period**: First 50 steps excluded from metrics (technical indicators need warmup)
+- **Schema Validation**: `features_schema.json` must match training (FAIL if mismatch)
+- **Scaler Loading**: Normalization statistics mandatory (FAIL if not loaded)
+- **Config Fingerprint**: Environment/inference settings must match (FAIL if mismatch)
+
+### Evaluation Protocol
+
+- **Dual-Mode Evaluation**: Run BOTH modes
+  1. Deterministic (T=0.7): For deployment simulation
+  2. Stochastic: For distribution verification
+- **Metrics to Record**:
+  - Action distribution (per mode)
+  - Sharpe ratio (3-seed average)
+  - SELL execution rate (in legally-allowed states only)
+
+### Success Gates
+
+- **SELL Execution Rate**: ≥15% when position allows SELL
+- **Sharpe Ratio**: >0 (3-seed average)
+- **Legal Action Rate**: ≥99.9% (no illegal action attempts)
+
+### Failure Debugging Path
+
+If success gates not met, investigate in this order:
+
+1. **Schema Mismatch** → Compare `features_schema.json` training vs eval
+2. **Scaler Not Loaded** → Verify normalization statistics applied
+3. **Regime Imbalance** → Implement `RegimeSampler` for diverse conditions
+4. **Loss Weighting** → Apply `ActionFrequencyWeighter` for rare actions
+5. **Policy Bias** → Re-initialize policy head bias to neutral
+
+---
+
 **Repository**: https://github.com/MakuhariYusuke/zaif-trade-bot  
 **Branch**: main  
-**Latest Commit**: 13ff988  
+**Latest Commit**: 96591de  
 **Test Status**: 13/13 passing (with expected xfails)  
-**Ready for**: Feature schema validation implementation
+**Ready for**: Feature schema validation implementation (Phase 2)

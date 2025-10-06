@@ -6,14 +6,12 @@ Provides common functionality for training callbacks and evaluation metrics.
 
 import argparse
 import os
-import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
@@ -106,7 +104,8 @@ class HyperparameterOptimizer(ABC):
     """Abstract base class for hyperparameter optimization."""
 
     def __init__(self, project_root: Optional[Path] = None):
-        self.project_root = project_root or Path(__file__).parent.parent.parent.parent
+        from ztb.utils.path_utils import get_project_root
+        self.project_root = project_root or get_project_root()
         self.data_path = self.project_root / "ml-dataset-enhanced.csv"
 
         # Default environment configuration
@@ -197,7 +196,26 @@ class HyperparameterOptimizer(ABC):
     def evaluate_result(self, callback: TrainingCallback) -> float:
         """Evaluate training result and return score (higher is better)."""
         stats = callback.get_training_stats()
-        return stats["avg_reward"]
+        action_dist = callback.get_action_distribution()
+
+        # Use average reward if available, otherwise use total reward sum
+        if stats["avg_reward"] != 0.0:
+            score = stats["avg_reward"]
+        else:
+            # Fallback: use total reward sum divided by episode count, or current reward
+            total_reward = sum(callback.episode_rewards) if callback.episode_rewards else 0
+            score = total_reward / max(1, callback.episode_count) if callback.episode_count > 0 else 0
+
+        # Bonus for balanced action distribution (avoid extreme bias)
+        hold_pct = action_dist.get("hold_pct", 0)
+        buy_pct = action_dist.get("buy_pct", 0)
+        sell_pct = action_dist.get("sell_pct", 0)
+
+        # Penalize extreme action bias (reward balance)
+        balance_penalty = abs(hold_pct - 33.3) + abs(buy_pct - 33.3) + abs(sell_pct - 33.3)
+        balance_bonus = max(0, 100 - balance_penalty) * 0.01  # Scale to 0-1
+
+        return score + balance_bonus
 
     def save_model(self, model: PPO, value: Union[int, float], prefix: str = "") -> str:
         """Save trained model."""

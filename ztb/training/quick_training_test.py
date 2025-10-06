@@ -3,63 +3,63 @@
 Quick training test with balanced reward function.
 """
 
-import json
 import os
 import sys
 from pathlib import Path
+import glob
+import shutil
 
 # Add project root to path
 project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root.parent.parent))
+
+from ztb.utils.file_utils import safe_json_load
 
 from ztb.training.unified_trainer import UnifiedTrainer
 
 
 def main() -> None:
     # Load config
-    config_path = project_root / "unified_training_config_balance_test1.json"
-    with open(config_path, "r") as f:
-        config = json.load(f)
+    config_path = project_root.parent.parent / "config" / "training" / "balance_tests" / "unified_training_config_balance_test1.json"
+    config = safe_json_load(config_path)
 
-    # Modify config for full test
-    config["total_timesteps"] = 50000  # Longer test for better learning
-    config["seed"] = 42  # Set seed for reproducibility
-    config["session_id"] = "scalping_15s_balance_quick_test"
+    # Run multiple tests with different seeds
+    for run_num in range(1, 4):  # Run 3 times
+        # Modify config for this run
+        config["total_timesteps"] = 50000  # Longer test for better learning
+        config["seed"] = 42 + run_num  # Different seed for each run
+        config["session_id"] = f"scalping_15s_balance_quick_test_run{run_num}"
 
-    print(f"Starting quick training test with {config['total_timesteps']} timesteps")
+        print(f"\n=== Starting run {run_num} with seed {config['seed']} ===")
 
-    # Create trainer and run
-    trainer = UnifiedTrainer(config)
-    result = trainer.train()
+        # Create trainer and run
+        trainer = UnifiedTrainer(config)
+        result = trainer.train()
 
-    # Try to save the model from the result or trainer
-    model_path = project_root / "models" / f"{config['session_id']}_final.zip"
-    model_path.parent.mkdir(exist_ok=True)
+        # Try to save the model from the result or trainer
+        model_path = project_root.parent.parent / "models" / f"{config['session_id']}_final.zip"
+        model_path.parent.mkdir(exist_ok=True)
 
-    # Check if result contains the model
-    if hasattr(result, "model"):
-        result.model.save(str(model_path))
-        print(f"Model saved to {model_path}")
-    elif hasattr(result, "save"):
-        result.save(str(model_path))
-        print(f"Model saved to {model_path}")
-    else:
-        print(f"Warning: Could not save model. Result type: {type(result)}")
-        # Try to find any .zip files in current directory that might be the model
-        import glob
+        # Check if result contains the model
+        if hasattr(result, "model"):
+            result.model.save(str(model_path))
+            print(f"Model saved to {model_path}")
+        elif hasattr(result, "save"):
+            result.save(str(model_path))
+            print(f"Model saved to {model_path}")
+        else:
+            print(f"Warning: Could not save model. Result type: {type(result)}")
+            # Try to find any .zip files in current directory that might be the model
+            zip_files = glob.glob("*.zip")
+            if zip_files:
+                print(f"Found zip files: {zip_files}")
+                # Move the first one
+                shutil.move(zip_files[0], str(model_path))
+                print(f"Moved {zip_files[0]} to {model_path}")
 
-        zip_files = glob.glob("*.zip")
-        if zip_files:
-            print(f"Found zip files: {zip_files}")
-            # Move the latest one to models directory
-            import shutil
-
-            latest_zip = max(zip_files, key=lambda f: os.path.getmtime(f))
-            shutil.move(latest_zip, str(model_path))
-            print(f"Moved {latest_zip} to {model_path}")
+        print(f"Run {run_num} completed")
 
     print("Quick training test completed")
-    return result  # type: ignore[no-any-return]
 
 
 if __name__ == "__main__":

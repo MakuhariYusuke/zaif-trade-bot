@@ -10,7 +10,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+import sys
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from ztb.utils.path_utils import get_project_root
+
+# Add scripts directory to path for importing
+sys.path.insert(0, str(get_project_root()))
 
 from ztb.ops.reports.live_status_snapshot import create_status_embed, load_json_file
 

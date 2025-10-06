@@ -7,12 +7,13 @@ Optionally updates summary.json with progress info.
 """
 
 import argparse
-import json
 import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple
+
+from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
 
 def estimate_steps_per_sec_from_metrics(metrics_path: Path) -> Optional[float]:
@@ -21,8 +22,7 @@ def estimate_steps_per_sec_from_metrics(metrics_path: Path) -> Optional[float]:
         return None
 
     try:
-        with open(metrics_path, "r") as f:
-            data = json.load(f)
+        data = safe_json_load(metrics_path)
 
         steps = data.get("steps", 0)
         elapsed = data.get("elapsed_time", 0)  # in seconds
@@ -102,8 +102,7 @@ def update_summary(
         return
 
     try:
-        with open(summary_path, "r") as f:
-            data = json.load(f)
+        data = safe_json_load(summary_path)
 
         data["progress"] = {
             "steps_per_sec": steps_per_sec,
@@ -112,8 +111,7 @@ def update_summary(
             "pct": pct,
         }
 
-        with open(summary_path, "w") as f:
-            json.dump(data, f, indent=2)
+        safe_json_dump(data, summary_path, indent=2)
 
         print(f"Updated {summary_path} with progress info")
     except Exception as e:
@@ -159,8 +157,7 @@ def main() -> None:
     current_steps = 0
     if metrics_path.exists():
         try:
-            with open(metrics_path, "r") as f:
-                data = json.load(f)
+            data = safe_json_load(metrics_path)
             current_steps = data.get("steps", 0)
         except Exception:
             pass

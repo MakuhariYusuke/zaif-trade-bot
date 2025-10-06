@@ -5,11 +5,12 @@ This module provides standardized functions for loading and validating
 configuration files in YAML and JSON formats.
 """
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
 import yaml
+
+from ztb.utils.file_utils import safe_json_load
 
 
 def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -52,8 +53,7 @@ def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        return cast(Dict[str, Any], json.load(f))
+    return cast(Dict[str, Any], safe_json_load(file_path))
 
 
 def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:

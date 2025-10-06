@@ -4,10 +4,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
+import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, cast
+from dataclasses import asdict
 
 import numpy as np
 from skopt import gp_minimize
@@ -15,15 +16,14 @@ from skopt.space import Integer, Real
 from skopt.utils import use_named_args
 
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.path_utils import ensure_dir
+from ztb.utils.file_utils import safe_json_dump
+from ztb.utils.project_setup import setup_project_path
 
 # Ensure project root is on sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-import sys
+setup_project_path()
 
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from ztb.training.ppo_trainer import PPOTrainer  # noqa: E402
+from ztb.training.ppo_trainer import PPOTrainer, PPOConfig, Algorithm, FeatureSet, Timeframe  # noqa: E402
 
 LOGGER = get_logger(__name__)
 
@@ -36,12 +36,23 @@ SEARCH_SPACE = [
 ]
 
 
-def objective_function(**params: Any) -> float:
+def objective_function(
+    learning_rate: float,
+    batch_size: int,
+    clip_range: float,
+    gae_lambda: float,
+) -> float:
     """Objective function for Bayesian optimization."""
+    params = {
+        "learning_rate": learning_rate,
+        "batch_size": batch_size,
+        "clip_range": clip_range,
+        "gae_lambda": gae_lambda,
+    }
     try:
         # Fixed parameters
-        config = {
-            "algorithm": "ppo",
+        config_dict = {
+            "algorithm": Algorithm.PPO,
             "data_path": "data/ml-dataset-enhanced-balanced.csv",
             "total_timesteps": 25000,  # Short training for optimization
             "n_steps": 2048,
@@ -54,19 +65,20 @@ def objective_function(**params: Any) -> float:
             "checkpoint_dir": "checkpoints/bayes_opt",
             "log_dir": "logs/bayes_opt",
             "offline_mode": True,
-            "feature_set": "full",
-            "timeframe": "1m",
+            "feature_set": FeatureSet.FULL,
+            "timeframe": Timeframe.M1,
             "reward_scaling": 1.0,
             "transaction_cost": 0.0,
             "max_position_size": 1.0,
             "seed": 42,
             **params,  # Override with optimized parameters
         }
+        config: PPOConfig = PPOConfig(**config_dict)  # type: ignore[arg-type]
 
         trainer = PPOTrainer(
-            data_path=config["data_path"],
-            config=config,
-            checkpoint_dir=config["checkpoint_dir"],
+            data_path=config.data_path,
+            config=asdict(config),
+            checkpoint_dir=config.checkpoint_dir,
         )
 
         model = trainer.train(session_id=f"bayes_opt_{hash(str(params))}")
@@ -111,7 +123,7 @@ def main() -> int:
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     )
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(args.output_dir)
 
     LOGGER.info("Starting Bayesian optimization...")
     LOGGER.info(f"Search space: {[dim.name for dim in SEARCH_SPACE]}")
@@ -140,8 +152,7 @@ def main() -> int:
         ],
     }
 
-    with open(args.output_dir / "bayes_opt_results.json", "w") as f:
-        json.dump(results, f, indent=2)
+    safe_json_dump(results, args.output_dir / "bayes_opt_results.json", indent=2)
 
     LOGGER.info(f"Optimization completed!")
     LOGGER.info(f"Best parameters: {best_params}")

@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ztb.scripts.schedule_templates import get_template, list_templates, main
+from ztb.utils.file_utils import safe_json_load
 
 
 class TestScheduleTemplates(unittest.TestCase):
@@ -72,8 +73,7 @@ class TestScheduleTemplates(unittest.TestCase):
             # Check file was created
             self.assertTrue(output_file.exists())
             # Check content
-            with open(output_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            data = safe_json_load(output_file)
             self.assertEqual(data["template"], "hourly")
             self.assertIn("schedule", data)
             # Check print message

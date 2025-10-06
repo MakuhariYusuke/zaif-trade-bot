@@ -1,11 +1,10 @@
 # データ品質詳細チェックスクリプト
 # 外れ値検出と詳細な分布分析
 
-import json
 import logging
 import os
 from pathlib import Path
-from typing import Union, cast
+from typing import Union
 
 import numpy as np
 import numpy.ma as ma
@@ -14,7 +13,8 @@ from scipy import stats
 
 # Local wrappers below import implementations on demand to keep runtime
 # import costs low and to avoid name collisions/redefinitions in this module.
-from ztb.utils.errors import safe_operation
+from ztb.utils.file_utils import safe_json_load
+from ztb.utils.path_utils import get_project_root
 
 logger = logging.getLogger(__name__)
 
@@ -38,40 +38,6 @@ def detect_outliers_zscore(
     return _detect_outliers_zscore(data, column, threshold)
 
 
-def get_project_root() -> Path:
-    """プロジェクトルートのパスを取得（環境変数や設定ファイルで上書き可能）"""
-    return cast(
-        Path,
-        safe_operation(
-            logger,
-            _get_project_root_impl,
-            "get_project_root",
-            Path(__file__).parent.parent.parent,  # Default fallback
-        ),
-    )
-
-
-def _get_project_root_impl() -> Path:
-    """Implementation of getting project root."""
-    # 環境変数があればそれを使う
-    env_root = os.environ.get("PROJECT_ROOT")
-    if env_root:
-        return Path(env_root).resolve()
-    # 設定ファイル（config/rl_config.json）にproject_rootキーがあればそれを使う
-    config_path = Path(__file__).parent.parent.parent / "config" / "rl_config.json"
-    if config_path.exists():
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            project_root = config.get("project_root")
-            if project_root:
-                return Path(project_root).resolve()
-        except Exception:
-            pass
-    # デフォルト
-    return Path(__file__).parent.parent.parent
-
-
 def project_path(*parts: str) -> Path:
     """プロジェクトルートからの相対パスを組み立てる"""
     return get_project_root().joinpath(*parts)
@@ -90,8 +56,7 @@ def analyze_feature_distributions(
 
     config_path = Path(config_path)
     if config_path.exists():
-        with open(config_path, "r") as f:
-            config = json.load(f)
+        config = safe_json_load(config_path)
         base_threshold = (
             config.get("data_quality", {}).get("outlier_threshold_percent", 10.0)
             / 100.0
