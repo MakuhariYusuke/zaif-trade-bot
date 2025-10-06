@@ -41,6 +41,8 @@ project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
+from ztb.training.ppo_config import get_ppo_config
+from ztb.trading.env_config import get_trading_env_config
 from ztb.utils import DiscordNotifier
 from ztb.utils.file_utils import safe_json_load
 
@@ -67,6 +69,7 @@ class PaperTrader:
         self.model: Optional[MaskablePPO] = None
         self.env: DummyVecEnv = None  # type: ignore
         self.episode_results: List[Dict[str, Any]] = []
+        self._normalization_stats: Optional[Any] = None  # Store loaded normalization stats
 
         # Load test data first
         self._load_test_data()
@@ -84,14 +87,12 @@ class PaperTrader:
 
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration for paper trading."""
-        return {
-            "reward_scaling": 1.0,
-            "transaction_cost": 0.001,
-            "max_position_size": 1.0,
+        return get_trading_env_config({
+            "reward_scaling": 1.0,  # Override for paper trading
             "risk_free_rate": 0.0,
             "initial_portfolio_value": 10000.0,
             "verbose": 1,
-        }
+        })
 
     def _create_env(self) -> DummyVecEnv:
         """Create evaluation environment."""
@@ -121,19 +122,22 @@ class PaperTrader:
         # Get policy_kwargs from config
         policy_kwargs = self.config.get("policy_kwargs", {})
 
+        # Get PPO config from common configuration
+        ppo_config = get_ppo_config()
+
         self.model = MaskablePPO(
             "MlpPolicy",
             dummy_env,
-            learning_rate=3e-4,
-            n_steps=2048,
-            batch_size=64,
-            n_epochs=10,
-            gamma=0.99,
-            gae_lambda=0.95,
-            clip_range=0.2,
-            ent_coef=0.0,
-            vf_coef=0.5,
-            max_grad_norm=0.5,
+            learning_rate=ppo_config.get("learning_rate", 3e-4),
+            n_steps=ppo_config.get("n_steps", 2048),
+            batch_size=ppo_config.get("batch_size", 64),
+            n_epochs=ppo_config.get("n_epochs", 10),
+            gamma=ppo_config.get("gamma", 0.99),
+            gae_lambda=ppo_config.get("gae_lambda", 0.95),
+            clip_range=ppo_config.get("clip_range", 0.2),
+            ent_coef=ppo_config.get("ent_coef", 0.0),
+            vf_coef=ppo_config.get("vf_coef", 0.5),
+            max_grad_norm=ppo_config.get("max_grad_norm", 0.5),
             verbose=0,
             seed=42,
             policy_kwargs=policy_kwargs,
@@ -252,6 +256,23 @@ class PaperTrader:
             self.test_df = self.test_df.tail(test_size)
             self.logger.info(f"Using {len(self.test_df)} test samples")
 
+            # Auto-detect feature columns (exclude meta columns) - used for both validations
+            exclude_cols = {
+                "ts",
+                "timestamp",
+                "exchange",
+                "pair",
+                "episode_id",
+                "side",
+                "source",
+            }
+            feature_columns = [
+                col
+                for col in self.test_df.columns
+                if col not in exclude_cols
+                and pd.api.types.is_numeric_dtype(self.test_df[col])
+            ]
+
             # Validate feature schema against training schema
             try:
                 from ztb.utils.feature_schema import load_and_validate_schema
@@ -261,23 +282,6 @@ class PaperTrader:
                 schema_path = model_dir / "features_schema.json"
 
                 if schema_path.exists():
-                    # Auto-detect feature columns (exclude meta columns)
-                    exclude_cols = {
-                        "ts",
-                        "timestamp",
-                        "exchange",
-                        "pair",
-                        "episode_id",
-                        "side",
-                        "source",
-                    }
-                    feature_columns = [
-                        col
-                        for col in self.test_df.columns
-                        if col not in exclude_cols
-                        and pd.api.types.is_numeric_dtype(self.test_df[col])
-                    ]
-
                     # Validate schema (strict=True will raise on mismatch)
                     schema = load_and_validate_schema(
                         model_dir, self.test_df, feature_columns, strict=True
@@ -292,6 +296,51 @@ class PaperTrader:
                         f"Feature schema not found: {schema_path}. "
                         "Skipping validation (may cause silent errors!)"
                     )
+
+                # Validate normalization statistics
+                try:
+                    from ztb.utils.normalization import load_scaler
+                    import numpy as np
+
+                    scaler_path = model_dir / "scaler.npz"
+                    if scaler_path.exists():
+                        # Load saved normalization stats
+                        saved_stats = load_scaler(model_dir, strict=True)
+
+                        # Compute stats from test data (using feature_columns from above)
+                        feature_data = self.test_df[feature_columns].values
+                        test_mean = np.mean(feature_data, axis=0)
+                        test_std = np.std(feature_data, axis=0)
+
+                        # Log comparison (info only, not strict validation)
+                        mean_diff = np.max(np.abs(saved_stats.mean - test_mean))
+                        std_diff = np.max(np.abs(saved_stats.std - test_std))
+
+                        self.logger.info(
+                            f"Normalization stats loaded "
+                            f"(hash: {saved_stats.compute_hash()[:16]}...)"
+                        )
+                        self.logger.info(
+                            f"Train vs Test stats difference: "
+                            f"mean Δ={mean_diff:.6f}, std Δ={std_diff:.6f}"
+                        )
+
+                        # Store for later use if needed
+                        self._normalization_stats = saved_stats
+                    else:
+                        self.logger.warning(
+                            f"Normalization stats not found: {scaler_path}. "
+                            "Evaluation may use different normalization than training!"
+                        )
+                except FileNotFoundError as e:
+                    self.logger.error(f"Normalization stats loading FAILED: {e}")
+                    raise RuntimeError(
+                        f"Normalization stats missing. Evaluation aborted to prevent "
+                        f"silent errors. Please retrain model with stats persistence.\n{e}"
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Could not validate normalization stats: {e}")
+
             except ValueError as e:
                 # Schema validation failed - this is CRITICAL
                 self.logger.error(f"Feature schema validation FAILED: {e}")
