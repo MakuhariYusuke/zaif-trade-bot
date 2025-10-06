@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.9.0 - 2025-10-06
+
+### Added
+
+- **StrictMaskedPolicy**: Custom PPO policy with strict action masking during training
+  - Created `ztb/training/policies/strict_masked_policy.py` (210 lines) for strict mask enforcement
+  - Illegal actions masked with logits=-1e9 in both `forward()` and `evaluate_actions()`
+  - Ensures training and evaluation use identical masking logic (prevents distribution shift)
+  - Comprehensive test coverage: 19/19 tests PASS in 11.84 seconds
+  - Key tests: partial mask enforcement, zero probability for illegal actions, deterministic vs stochastic sampling
+  - Addresses root cause of "identical probabilities" by eliminating illegal action leakage in loss calculation
+
+### Technical
+
+- **Phase 3A: Policy Output Logic Finalization (Task 3 Complete)**
+  - StrictMaskedPolicy implementation: 210 lines code + 380 lines tests (100% coverage)
+  - Masked logits approach: illegal actions set to -1e9 before softmax
+  - Loss calculation: illegal actions contribute zero gradient (log_prob ≈ -inf)
+  - Integration ready: compatible with existing `test_forced_actions.py` (7/7 PASS)
+  - Next: Decode order unification + tiebreaker logic (Task 4)
+
 ## 3.8.0 - 2025-10-06
 
 ### Added
