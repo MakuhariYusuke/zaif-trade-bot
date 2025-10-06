@@ -3,9 +3,10 @@ time_features.py
 Time-based features for intraday and interday analysis
 """
 
+from typing import Union
+
 import numpy as np
 import pandas as pd
-from typing import Union
 
 from ztb.features.registry import FeatureRegistry
 
@@ -81,7 +82,9 @@ def calculate_time_features_extended(df: pd.DataFrame) -> pd.DataFrame:
     if isinstance(datetime_index, pd.DatetimeIndex):
         minutes_since_midnight = result["time_hour_of_day"] * 60 + datetime_index.minute
     else:
-        minutes_since_midnight = result["time_hour_of_day"] * 60 + datetime_index.dt.minute
+        minutes_since_midnight = (
+            result["time_hour_of_day"] * 60 + datetime_index.dt.minute
+        )
 
     # Define session boundaries (adjust for your market)
     pre_market_start = 0  # 00:00

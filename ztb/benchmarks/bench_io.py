@@ -25,6 +25,7 @@ from ztb.cache.parquet_io import read_parquet, write_parquet
 
 class ParquetConfig(TypedDict):
     """Configuration for Parquet I/O operations."""
+
     compression: str
     row_group_size: int
     use_columns: List[str]
@@ -33,6 +34,7 @@ class ParquetConfig(TypedDict):
 
 class BenchmarkConfig(TypedDict):
     """Configuration for benchmark runs."""
+
     parquet: ParquetConfig
     limits: Dict[str, int]
 

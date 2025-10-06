@@ -34,17 +34,17 @@ class TrainingCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         # Get the action taken in this step
-        if 'actions' in self.locals:
-            action = self.locals['actions'][0]  # For vectorized env, take first action
+        if "actions" in self.locals:
+            action = self.locals["actions"][0]  # For vectorized env, take first action
             self.current_episode_actions.append(int(action))
 
         # Check if episode is done
-        if len(self.locals.get('infos', [])) > 0:
-            info = self.locals['infos'][0]
-            if 'episode' in info:
-                episode_info = info['episode']
-                reward = episode_info['r']
-                length = episode_info['l']
+        if len(self.locals.get("infos", [])) > 0:
+            info = self.locals["infos"][0]
+            if "episode" in info:
+                episode_info = info["episode"]
+                reward = episode_info["r"]
+                length = episode_info["l"]
 
                 self.episode_lengths.append(length)
                 self.episode_count += 1
@@ -57,15 +57,26 @@ class TrainingCallback(BaseCallback):
 
                 # Print episode summary every 10 episodes
                 if self.episode_count % 10 == 0:
-                    avg_reward = np.mean(self.episode_rewards[-10:]) if self.episode_rewards else 0
-                    print(f"Episode {self.episode_count}: Reward={reward:.4f}, Length={length}, Avg={avg_reward:.4f}")
+                    avg_reward = (
+                        np.mean(self.episode_rewards[-10:])
+                        if self.episode_rewards
+                        else 0
+                    )
+                    print(
+                        f"Episode {self.episode_count}: Reward={reward:.4f}, Length={length}, Avg={avg_reward:.4f}"
+                    )
 
         return True
 
     def get_training_stats(self) -> Dict[str, Union[float, int]]:
         """Get training statistics."""
         if not self.episode_rewards:
-            return {"avg_reward": 0.0, "reward_std": 0.0, "best_reward": 0.0, "worst_reward": 0.0}
+            return {
+                "avg_reward": 0.0,
+                "reward_std": 0.0,
+                "best_reward": 0.0,
+                "worst_reward": 0.0,
+            }
 
         avg_reward = np.mean(self.episode_rewards)
         reward_std = np.std(self.episode_rewards)
@@ -76,13 +87,18 @@ class TrainingCallback(BaseCallback):
             "avg_reward": float(avg_reward),
             "reward_std": float(reward_std),
             "best_reward": float(best_reward),
-            "worst_reward": float(worst_reward)
+            "worst_reward": float(worst_reward),
         }
 
     def get_action_distribution(self) -> Dict[str, Union[int, float]]:
         """Get action distribution statistics."""
         if not self.actions_taken:
-            return {"hold_count": 0, "buy_count": 0, "sell_count": 0, "total_actions": 0}
+            return {
+                "hold_count": 0,
+                "buy_count": 0,
+                "sell_count": 0,
+                "total_actions": 0,
+            }
 
         hold_count = self.actions_taken.count(0)
         buy_count = self.actions_taken.count(1)
@@ -105,6 +121,7 @@ class HyperparameterOptimizer(ABC):
 
     def __init__(self, project_root: Optional[Path] = None):
         from ztb.utils.path_utils import get_project_root
+
         self.project_root = project_root or get_project_root()
         self.data_path = self.project_root / "ml-dataset-enhanced.csv"
 
@@ -145,17 +162,14 @@ class HyperparameterOptimizer(ABC):
     @abstractmethod
     def parameter_name(self) -> str:
         """Name of the parameter being optimized."""
-        pass
 
     @abstractmethod
     def get_parameter_range(self) -> Tuple[float, float]:
         """Get the range (min, max) for binary search."""
-        pass
 
     @abstractmethod
     def update_ppo_params(self, value: Union[int, float]) -> None:
         """Update PPO parameters with the test value."""
-        pass
 
     def create_environment(self, **overrides: Any) -> HeavyTradingEnv:
         """Create training environment with optional config overrides."""
@@ -168,7 +182,7 @@ class HyperparameterOptimizer(ABC):
             config=config,
             streaming_pipeline=None,
             stream_batch_size=1000,
-            max_features=68
+            max_features=68,
         )
 
     def create_model(self, env: Any) -> PPO:
@@ -179,16 +193,16 @@ class HyperparameterOptimizer(ABC):
 
         return PPO("MlpPolicy", env, **self.ppo_params)
 
-    def train_model(self, total_timesteps: int = 100000) -> Tuple[PPO, TrainingCallback]:
+    def train_model(
+        self, total_timesteps: int = 100000
+    ) -> Tuple[PPO, TrainingCallback]:
         """Train model and return model and callback."""
         env = self.create_environment()
         model = self.create_model(env)
         callback = TrainingCallback()
 
         model.learn(
-            total_timesteps=total_timesteps,
-            callback=callback,
-            progress_bar=True
+            total_timesteps=total_timesteps, callback=callback, progress_bar=True
         )
 
         return model, callback
@@ -203,8 +217,14 @@ class HyperparameterOptimizer(ABC):
             score = stats["avg_reward"]
         else:
             # Fallback: use total reward sum divided by episode count, or current reward
-            total_reward = sum(callback.episode_rewards) if callback.episode_rewards else 0
-            score = total_reward / max(1, callback.episode_count) if callback.episode_count > 0 else 0
+            total_reward = (
+                sum(callback.episode_rewards) if callback.episode_rewards else 0
+            )
+            score = (
+                total_reward / max(1, callback.episode_count)
+                if callback.episode_count > 0
+                else 0
+            )
 
         # Bonus for balanced action distribution (avoid extreme bias)
         hold_pct = action_dist.get("hold_pct", 0)
@@ -212,7 +232,9 @@ class HyperparameterOptimizer(ABC):
         sell_pct = action_dist.get("sell_pct", 0)
 
         # Penalize extreme action bias (reward balance)
-        balance_penalty = abs(hold_pct - 33.3) + abs(buy_pct - 33.3) + abs(sell_pct - 33.3)
+        balance_penalty = (
+            abs(hold_pct - 33.3) + abs(buy_pct - 33.3) + abs(sell_pct - 33.3)
+        )
         balance_bonus = max(0, 100 - balance_penalty) * 0.01  # Scale to 0-1
 
         return score + balance_bonus
@@ -243,7 +265,9 @@ class HyperparameterOptimizer(ABC):
         print(f"  BUY: {action_dist['buy_count']} ({action_dist['buy_pct']:.1f}%)")
         print(f"  SELL: {action_dist['sell_count']} ({action_dist['sell_pct']:.1f}%)")
 
-    def run_single_test(self, value: Union[int, float], total_timesteps: int = 100000) -> float:
+    def run_single_test(
+        self, value: Union[int, float], total_timesteps: int = 100000
+    ) -> float:
         """Run a single training test with specified parameter value."""
         print(f"\n=== Training with {self.parameter_name}={value} ===")
 
@@ -262,14 +286,16 @@ class HyperparameterOptimizer(ABC):
         # Return evaluation score
         return self.evaluate_result(callback)
 
-    def binary_search_optimize(self, max_iterations: int = 10, total_timesteps: int = 100000) -> Tuple[Union[int, float], float]:
+    def binary_search_optimize(
+        self, max_iterations: int = 10, total_timesteps: int = 100000
+    ) -> Tuple[Union[int, float], float]:
         """
         Perform binary search optimization.
         Returns (best_value, best_score).
         """
         min_val, max_val = self.get_parameter_range()
         best_value = min_val
-        best_score = float('-inf')
+        best_score = float("-inf")
 
         print(f"\n=== Binary Search Optimization for {self.parameter_name} ===")
         print(f"Parameter range: {min_val} to {max_val}")
@@ -279,7 +305,9 @@ class HyperparameterOptimizer(ABC):
             current_value = (min_val + max_val) / 2
             score = self.run_single_test(current_value, total_timesteps)
 
-            print(f"Iteration {iteration + 1}: {self.parameter_name}={current_value}, score={score:.6f}")
+            print(
+                f"Iteration {iteration + 1}: {self.parameter_name}={current_value}, score={score:.6f}"
+            )
 
             if score > best_score:
                 best_score = score
@@ -302,21 +330,53 @@ class BinarySearchArgumentParser:
     @staticmethod
     def create_parser(description: str) -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument('--mode', choices=['single', 'binary'], default='single',
-                           help=CLIFormatter.format_help('Optimization mode: single test or binary search', 'single', ['single', 'binary']))
-        parser.add_argument('--max_iterations', type=int, default=10,
-                           help=CLIFormatter.format_help('Maximum iterations for binary search', 10))
-        parser.add_argument('--timesteps', type=int, default=100000,
-                           help=CLIFormatter.format_help('Total timesteps for training', 100000))
+        parser.add_argument(
+            "--mode",
+            choices=["single", "binary"],
+            default="single",
+            help=CLIFormatter.format_help(
+                "Optimization mode: single test or binary search",
+                "single",
+                ["single", "binary"],
+            ),
+        )
+        parser.add_argument(
+            "--max_iterations",
+            type=int,
+            default=10,
+            help=CLIFormatter.format_help("Maximum iterations for binary search", 10),
+        )
+        parser.add_argument(
+            "--timesteps",
+            type=int,
+            default=100000,
+            help=CLIFormatter.format_help("Total timesteps for training", 100000),
+        )
         return parser
 
     @staticmethod
-    def add_parameter_argument(parser: argparse.ArgumentParser, param_name: str,
-                             param_type: type, default_value: Union[int, float]) -> None:
+    def add_parameter_argument(
+        parser: argparse.ArgumentParser,
+        param_name: str,
+        param_type: type,
+        default_value: Union[int, float],
+    ) -> None:
         """Add parameter-specific argument to parser."""
         if param_type == int:
-            parser.add_argument(f'--{param_name}', type=int, default=default_value,
-                               help=CLIFormatter.format_help(f'{param_name} value for single test', default_value))
+            parser.add_argument(
+                f"--{param_name}",
+                type=int,
+                default=default_value,
+                help=CLIFormatter.format_help(
+                    f"{param_name} value for single test", default_value
+                ),
+            )
         else:
-            parser.add_argument(f'--{param_name}', type=float, default=default_value,
-                               help=CLIFormatter.format_help(f'{param_name} value for single test', default_value))
+            parser.add_argument(
+                f"--{param_name}",
+                type=float,
+                default=default_value,
+                help=CLIFormatter.format_help(
+                    f"{param_name} value for single test", default_value
+                ),
+            )

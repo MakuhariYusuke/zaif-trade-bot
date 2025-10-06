@@ -119,12 +119,15 @@ def create_env_with_features(
     df: pd.DataFrame, enabled_features: List[str]
 ) -> HeavyTradingEnv:
     """特徴量を有効化した環境を作成"""
-    return cast(HeavyTradingEnv, safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _create_env_with_features_impl(df, enabled_features),
-        context="environment_creation_with_features",
-        default_result=None,  # Return None on failure
-    ))
+    return cast(
+        HeavyTradingEnv,
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _create_env_with_features_impl(df, enabled_features),
+            context="environment_creation_with_features",
+            default_result=None,  # Return None on failure
+        ),
+    )
 
 
 def _create_env_with_features_impl(
@@ -133,8 +136,10 @@ def _create_env_with_features_impl(
     """Implementation of environment creation with features."""
     # TODO: Implement proper feature filtering using FeatureRegistry API
     # For now, create environment with all features
-    logging.info(f"Feature filtering not implemented, using all features: {enabled_features}")
-    
+    logging.info(
+        f"Feature filtering not implemented, using all features: {enabled_features}"
+    )
+
     # 環境作成 (全特徴量使用)
     env = HeavyTradingEnv(df)
 
@@ -145,12 +150,15 @@ def run_training(
     seed: int, timesteps: int, enabled_features: List[str], df: pd.DataFrame
 ) -> Dict[str, float]:
     """学習実行"""
-    return cast(Dict[str, float], safe_operation(
-        logger=None,  # Use default logger
-        operation=lambda: _run_training_impl(seed, timesteps, enabled_features, df),
-        context="training_execution",
-        default_result={},  # Return empty dict on failure
-    ))
+    return cast(
+        Dict[str, float],
+        safe_operation(
+            logger=None,  # Use default logger
+            operation=lambda: _run_training_impl(seed, timesteps, enabled_features, df),
+            context="training_execution",
+            default_result={},  # Return empty dict on failure
+        ),
+    )
 
 
 def _run_training_impl(

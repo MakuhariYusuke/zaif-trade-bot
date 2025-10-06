@@ -8,12 +8,11 @@ with factory pattern for instantiation and configuration.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Protocol, Optional, cast
+from typing import Any, Dict, Optional, Protocol, cast
 
 from ztb.data.coin_gecko_stream import CoinGeckoStream
 from ztb.data.streaming_pipeline import StreamingPipeline
 from ztb.trading.live.replay_market import ReplayMarket
-
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)

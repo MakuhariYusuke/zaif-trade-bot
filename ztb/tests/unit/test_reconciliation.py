@@ -4,12 +4,17 @@ Unit tests for reconciliation framework
 """
 
 import time
+
 import pytest
-from unittest.mock import patch
+
 from ztb.trading.core.reconciliation import (
-    ReconciliationItem, ReconciliationResult, ReconciliationStrategy,
-    OrderReconciliationStrategy, PositionReconciliationStrategy,
-    ReconciliationEngine, get_reconciliation_engine
+    OrderReconciliationStrategy,
+    PositionReconciliationStrategy,
+    ReconciliationEngine,
+    ReconciliationItem,
+    ReconciliationResult,
+    ReconciliationStrategy,
+    get_reconciliation_engine,
 )
 
 
@@ -20,7 +25,7 @@ class TestReconciliationItem:
             item_id="item_123",
             internal_state={"status": "filled", "quantity": 1.0},
             external_state={"status": "filled", "quantity": 1.0},
-            timestamp=1234567890.0
+            timestamp=1234567890.0,
         )
 
         assert item.item_id == "item_123"
@@ -37,7 +42,7 @@ class TestReconciliationResult:
             is_consistent=True,
             discrepancies=[],
             actions_taken=["no_action_needed"],
-            timestamp=1234567890.0
+            timestamp=1234567890.0,
         )
 
         assert result.item_id == "item_123"
@@ -67,14 +72,14 @@ class TestOrderReconciliationStrategy:
             internal_state={
                 "status": "filled",
                 "filled_quantity": 1.0,
-                "remaining_quantity": 0.0
+                "remaining_quantity": 0.0,
             },
             external_state={
                 "status": "filled",
                 "filled_quantity": 1.0,
-                "remaining_quantity": 0.0
+                "remaining_quantity": 0.0,
             },
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         strategy = OrderReconciliationStrategy()
@@ -92,14 +97,14 @@ class TestOrderReconciliationStrategy:
             internal_state={
                 "status": "filled",
                 "filled_quantity": 1.0,
-                "remaining_quantity": 0.0
+                "remaining_quantity": 0.0,
             },
             external_state={
                 "status": "pending",
                 "filled_quantity": 1.0,
-                "remaining_quantity": 0.0
+                "remaining_quantity": 0.0,
             },
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         strategy = OrderReconciliationStrategy()
@@ -118,14 +123,14 @@ class TestOrderReconciliationStrategy:
             internal_state={
                 "status": "filled",
                 "filled_quantity": 1.0,
-                "remaining_quantity": 0.0
+                "remaining_quantity": 0.0,
             },
             external_state={
                 "status": "filled",
                 "filled_quantity": 0.5,
-                "remaining_quantity": 0.5
+                "remaining_quantity": 0.5,
             },
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         strategy = OrderReconciliationStrategy()
@@ -148,15 +153,9 @@ class TestPositionReconciliationStrategy:
         """Test reconciling a consistent position"""
         item = ReconciliationItem(
             item_id="position_BTC",
-            internal_state={
-                "size": 1.0,
-                "average_price": 50000.0
-            },
-            external_state={
-                "size": 1.0,
-                "average_price": 50000.0
-            },
-            timestamp=time.time()
+            internal_state={"size": 1.0, "average_price": 50000.0},
+            external_state={"size": 1.0, "average_price": 50000.0},
+            timestamp=time.time(),
         )
 
         strategy = PositionReconciliationStrategy()
@@ -171,15 +170,9 @@ class TestPositionReconciliationStrategy:
         """Test reconciling a position with size mismatch"""
         item = ReconciliationItem(
             item_id="position_BTC",
-            internal_state={
-                "size": 1.0,
-                "average_price": 50000.0
-            },
-            external_state={
-                "size": 1.5,
-                "average_price": 50000.0
-            },
-            timestamp=time.time()
+            internal_state={"size": 1.0, "average_price": 50000.0},
+            external_state={"size": 1.5, "average_price": 50000.0},
+            timestamp=time.time(),
         )
 
         strategy = PositionReconciliationStrategy()
@@ -194,15 +187,9 @@ class TestPositionReconciliationStrategy:
         """Test reconciling a position with price mismatch"""
         item = ReconciliationItem(
             item_id="position_BTC",
-            internal_state={
-                "size": 1.0,
-                "average_price": 50000.0
-            },
-            external_state={
-                "size": 1.0,
-                "average_price": 51000.0  # 2% difference
-            },
-            timestamp=time.time()
+            internal_state={"size": 1.0, "average_price": 50000.0},
+            external_state={"size": 1.0, "average_price": 51000.0},  # 2% difference
+            timestamp=time.time(),
         )
 
         strategy = PositionReconciliationStrategy()
@@ -221,8 +208,12 @@ class TestReconciliationEngine:
 
         assert "order_reconciliation" in engine.strategies
         assert "position_reconciliation" in engine.strategies
-        assert isinstance(engine.strategies["order_reconciliation"], OrderReconciliationStrategy)
-        assert isinstance(engine.strategies["position_reconciliation"], PositionReconciliationStrategy)
+        assert isinstance(
+            engine.strategies["order_reconciliation"], OrderReconciliationStrategy
+        )
+        assert isinstance(
+            engine.strategies["position_reconciliation"], PositionReconciliationStrategy
+        )
 
     def test_register_strategy(self):
         """Test registering a custom strategy"""
@@ -239,7 +230,7 @@ class TestReconciliationEngine:
                     is_consistent=True,
                     discrepancies=[],
                     actions_taken=["custom_action"],
-                    timestamp=item.timestamp
+                    timestamp=item.timestamp,
                 )
 
         custom_strategy = CustomStrategy()
@@ -255,16 +246,32 @@ class TestReconciliationEngine:
         items = [
             ReconciliationItem(
                 item_id="order_1",
-                internal_state={"status": "filled", "filled_quantity": 1.0, "remaining_quantity": 0.0},
-                external_state={"status": "filled", "filled_quantity": 1.0, "remaining_quantity": 0.0},
-                timestamp=time.time()
+                internal_state={
+                    "status": "filled",
+                    "filled_quantity": 1.0,
+                    "remaining_quantity": 0.0,
+                },
+                external_state={
+                    "status": "filled",
+                    "filled_quantity": 1.0,
+                    "remaining_quantity": 0.0,
+                },
+                timestamp=time.time(),
             ),
             ReconciliationItem(
                 item_id="order_2",
-                internal_state={"status": "pending", "filled_quantity": 0.0, "remaining_quantity": 1.0},
-                external_state={"status": "filled", "filled_quantity": 1.0, "remaining_quantity": 0.0},
-                timestamp=time.time()
-            )
+                internal_state={
+                    "status": "pending",
+                    "filled_quantity": 0.0,
+                    "remaining_quantity": 1.0,
+                },
+                external_state={
+                    "status": "filled",
+                    "filled_quantity": 1.0,
+                    "remaining_quantity": 0.0,
+                },
+                timestamp=time.time(),
+            ),
         ]
 
         results = engine.reconcile_items(items, "order_reconciliation")
@@ -282,7 +289,7 @@ class TestReconciliationEngine:
                 item_id="order_1",
                 internal_state={"status": "filled"},
                 external_state={"status": "filled"},
-                timestamp=time.time()
+                timestamp=time.time(),
             )
         ]
 
@@ -299,22 +306,22 @@ class TestReconciliationEngine:
                 is_consistent=True,
                 discrepancies=[],
                 actions_taken=["no_action_needed"],
-                timestamp=time.time()
+                timestamp=time.time(),
             ),
             ReconciliationResult(
                 item_id="item_2",
                 is_consistent=False,
                 discrepancies=["mismatch"],
                 actions_taken=["logged_discrepancies"],
-                timestamp=time.time()
+                timestamp=time.time(),
             ),
             ReconciliationResult(
                 item_id="item_3",
                 is_consistent=True,
                 discrepancies=[],
                 actions_taken=["no_action_needed"],
-                timestamp=time.time()
-            )
+                timestamp=time.time(),
+            ),
         ]
 
         summary = engine.get_reconciliation_summary(results)
@@ -322,7 +329,7 @@ class TestReconciliationEngine:
         assert summary["total_items"] == 3
         assert summary["consistent_items"] == 2
         assert summary["inconsistent_items"] == 1
-        assert summary["consistency_rate"] == 2/3
+        assert summary["consistency_rate"] == 2 / 3
         assert summary["total_discrepancies"] == 1
         assert len(summary["results"]) == 3
 

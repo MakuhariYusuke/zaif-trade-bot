@@ -67,8 +67,6 @@ class ReconciliationResult:
 class ReconciliationError(Exception):
     """Exception raised when reconciliation fails."""
 
-    pass
-
 
 class BaseReconciler(ABC):
     """Base class for reconciliation operations."""
@@ -91,7 +89,6 @@ class BaseReconciler(ABC):
         Returns:
             Reconciliation result
         """
-        pass
 
     def get_last_result(self) -> Optional[ReconciliationResult]:
         """Get last reconciliation result."""

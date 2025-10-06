@@ -671,7 +671,9 @@ class FeatureRegistry:
 
         failed_features = perf_metrics["failed_features"]
         if failed_features and verbose:
-            print(f"\n⚠️  Failed to compute {len(failed_features)} features: {failed_features}")
+            print(
+                f"\n⚠️  Failed to compute {len(failed_features)} features: {failed_features}"
+            )
 
         return features_df, feature_times
 

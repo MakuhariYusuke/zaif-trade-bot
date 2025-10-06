@@ -16,12 +16,11 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
-from typing import cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -30,6 +29,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 def run_evaluation() -> Dict[str, Any]:
     """Run feature evaluation."""
+
     def perform_evaluation() -> Dict[str, Any]:
         print("🔍 Running feature evaluation...")
         from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
@@ -64,8 +64,12 @@ def run_evaluation() -> Dict[str, Any]:
         return results
 
     import logging
+
     logger = logging.getLogger(__name__)
-    return cast(Dict[str, Any], safe_operation(logger, perform_evaluation, "run_evaluation()", {}))
+    return cast(
+        Dict[str, Any],
+        safe_operation(logger, perform_evaluation, "run_evaluation()", {}),
+    )
 
 
 def run_correlation_analysis() -> Optional[Dict[str, Any]]:

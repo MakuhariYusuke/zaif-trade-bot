@@ -12,7 +12,10 @@ from ztb.utils.path_utils import get_project_root
 # Add project root to path for imports
 sys.path.insert(0, str(get_project_root()))
 
-from ztb.training.binary_search.base_optimizer import BinarySearchArgumentParser, HyperparameterOptimizer
+from ztb.training.binary_search.base_optimizer import (
+    BinarySearchArgumentParser,
+    HyperparameterOptimizer,
+)
 
 
 class NStepsOptimizer(HyperparameterOptimizer):
@@ -32,23 +35,29 @@ class NStepsOptimizer(HyperparameterOptimizer):
 
 
 def main() -> None:
-    parser = BinarySearchArgumentParser.create_parser('Optimize n_steps parameter for PPO')
-    BinarySearchArgumentParser.add_parameter_argument(parser, 'n_steps', int, 2048)
+    parser = BinarySearchArgumentParser.create_parser(
+        "Optimize n_steps parameter for PPO"
+    )
+    BinarySearchArgumentParser.add_parameter_argument(parser, "n_steps", int, 2048)
 
     args = parser.parse_args()
 
     # Create optimizer
     optimizer = NStepsOptimizer()
 
-    if args.mode == 'single':
+    if args.mode == "single":
         # Run single test
         score = optimizer.run_single_test(args.n_steps, args.timesteps)
         print(f"\nFinal score for n_steps {args.n_steps}: {score:.6f}")
 
-    elif args.mode == 'binary':
+    elif args.mode == "binary":
         # Run binary search optimization
-        best_value, best_score = optimizer.binary_search_optimize(args.max_iterations, args.timesteps)
-        print(f"\nOptimization complete. Best n_steps: {best_value}, Score: {best_score:.6f}")
+        best_value, best_score = optimizer.binary_search_optimize(
+            args.max_iterations, args.timesteps
+        )
+        print(
+            f"\nOptimization complete. Best n_steps: {best_value}, Score: {best_score:.6f}"
+        )
 
 
 if __name__ == "__main__":

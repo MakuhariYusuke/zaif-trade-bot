@@ -4,6 +4,7 @@ CLI共通ユーティリティの単体テスト
 """
 
 import pytest
+
 from ztb.utils.cli_common import CLIValidator
 
 

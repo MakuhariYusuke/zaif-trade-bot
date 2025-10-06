@@ -13,10 +13,9 @@ from typing import Any, Dict
 
 import pandas as pd
 
-from ztb.utils.data_utils import load_csv_data
-
 from ztb.evaluation.baseline_comparison import get_baseline_comparison_engine
 from ztb.evaluation.regime_eval import RegimeEvaluator
+from ztb.utils.data_utils import load_csv_data
 
 
 def load_trade_data(trade_log_path: str) -> list[Any]:

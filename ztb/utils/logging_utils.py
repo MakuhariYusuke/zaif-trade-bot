@@ -7,7 +7,9 @@ import logging
 from typing import Optional
 
 
-def setup_logging(level: int = logging.INFO, format_string: Optional[str] = None) -> None:
+def setup_logging(
+    level: int = logging.INFO, format_string: Optional[str] = None
+) -> None:
     """
     Set up basic logging configuration.
 

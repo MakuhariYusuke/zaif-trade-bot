@@ -74,7 +74,6 @@ class TestEndToEnd:
     def test_etl_pipeline_smoke(self):
         """Test ETL pipeline basic functionality"""
         # Skipped due to TypeScript dependency
-        pass
 
     @pytest.mark.skip(
         reason="Equivalence test scaffold - implement when TS data available"
@@ -146,13 +145,11 @@ class TestEndToEnd:
         """Compare feature distributions between TS and Python"""
         # TODO: Implement statistical comparison
         # TODO: 統計比較を実装
-        pass
 
     def _check_for_anomalies(self, ts_data: pd.DataFrame, _py_data: pd.DataFrame):
         """Check for anomalies in feature differences"""
         # TODO: Implement anomaly detection
         # TODO: 異常検知を実装
-        pass
 
 
 @pytest.mark.skip(reason="ETLPipeline is TypeScript class, not available in Python")
@@ -162,17 +159,14 @@ class TestTSPythonBridge:
     def test_extract_prices_placeholder(self):
         """Test extract_prices function placeholder"""
         # Skipped due to TypeScript dependency
-        pass
 
     def test_transform_features_placeholder(self):
         """Test transform_features function placeholder"""
         # Skipped due to TypeScript dependency
-        pass
 
     def test_load_to_storage_placeholder(self):
         """Test load_to_storage function placeholder"""
         # Skipped due to TypeScript dependency
-        pass
         dummy_data = pd.DataFrame({"price": [100, 101, 102]})
 
         # This should not raise NotImplementedError
@@ -187,4 +181,3 @@ class TestTSPythonBridge:
     def test_save_parquet_placeholder(self):
         """Test save_parquet function placeholder"""
         # Skipped due to TypeScript dependency
-        pass

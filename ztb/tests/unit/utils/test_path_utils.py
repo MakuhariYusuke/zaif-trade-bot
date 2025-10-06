@@ -6,8 +6,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from ztb.utils.path_utils import (
     ensure_dir,
     find_files_by_extension,
@@ -30,7 +28,13 @@ class TestGetProjectRoot:
         root = get_project_root()
 
         # Check that at least one project marker exists
-        markers = ['pyproject.toml', 'setup.py', '.git', 'requirements.txt', 'package.json']
+        markers = [
+            "pyproject.toml",
+            "setup.py",
+            ".git",
+            "requirements.txt",
+            "package.json",
+        ]
         has_marker = any((root / marker).exists() for marker in markers)
         assert has_marker, f"No project markers found in {root}"
 
@@ -108,7 +112,7 @@ class TestSafePathJoin:
 class TestGetRelativePath:
     """Test cases for get_relative_path function."""
 
-    @patch('os.path.relpath')
+    @patch("os.path.relpath")
     def test_get_relative_path_success(self, mock_relpath):
         """Test get_relative_path with successful relative path calculation."""
         mock_relpath.return_value = "subdir/file.txt"
@@ -120,7 +124,7 @@ class TestGetRelativePath:
         assert result == Path("subdir/file.txt")
         mock_relpath.assert_called_once_with(str(to_path), str(from_path))
 
-    @patch('os.path.relpath', side_effect=ValueError("Different drives"))
+    @patch("os.path.relpath", side_effect=ValueError("Different drives"))
     def test_get_relative_path_different_drives(self, mock_relpath):
         """Test get_relative_path when paths are on different drives."""
         from_path = Path("C:/path1")

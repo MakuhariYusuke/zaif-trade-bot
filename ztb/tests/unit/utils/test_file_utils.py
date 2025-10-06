@@ -5,11 +5,14 @@ Unit tests for file_utils.py module.
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pytest
-
-from ztb.utils.file_utils import load_config_file, safe_json_dump, safe_json_load, save_config_file
+from ztb.utils.file_utils import (
+    load_config_file,
+    safe_json_dump,
+    safe_json_load,
+    save_config_file,
+)
 
 
 class TestSafeJsonLoad:
@@ -19,7 +22,7 @@ class TestSafeJsonLoad:
         """Test loading a valid JSON file."""
         test_data = {"key": "value", "number": 42}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(test_data, f)
             temp_path = Path(f.name)
 
@@ -36,6 +39,7 @@ class TestSafeJsonLoad:
 
     def test_load_nonexistent_file_callable_default(self):
         """Test loading a nonexistent file with callable default."""
+
         def get_default():
             return {"callable": "default"}
 
@@ -44,7 +48,7 @@ class TestSafeJsonLoad:
 
     def test_load_invalid_json_file(self):
         """Test loading an invalid JSON file returns default."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("invalid json content")
             temp_path = Path(f.name)
 
@@ -56,7 +60,7 @@ class TestSafeJsonLoad:
 
     def test_load_json_with_exception(self):
         """Test loading JSON file that raises an exception."""
-        with patch('builtins.open', side_effect=Exception("Test error")):
+        with patch("builtins.open", side_effect=Exception("Test error")):
             result = safe_json_load(Path("test.json"), default="fallback")
             assert result == "fallback"
 
@@ -68,7 +72,7 @@ class TestSafeJsonDump:
         """Test successfully dumping data to JSON file."""
         test_data = {"test": "data", "array": [1, 2, 3]}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = Path(f.name)
 
         try:
@@ -77,7 +81,7 @@ class TestSafeJsonDump:
             assert temp_path.exists()
 
             # Verify content
-            with open(temp_path, 'r') as f:
+            with open(temp_path, "r") as f:
                 loaded_data = json.load(f)
             assert loaded_data == test_data
         finally:
@@ -87,7 +91,7 @@ class TestSafeJsonDump:
         """Test dumping data with string path."""
         test_data = {"string": "path"}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = Path(f.name)
 
         try:
@@ -113,7 +117,7 @@ class TestSafeJsonDump:
         """Test dumping data with custom indentation."""
         test_data = {"custom": "indent"}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = Path(f.name)
 
         try:
@@ -121,7 +125,7 @@ class TestSafeJsonDump:
             assert result is True
 
             # Verify indentation
-            with open(temp_path, 'r') as f:
+            with open(temp_path, "r") as f:
                 content = f.read()
             assert "    " in content  # Should have 4-space indentation
         finally:
@@ -129,6 +133,7 @@ class TestSafeJsonDump:
 
     def test_dump_data_with_custom_encoder(self):
         """Test dumping data with custom JSON encoder."""
+
         class CustomObject:
             def __init__(self, value):
                 self.value = value
@@ -140,14 +145,14 @@ class TestSafeJsonDump:
 
         test_data = {"custom": CustomObject("test")}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = Path(f.name)
 
         try:
             result = safe_json_dump(test_data, temp_path, default=custom_encoder)
             assert result is True
 
-            with open(temp_path, 'r') as f:
+            with open(temp_path, "r") as f:
                 loaded_data = json.load(f)
             assert loaded_data == {"custom": {"custom_value": "test"}}
         finally:
@@ -157,7 +162,7 @@ class TestSafeJsonDump:
         """Test dumping data that fails."""
         test_data = {"test": "data"}
 
-        with patch('pathlib.Path.mkdir', side_effect=Exception("Test error")):
+        with patch("pathlib.Path.mkdir", side_effect=Exception("Test error")):
             result = safe_json_dump(test_data, Path("test.json"))
             assert result is False
 
@@ -169,7 +174,7 @@ class TestLoadConfigFile:
         """Test loading a valid config file."""
         config_data = {"setting": "value", "enabled": True, "count": 10}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(config_data, f)
             temp_path = Path(f.name)
 
@@ -181,7 +186,7 @@ class TestLoadConfigFile:
 
     def test_load_config_file_not_dict(self):
         """Test loading a config file that doesn't contain a dictionary."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump("not a dict", f)
             temp_path = Path(f.name)
 
@@ -204,7 +209,7 @@ class TestSaveConfigFile:
         """Test saving a valid config file."""
         config_data = {"database": {"host": "localhost", "port": 5432}}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = Path(f.name)
 
         try:
@@ -213,7 +218,7 @@ class TestSaveConfigFile:
             assert temp_path.exists()
 
             # Verify content
-            with open(temp_path, 'r') as f:
+            with open(temp_path, "r") as f:
                 loaded_data = json.load(f)
             assert loaded_data == config_data
         finally:
@@ -234,6 +239,6 @@ class TestSaveConfigFile:
         """Test saving config file that fails."""
         config_data = {"test": "data"}
 
-        with patch('ztb.utils.file_utils.safe_json_dump', return_value=False):
+        with patch("ztb.utils.file_utils.safe_json_dump", return_value=False):
             result = save_config_file(config_data, Path("test.json"))
             assert result is False

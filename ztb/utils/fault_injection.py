@@ -9,7 +9,15 @@ import asyncio
 import contextlib
 import time
 from dataclasses import dataclass
-from typing import AsyncContextManager, Callable, Dict, Optional, Any, Type, AsyncGenerator
+from typing import (
+    Any,
+    AsyncContextManager,
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Optional,
+    Type,
+)
 
 from ztb.utils.logging_utils import get_logger
 
@@ -40,7 +48,9 @@ class FaultInjector:
         self._fault_handlers[fault_type] = handler
         logger.info(f"Registered fault handler for type: {fault_type}")
 
-    async def inject_fault(self, config: FaultInjectionConfig) -> AsyncContextManager["FaultContext"]:
+    async def inject_fault(
+        self, config: FaultInjectionConfig
+    ) -> AsyncContextManager["FaultContext"]:
         """
         Inject a fault according to configuration.
 
@@ -87,7 +97,12 @@ class FaultContext:
 
         return self
 
-    async def __aexit__(self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[Any]) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> None:
         """Exit fault context - deactivate the fault."""
         del self.injector.active_faults[self.config.name]
 

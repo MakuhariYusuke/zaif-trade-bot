@@ -7,7 +7,7 @@ Gates ensure training quality and prevent invalid checkpoints from being conside
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union, Sequence
+from typing import Any, Dict, Optional, Sequence, Union
 
 import psutil
 

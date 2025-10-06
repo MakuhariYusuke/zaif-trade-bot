@@ -42,7 +42,6 @@ class Criterion(ABC):
         Returns:
             Tuple of (passed: bool, score: float)
         """
-        pass
 
 
 class NumericCriterion(Criterion):
@@ -240,7 +239,6 @@ class PromotionEngine(ABC):
         Returns:
             Tuple of (result, details_dict)
         """
-        pass
 
 
 class YamlPromotionEngine(PromotionEngine):

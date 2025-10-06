@@ -20,7 +20,9 @@ create_status_embed_func: Optional[Callable[[], Dict[str, Any]]] = None
 import_error_msg = ""
 
 try:
-    from ztb.ops.reports.live_status_snapshot import create_status_embed as create_status_embed_func
+    from ztb.ops.reports.live_status_snapshot import (
+        create_status_embed as create_status_embed_func,
+    )
 except ImportError as e:
     import_error_msg = str(e)
 

@@ -18,9 +18,10 @@ import sys
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from typing import cast
+
 from ztb.evaluation.evaluate import TradingEvaluator  # noqa: E402
 from ztb.utils.errors import safe_operation
-from typing import cast
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +45,9 @@ def simulate_transaction_costs(
         Dict[float, Dict[str, float]],
         safe_operation(
             logger=LOGGER,
-            operation=lambda: _simulate_transaction_costs_impl(model_path, cost_range, data_path, output_dir),
+            operation=lambda: _simulate_transaction_costs_impl(
+                model_path, cost_range, data_path, output_dir
+            ),
             context="transaction_cost_simulation",
             default_result={},  # Return empty dict on error
         ),

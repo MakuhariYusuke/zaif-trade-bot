@@ -22,8 +22,8 @@ class TrainingCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         # 行動をカウント（DummyVecEnvから取得）
-        if hasattr(self.locals, 'actions'):
-            actions = self.locals['actions']
+        if hasattr(self.locals, "actions"):
+            actions = self.locals["actions"]
             if len(actions.shape) > 0:
                 for action in actions:
                     if action < 3:  # 有効な行動のみ
@@ -34,16 +34,16 @@ class TrainingCallback(BaseCallback):
                     self.action_counts[action] += 1
 
         # エピソード報酬を追跡
-        if 'rewards' in self.locals:
-            rewards = self.locals['rewards']
+        if "rewards" in self.locals:
+            rewards = self.locals["rewards"]
             if len(rewards.shape) > 0:
                 self.current_episode_reward += rewards[0]
             else:
                 self.current_episode_reward += rewards
 
         # エピソード終了時に統計を記録
-        if 'dones' in self.locals:
-            dones = self.locals['dones']
+        if "dones" in self.locals:
+            dones = self.locals["dones"]
             done = dones[0] if len(dones.shape) > 0 else dones
             if done:
                 self.episode_rewards.append(self.current_episode_reward)
@@ -59,9 +59,13 @@ class TrainingCallback(BaseCallback):
 
             # バランススコア計算（低いほどバランスが良い）
             target_ratio = 1.0 / 3.0
-            balance_score = sum(abs(ratio/100 - target_ratio) for ratio in action_dist)
+            balance_score = sum(
+                abs(ratio / 100 - target_ratio) for ratio in action_dist
+            )
 
-            print("\n=== カリキュラム学習 Stage 2: バランス維持しながら通常報酬関数へ移行 ===")
+            print(
+                "\n=== カリキュラム学習 Stage 2: バランス維持しながら通常報酬関数へ移行 ==="
+            )
             print(f"総行動数: {total_actions}")
             print(f"バランススコア: {balance_score:.4f}")
             print(f"HOLD: {action_dist[0]:.1f}%")
@@ -123,15 +127,15 @@ def main() -> None:
     model = PPO(
         "MlpPolicy",
         env,
-        learning_rate=5e-4,      # 最適化済み
-        gamma=0.95,              # 最適化済み
-        gae_lambda=0.8,          # 最適化済み
-        clip_range=0.3,          # 最適化済み
-        vf_coef=0.5,             # 最適化済み
-        max_grad_norm=1.0,       # 最適化済み
-        target_kl=0.005,         # 最適化済み
-        ent_coef=0.05,           # 最適化済み
-        batch_size=64,           # 最適化済み
+        learning_rate=5e-4,  # 最適化済み
+        gamma=0.95,  # 最適化済み
+        gae_lambda=0.8,  # 最適化済み
+        clip_range=0.3,  # 最適化済み
+        vf_coef=0.5,  # 最適化済み
+        max_grad_norm=1.0,  # 最適化済み
+        target_kl=0.005,  # 最適化済み
+        ent_coef=0.05,  # 最適化済み
+        batch_size=64,  # 最適化済み
         n_epochs=10,
         verbose=1,
         tensorboard_log="./tensorboard/",
@@ -146,11 +150,7 @@ def main() -> None:
     print("バランスペナルティ: 行動分布が33%から大きく外れるとペナルティ")
 
     total_timesteps = 50_000  # 移行ステージのトレーニング
-    model.learn(
-        total_timesteps=total_timesteps,
-        callback=callback,
-        progress_bar=True
-    )
+    model.learn(total_timesteps=total_timesteps, callback=callback, progress_bar=True)
 
     # モデル保存
     model_path = "models/curriculum_transition.zip"
@@ -167,7 +167,7 @@ def main() -> None:
     while not done and step_count < 1000:
         action, _ = model.predict(obs, deterministic=True)  # type: ignore[arg-type]
         obs, reward, done, _ = env.step(action)  # type: ignore[misc,arg-type]
-        episode_reward += reward[0] if hasattr(reward, '__len__') else reward
+        episode_reward += reward[0] if hasattr(reward, "__len__") else reward
         step_count += 1
 
         if done:

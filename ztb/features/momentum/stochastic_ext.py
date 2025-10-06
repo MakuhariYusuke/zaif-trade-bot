@@ -86,9 +86,7 @@ def calculate_stochastic_extended(
 
 
 def _compute_stochastic_extended(
-    close: NDArray[np.floating[Any]],
-    stoch_k: NDArray[np.floating[Any]],
-    k_period: int
+    close: NDArray[np.floating[Any]], stoch_k: NDArray[np.floating[Any]], k_period: int
 ) -> tuple[NDArray[np.int32], NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     Calculate extended Stochastic features using pure numpy (no numba).

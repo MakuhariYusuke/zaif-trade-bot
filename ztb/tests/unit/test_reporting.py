@@ -53,11 +53,8 @@ class TestWeeklyReportGeneration:
         import sys
 
         from ztb.utils.path_utils import get_project_root
-        reports_path = (
-            get_project_root()
-            / "reports"
-            / "generate_weekly_report.py"
-        )
+
+        reports_path = get_project_root() / "reports" / "generate_weekly_report.py"
         spec = importlib.util.spec_from_file_location(
             "generate_weekly_report", reports_path
         )
@@ -272,11 +269,8 @@ class TestWeeklyReportGeneration:
         import importlib.util
 
         from ztb.utils.path_utils import get_project_root
-        reports_path = (
-            get_project_root()
-            / "reports"
-            / "generate_weekly_report.py"
-        )
+
+        reports_path = get_project_root() / "reports" / "generate_weekly_report.py"
         spec = importlib.util.spec_from_file_location(
             "generate_weekly_report", reports_path
         )
