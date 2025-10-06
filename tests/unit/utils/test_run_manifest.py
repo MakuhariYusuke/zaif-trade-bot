@@ -152,6 +152,38 @@ def test_generate_manifest_with_additional_metadata(tmp_path):
     assert manifest["additional"]["notes"] == "Test run"
 
 
+def test_generate_manifest_with_inference_config(tmp_path):
+    """Test generating manifest with inference configuration."""
+    config = {"learning_rate": 0.001}
+    feature_names = ["feature_a"]
+    warmup = 220
+    inference_config = {
+        "temperature": 0.7,
+        "tiebreaker_tau": 0.05,
+        "enable_tiebreaker": True,
+        "enable_advantage_tiebreaker": True,
+        "enable_cost_gate": True,
+        "cost_gate_lambda": 1.2,
+        "deterministic": True,
+    }
+    
+    manifest = generate_manifest(
+        model_dir=tmp_path,
+        config=config,
+        feature_names=feature_names,
+        warmup=warmup,
+        inference_config=inference_config,
+    )
+    
+    # Inference config should be included
+    assert "inference" in manifest
+    assert manifest["inference"]["temperature"] == 0.7
+    assert manifest["inference"]["tiebreaker_tau"] == 0.05
+    assert manifest["inference"]["enable_advantage_tiebreaker"] is True
+    assert manifest["inference"]["cost_gate_lambda"] == 1.2
+
+
+
 def test_save_and_load_manifest(tmp_path):
     """Test saving and loading manifest."""
     config = {"learning_rate": 0.001}
