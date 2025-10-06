@@ -129,6 +129,9 @@ def run_diagnostic(
     top2_probs_list = []
     margins_list = []
     tiebreaker_activations = []
+    tiebreaker_reasons = []  # NEW
+    cost_gate_triggered = []  # NEW
+    estimated_costs = []  # NEW
     legal_masks_list = []
     
     for step in range(min(len(data) - 1, max_steps)):
@@ -156,6 +159,17 @@ def run_diagnostic(
         top2_probs_list.append(info["top2_probs"])
         margins_list.append(info["margin"])
         tiebreaker_activations.append(info["tiebreaker_activated"])
+        tiebreaker_reasons.append(info.get("tiebreaker_reason"))  # NEW (may be None)
+        cost_gate_triggered.append(info.get("cost_gate_triggered", False))  # NEW
+        estimated_costs.append(info.get("estimated_cost", 0.0))  # NEW
+        
+        # Store diagnostics
+        actions_list.append(action)
+        probabilities_list.append(info["probabilities"])
+        top2_actions_list.append(info["top2_actions"])
+        top2_probs_list.append(info["top2_probs"])
+        margins_list.append(info["margin"])
+        tiebreaker_activations.append(info["tiebreaker_activated"])
         
         # Step environment
         obs, _, done, _ = env.step(action)
@@ -167,7 +181,16 @@ def run_diagnostic(
     probabilities_array = np.array(probabilities_list)
     margins_array = np.array(margins_list)
     tiebreaker_array = np.array(tiebreaker_activations)
+    cost_gate_array = np.array(cost_gate_triggered)  # NEW
+    estimated_costs_array = np.array(estimated_costs)  # NEW
     legal_masks_array = np.array(legal_masks_list)
+    
+    # Count tiebreaker reasons (NEW)
+    tiebreaker_reasons_count = {
+        "advantage_sign": sum(1 for r in tiebreaker_reasons if r == "advantage_sign"),
+        "prob_margin": sum(1 for r in tiebreaker_reasons if r == "prob_margin"),
+        "none": sum(1 for r in tiebreaker_reasons if r is None),
+    }
     
     # Compute statistics
     legal_sell_stats = compute_legal_sell_rate(actions_array, legal_masks_array)
@@ -210,6 +233,12 @@ def run_diagnostic(
         "tiebreaker_stats": {
             "activation_count": int(np.sum(tiebreaker_array)),
             "activation_rate": float(np.mean(tiebreaker_array)),
+            "reasons": tiebreaker_reasons_count,  # NEW
+        },
+        "cost_gate_stats": {  # NEW
+            "triggered_count": int(np.sum(cost_gate_array)),
+            "triggered_rate": float(np.mean(cost_gate_array)),
+            "mean_estimated_cost": float(np.mean(estimated_costs_array)),
         },
         "calibration": calibration_report,
         "acceptance_criteria": {
@@ -226,6 +255,9 @@ def run_diagnostic(
     print(f"  Probability std (mean): {np.mean(prob_stds):.4f} (target: >0)")
     print(f"  Margin (mean±std): {np.mean(margins_array):.4f}±{np.std(margins_array):.4f}")
     print(f"  Tiebreaker activations: {np.sum(tiebreaker_array)}/{len(tiebreaker_array)} ({np.mean(tiebreaker_array):.1%})")
+    print(f"    - advantage_sign: {tiebreaker_reasons_count['advantage_sign']}")  # NEW
+    print(f"    - prob_margin: {tiebreaker_reasons_count['prob_margin']}")  # NEW
+    print(f"  Cost gate triggered: {np.sum(cost_gate_array)}/{len(cost_gate_array)} ({np.mean(cost_gate_array):.1%})")  # NEW
     
     # Print calibration diagnostics
     print(f"\n  Calibration Diagnostics:")
