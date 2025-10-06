@@ -6,6 +6,13 @@ Unit tests for status_check.py
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from ztb.utils.path_utils import get_project_root
+
+# Add scripts directory to path for importing
+sys.path.insert(0, str(get_project_root() / "scripts"))
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Add scripts directory to path for importing
@@ -16,7 +23,7 @@ from status_check import main
 
 class TestStatusCheck(unittest.TestCase):
     @patch("subprocess.run")
-    def test_status_check_basic(self, mock_subprocess):
+    def test_status_check_basic(self, mock_subprocess: MagicMock) -> None:
         """Test status check with correlation ID."""
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -36,7 +43,7 @@ class TestStatusCheck(unittest.TestCase):
         self.assertEqual(args[0], expected_cmd)
 
     @patch("subprocess.run")
-    def test_status_check_with_output(self, mock_subprocess):
+    def test_status_check_with_output(self, mock_subprocess: MagicMock) -> None:
         """Test status check with output file."""
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -61,7 +68,7 @@ class TestStatusCheck(unittest.TestCase):
         self.assertEqual(args[0], expected_cmd)
 
     @patch("subprocess.run")
-    def test_status_check_failure(self, mock_subprocess):
+    def test_status_check_failure(self, mock_subprocess: MagicMock) -> None:
         """Test status check failure."""
         mock_result = MagicMock()
         mock_result.returncode = 1

@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from scipy.optimize import minimize
 
+from ztb.utils.file_utils import safe_json_load
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -709,8 +711,7 @@ def main():
     # 現在の配分の読み込み
     current_allocation = None
     if args.current_allocation:
-        with open(args.current_allocation, 'r') as f:
-            current_allocation = json.load(f)
+        current_allocation = safe_json_load(args.current_allocation)
 
     # 分析の実行
     analyzer = RiskParityAnalyzer()

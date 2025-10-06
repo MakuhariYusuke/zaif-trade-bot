@@ -11,7 +11,7 @@ import logging
 import signal
 import sys
 import time
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from ztb.ops.monitoring.health_monitor import HealthMonitor
 from ztb.utils.errors import TradingBotError
@@ -121,7 +121,7 @@ class TradingService:
                 self.logger.warning("Health monitor recommends restart")
                 return False
 
-            return health_status["status"] == "healthy"  # type: ignore[no-any-return]
+            return cast(str, health_status["status"]) == "healthy"
 
         except Exception as e:
             self.logger.error(f"Health check failed: {e}")

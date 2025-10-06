@@ -6,23 +6,31 @@ Combines multiple trained models for improved prediction accuracy and risk manag
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
+
+
+# Type definitions for ensemble configuration
+class ModelConfig(TypedDict, total=False):
+    """Configuration for a single model in the ensemble."""
+
+    path: str
+    weight: float
+    feature_set: str
+
 
 import numpy as np
 from numpy.typing import NDArray
-import pandas as pd
 from stable_baselines3 import PPO
 
-from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.ppo_trainer import PredictorProtocol, TradingSystemProtocol
 
 logger = logging.getLogger(__name__)
 
 
-class EnsemblePredictor:
+class EnsemblePredictor(PredictorProtocol):
     """Ensemble predictor combining multiple trained models."""
 
-    def __init__(self, model_configs: List[Dict[str, Any]]):
+    def __init__(self, model_configs: List[ModelConfig]):
         """
         Initialize ensemble predictor.
 
@@ -35,12 +43,12 @@ class EnsemblePredictor:
         self.feature_sets = []
 
         for config in model_configs:
-            model_path = config["path"]
+            model_path = config.get("path")
             weight = config.get("weight", 1.0)
             feature_set = config.get("feature_set", "full")
 
             try:
-                model = PPO.load(model_path)
+                model = PPO.load(model_path)  # type: ignore[arg-type]
                 self.models.append(model)
                 self.weights.append(weight)
                 self.feature_sets.append(feature_set)
@@ -97,7 +105,7 @@ class EnsemblePredictor:
             )
         else:
             # Discrete actions - weighted voting
-            action_counts: Dict[int, int] = {}
+            action_counts: Dict[int, float] = {}
             for action, weight in zip(actions, self.weights[: len(actions)]):
                 action_val = (
                     int(action[0]) if hasattr(action, "__len__") else int(action)
@@ -105,7 +113,9 @@ class EnsemblePredictor:
                 action_counts[action_val] = action_counts.get(action_val, 0) + weight
 
             # Select action with highest weighted vote
-            ensemble_action = np.array([max(action_counts, key=lambda k: action_counts.get(k, 0))])
+            ensemble_action = np.array(
+                [max(action_counts, key=lambda k: action_counts.get(k, 0))]
+            )
 
         # Use state from first successful model
         ensemble_state = states[0] if states else None
@@ -127,14 +137,14 @@ class EnsemblePredictor:
         if not hasattr(self.models[0], "policy"):
             raise ValueError("Models must have policy for probability extraction")
 
-        probabilities = []
+        probabilities: List[NDArray[np.float32]] = []
         confidences: List[float] = []
 
         for model in self.models:
             try:
                 # Get action probabilities from policy
                 obs_tensor = model.policy.obs_to_tensor(observation)[0]
-                actions, values, log_prob = model.policy(obs_tensor)
+                _, _, _ = model.policy(obs_tensor)
                 distribution = model.policy.get_distribution(obs_tensor)
                 if distribution is None or distribution.distribution is None:
                     continue
@@ -160,9 +170,11 @@ class EnsemblePredictor:
         weights = confidence_array / np.sum(confidence_array)
 
         # Weighted average of probabilities
-        ensemble_probs = np.average(probabilities, weights=weights, axis=0)
+        ensemble_probabilities: NDArray[np.float32] = np.average(
+            probabilities, weights=weights, axis=0
+        )
 
-        return ensemble_probs, weights
+        return ensemble_probabilities, weights
 
     def get_ensemble_info(self) -> Dict[str, Any]:
         """
@@ -173,7 +185,7 @@ class EnsemblePredictor:
         return {
             "num_models": len(self.models),
             "model_paths": (
-                [config["path"] for config in self.model_configs]
+                [config.get("path") for config in self.model_configs]
                 if hasattr(self, "model_configs")
                 else []
             ),
@@ -182,12 +194,12 @@ class EnsemblePredictor:
         }
 
 
-class EnsembleTradingSystem:
+class EnsembleTradingSystem(TradingSystemProtocol):
     """Complete ensemble trading system with risk management."""
 
     def __init__(
         self,
-        model_configs: List[Dict[str, Any]],
+        model_configs: List[ModelConfig],
         risk_configs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -301,8 +313,41 @@ class EnsembleTradingSystem:
         else:
             self.consecutive_losses = 0
 
+    def trade(self, observation: Any) -> Any:
+        """
+        Execute a trade based on observation.
+
+        Args:
+            observation: Current market observation
+
+        Returns:
+            Trade action and metadata
+        """
+        # For now, return a simple action based on observation
+        # In a real implementation, this would integrate with actual trading execution
+        # Extract basic market data from observation if available
+        current_price = 100.0  # Default fallback
+        current_balance = 1000.0  # Default fallback
+
+        if hasattr(observation, "shape") and len(observation.shape) > 0:
+            # Assume observation contains price data
+            current_price = (
+                float(observation[0]) if observation.shape[0] > 0 else current_price
+            )
+
+        action = self.predict_action(observation, current_balance, current_price)
+
+        return {
+            "action": action,
+            "confidence": self.get_ensemble_confidence(observation),
+            "risk_check_passed": self.check_risk_limits(current_balance, current_price),
+        }
+
     def predict_action(
-        self, observation: NDArray[np.float32], current_balance: float, current_price: float
+        self,
+        observation: NDArray[np.float32],
+        current_balance: float,
+        current_price: float,
     ) -> int:
         """
         Make ensemble prediction with risk management.
@@ -344,7 +389,7 @@ class EnsembleTradingSystem:
             )  # Max confidence at 5 models
 
 
-class EnsemblePredictorLegacy:
+class EnsemblePredictorLegacy(PredictorProtocol):
     """Legacy ensemble predictor combining multiple trained models."""
 
     def __init__(self, model_configs: List[Dict[str, Any]]):
@@ -360,12 +405,12 @@ class EnsemblePredictorLegacy:
         self.feature_sets = []
 
         for config in model_configs:
-            model_path = config["path"]
+            model_path = config.get("path")
             weight = config.get("weight", 1.0)
             feature_set = config.get("feature_set", "full")
 
             try:
-                model = PPO.load(model_path)
+                model = PPO.load(model_path)  # type: ignore[arg-type]
                 self.models.append(model)
                 self.weights.append(weight)
                 self.feature_sets.append(feature_set)
@@ -382,7 +427,7 @@ class EnsemblePredictorLegacy:
 
         logger.info(f"Ensemble initialized with {len(self.models)} models")
 
-    def predict(
+    def predict(  # type: ignore[override]
         self, observation: NDArray[np.float32], deterministic: bool = True
     ) -> Tuple[NDArray[np.float32], Optional[np.ndarray[Any, Any]]]:
         """
@@ -430,7 +475,9 @@ class EnsemblePredictorLegacy:
                 action_counts[action_val] = action_counts.get(action_val, 0) + weight
 
             # Select action with highest weighted vote
-            ensemble_action = np.array([max(action_counts, key=lambda k: action_counts[k])])
+            ensemble_action = np.array(
+                [max(action_counts, key=lambda k: action_counts[k])]
+            )
 
         # Use state from first successful model
         ensemble_state = states[0] if states else None
@@ -452,7 +499,7 @@ class EnsemblePredictorLegacy:
         if not hasattr(self.models[0], "policy"):
             raise ValueError("Models must have policy for probability extraction")
 
-        probabilities = []
+        probabilities: List[NDArray[np.float32]] = []
         confidences = []
 
         for model in self.models:
@@ -478,13 +525,15 @@ class EnsemblePredictorLegacy:
             raise ValueError("Could not get probabilities from any model")
 
         # Convert confidences to weights (normalize)
-        confidences = np.array(confidences)
-        weights = confidences / np.sum(confidences)
+        confidence_array: NDArray[np.float32] = np.array(confidences)
+        weights = confidence_array / np.sum(confidence_array)
 
         # Weighted average of probabilities
-        ensemble_probs = np.average(probabilities, weights=weights, axis=0)
+        ensemble_probabilities: NDArray[np.float32] = np.average(
+            probabilities, weights=weights, axis=0
+        )
 
-        return ensemble_probs, weights
+        return ensemble_probabilities, weights
 
     def get_ensemble_info(self) -> Dict[str, Any]:
         """
@@ -495,7 +544,7 @@ class EnsemblePredictorLegacy:
         return {
             "num_models": len(self.models),
             "model_paths": (
-                [config["path"] for config in self.model_configs]
+                [config.get("path") for config in self.model_configs]
                 if hasattr(self, "model_configs")
                 else []
             ),
@@ -624,7 +673,10 @@ class EnsembleTradingSystemLegacy:
             self.consecutive_losses = 0
 
     def predict_action(
-        self, observation: NDArray[np.float32], current_balance: float, current_price: float
+        self,
+        observation: NDArray[np.float32],
+        current_balance: float,
+        current_price: float,
     ) -> int:
         """
         Make ensemble prediction with risk management.
@@ -668,7 +720,7 @@ class EnsembleTradingSystemLegacy:
 
 def create_default_ensemble() -> EnsembleTradingSystem:
     """Create default ensemble with available models."""
-    model_configs = [
+    model_configs: List[ModelConfig] = [
         {
             "path": "models/trading_optimized_reward_v2_final.zip",
             "weight": 1.0,
@@ -682,7 +734,7 @@ def create_default_ensemble() -> EnsembleTradingSystem:
 
 def create_default_ensemble_legacy() -> EnsembleTradingSystemLegacy:
     """Create default legacy ensemble with available models."""
-    model_configs = [
+    model_configs: List[ModelConfig] = [
         {
             "path": "models/trading_optimized_reward_v2_final.zip",
             "weight": 1.0,
@@ -691,7 +743,7 @@ def create_default_ensemble_legacy() -> EnsembleTradingSystemLegacy:
         # Add more models as they become available
     ]
 
-    return EnsembleTradingSystemLegacy(model_configs)
+    return EnsembleTradingSystemLegacy(cast(List[Dict[str, Any]], model_configs))
 
 
 if __name__ == "__main__":

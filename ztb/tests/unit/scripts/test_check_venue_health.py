@@ -7,12 +7,13 @@ import socket
 
 # Add scripts directory to path for imports
 import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-scripts_dir = Path(__file__).parent.parent.parent.parent.parent / "scripts"
+from ztb.utils.path_utils import get_project_root
+
+scripts_dir = get_project_root() / "scripts"
 sys.path.insert(0, str(scripts_dir))
 
 from check_venue_health import VenueHealthChecker

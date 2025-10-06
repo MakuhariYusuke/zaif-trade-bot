@@ -7,7 +7,7 @@ File I/O utilities for ZTB system
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, TextIO
+from typing import Any, Dict, Optional, TextIO, Union
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +28,19 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.warning(f"Failed to load JSON from {file_path}: {e}")
+        # If default is callable, call it to get the default value
+        if callable(default):
+            return default()
         return default
     except Exception as e:
         logger.error(f"Unexpected error loading JSON from {file_path}: {e}")
+        # If default is callable, call it to get the default value
+        if callable(default):
+            return default()
         return default
 
 
-def safe_json_dump(data: Any, file_path: Path, indent: int = 2) -> bool:
+def safe_json_dump(data: Any, file_path: Union[str, Path], indent: int = 2, default: Any = None) -> bool:
     """
     Safely dump data to JSON file with error handling.
 
@@ -42,16 +48,21 @@ def safe_json_dump(data: Any, file_path: Path, indent: int = 2) -> bool:
         data: Data to serialize
         file_path: Path to save the JSON file
         indent: JSON indentation level
+        default: Default function for objects that can't be serialized
 
     Returns:
         True if successful, False otherwise
     """
     try:
+        # Convert to Path if it's a string
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
+        
         # Ensure parent directory exists
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=indent, ensure_ascii=False)
+            json.dump(data, f, indent=indent, ensure_ascii=False, default=default)
         return True
     except Exception as e:
         logger.error(f"Failed to save JSON to {file_path}: {e}")

@@ -16,7 +16,7 @@ PROJECT_ROOT = Path(__file__).parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ztb.trading.environment import HeavyTradingEnv  # type: ignore[attr-defined]
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 class TrainingCallback(BaseCallback):
     """Callback for logging training progress"""
@@ -84,7 +84,7 @@ def train_simple_reward(config_name: str = "default", reward_scaling: float = 1.
     """Train with simple portfolio reward for 100k steps with configurable parameters"""
 
     # Load data
-    data_path = PROJECT_ROOT / "ml-dataset-enhanced.csv"
+    data_path = PROJECT_ROOT.parent.parent / "ml-dataset-enhanced.csv"
     df = pd.read_csv(data_path)
 
     # Create environment with simple reward

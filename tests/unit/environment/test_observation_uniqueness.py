@@ -2,6 +2,13 @@
 """
 Observation Uniqueness and Update Verification Tests.
 
+ENVIRONMENT SPECIFICATION (Critical Assumptions):
+- HeavyTradingEnv supports SHORTING: position ∈ {-1.0, 0.0, +1.0}
+- At position=0 (neutral), BOTH BUY and SELL are LEGAL actions
+  - BUY: Opens long (+1.0) or closes short
+  - SELL: Closes long + Opens short (-1.0)
+- This is the "always-flip" design (NOT a bug)
+
 Tests to detect:
 1. Observation fixation (same hash across steps)
 2. Reference reuse (same object returned by env.step())

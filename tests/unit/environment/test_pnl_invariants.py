@@ -2,6 +2,13 @@
 """
 PnL Accounting Invariants Tests (xfail - to be fixed in environment).
 
+ENVIRONMENT SPECIFICATION (Critical Assumptions):
+- HeavyTradingEnv supports SHORTING: position ∈ {-1.0, 0.0, +1.0}
+- At position=0 (neutral), BOTH BUY and SELL are LEGAL actions
+  - BUY: Opens long (+1.0) or closes short
+  - SELL: Closes long + Opens short (-1.0)
+- This is the "always-flip" design (NOT a bug)
+
 These tests define the **correct** accounting behavior that the environment
 should satisfy. Currently marked as xfail because the environment has a bug
 where PnL is calculated immediately after position change, resulting in

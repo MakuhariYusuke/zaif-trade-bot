@@ -17,6 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.path_utils import ensure_dir
 
 # Ensure project root is on sys.path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -300,12 +301,12 @@ def process_dataset(
     filtered_df, remaining_features = processor.filter_features(df, feature_columns)
 
     # Save processed dataset
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_path.parent)
     filtered_df.to_csv(output_path, index=False)
 
     # Create visualizations
     viz_dir = output_path.parent / "visualizations"
-    viz_dir.mkdir(exist_ok=True)
+    ensure_dir(viz_dir)
     processor.create_correlation_heatmap(viz_dir / "correlation_heatmap.png")
 
     # Generate report

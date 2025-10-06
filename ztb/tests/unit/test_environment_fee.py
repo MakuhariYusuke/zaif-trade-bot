@@ -3,9 +3,11 @@ Unit tests for environment dynamic fee configuration
 環境の動的fee設定の単体テスト
 """
 
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
 import pytest
-from unittest.mock import patch, MagicMock
+
 from ztb.trading.environment.environment import HeavyTradingEnv
 
 

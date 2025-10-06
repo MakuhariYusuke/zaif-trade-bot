@@ -8,10 +8,11 @@ validating the package structure and dependencies.
 
 import sys
 import unittest
-from pathlib import Path
+
+from ztb.utils.path_utils import get_project_root
 
 # Add project root to path for testing
-project_root = Path(__file__).parent.parent.parent.parent
+project_root = get_project_root()
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
@@ -23,9 +24,8 @@ class TestImports(unittest.TestCase):
         """Test experiments module imports"""
         try:
             from ztb.experiments.base import ExperimentResult
-            from ztb.experiments.ml_reinforcement_1k import (
-                MLReinforcement100KExperiment,
-            )
+            from ztb.experiments.ml_reinforcement_1k import \
+                MLReinforcement100KExperiment
 
             self.assertIsNotNone(ExperimentResult)
             self.assertIsNotNone(MLReinforcement100KExperiment)

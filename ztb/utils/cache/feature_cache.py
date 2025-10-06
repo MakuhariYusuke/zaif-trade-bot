@@ -16,6 +16,8 @@ import zlib
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union, cast
 
+from ztb.utils.path_utils import ensure_dir
+
 try:
     import zstandard as zstd
 
@@ -49,7 +51,7 @@ class FeatureCache:
         # config_hash は簡易的に固定（本番では設定ハッシュを使用）
         config_hash = "default"
         self.cache_dir = base_cache_dir / config_hash / f"process_{self.process_id}"
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self.cache_dir)
 
         self.cache_max_mb = cache_max_mb
         self.max_age_days = max_age_days

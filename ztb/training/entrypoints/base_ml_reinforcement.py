@@ -11,17 +11,15 @@ import random
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Union, cast
 
 import psutil
 
-from ztb.experiments.base import (
-    ExperimentConfig,
-    ExperimentMetrics,
-    ExperimentResult,
-    ScalingExperiment,
-)
+from ztb.experiments.base import (ExperimentConfig, ExperimentMetrics,
+                                  ExperimentResult, ScalingExperiment)
 from ztb.utils.checkpoint import HAS_LZ4
+from ztb.utils.file_utils import safe_json_load
 from ztb.utils.parallel_experiments import ResourceMonitor
 
 
@@ -109,7 +107,8 @@ class MLReinforcementExperiment(ScalingExperiment):
                 if self.current_step % 1000 == 0:
                     progress = (self.current_step / self.total_steps) * 100
                     print(
-                        f"Progress: {self.current_step}/{self.total_steps} ({progress:.1f}%) - Time: {datetime.now()}",
+                        f"Progress: {self.current_step}/{self.total_steps} "
+                        f"({progress:.1f}%) - Time: {datetime.now()}",
                         flush=True,
                     )
 
@@ -186,9 +185,7 @@ class MLReinforcementExperiment(ScalingExperiment):
     def _report_metrics(self, step: int) -> None:
         """メトリクスレポート"""
         metrics = self._get_current_metrics()
-        self.logger.info(
-            f"Metrics at step {step}: {json.dumps(metrics)}"
-        )
+        self.logger.info(f"Metrics at step {step}: {json.dumps(metrics)}")
 
     def _get_current_metrics(self) -> MetricsData:
         """現在のメトリクス取得"""
@@ -226,8 +223,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    with open(args.config, "r") as f:
-        config = json.load(f)
+    config = safe_json_load(Path(args.config))
 
     config["total_steps"] = args.total_timesteps
 

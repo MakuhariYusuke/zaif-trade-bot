@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
 import pandas as pd
-from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 def test_sell_action():
     """Test if SELL action can be executed properly."""
@@ -23,11 +23,16 @@ def test_sell_action():
     env_config = {
         "reward_scaling": 6.0,
         "transaction_cost": 0.001,
-        "max_position_size": 1.0,
+        "max_position_size": 1.0,  # 安全なポジションサイズ
         "risk_free_rate": 0.02,
         "feature_set": "full",
         "initial_portfolio_value": 1000000.0,
         "curriculum_stage": "simple_portfolio",  # Use simple reward
+        "exchange": "bitflyer",  # 手数料がかかる取引所でテスト
+        "stop_loss_threshold": 0.05,  # 5%ストップロス
+        "max_consecutive_trades": 5,  # 最大連続取引回数
+        "min_holding_period": 3,  # 最小ホールド期間
+        "volatility_trade_threshold": 0.02,  # ボラティリティ取引閾値
         "reward_settings": {
             "enable_forced_diversity": False,  # Disable forced diversity for this test
             "profit_bonus_multipliers": [1.0, 1.0, 1.0],
@@ -82,6 +87,37 @@ def test_sell_action():
         env.reset()
         obs, reward, terminated, truncated, info = env.step(action)
         print(f"Action {action} reward: {reward}")
+
+    print("\n=== Legal Actions Test ===")
+    print("Testing get_legal_actions() for different positions:")
+
+    # Test with flat position
+    env.reset()
+    legal = env.get_legal_actions()
+    print(f"Flat position - Legal actions: HOLD={legal[0]}, BUY={legal[1]}, SELL={legal[2]}")
+
+    # Test after BUY
+    env.step(1)  # BUY
+    legal = env.get_legal_actions()
+    print(f"After BUY (position={env.position}) - Legal actions: HOLD={legal[0]}, BUY={legal[1]}, SELL={legal[2]}")
+
+    # Test after SELL
+    env.step(2)  # SELL
+    legal = env.get_legal_actions()
+    print(f"After SELL (position={env.position}) - Legal actions: HOLD={legal[0]}, BUY={legal[1]}, SELL={legal[2]}")
+
+    # Test insufficient balance scenario
+    print("\n--- Testing insufficient balance ---")
+    env.reset()
+    # Simulate very low balance
+    env.total_pnl = -999999  # Almost no money left (portfolio_value ≈ 1)
+    legal = env.get_legal_actions()
+    print(f"Very low balance (portfolio_value≈{env.initial_portfolio_value + env.total_pnl}) - Legal actions: HOLD={legal[0]}, BUY={legal[1]}, SELL={legal[2]}")
+
+    # Test with no balance at all
+    env.total_pnl = -1000000  # No money left
+    legal = env.get_legal_actions()
+    print(f"No balance (portfolio_value≈{env.initial_portfolio_value + env.total_pnl}) - Legal actions: HOLD={legal[0]}, BUY={legal[1]}, SELL={legal[2]}")
 
     env.close()
 

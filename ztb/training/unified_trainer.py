@@ -54,8 +54,8 @@ python -m ztb.training.unified_trainer --config unified_training_config_normal.j
 import logging
 import os
 
-from ztb.utils.logging_utils import get_logger
 from ztb.utils.errors import safe_operation
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -71,9 +71,10 @@ os.environ["MKL_NUM_THREADS"] = "1"
 
 import argparse
 import sys
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.path_utils import get_project_root
@@ -96,11 +97,38 @@ except ImportError:
     logger.warning("PPO trainer not available (torch import failed)")
     PPOTrainer = None
 
-from ztb.training.entrypoints.base_ml_reinforcement import MLReinforcementExperiment
-from ztb.utils import DiscordNotifier
+from enum import Enum
 
 # Import trading module to register environments
 import ztb.trading
+from ztb.training.entrypoints.base_ml_reinforcement import \
+    MLReinforcementExperiment
+# Import Protocol and Enum types for type safety
+from ztb.training.ppo_trainer import (Algorithm, FeatureSet, PredictorProtocol,
+                                      Timeframe, TradingSystemProtocol)
+from ztb.utils import DiscordNotifier
+
+
+class UnifiedAlgorithm(Enum):
+    """Supported training algorithms in UnifiedTrainer."""
+    PPO = "ppo"
+    BASE_ML = "base_ml"
+    ITERATIVE = "iterative"
+    ENSEMBLE = "ensemble"
+    CURRICULUM = "curriculum"
+
+
+@dataclass
+class UnifiedTrainerConfig:
+    """Configuration for UnifiedTrainer."""
+    
+    algorithm: UnifiedAlgorithm
+    force: bool = False
+    dry_run: bool = False
+    enable_streaming: bool = False
+    stream_batch_size: int = 256
+    max_features: Optional[int] = None
+    offline_mode: bool = False
 
 
 class UnifiedTrainer:
@@ -123,6 +151,24 @@ class UnifiedTrainer:
         stream_batch_size: int = 256,
         max_features: Optional[int] = None,
     ):
+        # Create config object for better type safety
+        algorithm_str = config.get("algorithm", "ppo")
+        try:
+            algorithm_enum = UnifiedAlgorithm(algorithm_str)
+        except ValueError:
+            raise ValueError(f"Unknown algorithm: {algorithm_str}. Supported: {[a.value for a in UnifiedAlgorithm]}")
+            
+        self.config_obj = UnifiedTrainerConfig(
+            algorithm=algorithm_enum,
+            force=force,
+            dry_run=dry_run,
+            enable_streaming=enable_streaming,
+            stream_batch_size=stream_batch_size,
+            max_features=max_features,
+            offline_mode=config.get("offline_mode", False),
+        )
+        
+        # Keep original config for backward compatibility
         self.config = config
         self.force = force
         self.dry_run = dry_run
@@ -131,6 +177,7 @@ class UnifiedTrainer:
         self.max_features = max_features
         self.algorithm = config.get("algorithm", "ppo")
         self.logger = get_logger(__name__)
+        
         # Initialize Discord notifier (disabled in offline mode)
         if config.get("offline_mode", False):
             self.notifier = DiscordNotifier(webhook_url=None)  # Explicitly disable
@@ -148,18 +195,18 @@ class UnifiedTrainer:
 
     def _train_impl(self) -> Any:
         """Implementation of training execution."""
-        if self.algorithm == "ppo":
+        if self.config_obj.algorithm == UnifiedAlgorithm.PPO:
             return self._train_ppo()
-        elif self.algorithm == "base_ml":
+        elif self.config_obj.algorithm == UnifiedAlgorithm.BASE_ML:
             return self._train_base_ml()
-        elif self.algorithm == "iterative":
+        elif self.config_obj.algorithm == UnifiedAlgorithm.ITERATIVE:
             return self._train_iterative()
-        elif self.algorithm == "ensemble":
+        elif self.config_obj.algorithm == UnifiedAlgorithm.ENSEMBLE:
             return self._train_ensemble()
-        elif self.algorithm == "curriculum":
+        elif self.config_obj.algorithm == UnifiedAlgorithm.CURRICULUM:
             return self._train_curriculum()
         else:
-            raise ValueError(f"Unknown algorithm: {self.algorithm}")
+            raise ValueError(f"Unknown algorithm: {self.config_obj.algorithm}")
 
     def _train_ppo(self) -> Any:
         """Train using PPO algorithm."""
@@ -240,7 +287,8 @@ class UnifiedTrainer:
         # Long-running operation confirmation
         total_timesteps = self.config.get("total_timesteps", 100000)
         if total_timesteps >= 100_000 and not self.force:
-            from ztb.utils.long_running_confirm import confirm_long_running_operation
+            from ztb.utils.long_running_confirm import \
+                confirm_long_running_operation
 
             if not confirm_long_running_operation(
                 operation_name=f"PPO Training ({self.config.get('session_id', 'iterative_session')})",
@@ -317,7 +365,7 @@ class UnifiedTrainer:
             sys.argv.append("--dry-run")
         if self.force:
             sys.argv.append("--force")
-        if self.enable_streaming:  # type: ignore[unreachable]
+        if self.enable_streaming:  # type: ignore
             sys.argv.extend(
                 [
                     "--enable-streaming",
@@ -421,7 +469,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
     config = safe_json_load(Path(config_path))
     if config is None:
         raise FileNotFoundError(f"Could not load config from {config_path}")
-    return config
+    return cast(Dict[str, Any], config)
 
 
 def main() -> int:

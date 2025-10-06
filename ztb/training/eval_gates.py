@@ -7,7 +7,7 @@ Gates ensure training quality and prevent invalid checkpoints from being conside
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, Sequence
 
 import psutil
 
@@ -23,8 +23,8 @@ class GateResult:
     name: str
     status: GateStatus
     reason: str
-    value: Any = None
-    threshold: Any = None
+    value: Union[float, int, None] = None
+    threshold: Union[float, int, None] = None
 
 
 class EvalGates:
@@ -76,7 +76,7 @@ class EvalGates:
             threshold=self.gates["resume_time"]["threshold"],
         )
 
-    def check_no_duplicate_steps(self, global_steps: List[int]) -> GateResult:
+    def check_no_duplicate_steps(self, global_steps: Sequence[int]) -> GateResult:
         """Check for duplicate global steps indicating training issues."""
         unique_steps = set(global_steps)
         duplicates = len(global_steps) - len(unique_steps)
@@ -110,8 +110,8 @@ class EvalGates:
 
     def check_reward_trend(
         self,
-        rewards: List[float],
-        steps: List[int],
+        rewards: Sequence[float],
+        steps: Sequence[int],
         threshold_steps: int = 300000,
         reward_stats: Optional[Dict[str, float]] = None,
     ) -> GateResult:
@@ -201,7 +201,17 @@ class EvalGates:
             threshold=baseline,
         )
 
-    def evaluate_all(self, **kwargs: Any) -> Dict[str, GateResult]:
+    def evaluate_all(
+        self,
+        resume_start: Optional[float] = None,
+        global_steps: Optional[Sequence[int]] = None,
+        rewards: Optional[Sequence[float]] = None,
+        steps: Optional[Sequence[int]] = None,
+        threshold_steps: int = 300000,
+        reward_stats: Optional[Any] = None,
+        final_eval_reward: Optional[float] = None,
+        baseline: float = 0.0,
+    ) -> Dict[str, GateResult]:
         """Run all gate checks and return results."""
         if not self.enabled:
             return {}
@@ -209,31 +219,29 @@ class EvalGates:
         results = {}
 
         # Resume time check
-        if "resume_start" in kwargs:
-            results["resume_time"] = self.check_resume_time(kwargs["resume_start"])
+        if resume_start is not None:
+            results["resume_time"] = self.check_resume_time(resume_start)
 
         # Duplicate steps check
-        if "global_steps" in kwargs:
-            results["no_dup_steps"] = self.check_no_duplicate_steps(
-                kwargs["global_steps"]
-            )
+        if global_steps is not None:
+            results["no_dup_steps"] = self.check_no_duplicate_steps(global_steps)
 
         # Memory check
         results["memory_rss"] = self.check_memory_usage()
 
         # Reward trend check
-        if "rewards" in kwargs and "steps" in kwargs:
+        if rewards is not None and steps is not None:
             results["reward_trend_300k"] = self.check_reward_trend(
-                kwargs["rewards"],
-                kwargs["steps"],
-                kwargs.get("threshold_steps", 300000),
-                kwargs.get("reward_stats"),
+                rewards,
+                steps,
+                threshold_steps,
+                reward_stats,
             )
 
         # Eval baseline check
-        if "final_eval_reward" in kwargs:
+        if final_eval_reward is not None:
             results["eval_above_baseline"] = self.check_eval_above_baseline(
-                kwargs["final_eval_reward"], kwargs.get("baseline", 0.0)
+                final_eval_reward, baseline
             )
 
         return results

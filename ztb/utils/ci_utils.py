@@ -14,10 +14,13 @@ import os
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import psutil
 import requests
+
+from ztb.utils.file_utils import safe_json_load
 
 
 def collect_ci_metrics() -> Dict[str, Any]:
@@ -38,15 +41,12 @@ def collect_ci_metrics() -> Dict[str, Any]:
 
     # Try to read coverage if available
     try:
-        import json
-
         coverage_file = "coverage/coverage.json"
         if os.path.exists(coverage_file):
-            with open(coverage_file, "r") as f:
-                coverage_data = json.load(f)
-                metrics["coverage_percent"] = coverage_data.get("totals", {}).get(
-                    "percent_covered", 0
-                )
+            coverage_data = safe_json_load(Path(coverage_file))
+            metrics["coverage_percent"] = coverage_data.get("totals", {}).get(
+                "percent_covered", 0
+            )
     except Exception:
         pass
 

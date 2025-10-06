@@ -249,8 +249,6 @@ def main() -> int:
             config=config,
             checkpoint_interval=10000,
             checkpoint_dir=args.checkpoint_dir,
-            streaming_pipeline=streaming_pipeline,  # type: ignore[call-arg]
-            stream_batch_size=args.stream_batch_size,  # type: ignore[call-arg]
         )
 
         # Run training

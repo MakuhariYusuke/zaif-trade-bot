@@ -3,10 +3,12 @@ Fee model abstraction for trading costs
 取引コスト用の手数料モデル抽象化
 """
 
-import json
 import logging
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
+
+from ztb.utils.file_utils import safe_json_load
 
 
 class FeeModel(ABC):
@@ -204,8 +206,7 @@ class FeeModelFactory:
 def load_fee_model_from_config(config_path: str) -> Optional[FeeModel]:
     """Load fee model from configuration file"""
     try:
-        with open(config_path, "r") as f:
-            config = json.load(f)
+        config = safe_json_load(Path(config_path))
 
         fee_config = config.get("fee_model", {})
         model_type = fee_config.get("type", "fixed")

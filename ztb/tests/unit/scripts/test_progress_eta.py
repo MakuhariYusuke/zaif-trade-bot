@@ -8,6 +8,7 @@ from ztb.scripts.progress_eta import (
     estimate_steps_per_sec_from_metrics,
     update_summary,
 )
+from ztb.utils.file_utils import safe_json_load
 
 
 def test_estimate_steps_per_sec_from_metrics():
@@ -67,8 +68,7 @@ def test_update_summary():
 
         update_summary(summary_path, 10.0, "100s", "2023-09-29T13:00:00", 0.1)
 
-        with open(summary_path, "r") as f:
-            data = json.load(f)
+        data = safe_json_load(summary_path)
 
         assert data["progress"]["steps_per_sec"] == 10.0
         assert data["progress"]["eta"] == "100s"

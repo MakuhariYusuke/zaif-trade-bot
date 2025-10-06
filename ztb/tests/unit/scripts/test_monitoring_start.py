@@ -6,6 +6,13 @@ Unit tests for monitoring_start.py
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from ztb.utils.path_utils import get_project_root
+
+# Add scripts directory to path for importing
+sys.path.insert(0, str(get_project_root() / "scripts"))
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Add scripts directory to path for importing

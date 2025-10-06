@@ -7,10 +7,11 @@ Converts TB event scalars to CSV and optionally merges latest into metrics.json.
 
 import argparse
 import csv
-import json
 import sys
 from pathlib import Path
 from typing import Dict
+
+from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
 try:
     from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
@@ -60,11 +61,9 @@ def merge_to_metrics(correlation_id: str, scalars: Dict[str, float]) -> None:
         return
 
     try:
-        with open(metrics_path, "r") as f:
-            metrics = json.load(f)
+        metrics = safe_json_load(metrics_path)
         metrics["tb_latest"] = scalars
-        with open(metrics_path, "w") as f:
-            json.dump(metrics, f, indent=2)
+        safe_json_dump(metrics, metrics_path, indent=2)
     except Exception as e:
         print(f"Error merging to metrics: {e}")
 

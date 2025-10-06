@@ -9,11 +9,11 @@ import warnings
 from typing import Any, Dict, List, Optional
 
 # Import from training module
-from ztb.training.ensemble import (
-    EnsemblePredictorLegacy as EnsemblePredictor,
-    EnsembleTradingSystemLegacy as EnsembleTradingSystem,
-    create_default_ensemble_legacy as create_default_ensemble,
-)
+from ztb.training.ensemble import EnsemblePredictorLegacy as EnsemblePredictor
+from ztb.training.ensemble import \
+    EnsembleTradingSystemLegacy as EnsembleTradingSystem
+from ztb.training.ensemble import \
+    create_default_ensemble_legacy as create_default_ensemble
 
 # Issue deprecation warning
 warnings.warn(

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -12,12 +13,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# Ensure project root is on sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-import sys
+from ztb.utils.path_utils import ensure_dir
+from ztb.utils.project_setup import setup_project_path
 
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+# Setup project path
+setup_project_path(Path(__file__))
 
 from ztb.training.ppo_trainer_old import PPOTrainer  # noqa: E402
 
@@ -107,7 +107,7 @@ def simulate_policy_updates(
 
 def create_visualization(clip_ranges: List[float], output_dir: Path) -> None:
     """Create visualization comparing different clip_range values."""
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_dir)
 
     all_metrics = {}
     for clip_range in clip_ranges:

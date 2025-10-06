@@ -1,0 +1,310 @@
+"""
+Unit tests for venue health checker
+取引所ヘルスチェックの単体テスト
+"""
+
+import json
+import socket
+from unittest.mock import Mock, patch, AsyncMock
+    @patch('requests.get')
+    def test_check_rest_api_binance_success(self, mock_get, mock_time):
+        """Test REST API check for binance success"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"X-MBX-USED-WEIGHT-1M": "50"}
+        mock_get.return_value = mock_response
+
+        # Mock time to simulate 0.2 seconds latency
+        mock_time.side_effect = [1000.0, 1000.2]  # start_time, end_time
+
+        checker = VenueHealthChecker("binance", "BTCUSDT")
+        result = checker.check_rest_api()
+
+        assert result is True
+        assert checker.results["connectivity"]["rest_api"] is True
+        assert abs(checker.results["latency"]["rest_ms"] - 200.0) < 0.1
+        mock_get.assert_called_once_with("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=5)h('requests.get')
+    def test_check_rest_api_binance_success(self, mock_get, mock_time):
+        """Test REST API check for binance success"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"X-MBX-USED-WEIGHT-1M": "50"}
+        mock_get.return_value = mock_response
+
+        # Mock time to simulate 0.2 seconds latency
+        mock_time.side_effect = [1000.0, 1000.2]  # start_time, end_time
+
+        checker = VenueHealthChecker("binance", "BTCUSDT")
+        result = checker.check_rest_api()
+
+        assert result is True
+        assert checker.results["connectivity"]["rest_api"] is True
+        assert abs(checker.results["latency"]["rest_ms"] - 200.0) < 0.1
+        mock_get.assert_called_once_with("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=5)rt Mock, patch, AsyncMock
+import pytest
+from ztb.ops.health.check_venue_health import VenueHealthChecker
+
+
+class TestVenueHealthChecker:
+    """Test VenueHealthChecker"""
+
+    def test_initialization_coincheck(self):
+        """Test initialization for coincheck venue"""
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        assert checker.venue == "coincheck"
+        assert checker.symbol == "BTC_JPY"
+        assert checker.rest_base == "https://coincheck.com"
+        assert checker.ws_url == "wss://ws-api.coincheck.com/"
+
+    def test_initialization_bitflyer(self):
+        """Test initialization for bitflyer venue"""
+        checker = VenueHealthChecker("bitflyer", "BTC_JPY")
+        assert checker.venue == "bitflyer"
+        assert checker.symbol == "BTC_JPY"
+        assert checker.rest_base == "https://api.bitflyer.com"
+        assert checker.ws_url == "wss://ws.lightstream.bitflyer.com/json-rpc"
+
+    def test_initialization_binance(self):
+        """Test initialization for binance venue"""
+        checker = VenueHealthChecker("binance", "BTCUSDT")
+        assert checker.venue == "binance"
+        assert checker.symbol == "BTCUSDT"
+        assert checker.rest_base == "https://api.binance.com"
+        assert checker.ws_url == "wss://stream.binance.com:9443/ws"
+
+    def test_initialization_invalid_venue(self):
+        """Test initialization with invalid venue (should fail)"""
+        with pytest.raises(ValueError, match="Unsupported venue: invalid"):
+            VenueHealthChecker("invalid", "BTC_JPY")
+
+    @patch('socket.gethostbyname')
+    def test_check_internet_connectivity_success(self, mock_gethostbyname):
+        """Test internet connectivity check success"""
+        mock_gethostbyname.return_value = "8.8.8.8"
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        result = checker.check_internet_connectivity()
+        assert result is True
+        assert checker.results["connectivity"]["internet"] is True
+
+    @patch('socket.gethostbyname')
+    def test_check_internet_connectivity_failure(self, mock_gethostbyname):
+        """Test internet connectivity check failure"""
+        mock_gethostbyname.side_effect = socket.gaierror("Network unreachable")
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        result = checker.check_internet_connectivity()
+        assert result is False
+        assert checker.results["connectivity"]["internet"] is False
+
+    @patch('time.time')
+    @patch('requests.get')
+    def test_check_rest_api_coincheck_success(self, mock_get, mock_time):
+        """Test REST API check for coincheck success"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_get.return_value = mock_response
+
+        # Mock time to simulate 0.5 seconds latency
+        mock_time.side_effect = [1000.0, 1000.5]  # start_time, end_time
+
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        result = checker.check_rest_api()
+
+        assert result is True
+        assert checker.results["connectivity"]["rest_api"] is True
+        assert abs(checker.results["latency"]["rest_ms"] - 500.0) < 0.1  # Allow small floating point differences
+        mock_get.assert_called_once_with("https://coincheck.com/api/exchange/ticker", timeout=5)
+
+    @patch('time.time')
+    @patch('requests.get')
+    def test_check_rest_api_bitflyer_success(self, mock_get, mock_time):
+        """Test REST API check for bitflyer success"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_get.return_value = mock_response
+
+        # Mock time to simulate 0.3 seconds latency
+        mock_time.side_effect = [1000.0, 1000.3]  # start_time, end_time
+
+        checker = VenueHealthChecker("bitflyer", "BTC_JPY")
+        result = checker.check_rest_api()
+
+        assert result is True
+        assert checker.results["connectivity"]["rest_api"] is True
+        assert abs(checker.results["latency"]["rest_ms"] - 300.0) < 0.1
+        mock_get.assert_called_once_with("https://api.bitflyer.com/v1/ticker", timeout=5)
+
+    @patch('requests.get')
+    def test_check_rest_api_binance_success(self, mock_get):
+        """Test REST API check for binance success"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"X-MBX-USED-WEIGHT-1M": "50"}
+        mock_response.elapsed.total_seconds.return_value = 0.2
+        mock_get.return_value = mock_response
+
+        checker = VenueHealthChecker("binance", "BTCUSDT")
+        result = checker.check_rest_api()
+
+        assert result is True
+        assert checker.results["connectivity"]["rest_api"] is True
+        assert abs(checker.results["latency"]["rest_ms"] - 200.0) < 0.1
+        assert checker.results["rate_limits"]["remaining"] == 50
+        mock_get.assert_called_once_with(
+            "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
+            timeout=5
+        )
+
+    @patch('requests.get')
+    def test_check_rest_api_failure(self, mock_get):
+        """Test REST API check failure"""
+        from requests.exceptions import RequestException
+        mock_get.side_effect = RequestException("Connection error")
+
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        result = checker.check_rest_api()
+
+        assert result is False
+        assert checker.results["connectivity"]["rest_api"] is False
+        assert "Connection error" in checker.results["errors"][0]
+
+    @patch('websockets.connect')
+    @pytest.mark.asyncio
+    async def test_check_websocket_coincheck_success(self, mock_connect):
+        """Test WebSocket check for coincheck success"""
+        mock_websocket = AsyncMock()
+        mock_websocket.__aenter__ = AsyncMock(return_value=mock_websocket)
+        mock_websocket.__aexit__ = AsyncMock(return_value=None)
+        mock_websocket.send = AsyncMock()
+        mock_websocket.recv = AsyncMock(return_value='{"result": "success"}')
+
+        mock_connect.return_value = mock_websocket
+
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        result = await checker.check_websocket()
+
+        assert result is True
+        assert checker.results["connectivity"]["websocket"] is True
+        assert "ws_connect_ms" in checker.results["latency"]
+
+        # Verify correct message was sent
+        expected_msg = {
+            "jsonrpc": "2.0",
+            "method": "subscribe",
+            "params": {"channel": "btc_jpy-ticker"},
+            "id": 1
+        }
+        mock_websocket.send.assert_called_once_with(json.dumps(expected_msg))
+
+    @patch('websockets.connect')
+    @pytest.mark.asyncio
+    async def test_check_websocket_bitflyer_success(self, mock_connect):
+        """Test WebSocket check for bitflyer success"""
+        mock_websocket = AsyncMock()
+        mock_websocket.__aenter__ = AsyncMock(return_value=mock_websocket)
+        mock_websocket.__aexit__ = AsyncMock(return_value=None)
+        mock_websocket.send = AsyncMock()
+        mock_websocket.recv = AsyncMock(return_value='{"jsonrpc": "2.0", "result": null, "id": 1}')
+
+        mock_connect.return_value = mock_websocket
+
+        checker = VenueHealthChecker("bitflyer", "BTC_JPY")
+        result = await checker.check_websocket()
+
+        assert result is True
+        assert checker.results["connectivity"]["websocket"] is True
+
+        # Verify correct message was sent
+        expected_msg = {
+            "jsonrpc": "2.0",
+            "method": "subscribe",
+            "params": {"channel": "lightning_ticker_BTC_JPY"},
+            "id": 1
+        }
+        mock_websocket.send.assert_called_once_with(json.dumps(expected_msg))
+
+    @patch('websockets.connect')
+    @pytest.mark.asyncio
+    async def test_check_websocket_binance_success(self, mock_connect):
+        """Test WebSocket check for binance success"""
+        mock_websocket = AsyncMock()
+        mock_websocket.__aenter__ = AsyncMock(return_value=mock_websocket)
+        mock_websocket.__aexit__ = AsyncMock(return_value=None)
+        mock_websocket.send = AsyncMock()
+        mock_websocket.recv = AsyncMock(return_value='{"result": null, "id": 1}')
+
+        mock_connect.return_value = mock_websocket
+
+        checker = VenueHealthChecker("binance", "BTCUSDT")
+        result = await checker.check_websocket()
+
+        assert result is True
+        assert checker.results["connectivity"]["websocket"] is True
+
+        # Verify correct message was sent
+        expected_msg = {
+            "method": "SUBSCRIBE",
+            "params": ["btcusdt@ticker"],
+            "id": 1
+        }
+        mock_websocket.send.assert_called_once_with(json.dumps(expected_msg))
+
+    @patch('websockets.connect')
+    @pytest.mark.asyncio
+    async def test_check_websocket_failure(self, mock_connect):
+        """Test WebSocket check failure"""
+        mock_connect.side_effect = OSError("WebSocket connection failed")
+
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        result = await checker.check_websocket()
+
+        assert result is False
+        assert checker.results["connectivity"]["websocket"] is False
+        assert "WebSocket connection failed" in checker.results["errors"][0]
+
+    def test_determine_overall_status_offline(self):
+        """Test overall status determination when offline"""
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        checker.results["connectivity"]["internet"] = False
+        status = checker.determine_overall_status()
+        assert status == "offline"
+
+    def test_determine_overall_status_online_partial(self):
+        """Test overall status determination when online but partial connectivity"""
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        checker.results["connectivity"]["internet"] = True
+        checker.results["connectivity"]["rest_api"] = True
+        checker.results["connectivity"]["websocket"] = False
+        status = checker.determine_overall_status()
+        assert status == "degraded"
+
+    def test_determine_overall_status_online_full(self):
+        """Test overall status determination when fully online"""
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        checker.results["connectivity"]["internet"] = True
+        checker.results["connectivity"]["rest_api"] = True
+        checker.results["connectivity"]["websocket"] = True
+        status = checker.determine_overall_status()
+        assert status == "healthy"
+
+    @patch('time.time')
+    @patch.object(VenueHealthChecker, 'check_internet_connectivity', return_value=True)
+    @patch.object(VenueHealthChecker, 'check_rest_api', return_value=True)
+    @patch.object(VenueHealthChecker, 'check_websocket', new_callable=AsyncMock, return_value=True)
+    @patch.object(VenueHealthChecker, 'determine_overall_status', return_value="healthy")
+    @pytest.mark.asyncio
+    async def test_run_checks_full_success(self, mock_determine, mock_ws, mock_rest, mock_internet, mock_time):
+        """Test running full health checks successfully"""
+        mock_time.return_value = 1234567890.0
+
+        checker = VenueHealthChecker("coincheck", "BTC_JPY")
+        results = await checker.run_checks()
+
+        assert results["venue"] == "coincheck"
+        assert results["symbol"] == "BTC_JPY"
+        assert results["timestamp"] == 1234567890.0
+        assert results["status"] == "healthy"
+        assert results["connectivity"]["internet"] is True
+        assert results["connectivity"]["rest_api"] is True
+        assert results["connectivity"]["websocket"] is True

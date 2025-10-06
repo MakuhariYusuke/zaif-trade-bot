@@ -15,11 +15,13 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import PPO
 
+from ztb.utils.file_utils import safe_json_dump
+
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 def calculate_metrics(
@@ -280,10 +282,7 @@ def main() -> None:
 
     # Save results if requested
     if args.output:
-        import json
-
-        with open(args.output, "w") as f:
-            json.dump(results, f, indent=2, default=str)
+        safe_json_dump(results, Path(args.output), indent=2, default=str)
         print(f"\nResults saved to {args.output}")
 
 
