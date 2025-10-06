@@ -3,6 +3,19 @@
 ## [Unreleased]
 
 ### Added
+- **Run Metadata Manager** (Phase 3B補): New module `ztb/utils/run_manifest.py` for complete training run metadata (Task 6)
+  - **Manifest Generation**: `generate_manifest()` creates complete manifest with git state, hashes, config, features
+    - Git information: SHA, dirty status
+    - Hashes: feature schema, normalization scaler, config fingerprint
+    - Training metadata: config dict, feature names, warmup period, feature count
+    - Additional metadata: extensible with custom fields
+  - **Validation**: `validate_manifest()` checks required fields and structure
+  - **Comparison**: `compare_manifests()` detects incompatibilities between runs
+  - **File Operations**: `save_manifest()`, `load_manifest()` for persistence
+  - **Utilities**: `get_git_sha()`, `get_git_dirty_status()`, `compute_file_hash()`
+  - Enables reproducibility verification and run compatibility checks
+  - 14/14 tests PASS (test_run_manifest.py, cumulative: 73/73 tests PASS)
+
 - **Probability Calibration Diagnostics** (Phase 3B補): New module `ztb/utils/calibration.py` for monitoring prediction calibration (Task 5)
   - **Brier Score**: Mean squared error between predicted probabilities and actual outcomes (0=perfect, 1=worst)
     - Overall score across all predictions
