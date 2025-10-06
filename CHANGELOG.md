@@ -3,6 +3,29 @@
 ## [Unreleased]
 
 ### Added
+- **Probability Calibration Diagnostics** (Phase 3B補): New module `ztb/utils/calibration.py` for monitoring prediction calibration (Task 5)
+  - **Brier Score**: Mean squared error between predicted probabilities and actual outcomes (0=perfect, 1=worst)
+    - Overall score across all predictions
+    - Per-action scores for HOLD/BUY/SELL
+  - **Reliability Curves**: Calibration curves showing predicted probability vs observed frequency
+    - 10-bin histogram for probability calibration
+    - Expected Calibration Error (ECE) metric
+  - `compute_brier_score()`: Multi-class Brier score calculation
+  - `compute_reliability_curve()`: Reliability curve with ECE for single action
+  - `compute_full_calibration_report()`: Complete report with all metrics
+  - Integrated into `short_distance_ab_diagnostics.py` for continuous monitoring
+  - No hard thresholds (information-only metrics for observability)
+  - 8/8 tests PASS (test_calibration.py, cumulative: 43/43 tests PASS)
+
+- **Short-distance A/B CI Gate** (Phase 3B補): New script `scripts/validate_ab_diagnostics.py` for automated validation (Task 4)
+  - Validates diagnostics results JSON against acceptance criteria
+  - **Acceptance criteria**: std(probabilities) > 0 AND legal_sell_rate >= 0.15
+  - **Default mode**: At least one test must pass (exit 0 if any dataset passes)
+  - **Strict mode**: All tests must pass (--strict flag, exit 1 if any fails)
+  - **Verbose mode**: Detailed validation output (--verbose flag)
+  - Exit codes: 0 for pass, 1 for fail (ready for CI integration)
+  - 8/8 tests PASS (test_validate_ab_diagnostics.py, cumulative: 35/35 tests PASS)
+
 - **Feature Drift Detection** (Phase 3B補): New module `ztb/utils/drift_detection.py` and script `scripts/feature_drift_report.py` for detecting distribution shifts (Task 2)
   - **PSI (Population Stability Index)**: Measures overall distribution shift (threshold: >0.2 = significant drift)
   - **KS (Kolmogorov-Smirnov) test**: Statistical test for distribution difference (threshold: p<0.01 = significant)
