@@ -16,8 +16,12 @@ from typing import Any, Dict, List, Union, cast
 
 import psutil
 
-from ztb.experiments.base import (ExperimentConfig, ExperimentMetrics,
-                                  ExperimentResult, ScalingExperiment)
+from ztb.experiments.base import (
+    ExperimentConfig,
+    ExperimentMetrics,
+    ExperimentResult,
+    ScalingExperiment,
+)
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.parallel_experiments import ResourceMonitor

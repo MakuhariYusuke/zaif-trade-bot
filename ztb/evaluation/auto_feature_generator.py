@@ -182,19 +182,16 @@ class FeatureGeneratorTemplate(ABC):
     @abstractmethod
     def _generate_parameter_combinations(self) -> List[Tuple[Any, ...]]:
         """Generate parameter combinations"""
-        pass
 
     @abstractmethod
     def _create_feature_name(self, combination: Tuple[Any, ...]) -> str:
         """Create feature name from parameter combination"""
-        pass
 
     @abstractmethod
     def _calculate_feature(
         self, ohlc_data: pd.DataFrame, combination: Tuple[Any, ...]
     ) -> pd.DataFrame:
         """Calculate feature data"""
-        pass
 
     def _apply_naming_convention(
         self, features: Dict[str, pd.DataFrame]
@@ -224,7 +221,6 @@ class FeatureGeneratorTemplate(ABC):
     def _register_to_coverage(self, features: Dict[str, pd.DataFrame]) -> None:
         """Register generated features to coverage.json"""
         # Implementation would update coverage.json
-        pass
 
 
 class AutoFeatureGenerator:
@@ -381,7 +377,9 @@ class AutoFeatureGenerator:
             feature_passed = True
             for col in feature_df.columns:
                 feature_series = feature_df[col]
-                price_series = ohlc_data.get("close", ohlc_data.get("return", pd.Series()))
+                price_series = ohlc_data.get(
+                    "close", ohlc_data.get("return", pd.Series())
+                )
                 if price_series.empty:
                     continue
 

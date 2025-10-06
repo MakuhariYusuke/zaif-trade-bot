@@ -90,7 +90,9 @@ class BaseExchangeAdapter(IBroker, ABC):
         return f"{self.__class__.__name__.lower()}_{self._order_counter}_{int(time.time())}"
 
     # Common dry-run implementations
-    async def _get_balance_dry_run(self, currency: Optional[str] = None) -> List[Balance]:
+    async def _get_balance_dry_run(
+        self, currency: Optional[str] = None
+    ) -> List[Balance]:
         """Get balance in dry-run mode."""
         balances = list(self._balances.values())
         if currency:
@@ -132,7 +134,9 @@ class BaseExchangeAdapter(IBroker, ABC):
                     if symbol in self._positions:
                         pos = self._positions[symbol]
                         total_qty = pos.quantity + quantity
-                        total_cost = (pos.quantity * pos.avg_price) + (quantity * exec_price)
+                        total_cost = (pos.quantity * pos.avg_price) + (
+                            quantity * exec_price
+                        )
                         new_avg = total_cost / total_qty
                         pos.quantity = total_qty
                         pos.avg_price = new_avg
@@ -147,7 +151,10 @@ class BaseExchangeAdapter(IBroker, ABC):
                             pnl=0.0,
                         )
             elif side == "sell":
-                if symbol in self._positions and self._positions[symbol].quantity >= quantity:
+                if (
+                    symbol in self._positions
+                    and self._positions[symbol].quantity >= quantity
+                ):
                     pos = self._positions[symbol]
                     proceeds = exec_price * quantity
                     self._balances["JPY"].free += proceeds
@@ -188,7 +195,9 @@ class BaseExchangeAdapter(IBroker, ABC):
         """Get order status in dry-run mode."""
         return self._orders.get(order_id)
 
-    async def _get_open_orders_dry_run(self, symbol: Optional[str] = None) -> List[Order]:
+    async def _get_open_orders_dry_run(
+        self, symbol: Optional[str] = None
+    ) -> List[Order]:
         """Get open orders in dry-run mode."""
         orders = [o for o in self._orders.values() if o.status == "pending"]
         if symbol:
@@ -211,7 +220,6 @@ class BaseExchangeAdapter(IBroker, ABC):
     @abstractmethod
     async def _get_balance_real(self, currency: Optional[str] = None) -> List[Balance]:
         """Get balance from real API."""
-        pass
 
     @abstractmethod
     async def _place_order_real(
@@ -226,32 +234,26 @@ class BaseExchangeAdapter(IBroker, ABC):
         target_vol: Optional[float] = None,
     ) -> Order:
         """Place order via real API."""
-        pass
 
     @abstractmethod
     async def _cancel_order_real(self, order_id: str) -> bool:
         """Cancel order via real API."""
-        pass
 
     @abstractmethod
     async def _get_order_status_real(self, order_id: str) -> Optional[Order]:
         """Get order status from real API."""
-        pass
 
     @abstractmethod
     async def _get_open_orders_real(self, symbol: Optional[str] = None) -> List[Order]:
         """Get open orders from real API."""
-        pass
 
     @abstractmethod
     async def _get_positions_real(self) -> List[Position]:
         """Get positions from real API."""
-        pass
 
     @abstractmethod
     async def _get_current_price_real(self, symbol: str) -> Optional[float]:
         """Get current price from real API."""
-        pass
 
     # Public interface implementations
     async def get_balance(self, currency: Optional[str] = None) -> List[Balance]:
@@ -281,13 +283,25 @@ class BaseExchangeAdapter(IBroker, ABC):
 
         if self.dry_run:
             return await self._place_order_dry_run(
-                symbol, side, quantity, price, order_type,
-                client_order_id, sizing_reason, target_vol
+                symbol,
+                side,
+                quantity,
+                price,
+                order_type,
+                client_order_id,
+                sizing_reason,
+                target_vol,
             )
         else:
             return await self._place_order_real(
-                symbol, side, quantity, price, order_type,
-                client_order_id, sizing_reason, target_vol
+                symbol,
+                side,
+                quantity,
+                price,
+                order_type,
+                client_order_id,
+                sizing_reason,
+                target_vol,
             )
 
     async def cancel_order(self, order_id: str) -> bool:

@@ -24,7 +24,6 @@ class ErrorHandler:
 
     def handle_error(self, error: Exception, context: str = "") -> None:
         """Handle error with logging and notification"""
-        pass
 
 
 def catch_and_notify(func: Callable[..., Any]) -> Callable[..., Any]:

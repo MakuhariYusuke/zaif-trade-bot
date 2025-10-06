@@ -13,7 +13,10 @@ from ztb.utils.path_utils import get_project_root
 # Add project root to path for imports
 sys.path.insert(0, str(get_project_root()))
 
-from ztb.training.binary_search.base_optimizer import BinarySearchArgumentParser, HyperparameterOptimizer
+from ztb.training.binary_search.base_optimizer import (
+    BinarySearchArgumentParser,
+    HyperparameterOptimizer,
+)
 
 
 class RewardParamsOptimizer(HyperparameterOptimizer):
@@ -45,13 +48,17 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
         action_dist = callback.get_action_distribution()
 
         # Calculate action balance score (lower is more balanced)
-        hold_pct = action_dist['hold_pct']
-        buy_pct = action_dist['buy_pct']
-        sell_pct = action_dist['sell_pct']
+        hold_pct = action_dist["hold_pct"]
+        buy_pct = action_dist["buy_pct"]
+        sell_pct = action_dist["sell_pct"]
 
         # Ideal balance would be around 33% each
         ideal_pct = 33.3
-        balance_score = abs(hold_pct - ideal_pct) + abs(buy_pct - ideal_pct) + abs(sell_pct - ideal_pct)
+        balance_score = (
+            abs(hold_pct - ideal_pct)
+            + abs(buy_pct - ideal_pct)
+            + abs(sell_pct - ideal_pct)
+        )
 
         # Combine reward and balance (higher reward is better, lower balance score is better)
         reward_score = float(stats["avg_reward"])
@@ -61,24 +68,36 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
 
 
 def main() -> None:
-    parser = BinarySearchArgumentParser.create_parser('Optimize reward parameters for balanced action distribution')
-    parser.add_argument('--reward_multiplier', type=float, default=1.0,
-                       help='Reward multiplier value for single test')
+    parser = BinarySearchArgumentParser.create_parser(
+        "Optimize reward parameters for balanced action distribution"
+    )
+    parser.add_argument(
+        "--reward_multiplier",
+        type=float,
+        default=1.0,
+        help="Reward multiplier value for single test",
+    )
 
     args = parser.parse_args()
 
     # Create optimizer
     optimizer = RewardParamsOptimizer()
 
-    if args.mode == 'single':
+    if args.mode == "single":
         # Run single test
         score = optimizer.run_single_test(args.reward_multiplier, args.timesteps)
-        print(f"\nFinal score for reward_multiplier {args.reward_multiplier}: {score:.6f}")
+        print(
+            f"\nFinal score for reward_multiplier {args.reward_multiplier}: {score:.6f}"
+        )
 
-    elif args.mode == 'binary':
+    elif args.mode == "binary":
         # Run binary search optimization
-        best_value, best_score = optimizer.binary_search_optimize(args.max_iterations, args.timesteps)
-        print(f"\nOptimization complete. Best reward_multiplier: {best_value}, Score: {best_score:.6f}")
+        best_value, best_score = optimizer.binary_search_optimize(
+            args.max_iterations, args.timesteps
+        )
+        print(
+            f"\nOptimization complete. Best reward_multiplier: {best_value}, Score: {best_score:.6f}"
+        )
 
 
 if __name__ == "__main__":

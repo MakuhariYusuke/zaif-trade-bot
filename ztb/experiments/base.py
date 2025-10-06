@@ -10,7 +10,17 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    TypedDict,
+    Union,
+)
 
 import numpy as np
 
@@ -127,7 +137,6 @@ class ExperimentBase(ABC):
         実験のメイン実行ロジック
         サブクラスで実装必須
         """
-        pass
 
     def attach_streaming_pipeline(
         self,
@@ -181,12 +190,14 @@ class ExperimentBase(ABC):
         エラーハンドリングと結果保存を含む
         """
         self.start_time = datetime.now()
-        
+
         # 実行メタデータをキャプチャ
         run_metadata = RunMetadata()
         metadata = run_metadata.capture_all_metadata()
-        
-        self.logger.info(f"Starting experiment: {self.experiment_name} with config: {dict(self.config)}")
+
+        self.logger.info(
+            f"Starting experiment: {self.experiment_name} with config: {dict(self.config)}"
+        )
 
         result = None  # result を初期化してバインドされていない問題を回避
         try:
@@ -529,7 +540,6 @@ class ScalingExperiment(ExperimentBase):
         単一ステップの実行
         サブクラスで実装必須
         """
-        pass
 
     def save_checkpoint(self) -> None:
         """現在の状態をチェックポイント保存"""
@@ -544,17 +554,14 @@ class ScalingExperiment(ExperimentBase):
     @abstractmethod
     def get_checkpoint_data(self) -> Any:
         """チェックポイント保存用のデータを返す"""
-        pass
 
     @abstractmethod
     def load_from_checkpoint(self, data: Any) -> None:
         """チェックポイントデータから状態を復元"""
-        pass
 
     @abstractmethod
     def collect_metrics(self) -> ExperimentMetrics:
         """実験メトリクスを収集"""
-        pass
 
     def collect_artifacts(self) -> Dict[str, str]:
         """実験アーティファクトを収集"""

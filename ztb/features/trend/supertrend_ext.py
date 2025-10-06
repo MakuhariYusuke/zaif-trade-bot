@@ -111,7 +111,7 @@ def _compute_supertrend_extended(
     close: NDArray[np.floating[Any]],
     atr: NDArray[np.floating[Any]],
     direction: NDArray[np.floating[Any]],
-    multiplier: float
+    multiplier: float,
 ) -> tuple[NDArray[np.floating[Any]], NDArray[np.int32], NDArray[np.floating[Any]]]:
     """
     Calculate extended Supertrend features using pure numpy (no numba).

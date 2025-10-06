@@ -4,16 +4,20 @@
 P0→P2までのレジーム層で段階的に学習
 """
 
-import os
 import json
+import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
-from ztb.utils.file_utils import safe_json_load
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.file_utils import safe_json_load
 
 
-def run_curriculum_stage(stage_name: str, config_updates: Dict[str, Any], base_config_path: str = "unified_training_config.json") -> bool:
+def run_curriculum_stage(
+    stage_name: str,
+    config_updates: Dict[str, Any],
+    base_config_path: str = "unified_training_config.json",
+) -> bool:
     """指定されたカリキュラムステージを実行"""
     print(f"\n=== カリキュラム学習: {stage_name} ===")
 
@@ -28,7 +32,7 @@ def run_curriculum_stage(stage_name: str, config_updates: Dict[str, Any], base_c
 
     # 設定ファイルを一時保存
     stage_config_path = f"curriculum_{stage_name}_config.json"
-    with open(stage_config_path, 'w') as f:
+    with open(stage_config_path, "w") as f:
         json.dump(config, f, indent=2)
 
     try:
@@ -72,7 +76,7 @@ def main() -> None:
                 "total_timesteps": 50000,
                 "ent_coef": 0.8,  # 高エントロピー探索
                 "target_kl": 0.05,  # 緩いKL制約
-            }
+            },
         },
         {
             "name": "P1_balanced_transition",
@@ -81,7 +85,7 @@ def main() -> None:
                 "total_timesteps": 100000,
                 "ent_coef": 0.6,
                 "target_kl": 0.03,
-            }
+            },
         },
         {
             "name": "P2_full_curriculum",
@@ -90,8 +94,8 @@ def main() -> None:
                 "total_timesteps": 200000,
                 "ent_coef": 0.4,
                 "target_kl": 0.02,
-            }
-        }
+            },
+        },
     ]
 
     # 各ステージを実行
@@ -121,11 +125,19 @@ def evaluate_stage_performance(stage_name: str) -> None:
 
     # regime_evaluation.pyを使用して評価
     import subprocess
-    result = subprocess.run([
-        "python", "regime_evaluation.py",
-        "--models", f"{stage_name}:{model_path}",
-        "--price-data", "ml-dataset-enhanced.csv"
-    ], capture_output=True, text=True)
+
+    result = subprocess.run(
+        [
+            "python",
+            "regime_evaluation.py",
+            "--models",
+            f"{stage_name}:{model_path}",
+            "--price-data",
+            "ml-dataset-enhanced.csv",
+        ],
+        capture_output=True,
+        text=True,
+    )
 
     if result.returncode == 0:
         print("評価完了")
@@ -137,7 +149,9 @@ def evaluate_stage_performance(stage_name: str) -> None:
             model_results = results.get("regime_metrics", {}).get(stage_name, {})
             for regime, metrics in model_results.items():
                 action_dist = metrics.get("action_distribution", {})
-                print(f"{regime}: BUY={action_dist.get('BUY', 0):.1f}%, SELL={action_dist.get('SELL', 0):.1f}%, HOLD={action_dist.get('HOLD', 0):.1f}%")
+                print(
+                    f"{regime}: BUY={action_dist.get('BUY', 0):.1f}%, SELL={action_dist.get('SELL', 0):.1f}%, HOLD={action_dist.get('HOLD', 0):.1f}%"
+                )
     else:
         print(f"評価失敗: {result.stderr}")
 

@@ -146,4 +146,3 @@ class AdaptiveThresholdManager:
         """Update thresholds with new evaluation results"""
         # This would be called after each evaluation cycle
         # Implementation depends on how we want to update the adaptive thresholds
-        pass

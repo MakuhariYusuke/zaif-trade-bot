@@ -1,14 +1,7 @@
-
 """Unit tests for PPO Trainer with auto-halt functionality."""
 
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from ztb.training.ppo_trainer import PPOConfig
 
-import pytest
-
-from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
-from ztb.training.ppo_trainer import PPOConfig, PPOTrainerAutoHalt
 
 class TestPPOConfig:
     """Test cases for PPOConfig dataclass."""

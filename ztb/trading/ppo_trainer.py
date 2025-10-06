@@ -4,10 +4,9 @@
 import warnings
 
 warnings.warn(
-    'ztb.trading.ppo_trainerは非推奨です。今後はztb.training.ppo_trainerを参照してください。',
+    "ztb.trading.ppo_trainerは非推奨です。今後はztb.training.ppo_trainerを参照してください。",
     DeprecationWarning,
     stacklevel=2,
 )
 
 # 非推奨: 旧trading/ppo_trainer.pyは今後使用しないでください。
-from ztb.training.ppo_trainer import PPOTrainer, PPOTrainerAutoHalt

@@ -19,14 +19,14 @@ from typing import Any, Callable, Dict, Optional, Union, cast
 from ztb.utils.path_utils import ensure_dir
 
 try:
-    import zstandard as zstd
+    pass
 
     HAS_ZSTD = True
 except ImportError:
     HAS_ZSTD = False
 
 try:
-    import lz4.frame
+    pass
 
     HAS_LZ4 = True
 except ImportError:

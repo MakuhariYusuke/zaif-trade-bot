@@ -60,37 +60,30 @@ class IBroker(ABC):
         target_vol: Optional[float] = None,
     ) -> Order:
         """Place a new order."""
-        pass
 
     @abstractmethod
     async def cancel_order(self, order_id: str) -> bool:
         """Cancel an existing order."""
-        pass
 
     @abstractmethod
     async def get_order_status(self, order_id: str) -> Optional[Order]:
         """Get status of a specific order."""
-        pass
 
     @abstractmethod
     async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
         """Get all open orders, optionally filtered by symbol."""
-        pass
 
     @abstractmethod
     async def get_positions(self) -> List[Position]:
         """Get current positions."""
-        pass
 
     @abstractmethod
     async def get_balance(self, currency: Optional[str] = None) -> List[Balance]:
         """Get account balance, optionally for specific currency."""
-        pass
 
     @abstractmethod
     async def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current market price for symbol."""
-        pass
 
 
 class ZaifAdapter(IBroker):

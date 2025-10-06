@@ -3,24 +3,28 @@
 Quick training test with balanced reward function.
 """
 
-import os
-import sys
-from pathlib import Path
 import glob
 import shutil
+import sys
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root.parent.parent))
 
-from ztb.utils.file_utils import safe_json_load
-
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.file_utils import safe_json_load
 
 
 def main() -> None:
     # Load config
-    config_path = project_root.parent.parent / "config" / "training" / "balance_tests" / "unified_training_config_balance_test1.json"
+    config_path = (
+        project_root.parent.parent
+        / "config"
+        / "training"
+        / "balance_tests"
+        / "unified_training_config_balance_test1.json"
+    )
     config = safe_json_load(config_path)
 
     # Run multiple tests with different seeds
@@ -37,7 +41,9 @@ def main() -> None:
         result = trainer.train()
 
         # Try to save the model from the result or trainer
-        model_path = project_root.parent.parent / "models" / f"{config['session_id']}_final.zip"
+        model_path = (
+            project_root.parent.parent / "models" / f"{config['session_id']}_final.zip"
+        )
         model_path.parent.mkdir(exist_ok=True)
 
         # Check if result contains the model

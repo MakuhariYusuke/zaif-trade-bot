@@ -62,16 +62,16 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         # Override default prices for bitFlyer
         self._current_prices: Dict[str, float] = {"BTC_JPY": 5000000.0}
 
-    def _generate_signature(self, timestamp: str, method: str, path: str, body: str = "") -> str:
+    def _generate_signature(
+        self, timestamp: str, method: str, path: str, body: str = ""
+    ) -> str:
         """Generate HMAC-SHA256 signature for bitFlyer API authentication."""
         if not self.api_secret:
             raise ValueError("API secret is required for authentication")
 
         message = timestamp + method + path + body
         signature = hmac.new(
-            self.api_secret.encode('utf-8'),
-            message.encode('utf-8'),
-            hashlib.sha256
+            self.api_secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
         return signature
 
@@ -90,7 +90,9 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             "Content-Type": "application/json",
         }
 
-    async def _make_request(self, method: str, path: str, data: Optional[Dict[str, Any]] = None) -> Any:
+    async def _make_request(
+        self, method: str, path: str, data: Optional[Dict[str, Any]] = None
+    ) -> Any:
         """Make authenticated API request to bitFlyer."""
         url = self.BASE_URL + path
         body = json.dumps(data) if data else ""
@@ -127,8 +129,9 @@ class BitFlyerAdapter(BaseExchangeAdapter):
                 balance = Balance(
                     currency=currency_code,
                     free=float(balance_data.get("available", 0)),
-                    locked=float(balance_data.get("amount", 0)) - float(balance_data.get("available", 0)),
-                    total=float(balance_data.get("amount", 0))
+                    locked=float(balance_data.get("amount", 0))
+                    - float(balance_data.get("available", 0)),
+                    total=float(balance_data.get("amount", 0)),
                 )
                 balances.append(balance)
             return balances
@@ -159,7 +162,9 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             if order_type.lower() == "limit" and price is not None:
                 order_data["price"] = price
 
-            response = await self._make_request("POST", "/v1/me/sendchildorder", order_data)
+            response = await self._make_request(
+                "POST", "/v1/me/sendchildorder", order_data
+            )
 
             order_id = str(response.get("child_order_acceptance_id", ""))
             if not order_id:
@@ -187,9 +192,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     async def _cancel_order_real(self, order_id: str) -> bool:
         """Cancel order via bitFlyer API."""
         try:
-            cancel_data = {
-                "child_order_acceptance_id": order_id
-            }
+            cancel_data = {"child_order_acceptance_id": order_id}
 
             await self._make_request("POST", "/v1/me/cancelchildorder", cancel_data)
 
@@ -204,9 +207,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     async def _get_order_status_real(self, order_id: str) -> Optional[Order]:
         """Get order status from bitFlyer API."""
         try:
-            params = {
-                "child_order_acceptance_id": order_id
-            }
+            params = {"child_order_acceptance_id": order_id}
 
             query_string = "&".join([f"{k}={v}" for k, v in params.items()])
             path = f"/v1/me/getchildorders?{query_string}"
@@ -216,7 +217,9 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             if not response:
                 return None
 
-            order_data = response[0] if isinstance(response, list) and response else None
+            order_data = (
+                response[0] if isinstance(response, list) and response else None
+            )
             if not order_data:
                 return None
 
@@ -239,7 +242,11 @@ class BitFlyerAdapter(BaseExchangeAdapter):
                 symbol=str(order_data.get("product_code", "")),
                 side=str(order_data.get("side", "")).lower(),
                 quantity=float(order_data.get("size", 0)),
-                price=float(order_data.get("price", 0)) if order_data.get("price") else None,
+                price=(
+                    float(order_data.get("price", 0))
+                    if order_data.get("price")
+                    else None
+                ),
                 order_type=str(order_data.get("child_order_type", "")).lower(),
                 status=status,
                 client_order_id=None,
@@ -273,7 +280,11 @@ class BitFlyerAdapter(BaseExchangeAdapter):
                     symbol=str(order_data.get("product_code", "")),
                     side=str(order_data.get("side", "")).lower(),
                     quantity=float(order_data.get("size", 0)),
-                    price=float(order_data.get("price", 0)) if order_data.get("price") else None,
+                    price=(
+                        float(order_data.get("price", 0))
+                        if order_data.get("price")
+                        else None
+                    ),
                     order_type=str(order_data.get("child_order_type", "")).lower(),
                     status="pending",
                     client_order_id=None,
@@ -315,7 +326,9 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     async def _get_current_price_real(self, symbol: str) -> Optional[float]:
         """Get current price from bitFlyer API."""
         try:
-            response = await self._make_request("GET", f"/v1/ticker?product_code={symbol}")
+            response = await self._make_request(
+                "GET", f"/v1/ticker?product_code={symbol}"
+            )
 
             if isinstance(response, dict) and "ltp" in response:
                 price = float(response["ltp"])

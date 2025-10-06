@@ -4,10 +4,12 @@ This module is intentionally small and strongly typed so mypy can import it
 without requiring interactive prompts or platform-specific dependencies.
 """
 
-from typing import Optional, Any
+from typing import Any
 
 
-def confirm_long_running_operation(message: str, default: bool = False, **kwargs: Any) -> bool:
+def confirm_long_running_operation(
+    message: str, default: bool = False, **kwargs: Any
+) -> bool:
     """Return user's confirmation for a long-running operation.
 
     In non-interactive contexts this function returns the provided default.

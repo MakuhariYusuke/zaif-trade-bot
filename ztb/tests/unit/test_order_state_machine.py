@@ -4,10 +4,15 @@ Unit tests for order state machine
 """
 
 import time
-import pytest
 from unittest.mock import patch
+
 from ztb.trading.orders.state_machine import (
-    OrderState, OrderEvent, OrderData, OrderStateMachine, IdempotencyManager, get_idempotency_manager
+    IdempotencyManager,
+    OrderData,
+    OrderEvent,
+    OrderState,
+    OrderStateMachine,
+    get_idempotency_manager,
 )
 
 
@@ -47,7 +52,7 @@ class TestOrderData:
             side="buy",
             quantity=1.0,
             price=5000000.0,
-            order_type="limit"
+            order_type="limit",
         )
 
         assert order_data.order_id == "order_123"
@@ -61,13 +66,13 @@ class TestOrderData:
 
     def test_order_data_default_timestamp(self):
         """Test OrderData sets default timestamp"""
-        with patch('time.time', return_value=1234567890.0):
+        with patch("time.time", return_value=1234567890.0):
             order_data = OrderData(
                 order_id="order_123",
                 client_order_id="client_123",
                 symbol="BTC_JPY",
                 side="buy",
-                quantity=1.0
+                quantity=1.0,
             )
 
             assert order_data.timestamp == 1234567890.0
@@ -81,7 +86,7 @@ class TestOrderStateMachine:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)
@@ -99,7 +104,7 @@ class TestOrderStateMachine:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)
@@ -125,7 +130,7 @@ class TestOrderStateMachine:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)
@@ -141,7 +146,7 @@ class TestOrderStateMachine:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)
@@ -156,7 +161,7 @@ class TestOrderStateMachine:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)
@@ -176,7 +181,7 @@ class TestOrderStateMachine:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)
@@ -220,7 +225,7 @@ class TestIdempotencyManager:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)
@@ -242,7 +247,7 @@ class TestIdempotencyManager:
             client_order_id="client_123",
             symbol="BTC_JPY",
             side="buy",
-            quantity=1.0
+            quantity=1.0,
         )
 
         sm = OrderStateMachine(order_data)

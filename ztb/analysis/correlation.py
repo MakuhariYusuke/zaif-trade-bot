@@ -25,7 +25,9 @@ def compute_correlations(
         Dict[str, Optional[pd.DataFrame]],
         safe_operation(
             logger=None,  # Use default logger
-            operation=lambda: _compute_correlations_impl(frames, nan_strategy, fill_value),
+            operation=lambda: _compute_correlations_impl(
+                frames, nan_strategy, fill_value
+            ),
             context="correlation_analysis",
             default_result={"pearson": None, "spearman": None},
         ),

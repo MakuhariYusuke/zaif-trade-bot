@@ -13,7 +13,10 @@ from ztb.utils.path_utils import get_project_root
 # Add project root to path for imports
 sys.path.insert(0, str(get_project_root()))
 
-from ztb.training.binary_search.base_optimizer import BinarySearchArgumentParser, HyperparameterOptimizer
+from ztb.training.binary_search.base_optimizer import (
+    BinarySearchArgumentParser,
+    HyperparameterOptimizer,
+)
 
 
 class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
@@ -31,7 +34,9 @@ class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
         """Update PPO parameters with normalize_advantage value."""
         self.ppo_params["normalize_advantage"] = bool(value)
 
-    def binary_search_optimize(self, max_iterations: int = 2, total_timesteps: int = 100000) -> tuple[bool, float]:
+    def binary_search_optimize(
+        self, max_iterations: int = 2, total_timesteps: int = 100000
+    ) -> tuple[bool, float]:
         """
         Override binary search to test both True and False values.
         Returns (best_value, best_score).
@@ -40,7 +45,7 @@ class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
         print("Testing both True and False values...")
 
         best_value = False
-        best_score = float('-inf')
+        best_score = float("-inf")
 
         # Test False
         print(f"\nTesting normalize_advantage=False")
@@ -65,24 +70,36 @@ class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
 
 
 def main() -> None:
-    parser = BinarySearchArgumentParser.create_parser('Optimize normalize_advantage parameter for PPO')
-    parser.add_argument('--normalize_advantage', action='store_true', default=False,
-                       help='normalize_advantage value for single test (default: False)')
+    parser = BinarySearchArgumentParser.create_parser(
+        "Optimize normalize_advantage parameter for PPO"
+    )
+    parser.add_argument(
+        "--normalize_advantage",
+        action="store_true",
+        default=False,
+        help="normalize_advantage value for single test (default: False)",
+    )
 
     args = parser.parse_args()
 
     # Create optimizer
     optimizer = NormalizeAdvantageOptimizer()
 
-    if args.mode == 'single':
+    if args.mode == "single":
         # Run single test
         score = optimizer.run_single_test(args.normalize_advantage, args.timesteps)
-        print(f"\nFinal score for normalize_advantage {args.normalize_advantage}: {score:.6f}")
+        print(
+            f"\nFinal score for normalize_advantage {args.normalize_advantage}: {score:.6f}"
+        )
 
-    elif args.mode == 'binary':
+    elif args.mode == "binary":
         # Run comparison test for both values
-        best_value, best_score = optimizer.binary_search_optimize(args.max_iterations, args.timesteps)
-        print(f"\nOptimization complete. Best normalize_advantage: {best_value}, Score: {best_score:.6f}")
+        best_value, best_score = optimizer.binary_search_optimize(
+            args.max_iterations, args.timesteps
+        )
+        print(
+            f"\nOptimization complete. Best normalize_advantage: {best_value}, Score: {best_score:.6f}"
+        )
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@ if "ztb.features" not in sys.modules:
 
     # Use common test utility for feature engine mock
     from ztb.tests.test_utils import create_mock_feature_engine
+
     create_mock_feature_engine()
 
 from ztb.data.coin_gecko_stream import MarketDataBatch, StreamConfig

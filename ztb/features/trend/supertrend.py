@@ -87,7 +87,7 @@ class Supertrend(ParameterizedFeature):
         low: NDArray[np.floating[Any]],
         close: NDArray[np.floating[Any]],
         atr: NDArray[np.floating[Any]],
-        multiplier: float
+        multiplier: float,
     ) -> tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
         """Compute Supertrend using pure numpy (no numba)"""
         n = len(close)

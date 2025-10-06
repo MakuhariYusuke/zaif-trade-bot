@@ -13,6 +13,7 @@ if TYPE_CHECKING:  # Provide type info to mypy by importing the real symbol if p
     try:
         from ztb.trading.ppo_trainer import PPOTrainer  # type: ignore
     except Exception:  # pragma: no cover - best-effort for static analysis
+
         class PPOTrainer:  # type: ignore
             def __init__(self, *args: Any, **kwargs: Any) -> None: ...
             def train(self, *args: Any, **kwargs: Any) -> object: ...
@@ -21,8 +22,10 @@ else:  # Runtime: prefer to use the real implementation when available
     try:
         from ztb.trading.ppo_trainer import PPOTrainer  # type: ignore
     except Exception:  # pragma: no cover - runtime fallback
+
         class PPOTrainer:
             def __init__(self, *args, **kwargs) -> None:
                 raise RuntimeError("PPOTrainer implementation not available")
+
 
 __all__ = ["PPOTrainer"]

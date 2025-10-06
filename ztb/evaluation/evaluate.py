@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from numpy.typing import NDArray
 from stable_baselines3 import PPO
 from torch.utils.tensorboard import SummaryWriter
 
@@ -139,12 +138,15 @@ class TradingEvaluator:
 
     def evaluate_model(self) -> Dict[str, Any]:
         """モデルの包括的な評価"""
-        return cast(Dict[str, Any], safe_operation(
-            logger=None,  # Use default logger
-            operation=self._evaluate_model_impl,
-            context="model_evaluation",
-            default_result={},  # Empty dict on error
-        ))
+        return cast(
+            Dict[str, Any],
+            safe_operation(
+                logger=None,  # Use default logger
+                operation=self._evaluate_model_impl,
+                context="model_evaluation",
+                default_result={},  # Empty dict on error
+            ),
+        )
 
     def _evaluate_model_impl(self) -> Dict[str, Any]:
         """Implementation of model evaluation."""

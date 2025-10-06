@@ -325,7 +325,7 @@ class ComprehensiveFeatureReEvaluator:
 
         # Set cache to re-evaluation mode for shorter TTL
         try:
-            from cache.sqlite_cache import SQLiteCache  # type: ignore
+            from cache.sqlite_cache import SQLiteCache
 
             cache = SQLiteCache()
             cache.set_task_mode("re_evaluation")
@@ -1162,6 +1162,7 @@ class ComprehensiveFeatureReEvaluator:
         try:
             # Load coverage.json
             from ztb.utils.path_utils import get_project_root
+
             coverage_path = get_project_root() / "coverage.json"
             if coverage_path.exists():
                 with open(coverage_path, "r", encoding="utf-8") as f:

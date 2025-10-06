@@ -134,7 +134,9 @@ class RunMetadata:
 
         return packages
 
-    def capture_config_hashes(self, config_files: Optional[list[str]] = None) -> Dict[str, str]:
+    def capture_config_hashes(
+        self, config_files: Optional[list[str]] = None
+    ) -> Dict[str, str]:
         """Capture hashes of configuration files."""
         if config_files is None:
             config_files = [

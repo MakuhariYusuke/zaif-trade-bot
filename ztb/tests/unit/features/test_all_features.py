@@ -46,7 +46,6 @@ try:
 except ImportError as e:
     print(f"Feature import error: {e}")
     # Fallback to mock implementations
-    pass
 
 
 def test_all_features(

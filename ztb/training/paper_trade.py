@@ -40,8 +40,7 @@ from ztb.utils.path_utils import ensure_dir, get_project_root
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.environment.environment import \
-    HeavyTradingEnv as TradingEnvironment
+from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
 from ztb.utils import DiscordNotifier
 from ztb.utils.file_utils import safe_json_load
 
@@ -118,10 +117,10 @@ class PaperTrader:
         self.logger.info(f"Loading model from {self.model_path}")
         # Create a dummy model first, then load checkpoint
         dummy_env = self._create_env()
-        
+
         # Get policy_kwargs from config
         policy_kwargs = self.config.get("policy_kwargs", {})
-        
+
         self.model = MaskablePPO(
             "MlpPolicy",
             dummy_env,
@@ -143,7 +142,11 @@ class PaperTrader:
         # Load model using Stable Baselines3's load method for zip files
         try:
             # Try loading as Stable Baselines3 zip format first
-            self.model = MaskablePPO.load(str(self.model_path), env=dummy_env, custom_objects={"policy_kwargs": policy_kwargs})
+            self.model = MaskablePPO.load(
+                str(self.model_path),
+                env=dummy_env,
+                custom_objects={"policy_kwargs": policy_kwargs},
+            )
             print("Successfully loaded model using Stable Baselines3 load method")
         except Exception as sb3_error:
             print(
@@ -294,10 +297,12 @@ class PaperTrader:
         while not done and steps < 10000:  # Max steps per episode
             # Get action from model
             predict_obs = obs[0] if isinstance(obs, tuple) else obs
-            
+
             # Get legal actions mask for MaskablePPO
-            action_masks = cast(TradingEnvironment, self.env.envs[0]).get_legal_actions()
-            
+            action_masks = cast(
+                TradingEnvironment, self.env.envs[0]
+            ).get_legal_actions()
+
             action, _ = cast(MaskablePPO, self.model).predict(
                 predict_obs, action_masks=action_masks, deterministic=False
             )  # Use stochastic for scalping
@@ -307,9 +312,13 @@ class PaperTrader:
                 print(f"Verbose is enabled, step {steps}")
                 try:
                     # Get action probabilities if available
-                    dist = cast(MaskablePPO, self.model).policy.get_distribution(torch.from_numpy(predict_obs).float())
-                    if hasattr(dist, "distribution") and dist.distribution is not None and hasattr(
-                        dist.distribution, "probs"
+                    dist = cast(MaskablePPO, self.model).policy.get_distribution(
+                        torch.from_numpy(predict_obs).float()
+                    )
+                    if (
+                        hasattr(dist, "distribution")
+                        and dist.distribution is not None
+                        and hasattr(dist.distribution, "probs")
                     ):
                         probs = dist.distribution.probs.detach().cpu().numpy()
                         print(f"Step {steps}: Action probabilities: {probs}")
@@ -328,7 +337,9 @@ class PaperTrader:
             reward = reward[0]
 
             # Update from environment
-            self.portfolio_value = cast(TradingEnvironment, self.env.envs[0]).portfolio_value
+            self.portfolio_value = cast(
+                TradingEnvironment, self.env.envs[0]
+            ).portfolio_value
             self.position = cast(TradingEnvironment, self.env.envs[0]).position
 
             # Record trade if position changed

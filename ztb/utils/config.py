@@ -69,16 +69,18 @@ class ZTBConfig:
                 logger.info(f"  {var}={value}")
 
 
-def get_config_value(config_dict: dict[str, Any], key: str, expected_type: type, default: Any = None) -> Any:
+def get_config_value(
+    config_dict: dict[str, Any], key: str, expected_type: type, default: Any = None
+) -> Any:
     """
     Safely extract and convert configuration values from dict with type validation.
-    
+
     Args:
         config_dict: Configuration dictionary
         key: Key to extract
         expected_type: Expected type (str, int, float, bool, list, dict)
         default: Default value if key not found or conversion fails
-        
+
     Returns:
         Converted value or default
     """
@@ -86,13 +88,17 @@ def get_config_value(config_dict: dict[str, Any], key: str, expected_type: type,
     try:
         if raw_value is None:
             return default
-            
+
         if expected_type == str:
             return str(raw_value)
         elif expected_type == int:
             return int(raw_value) if isinstance(raw_value, (int, str)) else default
         elif expected_type == float:
-            return float(raw_value) if isinstance(raw_value, (int, float, str)) else default
+            return (
+                float(raw_value)
+                if isinstance(raw_value, (int, float, str))
+                else default
+            )
         elif expected_type == bool:
             if isinstance(raw_value, bool):
                 return raw_value
@@ -107,6 +113,7 @@ def get_config_value(config_dict: dict[str, Any], key: str, expected_type: type,
                 # Try to parse as JSON list
                 try:
                     import json
+
                     parsed = json.loads(raw_value)
                     return parsed if isinstance(parsed, list) else default
                 except (json.JSONDecodeError, TypeError):
@@ -120,6 +127,7 @@ def get_config_value(config_dict: dict[str, Any], key: str, expected_type: type,
                 # Try to parse as JSON dict
                 try:
                     import json
+
                     parsed = json.loads(raw_value)
                     return parsed if isinstance(parsed, dict) else default
                 except (json.JSONDecodeError, TypeError):
@@ -129,19 +137,23 @@ def get_config_value(config_dict: dict[str, Any], key: str, expected_type: type,
         else:
             return raw_value
     except (ValueError, TypeError):
-        logger.warning(f"Failed to convert config value for {key}: {raw_value}, using default {default}")
+        logger.warning(
+            f"Failed to convert config value for {key}: {raw_value}, using default {default}"
+        )
         return default
 
 
-def get_config_list(config_dict: dict[str, Any], key: str, default: Optional[list[Any]] = None) -> list[Any]:
+def get_config_list(
+    config_dict: dict[str, Any], key: str, default: Optional[list[Any]] = None
+) -> list[Any]:
     """
     Get a list configuration value.
-    
+
     Args:
         config_dict: Configuration dictionary
         key: Key to extract
         default: Default list value
-        
+
     Returns:
         List value or default
     """
@@ -150,15 +162,17 @@ def get_config_list(config_dict: dict[str, Any], key: str, default: Optional[lis
     return cast(list[Any], get_config_value(config_dict, key, list, default))
 
 
-def get_config_dict(config_dict: dict[str, Any], key: str, default: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def get_config_dict(
+    config_dict: dict[str, Any], key: str, default: Optional[dict[str, Any]] = None
+) -> dict[str, Any]:
     """
     Get a dict configuration value.
-    
+
     Args:
         config_dict: Configuration dictionary
         key: Key to extract
         default: Default dict value
-        
+
     Returns:
         Dict value or default
     """
@@ -170,12 +184,12 @@ def get_config_dict(config_dict: dict[str, Any], key: str, default: Optional[dic
 def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> str:
     """
     Get a string configuration value.
-    
+
     Args:
         config_dict: Configuration dictionary
         key: Key to extract
         default: Default string value
-        
+
     Returns:
         String value or default
     """
@@ -185,42 +199,46 @@ def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> 
 def get_config_int(config_dict: dict[str, Any], key: str, default: int = 0) -> int:
     """
     Get an integer configuration value.
-    
+
     Args:
         config_dict: Configuration dictionary
         key: Key to extract
         default: Default integer value
-        
+
     Returns:
         Integer value or default
     """
     return cast(int, get_config_value(config_dict, key, int, default))
 
 
-def get_config_float(config_dict: dict[str, Any], key: str, default: float = 0.0) -> float:
+def get_config_float(
+    config_dict: dict[str, Any], key: str, default: float = 0.0
+) -> float:
     """
     Get a float configuration value.
-    
+
     Args:
         config_dict: Configuration dictionary
         key: Key to extract
         default: Default float value
-        
+
     Returns:
         Float value or default
     """
     return cast(float, get_config_value(config_dict, key, float, default))
 
 
-def get_config_bool(config_dict: dict[str, Any], key: str, default: bool = False) -> bool:
+def get_config_bool(
+    config_dict: dict[str, Any], key: str, default: bool = False
+) -> bool:
     """
     Get a boolean configuration value.
-    
+
     Args:
         config_dict: Configuration dictionary
         key: Key to extract
         default: Default boolean value
-        
+
     Returns:
         Boolean value or default
     """

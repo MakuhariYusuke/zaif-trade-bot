@@ -2,24 +2,26 @@
 Unit tests for curriculum_learning.py module.
 """
 
-import json
-import os
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, mock_open, patch
 
-from ztb.training.curriculum_learning import run_curriculum_stage, evaluate_stage_performance
+from ztb.training.curriculum_learning import (
+    evaluate_stage_performance,
+    run_curriculum_stage,
+)
 
 
 class TestRunCurriculumStage:
     """Test cases for run_curriculum_stage function."""
 
-    @patch('ztb.training.curriculum_learning.safe_json_load')
-    @patch('ztb.training.curriculum_learning.UnifiedTrainer')
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('os.path.exists')
-    @patch('os.remove')
-    def test_run_curriculum_stage_success(self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load):
+    @patch("ztb.training.curriculum_learning.safe_json_load")
+    @patch("ztb.training.curriculum_learning.UnifiedTrainer")
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.path.exists")
+    @patch("os.remove")
+    def test_run_curriculum_stage_success(
+        self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load
+    ):
         """Test run_curriculum_stage with successful training."""
         # Mock base config
         base_config = {"session_id": "base", "total_timesteps": 1000}
@@ -44,7 +46,7 @@ class TestRunCurriculumStage:
         expected_config = {
             "session_id": "curriculum_test_stage",
             "total_timesteps": 50000,
-            "ent_coef": 0.8
+            "ent_coef": 0.8,
         }
         # Check that json.dump was called with updated config
         mock_file.assert_called()
@@ -55,12 +57,14 @@ class TestRunCurriculumStage:
         # Verify cleanup
         mock_remove.assert_called_once()
 
-    @patch('ztb.training.curriculum_learning.safe_json_load')
-    @patch('ztb.training.curriculum_learning.UnifiedTrainer')
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('os.path.exists')
-    @patch('os.remove')
-    def test_run_curriculum_stage_failure(self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load):
+    @patch("ztb.training.curriculum_learning.safe_json_load")
+    @patch("ztb.training.curriculum_learning.UnifiedTrainer")
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.path.exists")
+    @patch("os.remove")
+    def test_run_curriculum_stage_failure(
+        self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load
+    ):
         """Test run_curriculum_stage with failed training."""
         # Mock base config
         base_config = {"session_id": "base"}
@@ -81,12 +85,14 @@ class TestRunCurriculumStage:
         mock_trainer.train.assert_called_once()
         mock_remove.assert_called_once()
 
-    @patch('ztb.training.curriculum_learning.safe_json_load')
-    @patch('ztb.training.curriculum_learning.UnifiedTrainer')
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('os.path.exists')
-    @patch('os.remove')
-    def test_run_curriculum_stage_cleanup_on_exception(self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load):
+    @patch("ztb.training.curriculum_learning.safe_json_load")
+    @patch("ztb.training.curriculum_learning.UnifiedTrainer")
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.path.exists")
+    @patch("os.remove")
+    def test_run_curriculum_stage_cleanup_on_exception(
+        self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load
+    ):
         """Test run_curriculum_stage cleans up temp file even on exception."""
         # Mock base config
         base_config = {"session_id": "base"}
@@ -106,12 +112,14 @@ class TestRunCurriculumStage:
         assert result is False
         mock_remove.assert_called_once()  # Should still clean up
 
-    @patch('ztb.training.curriculum_learning.safe_json_load')
-    @patch('ztb.training.curriculum_learning.UnifiedTrainer')
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('os.path.exists')
-    @patch('os.remove')
-    def test_run_curriculum_stage_custom_base_config(self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load):
+    @patch("ztb.training.curriculum_learning.safe_json_load")
+    @patch("ztb.training.curriculum_learning.UnifiedTrainer")
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.path.exists")
+    @patch("os.remove")
+    def test_run_curriculum_stage_custom_base_config(
+        self, mock_remove, mock_exists, mock_file, mock_trainer_class, mock_load
+    ):
         """Test run_curriculum_stage with custom base config path."""
         # Mock base config
         base_config = {"session_id": "base"}
@@ -135,7 +143,7 @@ class TestRunCurriculumStage:
 class TestEvaluateStagePerformance:
     """Test cases for evaluate_stage_performance function."""
 
-    @patch('os.path.exists')
+    @patch("os.path.exists")
     def test_evaluate_stage_performance_no_model_file(self, mock_exists):
         """Test evaluate_stage_performance when model file doesn't exist."""
         mock_exists.return_value = False
@@ -145,9 +153,11 @@ class TestEvaluateStagePerformance:
 
         mock_exists.assert_called_once_with("models/curriculum_test_stage.zip")
 
-    @patch('os.path.exists')
-    @patch('subprocess.run')
-    def test_evaluate_stage_performance_subprocess_success(self, mock_subprocess, mock_exists):
+    @patch("os.path.exists")
+    @patch("subprocess.run")
+    def test_evaluate_stage_performance_subprocess_success(
+        self, mock_subprocess, mock_exists
+    ):
         """Test evaluate_stage_performance with successful subprocess call."""
         mock_exists.return_value = True
 
@@ -161,15 +171,24 @@ class TestEvaluateStagePerformance:
         evaluate_stage_performance("test_stage")
 
         # Verify subprocess was called correctly
-        mock_subprocess.assert_called_once_with([
-            "python", "regime_evaluation.py",
-            "--models", "test_stage:models/curriculum_test_stage.zip",
-            "--price-data", "ml-dataset-enhanced.csv"
-        ], capture_output=True, text=True)
+        mock_subprocess.assert_called_once_with(
+            [
+                "python",
+                "regime_evaluation.py",
+                "--models",
+                "test_stage:models/curriculum_test_stage.zip",
+                "--price-data",
+                "ml-dataset-enhanced.csv",
+            ],
+            capture_output=True,
+            text=True,
+        )
 
-    @patch('os.path.exists')
-    @patch('subprocess.run')
-    def test_evaluate_stage_performance_subprocess_failure(self, mock_subprocess, mock_exists):
+    @patch("os.path.exists")
+    @patch("subprocess.run")
+    def test_evaluate_stage_performance_subprocess_failure(
+        self, mock_subprocess, mock_exists
+    ):
         """Test evaluate_stage_performance with failed subprocess call."""
         mock_exists.return_value = True
 
@@ -184,11 +203,13 @@ class TestEvaluateStagePerformance:
         # Should handle failure gracefully
         mock_subprocess.assert_called_once()
 
-    @patch('os.path.exists')
-    @patch('subprocess.run')
-    @patch('ztb.training.curriculum_learning.safe_json_load')
-    @patch('pathlib.Path.exists')
-    def test_evaluate_stage_performance_with_results_file(self, mock_path_exists, mock_load, mock_subprocess, mock_exists):
+    @patch("os.path.exists")
+    @patch("subprocess.run")
+    @patch("ztb.training.curriculum_learning.safe_json_load")
+    @patch("pathlib.Path.exists")
+    def test_evaluate_stage_performance_with_results_file(
+        self, mock_path_exists, mock_load, mock_subprocess, mock_exists
+    ):
         """Test evaluate_stage_performance with results file parsing."""
         mock_exists.return_value = True
 
@@ -207,7 +228,7 @@ class TestEvaluateStagePerformance:
                     },
                     "bear_market": {
                         "action_distribution": {"BUY": 20.1, "SELL": 50.8, "HOLD": 29.1}
-                    }
+                    },
                 }
             }
         }

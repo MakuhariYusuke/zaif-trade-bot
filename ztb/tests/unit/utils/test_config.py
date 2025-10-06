@@ -4,7 +4,6 @@ test_config.py
 Unit tests for ZTBConfig class
 """
 
-import logging
 import os
 from unittest.mock import patch
 

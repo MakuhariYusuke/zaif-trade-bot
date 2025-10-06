@@ -2,9 +2,10 @@
 Unit tests for simple_reward.py module.
 """
 
+from unittest.mock import Mock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch
 
 from ztb.training.simple_reward import TrainingCallback
 
@@ -36,9 +37,9 @@ class TestTrainingCallback:
 
         # Mock locals with basic data
         callback.locals = {
-            'rewards': [1.0, 2.0, 3.0],
-            'actions': np.array([0, 1, 2, 0]),
-            'infos': []
+            "rewards": [1.0, 2.0, 3.0],
+            "actions": np.array([0, 1, 2, 0]),
+            "infos": [],
         }
 
         callback._on_rollout_end()
@@ -52,9 +53,9 @@ class TestTrainingCallback:
         # Verify action counts
         assert len(callback.action_counts) == 1
         assert callback.action_counts[0] == {
-            'HOLD': 2,  # action 0 appears twice
-            'BUY': 1,   # action 1 appears once
-            'SELL': 1   # action 2 appears once
+            "HOLD": 2,  # action 0 appears twice
+            "BUY": 1,  # action 1 appears once
+            "SELL": 1,  # action 2 appears once
         }
 
     def test_on_rollout_end_with_portfolio_value(self):
@@ -62,11 +63,16 @@ class TestTrainingCallback:
         # Skip this test as it requires complex mocking of Stable Baselines internals
         pytest.skip("Requires complex mocking of Stable Baselines BaseCallback.locals")
 
-    @patch('ztb.training.simple_reward.TrainingCallback.logger', new_callable=lambda: Mock())
+    @patch(
+        "ztb.training.simple_reward.TrainingCallback.logger",
+        new_callable=lambda: Mock(),
+    )
     def test_on_rollout_end_logging_every_10_episodes(self, mock_logger):
         """Test logging behavior every 10 episodes."""
         # Skip this test as it requires complex mocking of Stable Baselines internals
-        pytest.skip("Requires complex mocking of Stable Baselines BaseCallback.locals and logger")
+        pytest.skip(
+            "Requires complex mocking of Stable Baselines BaseCallback.locals and logger"
+        )
 
     def test_on_rollout_end_average_logging(self):
         """Test average reward logging every 10 episodes."""
@@ -77,13 +83,9 @@ class TestTrainingCallback:
             callback.episode_rewards.append(float(i + 1))
 
         # Mock locals for 10th episode
-        callback.locals = {
-            'rewards': [10.0],
-            'actions': np.array([0]),
-            'infos': []
-        }
+        callback.locals = {"rewards": [10.0], "actions": np.array([0]), "infos": []}
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             callback._on_rollout_end()
 
             # Should log average of last 10 episodes

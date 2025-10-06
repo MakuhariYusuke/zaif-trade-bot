@@ -3,15 +3,14 @@ Common rolling operations and missing value handling.
 共通ローリング処理と欠損値処理
 """
 
-from pathlib import Path
 from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
 
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.memory.dtypes import OptimizationReport, optimize_dtypes
 from ztb.utils.path_utils import ensure_dir
-from ztb.utils.file_utils import safe_json_dump
 
 
 def rolling_mean(
@@ -105,7 +104,6 @@ def generate_intermediate_report(
     nan_rates: Dict[str, float],
 ) -> None:
     """Generate intermediate report for feature computation progress"""
-    import json
     from pathlib import Path
 
     report = {

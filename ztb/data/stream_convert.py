@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
-
 from ztb.utils.data_utils import load_csv_data_iter
 from ztb.utils.memory.dtypes import downcast_df
 
