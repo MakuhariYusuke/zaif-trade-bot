@@ -2,12 +2,17 @@
 Unit tests for unified_trainer.py module.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
-from ztb.training.unified_trainer import UnifiedTrainer, UnifiedAlgorithm, UnifiedTrainerConfig
+import pytest
+
+from ztb.training.unified_trainer import (
+    UnifiedAlgorithm,
+    UnifiedTrainer,
+    UnifiedTrainerConfig,
+)
 
 
 class TestUnifiedAlgorithm:

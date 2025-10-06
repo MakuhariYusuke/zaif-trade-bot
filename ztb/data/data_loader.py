@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-import numpy.ma as ma
 import pandas as pd
 from scipy import stats
 
@@ -26,7 +25,10 @@ def detect_outliers_iqr(
     data: pd.DataFrame, column: str
 ) -> tuple[pd.DataFrame, float, float]:
     """IQR法による外れ値検出"""
-    from ztb.utils.data.outlier_detection import detect_outliers_iqr as _detect_outliers_iqr
+    from ztb.utils.data.outlier_detection import (
+        detect_outliers_iqr as _detect_outliers_iqr,
+    )
+
     return _detect_outliers_iqr(data, column)
 
 
@@ -34,7 +36,10 @@ def detect_outliers_zscore(
     data: pd.DataFrame, column: str, threshold: float = 3
 ) -> pd.DataFrame:
     """Z-score法による外れ値検出"""
-    from ztb.utils.data.outlier_detection import detect_outliers_zscore as _detect_outliers_zscore
+    from ztb.utils.data.outlier_detection import (
+        detect_outliers_zscore as _detect_outliers_zscore,
+    )
+
     return _detect_outliers_zscore(data, column, threshold)
 
 

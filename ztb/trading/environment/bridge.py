@@ -135,7 +135,12 @@ class VirtualTradingBridge:
             return round(quantity, 4)
         return quantity
 
-    def calculate_slippage(self, symbol: str, side: Union[Literal["buy"], Literal["sell"], str], quantity: float) -> float:
+    def calculate_slippage(
+        self,
+        symbol: str,
+        side: Union[Literal["buy"], Literal["sell"], str],
+        quantity: float,
+    ) -> float:
         """
         Calculate dynamic slippage based on board spread.
         Simplified implementation - in real trading, use actual order book.
@@ -150,7 +155,9 @@ class VirtualTradingBridge:
             ),
         )
 
-    def _calculate_slippage_impl(self, symbol: str, side: str, quantity: float) -> float:
+    def _calculate_slippage_impl(
+        self, symbol: str, side: str, quantity: float
+    ) -> float:
         """Implementation of slippage calculation."""
         # Mock slippage: 0.1% for buy, -0.1% for sell
         base_slippage = 0.001
@@ -177,6 +184,7 @@ class VirtualTradingBridge:
         Returns:
             VirtualOrder object
         """
+
         def execute_order() -> VirtualOrder:
             if current_price is None:
                 current_price_inner = self.get_market_price(symbol)
@@ -220,7 +228,9 @@ class VirtualTradingBridge:
                 cost = quantity_rounded * execution_price + commission
                 if self.balance >= cost:
                     self.balance -= cost
-                    self.positions[symbol] = self.positions.get(symbol, 0) + quantity_rounded
+                    self.positions[symbol] = (
+                        self.positions.get(symbol, 0) + quantity_rounded
+                    )
                 else:
                     order.status = "cancelled"
                     logger.warning(
@@ -246,7 +256,11 @@ class VirtualTradingBridge:
 
         return cast(
             VirtualOrder,
-            safe_operation(logger, execute_order, f"place_market_order({symbol}, {side}, {quantity})"),
+            safe_operation(
+                logger,
+                execute_order,
+                f"place_market_order({symbol}, {side}, {quantity})",
+            ),
         )
 
     def get_balance(self) -> float:
@@ -344,13 +358,17 @@ class LiveTradingBridge:
             bool,
             safe_operation(
                 logger=logger,
-                operation=lambda: self._check_safety_limits_impl(current_balance, current_price),
+                operation=lambda: self._check_safety_limits_impl(
+                    current_balance, current_price
+                ),
                 context="safety_limits_check",
                 default_result=False,  # Default to unsafe on error
             ),
         )
 
-    def _check_safety_limits_impl(self, current_balance: float, current_price: float) -> bool:
+    def _check_safety_limits_impl(
+        self, current_balance: float, current_price: float
+    ) -> bool:
         """Implementation of safety limits check."""
         # Daily loss limit
         if self.daily_start_balance > 0:
@@ -410,7 +428,9 @@ class LiveTradingBridge:
             bool,
             safe_operation(
                 logger=logger,
-                operation=lambda: self._check_position_limits_impl(symbol, quantity, current_balance, current_price),
+                operation=lambda: self._check_position_limits_impl(
+                    symbol, quantity, current_balance, current_price
+                ),
                 context="position_limits_check",
                 default_result=False,  # Default to unsafe on error
             ),

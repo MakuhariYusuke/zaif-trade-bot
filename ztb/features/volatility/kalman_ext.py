@@ -183,8 +183,9 @@ def calculate_kalman_extended(
 
     # Residual percentiles - vectorized
     features["kalman_residual_percentile"] = np.asarray(
-        residual_series.rolling(window=residual_window * 2)
-        .apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1])
+        residual_series.rolling(window=residual_window * 2).apply(
+            lambda x: pd.Series(x).rank(pct=True).iloc[-1]
+        )
     )
 
     # Normalized residuals - vectorized
@@ -233,9 +234,9 @@ def calculate_kalman_extended(
 
     # High residual periods (potential regime changes)
     residual_threshold = np.percentile(np.abs(residuals), 90)
-    features["kalman_high_residual"] = (
-        np.abs(residuals) > residual_threshold
-    ).astype(int)
+    features["kalman_high_residual"] = (np.abs(residuals) > residual_threshold).astype(
+        int
+    )
 
     # Trend consistency with filter
     price_values = np.asarray(data["close"])

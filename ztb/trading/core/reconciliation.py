@@ -51,12 +51,10 @@ class ReconciliationStrategy(ABC):
         Returns:
             Reconciliation result
         """
-        pass
 
     @abstractmethod
     def get_strategy_name(self) -> str:
         """Get strategy name."""
-        pass
 
 
 class OrderReconciliationStrategy(ReconciliationStrategy):
@@ -67,6 +65,7 @@ class OrderReconciliationStrategy(ReconciliationStrategy):
 
     def reconcile_item(self, item: ReconciliationItem) -> ReconciliationResult:
         """Reconcile order states."""
+
         def perform_reconciliation() -> ReconciliationResult:
             discrepancies = []
             actions = []
@@ -138,6 +137,7 @@ class PositionReconciliationStrategy(ReconciliationStrategy):
 
     def reconcile_item(self, item: ReconciliationItem) -> ReconciliationResult:
         """Reconcile position states."""
+
         def perform_reconciliation() -> ReconciliationResult:
             discrepancies = []
             actions = []
@@ -156,7 +156,9 @@ class PositionReconciliationStrategy(ReconciliationStrategy):
             # Check average price
             internal_avg_price = internal.get("average_price", 0)
             external_avg_price = external.get("average_price", 0)
-            if abs(internal_avg_price - external_avg_price) > 0.01:  # Allow 1% difference
+            if (
+                abs(internal_avg_price - external_avg_price) > 0.01
+            ):  # Allow 1% difference
                 discrepancies.append(
                     f"Average price mismatch: internal={internal_avg_price}, external={external_avg_price}"
                 )

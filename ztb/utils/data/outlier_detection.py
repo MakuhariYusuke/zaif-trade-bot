@@ -36,8 +36,8 @@ def detect_outliers_iqr(
             logger,
             lambda: _detect_outliers_iqr_impl(data, column),
             f"detect_outliers_iqr({column})",
-            (pd.DataFrame(), 0.0, 0.0)
-        )
+            (pd.DataFrame(), 0.0, 0.0),
+        ),
     )
 
 
@@ -75,8 +75,8 @@ def detect_outliers_zscore(
             logger,
             lambda: _detect_outliers_zscore_impl(data, column, threshold),
             f"detect_outliers_zscore({column})",
-            pd.DataFrame()
-        )
+            pd.DataFrame(),
+        ),
     )
 
 
@@ -100,9 +100,7 @@ def _detect_outliers_zscore_impl(
 
 
 def detect_outliers_isolation_forest(
-    data: pd.DataFrame,
-    columns: list[str],
-    contamination: float = 0.1
+    data: pd.DataFrame, columns: list[str], contamination: float = 0.1
 ) -> pd.DataFrame:
     """
     Detect outliers using Isolation Forest method.
@@ -119,23 +117,25 @@ def detect_outliers_isolation_forest(
         pd.DataFrame,
         safe_operation(
             logger,
-            lambda: _detect_outliers_isolation_forest_impl(data, columns, contamination),
+            lambda: _detect_outliers_isolation_forest_impl(
+                data, columns, contamination
+            ),
             f"detect_outliers_isolation_forest({columns})",
-            pd.DataFrame()
-        )
+            pd.DataFrame(),
+        ),
     )
 
 
 def _detect_outliers_isolation_forest_impl(
-    data: pd.DataFrame,
-    columns: list[str],
-    contamination: float = 0.1
+    data: pd.DataFrame, columns: list[str], contamination: float = 0.1
 ) -> pd.DataFrame:
     """Implementation of Isolation Forest outlier detection."""
     try:
         from sklearn.ensemble import IsolationForest
     except ImportError:
-        logger.warning("scikit-learn not available, skipping Isolation Forest detection")
+        logger.warning(
+            "scikit-learn not available, skipping Isolation Forest detection"
+        )
         return pd.DataFrame()
 
     # Prepare data
@@ -152,10 +152,7 @@ def _detect_outliers_isolation_forest_impl(
 
 
 def remove_outliers(
-    data: pd.DataFrame,
-    column: str,
-    method: str = "iqr",
-    **kwargs: Any
+    data: pd.DataFrame, column: str, method: str = "iqr", **kwargs: Any
 ) -> pd.DataFrame:
     """
     Remove outliers from DataFrame using specified method.
@@ -175,16 +172,13 @@ def remove_outliers(
             logger,
             lambda: _remove_outliers_impl(data, column, method, **kwargs),
             f"remove_outliers({column}, {method})",
-            data.copy()
-        )
+            data.copy(),
+        ),
     )
 
 
 def _remove_outliers_impl(
-    data: pd.DataFrame,
-    column: str,
-    method: str = "iqr",
-    **kwargs: Any
+    data: pd.DataFrame, column: str, method: str = "iqr", **kwargs: Any
 ) -> pd.DataFrame:
     """Implementation of outlier removal."""
     if method == "iqr":

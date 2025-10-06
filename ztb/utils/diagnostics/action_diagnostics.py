@@ -12,12 +12,11 @@ Provides tools to visualize and debug:
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from numpy.typing import NDArray
 
 
 class ActionDiagnostics:
@@ -25,7 +24,7 @@ class ActionDiagnostics:
 
     def __init__(self, save_dir: str = "plots/diagnostics"):
         """Initialize diagnostics.
-        
+
         Args:
             save_dir: Directory to save diagnostic plots and logs
         """
@@ -53,7 +52,7 @@ class ActionDiagnostics:
         phase: str = "train",
     ) -> None:
         """Log diagnostic data for a single batch.
-        
+
         Args:
             step: Current training step
             logits_raw: Raw logits before masking [batch_size, n_actions]
@@ -77,12 +76,12 @@ class ActionDiagnostics:
         probs_before_np = probs_before_temp.detach().cpu().numpy()
         probs_after_np = probs_after_temp.detach().cpu().numpy()
         actions_np = actions_selected.detach().cpu().numpy()
-        
+
         if action_masks is not None:
             masks_np = action_masks.detach().cpu().numpy()
         else:
             masks_np = np.ones_like(logits_raw_np)
-        
+
         if advantages is not None:
             advantages_np = advantages.detach().cpu().numpy()
         else:
@@ -90,7 +89,9 @@ class ActionDiagnostics:
 
         # Compute action distribution
         action_counts = np.bincount(actions_np, minlength=3)
-        action_dist = action_counts / len(actions_np) if len(actions_np) > 0 else action_counts
+        action_dist = (
+            action_counts / len(actions_np) if len(actions_np) > 0 else action_counts
+        )
 
         # Compute action-wise advantages
         action_advantages = {}
@@ -98,8 +99,12 @@ class ActionDiagnostics:
             for a in range(3):
                 mask = actions_np == a
                 if mask.sum() > 0:
-                    action_advantages[f"action_{a}_adv_mean"] = float(advantages_np[mask].mean())
-                    action_advantages[f"action_{a}_adv_std"] = float(advantages_np[mask].std())
+                    action_advantages[f"action_{a}_adv_mean"] = float(
+                        advantages_np[mask].mean()
+                    )
+                    action_advantages[f"action_{a}_adv_std"] = float(
+                        advantages_np[mask].std()
+                    )
 
         # Log entry
         log_entry = {
@@ -147,7 +152,11 @@ class ActionDiagnostics:
                         "probs_before_temp": probs_before_np[i].tolist(),
                         "probs_after_temp": probs_after_np[i].tolist(),
                         "action_selected": int(actions_np[i]),
-                        "advantage": float(advantages_np[i]) if advantages_np is not None else None,
+                        "advantage": (
+                            float(advantages_np[i])
+                            if advantages_np is not None
+                            else None
+                        ),
                     }
                     for i in range(min(5, len(actions_np)))
                 ],
@@ -245,34 +254,34 @@ def analyze_deterministic_selection(
     temperature: float = 1.0,
 ) -> Dict[str, Any]:
     """Analyze deterministic action selection process.
-    
+
     Args:
         logits: Raw logits [batch_size, n_actions]
         masks: Action masks [batch_size, n_actions]
         temperature: Temperature for softmax
-        
+
     Returns:
         Dictionary with analysis results
     """
     # Apply mask
     logits_masked = logits.clone()
     logits_masked[masks == 0] = float("-inf")
-    
+
     # Apply temperature
     logits_temp = logits_masked / temperature
-    
+
     # Softmax
     probs = torch.softmax(logits_temp, dim=-1)
-    
+
     # Argmax
     actions = torch.argmax(probs, dim=-1)
-    
+
     # Gather statistics
     action_counts = torch.bincount(actions, minlength=3)
     action_dist = action_counts.float() / len(actions)
-    
+
     max_probs = probs.max(dim=-1)[0]
-    
+
     return {
         "action_distribution": {
             "HOLD": float(action_dist[0]),
@@ -281,5 +290,7 @@ def analyze_deterministic_selection(
         },
         "mean_max_prob": float(max_probs.mean()),
         "std_max_prob": float(max_probs.std()),
-        "mean_entropy": float(-torch.sum(probs * torch.log(probs + 1e-8), dim=-1).mean()),
+        "mean_entropy": float(
+            -torch.sum(probs * torch.log(probs + 1e-8), dim=-1).mean()
+        ),
     }

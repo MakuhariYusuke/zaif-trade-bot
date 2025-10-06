@@ -24,8 +24,9 @@ class TestImports(unittest.TestCase):
         """Test experiments module imports"""
         try:
             from ztb.experiments.base import ExperimentResult
-            from ztb.experiments.ml_reinforcement_1k import \
-                MLReinforcement100KExperiment
+            from ztb.experiments.ml_reinforcement_1k import (
+                MLReinforcement100KExperiment,
+            )
 
             self.assertIsNotNone(ExperimentResult)
             self.assertIsNotNone(MLReinforcement100KExperiment)

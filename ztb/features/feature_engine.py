@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ztb.features import FeatureRegistry
 from ztb.utils.data.data_generation import generate_synthetic_market_data
 from ztb.utils.errors import safe_operation
-from typing import cast
 
 # Optimize GC for better memory management - more aggressive
 gc.set_threshold(100, 5, 5)  # Even more aggressive garbage collection

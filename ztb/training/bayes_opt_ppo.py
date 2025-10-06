@@ -6,24 +6,29 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from pathlib import Path
-from typing import Any, Dict, cast
 from dataclasses import asdict
+from pathlib import Path
+from typing import Any
 
-import numpy as np
 from skopt import gp_minimize
 from skopt.space import Integer, Real
 from skopt.utils import use_named_args
 
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
-from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.project_setup import setup_project_path
 
 # Ensure project root is on sys.path
 setup_project_path()
 
-from ztb.training.ppo_trainer import PPOTrainer, PPOConfig, Algorithm, FeatureSet, Timeframe  # noqa: E402
+from ztb.training.ppo_trainer import (  # noqa: E402
+    Algorithm,
+    FeatureSet,
+    PPOConfig,
+    PPOTrainer,
+    Timeframe,
+)
 
 LOGGER = get_logger(__name__)
 

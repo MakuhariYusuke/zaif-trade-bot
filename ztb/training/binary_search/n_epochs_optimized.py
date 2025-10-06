@@ -12,7 +12,10 @@ from ztb.utils.path_utils import get_project_root
 # Add project root to path for imports
 sys.path.insert(0, str(get_project_root()))
 
-from ztb.training.binary_search.base_optimizer import BinarySearchArgumentParser, HyperparameterOptimizer
+from ztb.training.binary_search.base_optimizer import (
+    BinarySearchArgumentParser,
+    HyperparameterOptimizer,
+)
 
 
 class NEpochsOptimizer(HyperparameterOptimizer):
@@ -32,23 +35,29 @@ class NEpochsOptimizer(HyperparameterOptimizer):
 
 
 def main() -> None:
-    parser = BinarySearchArgumentParser.create_parser('Optimize n_epochs parameter for PPO')
-    BinarySearchArgumentParser.add_parameter_argument(parser, 'n_epochs', int, 10)
+    parser = BinarySearchArgumentParser.create_parser(
+        "Optimize n_epochs parameter for PPO"
+    )
+    BinarySearchArgumentParser.add_parameter_argument(parser, "n_epochs", int, 10)
 
     args = parser.parse_args()
 
     # Create optimizer
     optimizer = NEpochsOptimizer()
 
-    if args.mode == 'single':
+    if args.mode == "single":
         # Run single test
         score = optimizer.run_single_test(args.n_epochs, args.timesteps)
         print(f"\nFinal score for n_epochs {args.n_epochs}: {score:.6f}")
 
-    elif args.mode == 'binary':
+    elif args.mode == "binary":
         # Run binary search optimization
-        best_value, best_score = optimizer.binary_search_optimize(args.max_iterations, args.timesteps)
-        print(f"\nOptimization complete. Best n_epochs: {best_value}, Score: {best_score:.6f}")
+        best_value, best_score = optimizer.binary_search_optimize(
+            args.max_iterations, args.timesteps
+        )
+        print(
+            f"\nOptimization complete. Best n_epochs: {best_value}, Score: {best_score:.6f}"
+        )
 
 
 if __name__ == "__main__":

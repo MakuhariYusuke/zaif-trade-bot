@@ -58,8 +58,12 @@ class DSREvaluationCallback(EvalCallback):
     ) -> None:
         super().__init__(
             eval_env=eval_env,
-            callback_on_new_best=FunctionCallback(callback_on_new_best) if callback_on_new_best else None,
-            callback_after_eval=FunctionCallback(callback_after_eval) if callback_after_eval else None,
+            callback_on_new_best=(
+                FunctionCallback(callback_on_new_best) if callback_on_new_best else None
+            ),
+            callback_after_eval=(
+                FunctionCallback(callback_after_eval) if callback_after_eval else None
+            ),
             n_eval_episodes=n_eval_episodes,
             eval_freq=eval_freq,
             log_path=log_path,

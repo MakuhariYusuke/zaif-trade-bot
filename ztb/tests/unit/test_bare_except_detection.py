@@ -43,6 +43,7 @@ def find_bare_except_clauses(source_code: str) -> List[Tuple[int, str]]:
 def test_no_bare_except_clauses():
     """Test that no bare except clauses exist in the codebase."""
     from ztb.utils.path_utils import get_project_root
+
     ztb_path = get_project_root() / "ztb"
     violations = []
 

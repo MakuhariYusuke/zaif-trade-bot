@@ -7,9 +7,7 @@ Tests the risk management and automatic stop functionality for live trading.
 
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
-
-import numpy as np
+from unittest.mock import Mock
 
 from ztb.risk.advanced_auto_stop import (
     AdvancedAutoStop,

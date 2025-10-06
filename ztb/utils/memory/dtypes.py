@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gc
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+from typing import Iterable, List, Tuple
 
 import numpy as np
 import pandas as pd

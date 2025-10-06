@@ -29,7 +29,22 @@ class ValidationError(TradingBotError):
 
 
 class NetworkError(TradingBotError):
-    """Network and API communication errors."""
+    """Network and API communication errors with retry information."""
+
+    def __init__(
+        self,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+        url: Optional[str] = None,
+        status_code: Optional[int] = None,
+        retry_count: int = 0,
+        max_retries: Optional[int] = None,
+    ):
+        super().__init__(message, details)
+        self.url = url
+        self.status_code = status_code
+        self.retry_count = retry_count
+        self.max_retries = max_retries
 
 
 class DatabaseError(TradingBotError):
@@ -37,7 +52,20 @@ class DatabaseError(TradingBotError):
 
 
 class TradingError(TradingBotError):
-    """Trading operation errors."""
+    """Trading operation errors with position and order context."""
+
+    def __init__(
+        self,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+        position: Optional[float] = None,
+        order_id: Optional[str] = None,
+        symbol: Optional[str] = None,
+    ):
+        super().__init__(message, details)
+        self.position = position
+        self.order_id = order_id
+        self.symbol = symbol
 
 
 class IdempotencyError(TradingBotError):
@@ -48,7 +76,9 @@ class LockError(TradingBotError):
     """Locking and concurrency errors."""
 
 
-def handle_error(logger: Any, error: Exception, context: str = "", reraise: bool = True) -> None:
+def handle_error(
+    logger: Any, error: Exception, context: str = "", reraise: bool = True
+) -> None:
     """Log and optionally re-raise an exception.
 
     This helper keeps calling code concise while making sure exceptions
@@ -112,7 +142,9 @@ def safe_operation(*args: Any, **kwargs: Any) -> Any:
     try:
         result = operation(*call_args, **call_kwargs)
         return result
-    except Exception as e:  # noqa: BLE001 - we intentionally catch exceptions to return default
+    except (
+        Exception
+    ) as e:  # noqa: BLE001 - we intentionally catch exceptions to return default
         # If caller asked to only handle specific types, re-raise others
         if error_types is not None and not isinstance(e, tuple(error_types)):
             raise

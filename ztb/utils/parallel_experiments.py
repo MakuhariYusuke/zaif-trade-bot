@@ -255,9 +255,7 @@ class ParallelExperimentRunner:
                         error_message=str(e),
                     )
                     results.append(error_result)
-                    self.shared_logger.info(
-                        f"Experiment {index} failed: {str(e)}"
-                    )
+                    self.shared_logger.info(f"Experiment {index} failed: {str(e)}")
 
         return results
 
@@ -407,9 +405,11 @@ class ParallelExperimentRunner:
                             gpu_stats[f"gpu_{i}"] = {
                                 "memory_used_mb": used_mb,
                                 "memory_total_mb": total_mb,
-                                "memory_percent": (used_mb / total_mb) * 100.0
-                                if total_mb > 0
-                                else 0.0,
+                                "memory_percent": (
+                                    (used_mb / total_mb) * 100.0
+                                    if total_mb > 0
+                                    else 0.0
+                                ),
                                 "temperature_c": temp,
                                 "utilization_percent": util,
                             }

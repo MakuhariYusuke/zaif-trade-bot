@@ -100,17 +100,15 @@ except ImportError:
 from enum import Enum
 
 # Import trading module to register environments
-import ztb.trading
-from ztb.training.entrypoints.base_ml_reinforcement import \
-    MLReinforcementExperiment
+from ztb.training.entrypoints.base_ml_reinforcement import MLReinforcementExperiment
+
 # Import Protocol and Enum types for type safety
-from ztb.training.ppo_trainer import (Algorithm, FeatureSet, PredictorProtocol,
-                                      Timeframe, TradingSystemProtocol)
 from ztb.utils import DiscordNotifier
 
 
 class UnifiedAlgorithm(Enum):
     """Supported training algorithms in UnifiedTrainer."""
+
     PPO = "ppo"
     BASE_ML = "base_ml"
     ITERATIVE = "iterative"
@@ -121,7 +119,7 @@ class UnifiedAlgorithm(Enum):
 @dataclass
 class UnifiedTrainerConfig:
     """Configuration for UnifiedTrainer."""
-    
+
     algorithm: UnifiedAlgorithm
     force: bool = False
     dry_run: bool = False
@@ -156,8 +154,10 @@ class UnifiedTrainer:
         try:
             algorithm_enum = UnifiedAlgorithm(algorithm_str)
         except ValueError:
-            raise ValueError(f"Unknown algorithm: {algorithm_str}. Supported: {[a.value for a in UnifiedAlgorithm]}")
-            
+            raise ValueError(
+                f"Unknown algorithm: {algorithm_str}. Supported: {[a.value for a in UnifiedAlgorithm]}"
+            )
+
         self.config_obj = UnifiedTrainerConfig(
             algorithm=algorithm_enum,
             force=force,
@@ -167,7 +167,7 @@ class UnifiedTrainer:
             max_features=max_features,
             offline_mode=config.get("offline_mode", False),
         )
-        
+
         # Keep original config for backward compatibility
         self.config = config
         self.force = force
@@ -177,7 +177,7 @@ class UnifiedTrainer:
         self.max_features = max_features
         self.algorithm = config.get("algorithm", "ppo")
         self.logger = get_logger(__name__)
-        
+
         # Initialize Discord notifier (disabled in offline mode)
         if config.get("offline_mode", False):
             self.notifier = DiscordNotifier(webhook_url=None)  # Explicitly disable
@@ -287,8 +287,7 @@ class UnifiedTrainer:
         # Long-running operation confirmation
         total_timesteps = self.config.get("total_timesteps", 100000)
         if total_timesteps >= 100_000 and not self.force:
-            from ztb.utils.long_running_confirm import \
-                confirm_long_running_operation
+            from ztb.utils.long_running_confirm import confirm_long_running_operation
 
             if not confirm_long_running_operation(
                 operation_name=f"PPO Training ({self.config.get('session_id', 'iterative_session')})",

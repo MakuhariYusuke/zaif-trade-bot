@@ -2,13 +2,14 @@
 Unit tests for paper_trade.py module.
 """
 
-import pytest
-import tempfile
 import json
+import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import pandas as pd
+from unittest.mock import MagicMock, Mock, patch
+
 import numpy as np
+import pandas as pd
+import pytest
 import torch
 
 from ztb.training.paper_trade import PaperTrader

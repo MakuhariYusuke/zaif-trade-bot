@@ -15,7 +15,7 @@ used in the training pipeline to ensure reproducibility.
 
 import os
 import random
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 # Optional imports - gracefully handle missing dependencies
 if TYPE_CHECKING:

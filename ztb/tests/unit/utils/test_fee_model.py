@@ -3,13 +3,11 @@ Unit tests for fee model implementations
 手数料モデル実装の単体テスト
 """
 
-import pytest
 from ztb.utils.fee_model import (
-    FeeModel,
-    FixedFeeModel,
-    TieredFeeModel,
     ExchangeFeeModel,
     FeeModelFactory,
+    FixedFeeModel,
+    TieredFeeModel,
     load_fee_model_from_config,
 )
 
@@ -93,9 +91,7 @@ class TestExchangeFeeModel:
 
     def test_initialization_custom(self):
         """Test initialization with custom exchange fees"""
-        custom_fees = {
-            "test_exchange": {"buy": 0.002, "sell": 0.003}
-        }
+        custom_fees = {"test_exchange": {"buy": 0.002, "sell": 0.003}}
         model = ExchangeFeeModel(exchange_fees=custom_fees)
         assert model.exchange_fees["test_exchange"]["buy"] == 0.002
         assert model.exchange_fees["test_exchange"]["sell"] == 0.003
@@ -205,14 +201,13 @@ class TestFeeModelFactory:
         config = {
             "fee_model": {
                 "type": "exchange",
-                "exchange_fees": {
-                    "bitflyer": {"buy": 0.001, "sell": 0.001}
-                }
+                "exchange_fees": {"bitflyer": {"buy": 0.001, "sell": 0.001}},
             }
         }
 
         config_file = tmp_path / "fee_config.json"
         import json
+
         with open(config_file, "w") as f:
             json.dump(config, f)
 

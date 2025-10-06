@@ -34,15 +34,15 @@ PredictionResult = tuple[Action, Optional[Any]]  # (action, additional_info)
 
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""
-    
+
     def train(self, session_id: str) -> Optional[MaskablePPO]:
         """Train the model and return it."""
         ...
-    
+
     def get_reward_stats(self) -> Dict[str, float]:
         """Get training reward statistics."""
         ...
-    
+
     def neutralize_policy_bias(self) -> None:
         """Neutralize policy head bias."""
         ...
@@ -50,7 +50,7 @@ class PPOTrainerProtocol(Protocol):
 
 class PredictorProtocol(Protocol):
     """Protocol for predictor implementations."""
-    
+
     def predict(self, observation: Observation) -> PredictionResult:
         """Make a prediction based on observation."""
         ...
@@ -58,7 +58,7 @@ class PredictorProtocol(Protocol):
 
 class TradingSystemProtocol(Protocol):
     """Protocol for trading system implementations."""
-    
+
     def trade(self, observation: Observation) -> Dict[str, Any]:
         """Execute a trade based on observation."""
         ...
@@ -66,11 +66,13 @@ class TradingSystemProtocol(Protocol):
 
 class Algorithm(Enum):
     """Supported training algorithms."""
+
     PPO = "ppo"
 
 
 class FeatureSet(Enum):
     """Supported feature sets for training."""
+
     FULL = "full"
     BASIC = "basic"
     MINIMAL = "minimal"
@@ -78,6 +80,7 @@ class FeatureSet(Enum):
 
 class Timeframe(Enum):
     """Supported timeframes for training."""
+
     M1 = "1m"
     M5 = "5m"
     M15 = "15m"
@@ -89,6 +92,7 @@ class Timeframe(Enum):
 @dataclass
 class PPOConfig:
     """Configuration for PPO training."""
+
     algorithm: Algorithm = Algorithm.PPO
     data_path: str = ""
     total_timesteps: int = 1000000
@@ -120,6 +124,7 @@ class PPOConfig:
 
 class PPOTrainerAutoHalt(PPOTrainerProtocol):
     """PPO Trainer with evaluation gates and auto-halt functionality (旧trading/ppo_trainer.py)."""
+
     def __init__(
         self,
         data_path: str,
@@ -291,10 +296,14 @@ class PPOTrainerAutoHalt(PPOTrainerProtocol):
             def __init__(self, trainer: "PPOTrainerAutoHalt"):
                 super().__init__()
                 self.trainer = trainer
+
             def _on_step(self) -> bool:
                 # ここで進捗を更新
-                self.trainer.update_progress(self.locals["n_calls"], self.locals.get("rewards", [0])[-1])
+                self.trainer.update_progress(
+                    self.locals["n_calls"], self.locals.get("rewards", [0])[-1]
+                )
                 return True
+
         return TrainingCallback(self)
 
     def neutralize_policy_bias(self) -> None:
@@ -306,43 +315,64 @@ class PPOTrainerAutoHalt(PPOTrainerProtocol):
         policy = self.model.policy
 
         # Try policy_net
-        if hasattr(policy, 'policy_net'):
-            policy_head = policy.policy_net[-1] if isinstance(policy.policy_net, list) else policy.policy_net
-            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
-                bias = getattr(policy_head, 'bias')
-                if hasattr(bias, 'data'):
+        if hasattr(policy, "policy_net"):
+            policy_head = (
+                policy.policy_net[-1]
+                if isinstance(policy.policy_net, list)
+                else policy.policy_net
+            )
+            if (
+                hasattr(policy_head, "bias")
+                and getattr(policy_head, "bias", None) is not None
+            ):
+                bias = getattr(policy_head, "bias")
+                if hasattr(bias, "data"):
                     bias.data.zero_()
                     logger.info("Policy head bias neutralized (policy_net)")
                     return
 
         # Try mlp_extractor
-        if hasattr(policy, 'mlp_extractor') and hasattr(policy.mlp_extractor, 'policy_net'):
+        if hasattr(policy, "mlp_extractor") and hasattr(
+            policy.mlp_extractor, "policy_net"
+        ):
             policy_head = policy.mlp_extractor.policy_net[-1]
-            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
-                bias = getattr(policy_head, 'bias')
-                if hasattr(bias, 'data'):
+            if (
+                hasattr(policy_head, "bias")
+                and getattr(policy_head, "bias", None) is not None
+            ):
+                bias = getattr(policy_head, "bias")
+                if hasattr(bias, "data"):
                     bias.data.zero_()
                     logger.info("Policy head bias neutralized (mlp_extractor)")
                     return
 
         # Try action_net
-        if hasattr(policy, 'action_net'):
-            policy_head = policy.action_net[-1] if isinstance(policy.action_net, list) else policy.action_net
-            if hasattr(policy_head, 'bias') and policy_head.bias is not None:
+        if hasattr(policy, "action_net"):
+            policy_head = (
+                policy.action_net[-1]
+                if isinstance(policy.action_net, list)
+                else policy.action_net
+            )
+            if hasattr(policy_head, "bias") and policy_head.bias is not None:
                 policy_head.bias.data.zero_()  # type: ignore[operator]
                 logger.info("Policy head bias neutralized (action_net)")
                 return
 
-        logger.warning("Policy head bias not found - tried policy_net, mlp_extractor, action_net")
+        logger.warning(
+            "Policy head bias not found - tried policy_net, mlp_extractor, action_net"
+        )
 
     def train(self, session_id: str) -> MaskablePPO:
         if self.model is None:
             import pandas as pd
+
             df = pd.read_csv(self.data_path)
             env = HeavyTradingEnv(df=df, config=self.config.as_dict())
+
             def mask_fn(env: Any) -> None:
                 # 必要に応じてaction maskを返す関数を実装
                 return None
+
             env = ActionMasker(env, mask_fn)  # type: ignore[arg-type,assignment]
             self.model = MaskablePPO("MlpPolicy", env, verbose=1)
         self.neutralize_policy_bias()
@@ -354,6 +384,8 @@ class PPOTrainerAutoHalt(PPOTrainerProtocol):
             tb_log_name=session_id,
         )
         return self.model
+
+
 """
 PPO Trainer with auto-halt functionality for training gates.
 """
@@ -376,7 +408,31 @@ logger = get_logger(__name__)
 
 
 class PPOTrainer(PPOTrainerProtocol):
-    """PPO Trainer with evaluation gates and auto-halt functionality."""
+    """
+    Proximal Policy Optimization (PPO) Trainer with Advanced Features.
+
+    This trainer implements PPO algorithm with evaluation gates, automatic halting,
+    checkpointing, and comprehensive monitoring for trading strategy training.
+
+    Key Features:
+    - Evaluation Gates: Automatic training validation with configurable thresholds
+    - Auto-Halt: Stops training when performance criteria are met or degraded
+    - Checkpointing: Regular model saving with configurable intervals
+    - Reward Tracking: Maintains rolling history for performance analysis
+    - Memory Efficient: Uses deques with maxlen for bounded memory usage
+
+    Training Flow:
+    1. Initialize with data, config, and evaluation criteria
+    2. Train in episodes with periodic evaluation
+    3. Check evaluation gates after each validation
+    4. Halt training when gates trigger or manual stop requested
+    5. Save final model and training statistics
+
+    Evaluation Gates:
+    - Performance thresholds for reward, win rate, max drawdown
+    - Early stopping on convergence or degradation
+    - Custom gate functions for domain-specific criteria
+    """
 
     def __init__(  # type: ignore[misc]  # mypy incorrectly reports missing super() for protocol implementations
         self,
@@ -652,6 +708,7 @@ class PPOTrainer(PPOTrainerProtocol):
 
     def _create_callback(self) -> BaseCallback:
         """Create training callback."""
+
         class TrainingCallback(BaseCallback):
             def __init__(self, trainer: "PPOTrainer"):
                 super().__init__()
@@ -663,13 +720,12 @@ class PPOTrainer(PPOTrainerProtocol):
                 """Initialize progress bar when training starts."""
                 try:
                     from rich.console import Console
+
                     console = Console()
                     self.progress = Progress(console=console)
                     total_timesteps = self.trainer.config.get("total_timesteps", 100000)
                     self.task_id = self.progress.add_task(
-                        "[green]Training PPO...",
-                        total=total_timesteps,
-                        completed=0
+                        "[green]Training PPO...", total=total_timesteps, completed=0
                     )
                     self.progress.start()
                 except ImportError:
@@ -689,16 +745,21 @@ class PPOTrainer(PPOTrainerProtocol):
                 if ent_coef_schedule == "cosine_decay":
                     total_timesteps = self.trainer.config.get("total_timesteps", 100000)
                     ent_coef_initial = self.trainer.config.get("ent_coef", 0.0)
-                    ent_coef_final = self.trainer.config.get("ent_coef_final", ent_coef_initial)
+                    ent_coef_final = self.trainer.config.get(
+                        "ent_coef_final", ent_coef_initial
+                    )
 
                     # Cosine decay: ent_coef = ent_coef_final + (ent_coef_initial - ent_coef_final) * (1 + cos(pi * t / T)) / 2
                     progress = min(self.num_timesteps / total_timesteps, 1.0)
                     cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
-                    new_ent_coef = ent_coef_final + (ent_coef_initial - ent_coef_final) * cosine_decay
+                    new_ent_coef = (
+                        ent_coef_final
+                        + (ent_coef_initial - ent_coef_final) * cosine_decay
+                    )
 
                     # Update model's entropy coefficient
-                    if hasattr(self.model, 'ent_coef'):
-                        setattr(self.model, 'ent_coef', new_ent_coef)
+                    if hasattr(self.model, "ent_coef"):
+                        setattr(self.model, "ent_coef", new_ent_coef)
 
                 return not self.trainer.halt_reason
 
@@ -719,57 +780,75 @@ class PPOTrainer(PPOTrainerProtocol):
         policy = self.model.policy
 
         # Try policy_net
-        if hasattr(policy, 'policy_net'):
-            policy_head = policy.policy_net[-1] if isinstance(policy.policy_net, list) else policy.policy_net
-            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
-                bias = getattr(policy_head, 'bias')
-                if hasattr(bias, 'data'):
+        if hasattr(policy, "policy_net"):
+            policy_head = (
+                policy.policy_net[-1]
+                if isinstance(policy.policy_net, list)
+                else policy.policy_net
+            )
+            if (
+                hasattr(policy_head, "bias")
+                and getattr(policy_head, "bias", None) is not None
+            ):
+                bias = getattr(policy_head, "bias")
+                if hasattr(bias, "data"):
                     bias.data.zero_()
                     logger.info("Policy head bias neutralized (policy_net)")
                     return
 
         # Try mlp_extractor
-        if hasattr(policy, 'mlp_extractor') and hasattr(policy.mlp_extractor, 'policy_net'):
+        if hasattr(policy, "mlp_extractor") and hasattr(
+            policy.mlp_extractor, "policy_net"
+        ):
             policy_head = policy.mlp_extractor.policy_net[-1]
-            if hasattr(policy_head, 'bias') and getattr(policy_head, 'bias', None) is not None:
-                bias = getattr(policy_head, 'bias')
-                if hasattr(bias, 'data'):
+            if (
+                hasattr(policy_head, "bias")
+                and getattr(policy_head, "bias", None) is not None
+            ):
+                bias = getattr(policy_head, "bias")
+                if hasattr(bias, "data"):
                     bias.data.zero_()
                     logger.info("Policy head bias neutralized (mlp_extractor)")
                     return
 
         # Try action_net
-        if hasattr(policy, 'action_net'):
-            policy_head = policy.action_net[-1] if isinstance(policy.action_net, list) else policy.action_net
-            if hasattr(policy_head, 'bias') and policy_head.bias is not None:
+        if hasattr(policy, "action_net"):
+            policy_head = (
+                policy.action_net[-1]
+                if isinstance(policy.action_net, list)
+                else policy.action_net
+            )
+            if hasattr(policy_head, "bias") and policy_head.bias is not None:
                 policy_head.bias.data.zero_()  # type: ignore[operator]
                 logger.info("Policy head bias neutralized (action_net)")
                 return
 
-        logger.warning("Policy head bias not found - tried policy_net, mlp_extractor, action_net")
+        logger.warning(
+            "Policy head bias not found - tried policy_net, mlp_extractor, action_net"
+        )
 
     def _setup_sell_bonus_weighting(self) -> None:
         """Setup action frequency weighting to correct SELL bias."""
         # This will be implemented in the callback to monitor action distribution
         # and apply bonus weighting for underrepresented actions
-        pass
 
     def train(self, session_id: str) -> MaskablePPO:
         """Train the PPO model."""
         if self.model is None:
             # Load data
             import pandas as pd
+
             df = pd.read_csv(self.data_path)
 
             # Create environment
             env = HeavyTradingEnv(df=df, config=self.config)
-            
+
             # Wrap with ActionMasker for MaskablePPO
             def mask_fn(env: Any) -> Any:
                 return env.get_legal_actions().astype(bool)
-            
+
             env = ActionMasker(env, mask_fn)  # type: ignore[assignment]
-            
+
             self.model = MaskablePPO(
                 policy=self.config.get("policy", "MlpPolicy"),
                 env=env,

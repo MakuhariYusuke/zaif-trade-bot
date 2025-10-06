@@ -3,10 +3,11 @@ bollinger_ext.py
 Extended Bollinger Bands features with squeeze detection and bandwidth analysis
 """
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
-from typing import Any
 
 from ztb.features.registry import FeatureRegistry
 
@@ -95,8 +96,13 @@ def _compute_bollinger_extended(
     middle: NDArray[np.floating[Any]],
     lower: NDArray[np.floating[Any]],
     close: NDArray[np.floating[Any]],
-    period: int
-) -> tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]], NDArray[np.int32], NDArray[np.floating[Any]]]:
+    period: int,
+) -> tuple[
+    NDArray[np.floating[Any]],
+    NDArray[np.floating[Any]],
+    NDArray[np.int32],
+    NDArray[np.floating[Any]],
+]:
     """
     Calculate extended Bollinger Bands features using pure numpy (no numba).
     """

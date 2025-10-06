@@ -1,8 +1,7 @@
-from typing import Any, Tuple, Union
+from typing import Any, Tuple
 
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 
 from ztb.features.base import ChannelFeature, ComputableFeature
 from ztb.features.registry import FeatureRegistry

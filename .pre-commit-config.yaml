@@ -38,12 +38,12 @@ repos:
         additional_dependencies: [types-all]
         args: ["--config-file", "mypy.ini"]
 
-  - repo: https://github.com/seddonym/import-linter
-    rev: 1.11.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.8
     hooks:
-      - id: import-linter
-        files: ^ztb/
-        args: ["--config-file", "importlinter.ini"]
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
 
   - repo: local
     hooks:

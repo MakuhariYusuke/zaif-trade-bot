@@ -66,9 +66,7 @@ class HealthMonitor:
 
         # Aggregate status
         failed_checks = [
-            k
-            for k, v in health_status["checks"].items()
-            if not v.get("healthy", False)
+            k for k, v in health_status["checks"].items() if not v.get("healthy", False)
         ]
         if failed_checks:
             health_status["status"] = "degraded"
