@@ -36,12 +36,24 @@ class InferenceConfig:
     max_temperature: float = 1.5  # Maximum safe temperature
     logits_clip_value: float = 20.0  # Clip logits to [-clip, +clip]
     fallback_action: int = 0  # Fallback action when all actions illegal (HOLD)
+    
+    # Advantage-aware tiebreaker
+    enable_advantage_tiebreaker: bool = True  # Use advantage sign for tiebreaker
+    advantage_epsilon: float = 1e-6  # Threshold for advantage comparison
+    
+    # Cost-aware decode gate
+    enable_cost_gate: bool = True  # Enable cost-based filtering
+    cost_gate_lambda: float = 1.2  # Cost multiplier (λ): require ΔA ≥ λ * cost
+    transaction_cost: float = 0.001  # Default transaction cost (0.1%)
+    slippage: float = 0.0005  # Default slippage (0.05%)
 
 
 def decode_action(
     logits: np.ndarray | torch.Tensor,
     legal_mask: np.ndarray | torch.Tensor,
     config: Optional[InferenceConfig] = None,
+    advantages: Optional[np.ndarray | torch.Tensor] = None,
+    current_position: Optional[int] = None,
 ) -> Tuple[int | np.ndarray, dict]:
     """
     Decode action from logits with strict mask enforcement.
@@ -50,14 +62,19 @@ def decode_action(
     1. Mask illegal actions (logits → -1e9)
     2. Temperature scaling (logits / T)
     3. Softmax normalization
-    4. Tiebreaker (if enabled and conditions met)
-    5. Action selection (argmax or sample)
+    4. Advantage-aware tiebreaker (if enabled and advantages provided)
+    5. Probability-margin tiebreaker (if enabled and conditions met)
+    6. Cost-aware gate (if enabled and position change detected)
+    7. Action selection (argmax or sample)
 
     Args:
         logits: Raw action logits [batch_size, n_actions] or [n_actions]
         legal_mask: Legal action mask [batch_size, n_actions] or [n_actions]
                    (1=legal, 0=illegal)
         config: Inference configuration (uses defaults if None)
+        advantages: Advantage values [batch_size, n_actions] or [n_actions]
+                   (optional, for advantage-aware tiebreaker)
+        current_position: Current position/action (optional, for cost gate)
 
     Returns:
         Tuple of:
@@ -68,6 +85,9 @@ def decode_action(
             - top2_probs: Top 2 probabilities
             - margin: Probability margin (p1 - p2)
             - tiebreaker_activated: Whether tiebreaker was used
+            - tiebreaker_reason: Reason for tiebreaker ('prob_margin', 'advantage_sign', or None)
+            - cost_gate_triggered: Whether cost gate prevented action
+            - estimated_cost: Estimated transaction cost (if cost gate evaluated)
 
     Raises:
         ValueError: If all actions are illegal
@@ -156,9 +176,24 @@ def decode_action(
     else:
         probabilities = exp_logits / sum_exp
 
-    # Step 4 & 5: Action selection with tiebreaker
+    # Convert advantages to numpy if provided
+    advantages_np = None
+    if advantages is not None:
+        if isinstance(advantages, torch.Tensor):
+            advantages_np = advantages.detach().cpu().numpy()
+        else:
+            advantages_np = np.array(advantages)
+        
+        # Handle single observation case
+        if advantages_np.ndim == 1:
+            advantages_np = advantages_np[np.newaxis, :]
+    
+    # Step 4 & 5 & 6: Action selection with advantage-aware tiebreaker and cost gate
     actions = np.zeros(batch_size, dtype=np.int32)
     tiebreaker_activated = np.zeros(batch_size, dtype=bool)
+    tiebreaker_reasons = [None] * batch_size
+    cost_gate_triggered = np.zeros(batch_size, dtype=bool)
+    estimated_costs = np.zeros(batch_size, dtype=np.float32)
     top2_actions = np.zeros((batch_size, 2), dtype=np.int32)
     top2_probs = np.zeros((batch_size, 2), dtype=np.float32)
     margins = np.zeros(batch_size, dtype=np.float32)
@@ -175,24 +210,75 @@ def decode_action(
 
         top1_action = top2_actions[i, 0]
         top2_action = top2_actions[i, 1]
-
-        # Tiebreaker logic
+        
+        # Initialize selected action with top1 (default)
+        selected_action = top1_action
+        tiebreaker_reason = None
+        
+        # Advantage-aware tiebreaker (Priority 1: strongest signal)
         if (
-            config.enable_tiebreaker
+            config.enable_advantage_tiebreaker
+            and config.deterministic
+            and advantages_np is not None
+            and mask[top2_action] == 1  # top2 must be legal
+        ):
+            adv_top1 = advantages_np[i, top1_action]
+            adv_top2 = advantages_np[i, top2_action]
+            
+            # If top2 has positive advantage and top1 has non-positive advantage
+            if adv_top2 > config.advantage_epsilon and adv_top1 <= config.advantage_epsilon:
+                selected_action = top2_action
+                tiebreaker_activated[i] = True
+                tiebreaker_reason = "advantage_sign"
+        
+        # Probability-margin tiebreaker (Priority 2: if advantage-tiebreaker did not trigger)
+        if (
+            not tiebreaker_activated[i]
+            and config.enable_tiebreaker
             and config.deterministic
             and top1_action == 0  # HOLD
             and margins[i] < config.tiebreaker_tau
-            and mask[top2_action] == 1  # top2 is legal (explicit check)
+            and mask[top2_action] == 1  # top2 is legal
         ):
             # Activate tiebreaker: select top2 instead of top1
-            actions[i] = top2_action
+            selected_action = top2_action
             tiebreaker_activated[i] = True
-        elif config.deterministic:
-            # Standard deterministic: argmax
-            actions[i] = top1_action
-        else:
-            # Stochastic: sample from distribution
-            actions[i] = np.random.choice(n_actions, p=probs)
+            tiebreaker_reason = "prob_margin"
+        
+        # Stochastic sampling (if not deterministic)
+        if not config.deterministic and not tiebreaker_activated[i]:
+            selected_action = np.random.choice(n_actions, p=probs)
+        
+        # Cost-aware gate (Priority 3: filter out unprofitable actions)
+        if (
+            config.enable_cost_gate
+            and advantages_np is not None
+            and current_position is not None
+            and selected_action != current_position  # Position change
+            and selected_action != 0  # Not HOLD
+        ):
+            # Estimate cost of position change
+            total_cost = config.transaction_cost + config.slippage
+            estimated_costs[i] = total_cost
+            
+            # Calculate advantage delta
+            adv_selected = advantages_np[i, selected_action]
+            adv_current = advantages_np[i, current_position] if current_position < len(advantages_np[i]) else 0.0
+            advantage_delta = adv_selected - adv_current
+            
+            # Apply cost gate: require delta_A >= lambda * cost
+            cost_threshold = config.cost_gate_lambda * total_cost
+            
+            if advantage_delta < cost_threshold:
+                # Cost gate triggered: fall back to HOLD
+                selected_action = 0  # HOLD
+                cost_gate_triggered[i] = True
+                # Cancel tiebreaker if cost gate overrides
+                tiebreaker_activated[i] = False
+                tiebreaker_reason = None
+        
+        actions[i] = selected_action
+        tiebreaker_reasons[i] = tiebreaker_reason
 
     # Prepare info dict
     info = {
@@ -201,6 +287,9 @@ def decode_action(
         "top2_probs": top2_probs,
         "margin": margins,
         "tiebreaker_activated": tiebreaker_activated,
+        "tiebreaker_reason": tiebreaker_reasons,
+        "cost_gate_triggered": cost_gate_triggered,
+        "estimated_cost": estimated_costs,
     }
 
     # Remove batch dimension if single observation
@@ -211,6 +300,9 @@ def decode_action(
         info["top2_probs"] = top2_probs[0]
         info["margin"] = float(margins[0])
         info["tiebreaker_activated"] = bool(tiebreaker_activated[0])
+        info["tiebreaker_reason"] = tiebreaker_reasons[0]
+        info["cost_gate_triggered"] = bool(cost_gate_triggered[0])
+        info["estimated_cost"] = float(estimated_costs[0])
     else:
         action = actions
 
