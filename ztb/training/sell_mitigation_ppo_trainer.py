@@ -112,14 +112,30 @@ class SELLBiasMitigationCallback(BaseCallback):
 
 
 class SELLBiasMitigationPPOTrainer(PPOTrainer):
+class SELLBiasMitigationPPOTrainer(PPOTrainer):
     """
-    PPO Trainer with comprehensive SELL bias mitigation.
+    PPO Trainer with comprehensive SELL bias mitigation techniques.
 
-    Integrates:
-    1. Lagrange constraint for minimum SELL rate (>=15%)
-    2. Gradient probes for monitoring and failsafe
-    3. Enhanced action weighting
-    4. Comprehensive logging
+    This advanced trainer extends the base PPO trainer with multiple
+    specialized techniques to address SELL action bias in trading strategies:
+
+    Core Mitigation Techniques:
+    1. Lagrange Constraint: Enforces minimum SELL action rate (≥15%)
+    2. Gradient Probes: Monitors training gradients and provides failsafe mechanisms
+    3. Enhanced Action Weighting: Balances BUY/SELL action probabilities
+    4. Per-Action Advantage Normalization (PAN): Prevents gradient crushing
+    5. Target Entropy Controller: Maintains exploration through automatic entropy adjustment
+    6. Stratified Mini-batch Sampling: Ensures minority scenarios are adequately represented
+    7. Reverse-as-Close Trading: Reduces perceived SELL cost by reversing close logic
+
+    Training Flow:
+    - Initialize mitigation components based on configuration
+    - Apply constraints and normalization during training
+    - Monitor bias metrics and adjust parameters dynamically
+    - Provide comprehensive logging and diagnostics
+
+    Args:
+        params: SELLMitigationParams containing all training and mitigation configuration
     """
 
     def __init__(
