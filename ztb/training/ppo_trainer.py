@@ -8,7 +8,7 @@ PPO Trainer implementations:
 
 # --- 以下、trading/ppo_trainer.pyのPPOTrainerをPPOTrainerAutoHaltとして移植 ---
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, Optional, Protocol, cast
 
@@ -19,6 +19,7 @@ from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback
 
 from ztb.training.custom_ppo import CustomPPO
+from ztb.training.trainer_params import TrainerParams
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.base_trainer import BaseTrainer
 from ztb.training.callbacks import CompositeTrainingCallback
@@ -151,25 +152,20 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
 
     def __init__(
         self,
-        data_path: str,
-        config: PPOConfig,
-        checkpoint_dir: str,
-        eval_gates: Optional[EvalGates] = None,
-        halt_callback: Optional[Callable[[str], None]] = None,
-        checkpoint_interval: int = 10000,
+        params: TrainerParams,
     ):
         # Convert PPOConfig to dict for BaseTrainer
-        config_dict = asdict(config) if hasattr(config, "__dataclass_fields__") else vars(config)
+        config_dict = dict(params.config)  # PPOConfig is TypedDict, so convert to dict
         
         super().__init__(
-            data_path=data_path,
+            data_path=params.data_path,
             config=config_dict,
-            checkpoint_dir=checkpoint_dir,
-            eval_gates=eval_gates,
-            halt_callback=halt_callback,
-            checkpoint_interval=checkpoint_interval,
+            checkpoint_dir=params.checkpoint_dir,
+            eval_gates=params.eval_gates,
+            halt_callback=params.halt_callback,
+            checkpoint_interval=params.checkpoint_interval,
         )
-        self.ppo_config = config
+        self.ppo_config = params.config
         self.model: Optional[CustomPPO] = None
 
     # Note: The following methods are inherited from BaseTrainer:
