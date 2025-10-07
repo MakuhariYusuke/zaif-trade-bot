@@ -67,7 +67,6 @@ class TestPnLInvariants:
             max_position_size=1.0,
         )
 
-    @pytest.mark.xfail(reason="Environment PnL calculation bug - see Issue #XXX")
     def test_static_price_zero_pnl(
         self,
         static_price_data: pd.DataFrame,
@@ -95,7 +94,6 @@ class TestPnLInvariants:
             f"Static prices should not change portfolio value: " \
             f"initial={initial_value}, final={final_value}"
 
-    @pytest.mark.xfail(reason="Environment PnL calculation bug - see Issue #XXX")
     def test_buy_sell_round_trip_pnl(
         self,
         rising_price_data: pd.DataFrame,
@@ -127,38 +125,37 @@ class TestPnLInvariants:
         assert abs(actual_pnl - expected_pnl) < 1e-2, \
             f"Round trip PnL mismatch: expected={expected_pnl:.2f}, actual={actual_pnl:.2f}"
 
-    @pytest.mark.xfail(reason="Environment PnL calculation bug - see Issue #XXX")
     def test_unrealized_pnl_not_accumulated(
         self,
         rising_price_data: pd.DataFrame,
         zero_fee_config: EnvironmentConfig,
     ) -> None:
-        """Unrealized PnL should not be added to total_pnl (only realized)."""
+        """Unrealized PnL should not be added to realized_pnl (only on position close)."""
         env = HeavyTradingEnv(rising_price_data, zero_fee_config)
         env.reset()
         
-        initial_total_pnl = env.total_pnl
-        
         # BUY at 100
         env.step(1)
+        
+        # Check realized PnL after entry (should be 0 or negative due to entry cost)
+        realized_after_entry = env.realized_pnl
         
         # HOLD while price rises (unrealized gain)
         for _ in range(10):
             env.step(0)
         
-        # INVARIANT: total_pnl should still be 0 (position not closed)
-        assert env.total_pnl == initial_total_pnl, \
-            f"Unrealized PnL should not be added to total_pnl: " \
-            f"total_pnl={env.total_pnl}, expected={initial_total_pnl}"
+        # INVARIANT: realized_pnl should not change during HOLD (position not closed)
+        assert env.realized_pnl == realized_after_entry, \
+            f"Realized PnL should not change during HOLD: " \
+            f"realized_pnl={env.realized_pnl}, expected={realized_after_entry}"
         
         # Now close position
         env.step(2)  # SELL
         
-        # INVARIANT: After close, total_pnl should reflect realized gain
-        assert env.total_pnl > initial_total_pnl, \
-            "After closing position, total_pnl should increase"
+        # INVARIANT: After close, realized_pnl should reflect realized gain
+        assert env.realized_pnl > realized_after_entry, \
+            "After closing position, realized_pnl should increase"
 
-    @pytest.mark.xfail(reason="Environment PnL calculation bug - see Issue #XXX")
     def test_portfolio_value_composition(
         self,
         rising_price_data: pd.DataFrame,
@@ -183,14 +180,13 @@ class TestPnLInvariants:
         
         # INVARIANT: Portfolio = initial + realized + unrealized
         unrealized_pnl = position * (current_price - entry_price)
-        expected_value = initial_value + env.total_pnl + unrealized_pnl
+        expected_value = initial_value + env.realized_pnl + unrealized_pnl
         actual_value = env.portfolio_value
         
         assert abs(actual_value - expected_value) < 1e-2, \
             f"Portfolio value composition incorrect: " \
             f"expected={expected_value:.2f}, actual={actual_value:.2f}"
 
-    @pytest.mark.xfail(reason="Environment PnL calculation bug - see Issue #XXX")
     def test_fee_deduction_timing(
         self,
         static_price_data: pd.DataFrame,
@@ -222,7 +218,6 @@ class TestPnLInvariants:
             f"Fee not deducted correctly on BUY: " \
             f"expected={expected_value_after_buy:.2f}, actual={actual_value_after_buy:.2f}"
 
-    @pytest.mark.xfail(reason="Environment PnL calculation bug - see Issue #XXX")
     def test_symmetric_round_trip(
         self,
         static_price_data: pd.DataFrame,
