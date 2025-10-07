@@ -30,6 +30,19 @@ from pandas.api import types as ptypes
 from ztb.features.registry import FeatureRegistry
 from ztb.utils.fee_model import ExchangeFeeModel
 from ztb.utils.memory.dtypes import optimize_dtypes
+from ztb.types.protocols import TradingEnvironment
+from ztb.training.ppo_config import (
+    DEFAULT_REWARD_SCALING, DEFAULT_RISK_FREE_RATE, DEFAULT_STOP_LOSS_THRESHOLD,
+    DEFAULT_MAX_CONSECUTIVE_TRADES, DEFAULT_MIN_HOLDING_PERIOD,
+    DEFAULT_REWARD_POSITION_SOFT_CAP, DEFAULT_REWARD_POSITION_PENALTY_SCALE,
+    DEFAULT_REWARD_POSITION_PENALTY_EXPONENT, DEFAULT_REWARD_INVENTORY_WINDOW,
+    DEFAULT_REWARD_INVENTORY_PENALTY_SCALE, DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY,
+    DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE, DEFAULT_REWARD_TRADE_COOLDOWN_STEPS,
+    DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY, DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES,
+    DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY, DEFAULT_REWARD_VOLATILITY_WINDOW,
+    DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE, DEFAULT_REWARD_SHARPE_BONUS_SCALE,
+    DEFAULT_REWARD_CLIP_VALUE
+)
 
 # Type aliases for better type safety
 Observation = np.ndarray[tuple[int, ...], np.dtype[np.float32]]
@@ -69,10 +82,10 @@ class EnvironmentConfig:
     """Configuration for HeavyTradingEnv with proper typing."""
 
     # Core settings
-    reward_scaling: float = 1.0
+    reward_scaling: float = DEFAULT_REWARD_SCALING
     transaction_cost: float = 0.0
     max_position_size: float = 1.0
-    risk_free_rate: float = 0.0
+    risk_free_rate: float = DEFAULT_RISK_FREE_RATE
     timeframe: str = "1m"
     feature_set: str = "full"
     curriculum_stage: str = "forced_balance"
@@ -81,26 +94,26 @@ class EnvironmentConfig:
         default_factory=lambda: ["close", "open", "high", "low", "volume"]
     )
     exchange: str = "coincheck"
-    stop_loss_threshold: float = 0.05
-    max_consecutive_trades: int = 5
-    min_holding_period: int = 3
+    stop_loss_threshold: float = DEFAULT_STOP_LOSS_THRESHOLD
+    max_consecutive_trades: int = DEFAULT_MAX_CONSECUTIVE_TRADES
+    min_holding_period: int = DEFAULT_MIN_HOLDING_PERIOD
 
     # Reward settings
-    reward_position_soft_cap: float = 0.8
-    reward_position_penalty_scale: float = 0.5
-    reward_position_penalty_exponent: float = 4.0
-    reward_inventory_window: int = 128
-    reward_inventory_penalty_scale: float = 0.1
-    reward_trade_frequency_penalty: float = 0.2
-    reward_trade_frequency_halflife: float = 8.0
-    reward_trade_cooldown_steps: int = 2
-    reward_trade_cooldown_penalty: float = 0.2
-    reward_max_consecutive_trades: int = 5
-    reward_consecutive_trade_penalty: float = 0.1
-    reward_volatility_window: int = 32
-    reward_volatility_penalty_scale: float = 0.05
-    reward_sharpe_bonus_scale: float = 0.02
-    reward_clip_value: float = 2.0
+    reward_position_soft_cap: float = DEFAULT_REWARD_POSITION_SOFT_CAP
+    reward_position_penalty_scale: float = DEFAULT_REWARD_POSITION_PENALTY_SCALE
+    reward_position_penalty_exponent: float = DEFAULT_REWARD_POSITION_PENALTY_EXPONENT
+    reward_inventory_window: int = DEFAULT_REWARD_INVENTORY_WINDOW
+    reward_inventory_penalty_scale: float = DEFAULT_REWARD_INVENTORY_PENALTY_SCALE
+    reward_trade_frequency_penalty: float = DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY
+    reward_trade_frequency_halflife: float = DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE
+    reward_trade_cooldown_steps: int = DEFAULT_REWARD_TRADE_COOLDOWN_STEPS
+    reward_trade_cooldown_penalty: float = DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY
+    reward_max_consecutive_trades: int = DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES
+    reward_consecutive_trade_penalty: float = DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY
+    reward_volatility_window: int = DEFAULT_REWARD_VOLATILITY_WINDOW
+    reward_volatility_penalty_scale: float = DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE
+    reward_sharpe_bonus_scale: float = DEFAULT_REWARD_SHARPE_BONUS_SCALE
+    reward_clip_value: float = DEFAULT_REWARD_CLIP_VALUE
     enable_forced_diversity: bool = False
     initial_portfolio_value: float = 1_000_000.0
     reward_profit_bonus_multipliers: List[float] = dataclasses.field(
@@ -114,6 +127,9 @@ class EnvironmentConfig:
     memory_logging_enabled: bool = False
     memory_log_interval_steps: Optional[int] = None
     max_action_history: int = 512
+    
+    # Trading behavior settings
+    allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
 
     @classmethod
     def from_dict(
@@ -132,7 +148,7 @@ class EnvironmentConfig:
             if field.name in config_dict:
                 value = config_dict[field.name]
                 # Basic type conversion for common cases
-                if field.name in ["enable_forced_diversity"] and not isinstance(
+                if field.name in ["enable_forced_diversity", "allow_reverse"] and not isinstance(
                     value, bool
                 ):
                     value = cls._as_bool(value)  # type: ignore[arg-type]
@@ -207,7 +223,7 @@ if TYPE_CHECKING:
     from ztb.trading.live.data.stream_to_bars import StreamToBarsConverter
 
 
-class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
+class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvironment):
     """
     Heavy Feature-Based Trading Environment for Reinforcement Learning.
 
@@ -495,6 +511,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
         self.position = 0.0  # -1, 0, 1
         self.entry_price = 0.0
         self.total_pnl = 0.0
+        self.realized_pnl = 0.0  # Realized PnL (accumulated on position close)
         self.trades_count = 0
 
         # ストリーミング関連
@@ -871,6 +888,14 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
 
         return legal
 
+    def action_mask(self) -> NDArray[np.bool_]:
+        """Return action mask for gymnasium ActionMasker wrapper."""
+        return self.get_legal_actions().astype(np.bool_)
+
+    def get_action_masks(self) -> NDArray[np.bool_]:
+        """Return action masks for SB3 MaskablePPO."""
+        return self.action_mask()
+
     def step(self, action: int) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:  # type: ignore[override]
         """ステップ実行"""
         # 行動の実行
@@ -899,13 +924,16 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
         if len(self.action_history) > max_history:
             del self.action_history[:-max_history]
 
-        # PnLの計算
-        pnl = self._calculate_pnl()
+        # Unrealized PnL calculation (for open positions)
+        unrealized_pnl = self._calculate_pnl()
 
-        # 累積PnLとポートフォリオ価値の更新
-        self.total_pnl += pnl
-        portfolio_value = self.initial_portfolio_value + self.total_pnl
+        # Portfolio value = initial + realized + unrealized
+        # Note: total_pnl is kept as realized_pnl for backward compatibility
+        portfolio_value = self.initial_portfolio_value + self.realized_pnl + unrealized_pnl
         self.portfolio_value = portfolio_value
+        
+        # pnl for reward calculation (unrealized PnL)
+        pnl = unrealized_pnl
 
         current_price = self._resolve_price()
         atr = self._resolve_atr()
@@ -1027,30 +1055,64 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
         return default
 
     def _execute_action(self, action: int) -> None:
-        """行動の実行"""
+        """行動の実行
+        
+        allow_reverse=True (default): 従来通りの動作
+            - Long中のSELL: Close→即Short
+            - Short中のBUY: Close→即Long
+        
+        allow_reverse=False: 反転禁止モード
+            - Long中のSELL: Close only (Flatに戻る)
+            - Short中のBUY: Close only (Flatに戻る)
+            - Flat状態からのSELL/BUYは従来通り開く
+        """
         if action == 0:  # HOLD
             # HOLDの場合は連続取引カウンターをリセット
             self._consecutive_trade_steps = 0
             pass  # ポジション維持
         elif action == 1:  # BUY
-            if self.position <= 0:  # ショートまたはフラットの場合
-                # ポジション変更
-                if self.position < 0:  # ショートクローズ
-                    self._close_position()
+            if self.position < 0:  # ショートポジション保有中
+                # ショートクローズ
+                self._close_position()
+                self._consecutive_trade_steps += 1
+                
+                # allow_reverse=Trueの場合のみ、即座にロングを開く
+                if self.config.allow_reverse:
+                    self._open_position(1)
+            elif self.position == 0:  # フラット状態
+                # 通常のロングオープン
                 self._open_position(1)
                 self._consecutive_trade_steps += 1
+            # position > 0 (既にロング)の場合は何もしない
         elif action == 2:  # SELL
-            if self.position >= 0:  # ロングまたはフラットの場合
-                # ポジション変更
-                if self.position > 0:  # ロングクローズ
-                    self._close_position()
+            if self.position > 0:  # ロングポジション保有中
+                # ロングクローズ
+                self._close_position()
+                self._consecutive_trade_steps += 1
+                
+                # allow_reverse=Trueの場合のみ、即座にショートを開く
+                if self.config.allow_reverse:
+                    self._open_position(-1)
+            elif self.position == 0:  # フラット状態
+                # 通常のショートオープン
                 self._open_position(-1)
                 self._consecutive_trade_steps += 1
+            # position < 0 (既にショート)の場合は何もしない
 
     def _open_position(self, direction: int) -> None:
-        """ポジションオープン"""
+        """ポジションオープン（エントリーコストを即座に反映）"""
         current_price = self._resolve_price()
-        self.position = direction * getattr(self.config, "max_position_size", 1.0)
+        position_size = getattr(self.config, "max_position_size", 1.0)
+        
+        # Calculate entry cost
+        entry_cost = abs(position_size) * current_price * self.config.transaction_cost
+        
+        # Deduct entry cost from realized PnL
+        self.realized_pnl -= entry_cost
+        self.total_pnl = self.realized_pnl  # Keep total_pnl in sync
+        
+        # Open position
+        self.position = direction * position_size
         self.entry_price = current_price
         self.trades_count += 1
         self._last_trade_step = self.current_step
@@ -1058,12 +1120,29 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
     def _close_position(self) -> None:
         """ポジションクローズ"""
         if self.position != 0:
+            # Calculate realized PnL before closing position
+            current_price = self._resolve_price()
+            price_change = current_price - self.entry_price
+            realized_trade_pnl = float(self.position) * price_change
+            
+            # Deduct transaction cost (exit cost)
+            exit_cost = abs(self.position) * current_price * self.config.transaction_cost
+            realized_trade_pnl -= exit_cost
+            
+            # Accumulate realized PnL
+            self.realized_pnl += realized_trade_pnl
+            self.total_pnl = self.realized_pnl  # Keep total_pnl in sync for backward compatibility
+            
             self.trades_count += 1
             self.position = 0.0
             self.entry_price = 0.0
 
     def _calculate_pnl(self) -> float:
-        """PnLの計算"""
+        """Calculate unrealized PnL for current open position.
+        
+        Realized PnL is accumulated in _close_position().
+        This method only returns unrealized PnL for reward calculation.
+        """
         if self.position == 0:
             return 0.0
 
@@ -1071,17 +1150,10 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete]):
         entry_price = self.entry_price
         price_change = current_price - entry_price
 
-        # 基本PnL
-        pnl = float(self.position) * price_change
+        # Unrealized PnL (price change only, no exit cost yet)
+        unrealized_pnl = float(self.position) * price_change
 
-        # 取引コストの考慮（エントリー時のみ）
-        if abs(self.position) > 0:
-            transaction_cost = (
-                abs(self.position) * entry_price * self.config.transaction_cost
-            )
-            pnl -= transaction_cost
-
-        return float(pnl)
+        return float(unrealized_pnl)
 
     def _calculate_reward(
         self,
