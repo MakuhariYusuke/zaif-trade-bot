@@ -24,7 +24,7 @@ from ztb.training.custom_ppo import CustomPPO
 from ztb.training.trainer_params import SELLMitigationParams
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
-from ztb.training.ppo_config import PPOConfig
+from ztb.training.ppo_config import PPOConfig, DEFAULT_PPO_CONFIG
 from ztb.training.lagrange_constraint import LagrangeConstraint, apply_lagrange_to_loss
 from ztb.training.grad_probes import SELLGradientProbe, create_failsafe_dump
 from ztb.training.weights import ActionWeightCalculator
@@ -112,7 +112,6 @@ class SELLBiasMitigationCallback(BaseCallback):
 
 
 class SELLBiasMitigationPPOTrainer(PPOTrainer):
-class SELLBiasMitigationPPOTrainer(PPOTrainer):
     """
     PPO Trainer with comprehensive SELL bias mitigation techniques.
 
@@ -142,7 +141,8 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         self,
         params: SELLMitigationParams,
     ):
-        super().__init__(params)
+        # Call parent PPOTrainer __init__ with TrainerParams (SELLMitigationParams inherits from TrainerParams)
+        super().__init__(params)  # type: ignore[arg-type,call-arg]
 
         self.enable_lagrange = params.enable_lagrange
         self.enable_probes = params.enable_probes
@@ -222,9 +222,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             )
             logger.info("Stratified Mini-batch Sampler enabled (9 buckets: 3 regimes × 3 actions)")
 
+        # Initialize model attribute
+        self.model: Optional[CustomPPO] = None
+
     def _create_callback(self) -> BaseCallback:
         """Create composite training callback with SELL bias mitigation."""
-        base_callback = super()._create_callback()
+        base_callback = PPOTrainer._create_callback(self)  # type: ignore[attr-defined]
 
         mitigation_callback = SELLBiasMitigationCallback(
             lagrange=self.lagrange,
@@ -261,17 +264,27 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         logger.info(f"PAN: {'✅' if self.enable_pan else '❌'}")
         logger.info(f"Target Entropy: {'✅' if self.enable_target_entropy else '❌'}")
         logger.info(f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}")
-        logger.info(f"Data: {self.data_path}")
+        logger.info(f"Data: {self.data_path}")  # type: ignore[attr-defined]
 
         try:
             # ★ MODIFIED: Create model with CustomPPO instead of standard flow
             if self.model is None:
                 # Load data
                 import pandas as pd
-                df = pd.read_csv(self.data_path)
+                df = pd.read_csv(self.data_path)  # type: ignore[attr-defined]
+
+                # Create environment config with curriculum_stage and allow_reverse
+                env_config = {
+                    "curriculum_stage": self.config.get("curriculum_stage", "full"),  # type: ignore[attr-defined]
+                    "allow_reverse": self.allow_reverse,
+                    "transaction_cost": self.config.get("transaction_cost", 0.001),  # type: ignore[attr-defined]
+                    "max_position_size": self.config.get("max_position_size", 1.0),  # type: ignore[attr-defined]
+                    "risk_free_rate": self.config.get("risk_free_rate", 0.0),  # type: ignore[attr-defined]
+                    "reward_scaling": self.config.get("reward_scaling", 1.0),  # type: ignore[attr-defined]
+                }
 
                 # Create environment
-                env = HeavyTradingEnv(df=df, config=self.config)
+                env = HeavyTradingEnv(df=df, config=env_config)
 
                 # Wrap with ActionMasker for MaskablePPO
                 def mask_fn(env: Any) -> Any:
@@ -281,27 +294,27 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
                 # ★ Create CustomPPO with integrated bias mitigations
                 self.model = CustomPPO(
-                    policy=self.config.get("policy", "MlpPolicy"),
+                    policy=self.config.get("policy", "MlpPolicy"),  # type: ignore[attr-defined]
                     env=env,
-                    learning_rate=self.config.get("learning_rate", 3e-4),
-                    n_steps=self.config.get("n_steps", 2048),
-                    batch_size=self.config.get("batch_size", 64),
-                    n_epochs=self.config.get("n_epochs", 10),
-                    gamma=self.config.get("gamma", 0.99),
-                    gae_lambda=self.config.get("gae_lambda", 0.95),
-                    clip_range=self.config.get("clip_range", 0.2),
-                    clip_range_vf=self.config.get("clip_range_vf"),
-                    normalize_advantage=self.config.get("normalize_advantage", True),
-                    ent_coef=self.config.get("ent_coef", 0.0),
-                    vf_coef=self.config.get("vf_coef", 0.5),
-                    max_grad_norm=self.config.get("max_grad_norm", 0.5),
-                    target_kl=self.config.get("target_kl"),
-                    tensorboard_log=self.config.get("tensorboard_log"),
-                    policy_kwargs=self.config.get("policy_kwargs"),
-                    verbose=self.config.get("verbose", 1),
-                    seed=self.config.get("seed"),
-                    device=self.config.get("device", "auto"),
-                    _init_setup_model=self.config.get("_init_setup_model", True),
+                    learning_rate=self.config.get("learning_rate", 3e-4),  # type: ignore[attr-defined]
+                    n_steps=self.config.get("n_steps", 2048),  # type: ignore[attr-defined]
+                    batch_size=self.config.get("batch_size", 64),  # type: ignore[attr-defined]
+                    n_epochs=self.config.get("n_epochs", 10),  # type: ignore[attr-defined]
+                    gamma=self.config.get("gamma", 0.99),  # type: ignore[attr-defined]
+                    gae_lambda=self.config.get("gae_lambda", 0.95),  # type: ignore[attr-defined]
+                    clip_range=self.config.get("clip_range", 0.2),  # type: ignore[attr-defined]
+                    clip_range_vf=self.config.get("clip_range_vf"),  # type: ignore[attr-defined]
+                    normalize_advantage=self.config.get("normalize_advantage", True),  # type: ignore[attr-defined]
+                    ent_coef=self.config.get("ent_coef", 0.0),  # type: ignore[attr-defined]
+                    vf_coef=self.config.get("vf_coef", 0.5),  # type: ignore[attr-defined]
+                    max_grad_norm=self.config.get("max_grad_norm", 0.5),  # type: ignore[attr-defined]
+                    target_kl=self.config.get("target_kl"),  # type: ignore[attr-defined]
+                    tensorboard_log=self.config.get("tensorboard_log"),  # type: ignore[attr-defined]
+                    policy_kwargs=self.config.get("policy_kwargs"),  # type: ignore[attr-defined]
+                    verbose=self.config.get("verbose", 1),  # type: ignore[attr-defined]
+                    seed=self.config.get("seed"),  # type: ignore[attr-defined]
+                    device=self.config.get("device", "auto"),  # type: ignore[attr-defined]
+                    _init_setup_model=self.config.get("_init_setup_model", True),  # type: ignore[attr-defined]
                     # ★ Custom bias mitigation parameters
                     enable_pan=self.enable_pan,
                     enable_target_entropy=self.enable_target_entropy,
@@ -321,10 +334,10 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             self._setup_sell_bonus_weighting()
 
             # Start training session
-            self.start_training()
+            self.start_training()  # type: ignore[attr-defined]
 
             # Train the model
-            total_timesteps = self.config.get("total_timesteps", 100000)
+            total_timesteps = self.config.get("total_timesteps", 100000)  # type: ignore[attr-defined]
             self.model.learn(
                 total_timesteps=total_timesteps,
                 callback=self._create_callback(),
@@ -345,7 +358,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             # Create failsafe dump if probes are enabled
             if self.probe is not None and self.model is not None:
                 try:
-                    dump_dir = Path(self.checkpoint_dir) / "failsafe_dump"
+                    dump_dir = Path(self.checkpoint_dir) / "failsafe_dump"  # type: ignore[attr-defined]
                     create_failsafe_dump(self.model, self.probe, dump_dir)
                     logger.info(f"Failsafe dump created: {dump_dir}")
                 except Exception as dump_e:
@@ -355,7 +368,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         finally:
             # Cleanup
             if self.probe is not None:
-                self.probe.close()
+                self.probe.close()  # type: ignore[no-untyped-call]
 
     def _final_validation(self) -> None:
         """Perform final validation of SELL bias mitigation."""
@@ -414,17 +427,17 @@ def create_sell_mitigation_config(
 
 
 # Test function
-def test_sell_mitigation_trainer():
+def test_sell_mitigation_trainer() -> None:
     """Test SELL bias mitigation trainer."""
     print("Testing SELL Bias Mitigation Trainer...")
 
     # Create minimal config
-    config = PPOConfig()
-    config.total_timesteps = 1000  # Very short for testing
-    config.n_steps = 128
+    config: PPOConfig = DEFAULT_PPO_CONFIG.copy()
+    config["total_timesteps"] = 1000  # Very short for testing
+    config["n_steps"] = 128
 
-    # Create trainer
-    trainer = SELLBiasMitigationPPOTrainer(
+    # Create trainer params
+    params = SELLMitigationParams(
         data_path="ml-dataset-final.csv",
         config=config,
         checkpoint_dir="test_checkpoints",
@@ -433,6 +446,9 @@ def test_sell_mitigation_trainer():
         enable_weights=True,
     )
 
+    # Create trainer
+    trainer = SELLBiasMitigationPPOTrainer(params)
+
     print("✅ SELL Bias Mitigation Trainer created successfully")
     print(f"   Lagrange: {'✅' if trainer.lagrange else '❌'}")
     print(f"   Probes: {'✅' if trainer.probe else '❌'}")
@@ -440,7 +456,7 @@ def test_sell_mitigation_trainer():
 
     # Cleanup
     if trainer.probe:
-        trainer.probe.close()
+        trainer.probe.close()  # type: ignore[no-untyped-call]
 
     print("✅ Test completed")
 
