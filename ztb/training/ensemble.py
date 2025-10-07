@@ -462,7 +462,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
         # Ensemble voting (weighted average for continuous actions)
         if actions[0].dtype in [np.float32, np.float64]:
             # Continuous actions - weighted average
-            ensemble_action = np.average(
+            ensemble_action: NDArray[np.float32] = np.average(
                 actions, weights=self.weights[: len(actions)], axis=0
             )
         else:

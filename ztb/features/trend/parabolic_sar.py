@@ -12,10 +12,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("PSAR")
@@ -54,13 +54,14 @@ class ParabolicSAR(BaseFeature):
         acceleration = params.get("acceleration", self.acceleration)
         max_acceleration = params.get("max_acceleration", self.max_acceleration)
 
-        high = np.asarray(df["high"])
-        low = np.asarray(df["low"])
-        close = np.asarray(df["close"])
+        # Use Ta-Lib wrapper for Parabolic SAR calculation
+        psar = TaLibWrapper.sar(df["high"].to_numpy(), df["low"].to_numpy(), acceleration, max_acceleration)
 
-        psar, trend, acceleration_factor = self._compute_psar(
-            high, low, close, acceleration, max_acceleration
-        )
+        # Calculate trend: 1 if PSAR < close (uptrend), -1 if PSAR > close (downtrend)
+        trend = np.where(psar < df["close"], 1, -1)
+
+        # Acceleration factor is fixed for simplicity (Ta-Lib doesn't provide it)
+        acceleration_factor = np.full(len(psar), acceleration)
 
         return pd.DataFrame(
             {
@@ -70,73 +71,3 @@ class ParabolicSAR(BaseFeature):
             },
             index=df.index,
         )
-
-    @staticmethod
-    def _compute_psar(
-        high: NDArray[np.floating[Any]],
-        low: NDArray[np.floating[Any]],
-        close: NDArray[np.floating[Any]],
-        acceleration: float,
-        max_acceleration: float,
-    ) -> tuple[NDArray[np.floating[Any]], NDArray[np.int32], NDArray[np.floating[Any]]]:
-        """
-        Calculate Parabolic SAR using pure numpy (no numba).
-        """
-        n = len(close)
-        psar = np.zeros(n, dtype=np.float64)
-        trend = np.zeros(n, dtype=np.int32)  # 1 for uptrend, -1 for downtrend
-        acceleration_factor = np.full(n, acceleration, dtype=np.float64)
-
-        # Initialize first values - use more robust initialization
-        if n < 2:
-            return psar, trend, acceleration_factor
-
-        # Initialize based on first two candles
-        if close[1] > close[0]:  # Price rising - assume uptrend
-            psar[0] = low[0]
-            trend[0] = 1
-        else:  # Price falling - assume downtrend
-            psar[0] = high[0]
-            trend[0] = -1
-
-        # Calculate Parabolic SAR
-        for i in range(1, n):
-            if trend[i - 1] == 1:  # Uptrend
-                psar[i] = psar[i - 1] + acceleration_factor[i - 1] * (
-                    high[i - 1] - psar[i - 1]
-                )
-
-                # Ensure SAR doesn't go above previous low
-                psar[i] = min(psar[i], low[i - 1])
-
-                # Check for trend reversal
-                if low[i] < psar[i]:
-                    trend[i] = -1
-                    psar[i] = high[i - 1]  # Reset to previous high
-                    acceleration_factor[i] = acceleration
-                else:
-                    trend[i] = 1
-                    acceleration_factor[i] = min(
-                        acceleration_factor[i - 1] + acceleration, max_acceleration
-                    )
-
-            else:  # Downtrend
-                psar[i] = psar[i - 1] + acceleration_factor[i - 1] * (
-                    low[i - 1] - psar[i - 1]
-                )
-
-                # Ensure SAR doesn't go below previous high
-                psar[i] = max(psar[i], high[i - 1])
-
-                # Check for trend reversal
-                if high[i] > psar[i]:
-                    trend[i] = 1
-                    psar[i] = low[i - 1]  # Reset to previous low
-                    acceleration_factor[i] = acceleration
-                else:
-                    trend[i] = -1
-                    acceleration_factor[i] = min(
-                        acceleration_factor[i - 1] + acceleration, max_acceleration
-                    )
-
-        return psar, trend, acceleration_factor

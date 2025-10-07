@@ -5,28 +5,24 @@ OBVの実装
 
 from typing import cast
 
-import numpy as np
 import pandas as pd
 
 from ztb.features.feature_cache import feature_cache
 from ztb.features.registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("OBV")
 def compute_obv(df: pd.DataFrame) -> pd.Series:
-    """Compute OBV (On-Balance Volume)"""
+    """Compute OBV (On-Balance Volume) using Ta-Lib wrapper"""
     if not FeatureRegistry.is_cache_enabled():
-        direction = np.sign(df["close"].diff().fillna(0))
-        signed_volume = pd.Series(direction * df["volume"], index=df.index)
-        obv = signed_volume.fillna(0).cumsum()
-        return pd.Series(obv, name="OBV", index=df.index)  # type: ignore
+        result = TaLibWrapper.obv(df["close"].to_numpy(), df["volume"].to_numpy())
+        return pd.Series(result, name="OBV", index=df.index)
 
     cache_key = f"obv_{feature_cache.generate_dataframe_hash(df, ['close', 'volume'])}"
 
     def compute() -> pd.Series:
-        direction = np.sign(df["close"].diff().fillna(0))
-        signed_volume = pd.Series(direction * df["volume"], index=df.index)
-        obv = signed_volume.fillna(0).cumsum()
-        return cast(pd.Series, pd.Series(obv, name="OBV", index=df.index))
+        result = TaLibWrapper.obv(df["close"].to_numpy(), df["volume"].to_numpy())
+        return cast(pd.Series, pd.Series(result, name="OBV", index=df.index))
 
     return feature_cache.get_or_compute(cache_key, compute)

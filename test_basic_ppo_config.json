@@ -1,0 +1,23 @@
+{
+  "algorithm": "ppo",
+  "data_path": "test_mirrored_dataset.csv",
+  "total_timesteps": 5000,
+  "session_id": "basic_ppo_test",
+  "enable_sell_mitigation": false,
+  "curriculum_stage": "full",
+  "checkpoint_dir": "checkpoints_test",
+  "model_dir": "models_test",
+  "tensorboard_log": "tensorboard_logs_test",
+  "ppo_config": {
+    "learning_rate": 3e-4,
+    "n_steps": 512,
+    "batch_size": 64,
+    "n_epochs": 4,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5
+  }
+}

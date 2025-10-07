@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-def main():
+def main() -> int:
     """Run paper trade with verbose diagnostics."""
     
     # Use the trained model from ppo_100k config

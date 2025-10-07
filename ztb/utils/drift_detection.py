@@ -10,7 +10,7 @@ Thresholds:
 """
 
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -18,8 +18,8 @@ from scipy import stats
 
 
 def calculate_psi(
-    expected: np.ndarray,
-    actual: np.ndarray,
+    expected: np.ndarray[Any, np.dtype[np.floating[Any]]],
+    actual: np.ndarray[Any, np.dtype[np.floating[Any]]],
     bins: int = 10,
     epsilon: float = 1e-10,
 ) -> float:
@@ -84,8 +84,8 @@ def calculate_psi(
 
 
 def calculate_ks(
-    expected: np.ndarray,
-    actual: np.ndarray,
+    expected: np.ndarray[Any, np.dtype[np.floating[Any]]],
+    actual: np.ndarray[Any, np.dtype[np.floating[Any]]],
 ) -> Tuple[float, float]:
     """
     Calculate Kolmogorov-Smirnov test statistic and p-value.
@@ -127,12 +127,12 @@ def calculate_ks(
 
 
 def detect_drift_single_feature(
-    train_values: np.ndarray,
-    eval_values: np.ndarray,
+    train_values: np.ndarray[Any, np.dtype[np.floating[Any]]],
+    eval_values: np.ndarray[Any, np.dtype[np.floating[Any]]],
     feature_name: str,
     psi_threshold: float = 0.2,
     ks_p_threshold: float = 0.01,
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Detect drift for a single feature.
     
@@ -213,8 +213,8 @@ def detect_drift_all_features(
         if feature_name not in eval_df.columns:
             continue
         
-        train_values = train_df[feature_name].values
-        eval_values = eval_df[feature_name].values
+        train_values = np.asarray(train_df[feature_name].values)
+        eval_values = np.asarray(eval_df[feature_name].values)
         
         result = detect_drift_single_feature(
             train_values,

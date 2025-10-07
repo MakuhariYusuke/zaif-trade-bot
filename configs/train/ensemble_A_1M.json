@@ -1,0 +1,61 @@
+{
+  "comment": "Ensemble A: Conservative exploration (ent_coef=0.6), SELL倍率0.8, reverse禁止",
+  "algorithm": "ppo",
+  "data_path": "ml-dataset-enhanced.csv",
+  "session_id": "ensemble_A_1M_custom_ppo",
+  "total_timesteps": 1000000,
+  
+  "training": {
+    "learning_rate": 3.0e-4,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.6,
+    "ent_coef_schedule": "cosine_decay",
+    "ent_coef_final": 0.2,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "seed": 101
+  },
+  
+  "custom_ppo": {
+    "enable_pan": true,
+    "enable_target_entropy": true,
+    "enable_stratified_sampling": false,
+    "target_entropy_ratio": 0.7,
+    "lr_temperature": 3.0e-4,
+    "initial_temperature": 0.01,
+    "pan_epsilon": 1.0e-8
+  },
+  
+  "environment": {
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "curriculum_stage": "full",
+    "allow_reverse": false
+  },
+  
+  "reward_profit_bonus_multipliers": [1.0, 1.0, 0.8],
+  "reward_settings": {
+    "enable_forced_diversity": false
+  },
+  
+  "checkpoint_interval": 25000,
+  "checkpoint_dir": "checkpoints/ensemble_A_1M",
+  "log_dir": "logs/ensemble_A_1M",
+  "model_dir": "models/ensemble_A_1M",
+  
+  "staging": {
+    "warmup_steps": 50000,
+    "transition_steps": 150000,
+    "main_steps": 600000,
+    "annealing_steps": 200000
+  },
+  
+  "verbose": 1,
+  "offline_mode": true,
+  "enable_progress_bar": false
+}

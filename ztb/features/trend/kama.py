@@ -8,17 +8,16 @@ Output columns:
 
 from typing import Any
 
-import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 
 from ztb.features.base import ComputableFeature, MovingAverageFeature
 from ztb.features.registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("KAMA")
 def compute_kama(df: pd.DataFrame) -> pd.Series:
-    """Kaufman's Adaptive Moving Average"""
+    """Kaufman's Adaptive Moving Average using Ta-Lib wrapper"""
     feature = KAMA()
     result_df = feature.compute(df)
     return result_df["kama"]
@@ -38,40 +37,7 @@ class KAMA(MovingAverageFeature, ComputableFeature):
         df columns must include: ['close'].
         Returns a DataFrame with KAMA values.
         """
-        close = df["close"].astype(float).to_numpy()
-        kama = self._calculate_kama(close)
+        # Use Ta-Lib wrapper for KAMA calculation
+        result = TaLibWrapper.kama(df["close"].to_numpy())
 
-        return pd.DataFrame({"kama": kama})
-
-    @staticmethod
-    def _calculate_kama(close: NDArray[np.floating[Any]]) -> NDArray[np.floating[Any]]:
-        """
-        Calculate KAMA using pure numpy (no numba).
-        """
-        n = len(close)
-        kama = np.zeros(n)
-        kama[0] = close[0]
-
-        # Need at least 10 periods for initial calculation
-        for i in range(10, n):
-            # Efficiency Ratio: |close[i] - close[i-10]| / sum(|close[j] - close[j-1]| for j in i-9 to i)
-            # Efficiency Ratio (ER) の計算:
-            #   - change: 直近10期間の価格変化量 = abs(close[i] - close[i-10])
-            #   - volatility: 直近10期間の価格変動合計 = sum(abs(close[j] - close[j-1]) for j in i-9 to i)
-            #   - ER = change / volatility (volatilityが0の場合は0)
-            change = abs(close[i] - close[i - 10])
-            volatility = 0.0
-            for j in range(i - 9, i + 1):
-                volatility += abs(close[j] - close[j - 1])
-            er = change / volatility if volatility != 0 else 0
-
-            # Smoothing constant: ER * (fast SC - slow SC) + slow SC
-            # fast SC = 2/(2+1) = 0.6667, slow SC = 2/(30+1) = 0.0645
-            fast_sc = 2.0 / (2.0 + 1.0)
-            slow_sc = 2.0 / (30.0 + 1.0)
-            sc = er * (fast_sc - slow_sc) + slow_sc
-            sc = sc**2  # Square for faster adaptation
-
-            kama[i] = kama[i - 1] + sc * (close[i] - kama[i - 1])
-
-        return kama
+        return pd.DataFrame({"kama": result})

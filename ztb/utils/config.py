@@ -6,9 +6,11 @@ Central configuration management for ZTB system
 
 import logging
 import os
-from typing import Any, Optional, cast
+from typing import Any, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
 
 
 class ZTBConfig:
@@ -70,8 +72,8 @@ class ZTBConfig:
 
 
 def get_config_value(
-    config_dict: dict[str, Any], key: str, expected_type: type, default: Any = None
-) -> Any:
+    config_dict: dict[str, Any], key: str, expected_type: type[T], default: T
+) -> T:
     """
     Safely extract and convert configuration values from dict with type validation.
 
@@ -90,52 +92,52 @@ def get_config_value(
             return default
 
         if expected_type == str:
-            return str(raw_value)
+            return str(raw_value)  # type: ignore
         elif expected_type == int:
-            return int(raw_value) if isinstance(raw_value, (int, str)) else default
+            return int(raw_value) if isinstance(raw_value, (int, str)) else default  # type: ignore
         elif expected_type == float:
             return (
                 float(raw_value)
                 if isinstance(raw_value, (int, float, str))
-                else default
+                else default  # type: ignore
             )
         elif expected_type == bool:
             if isinstance(raw_value, bool):
-                return raw_value
+                return raw_value  # type: ignore
             elif isinstance(raw_value, str):
-                return raw_value.lower() in ("true", "1", "yes", "on")
+                return raw_value.lower() in ("true", "1", "yes", "on")  # type: ignore
             else:
                 return default
         elif expected_type == list:
             if isinstance(raw_value, list):
-                return raw_value
+                return raw_value  # type: ignore
             elif isinstance(raw_value, str):
                 # Try to parse as JSON list
                 try:
                     import json
 
                     parsed = json.loads(raw_value)
-                    return parsed if isinstance(parsed, list) else default
+                    return parsed if isinstance(parsed, list) else default  # type: ignore
                 except (json.JSONDecodeError, TypeError):
                     return default
             else:
                 return default
         elif expected_type == dict:
             if isinstance(raw_value, dict):
-                return raw_value
+                return raw_value  # type: ignore
             elif isinstance(raw_value, str):
                 # Try to parse as JSON dict
                 try:
                     import json
 
                     parsed = json.loads(raw_value)
-                    return parsed if isinstance(parsed, dict) else default
+                    return parsed if isinstance(parsed, dict) else default  # type: ignore
                 except (json.JSONDecodeError, TypeError):
                     return default
             else:
                 return default
         else:
-            return raw_value
+            return raw_value  # type: ignore
     except (ValueError, TypeError):
         logger.warning(
             f"Failed to convert config value for {key}: {raw_value}, using default {default}"
@@ -159,7 +161,7 @@ def get_config_list(
     """
     if default is None:
         default = []
-    return cast(list[Any], get_config_value(config_dict, key, list, default))
+    return get_config_value(config_dict, key, list, default)
 
 
 def get_config_dict(
@@ -178,7 +180,7 @@ def get_config_dict(
     """
     if default is None:
         default = {}
-    return cast(dict[str, Any], get_config_value(config_dict, key, dict, default))
+    return get_config_value(config_dict, key, dict, default)
 
 
 def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> str:
@@ -193,7 +195,7 @@ def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> 
     Returns:
         String value or default
     """
-    return cast(str, get_config_value(config_dict, key, str, default))
+    return get_config_value(config_dict, key, str, default)
 
 
 def get_config_int(config_dict: dict[str, Any], key: str, default: int = 0) -> int:
@@ -208,7 +210,7 @@ def get_config_int(config_dict: dict[str, Any], key: str, default: int = 0) -> i
     Returns:
         Integer value or default
     """
-    return cast(int, get_config_value(config_dict, key, int, default))
+    return get_config_value(config_dict, key, int, default)
 
 
 def get_config_float(
@@ -225,7 +227,7 @@ def get_config_float(
     Returns:
         Float value or default
     """
-    return cast(float, get_config_value(config_dict, key, float, default))
+    return get_config_value(config_dict, key, float, default)
 
 
 def get_config_bool(
@@ -242,7 +244,7 @@ def get_config_bool(
     Returns:
         Boolean value or default
     """
-    return cast(bool, get_config_value(config_dict, key, bool, default))
+    return get_config_value(config_dict, key, bool, default)
 
 
 # Global instance

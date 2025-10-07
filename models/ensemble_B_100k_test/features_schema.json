@@ -1,0 +1,556 @@
+{
+  "columns": [
+    "rsi",
+    "sma_short",
+    "sma_long",
+    "price",
+    "qty",
+    "pnl",
+    "win",
+    "ADX",
+    "ATR",
+    "ATR_simplified",
+    "BB_Lower",
+    "BB_Middle",
+    "BB_Position",
+    "BB_Upper",
+    "BB_Width",
+    "CCI",
+    "DOW",
+    "Donchian_Pos_20",
+    "Donchian_Slope_20",
+    "Donchian_Width_Rel_20",
+    "EMACross_Diff",
+    "EMACross_Signal",
+    "HV",
+    "HeikinAshi_Close",
+    "HeikinAshi_High",
+    "HeikinAshi_Low",
+    "HeikinAshi_Open",
+    "HourOfDay",
+    "Ichimoku_Chikou",
+    "Ichimoku_Cloud_Thickness",
+    "Ichimoku_Composite_Signal",
+    "Ichimoku_Cross",
+    "Ichimoku_Diff_Norm",
+    "Ichimoku_Kijun",
+    "Ichimoku_Price_Cloud_Distance",
+    "Ichimoku_Senkou_A",
+    "Ichimoku_Senkou_B",
+    "Ichimoku_Tenkan",
+    "Ichimoku_Trend",
+    "KAMA",
+    "Kalman_Estimate",
+    "Kalman_Residual",
+    "Kalman_Residual_Norm",
+    "MACD",
+    "MFI",
+    "MinusDI",
+    "OBV",
+    "PlusDI",
+    "PriceVolumeCorr",
+    "ROC",
+    "RSI",
+    "ReturnMA_Medium",
+    "ReturnMA_Short",
+    "ReturnStdDev",
+    "Stochastic",
+    "Supertrend",
+    "Supertrend_Direction",
+    "TEMA",
+    "VWAP",
+    "ZScore",
+    "atr_10",
+    "close",
+    "ema_5",
+    "high",
+    "low",
+    "open",
+    "rolling_mean_20",
+    "volume"
+  ],
+  "dtypes": {
+    "rsi": "float64",
+    "sma_short": "float64",
+    "sma_long": "float64",
+    "price": "float64",
+    "qty": "float64",
+    "pnl": "float64",
+    "win": "int64",
+    "ADX": "float64",
+    "ATR": "float64",
+    "ATR_simplified": "float64",
+    "BB_Lower": "float64",
+    "BB_Middle": "float64",
+    "BB_Position": "float64",
+    "BB_Upper": "float64",
+    "BB_Width": "float64",
+    "CCI": "float64",
+    "DOW": "int64",
+    "Donchian_Pos_20": "float64",
+    "Donchian_Slope_20": "float64",
+    "Donchian_Width_Rel_20": "float64",
+    "EMACross_Diff": "float64",
+    "EMACross_Signal": "int64",
+    "HV": "float64",
+    "HeikinAshi_Close": "float64",
+    "HeikinAshi_High": "float64",
+    "HeikinAshi_Low": "float64",
+    "HeikinAshi_Open": "float64",
+    "HourOfDay": "int64",
+    "Ichimoku_Chikou": "float64",
+    "Ichimoku_Cloud_Thickness": "float64",
+    "Ichimoku_Composite_Signal": "float64",
+    "Ichimoku_Cross": "float64",
+    "Ichimoku_Diff_Norm": "float64",
+    "Ichimoku_Kijun": "float64",
+    "Ichimoku_Price_Cloud_Distance": "float64",
+    "Ichimoku_Senkou_A": "float64",
+    "Ichimoku_Senkou_B": "float64",
+    "Ichimoku_Tenkan": "float64",
+    "Ichimoku_Trend": "int64",
+    "KAMA": "float64",
+    "Kalman_Estimate": "float64",
+    "Kalman_Residual": "float64",
+    "Kalman_Residual_Norm": "float64",
+    "MACD": "float64",
+    "MFI": "float64",
+    "MinusDI": "float64",
+    "OBV": "float64",
+    "PlusDI": "float64",
+    "PriceVolumeCorr": "float64",
+    "ROC": "float64",
+    "RSI": "float64",
+    "ReturnMA_Medium": "float64",
+    "ReturnMA_Short": "float64",
+    "ReturnStdDev": "float64",
+    "Stochastic": "float64",
+    "Supertrend": "float64",
+    "Supertrend_Direction": "float64",
+    "TEMA": "float64",
+    "VWAP": "float64",
+    "ZScore": "float64",
+    "atr_10": "float64",
+    "close": "float64",
+    "ema_5": "float64",
+    "high": "float64",
+    "low": "float64",
+    "open": "float64",
+    "rolling_mean_20": "float64",
+    "volume": "float64"
+  },
+  "order_hash": "c47d6fd8bfb8d498340351b342abf10753e82c5f08afde8caf9ad57d692208c5",
+  "statistics": {
+    "rsi": {
+      "mean": 64.98583510023457,
+      "std": 6.272071296942828,
+      "min": 46.78011519382169,
+      "max": 84.56847336588184
+    },
+    "sma_short": {
+      "mean": 171.15352228715773,
+      "std": 47.80144504421072,
+      "min": 100.06186619403614,
+      "max": 271.47005293538365
+    },
+    "sma_long": {
+      "mean": 169.8967849244828,
+      "std": 47.38412646461388,
+      "min": 101.19773028249536,
+      "max": 268.8939645008815
+    },
+    "price": {
+      "mean": 171.49691973881843,
+      "std": 47.90975995353955,
+      "min": 99.8054019578972,
+      "max": 272.2371507931004
+    },
+    "qty": {
+      "mean": 0.005497792823204662,
+      "std": 0.0026262017516155115,
+      "min": 0.0010416882070414,
+      "max": 0.0099974590595751
+    },
+    "pnl": {
+      "mean": 29.532452874302226,
+      "std": 989.7166976472547,
+      "min": -3019.512155820825,
+      "max": 3193.107567844861
+    },
+    "win": {
+      "mean": 0.508,
+      "std": 0.5001861515337926,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "ADX": {
+      "mean": 25.27141485182468,
+      "std": 10.457309595106874,
+      "min": 0.0,
+      "max": 59.055146389663705
+    },
+    "ATR": {
+      "mean": 1.1837756993756625,
+      "std": 0.4086960187731061,
+      "min": 0.5215575965605085,
+      "max": 2.519231497291991
+    },
+    "ATR_simplified": {
+      "mean": 3.6648022330863452,
+      "std": 1.4481734267530508,
+      "min": 1.2658033438418244,
+      "max": 10.847801040371763
+    },
+    "BB_Lower": {
+      "mean": 167.6418984264213,
+      "std": 46.726998203059125,
+      "min": 99.50242278709791,
+      "max": 264.4883535243766
+    },
+    "BB_Middle": {
+      "mean": 169.8967849244828,
+      "std": 47.38412646461388,
+      "min": 101.19773028249536,
+      "max": 268.8939645008815
+    },
+    "BB_Position": {
+      "mean": 0.8539550083248936,
+      "std": 0.1107694036175228,
+      "min": 0.3488182028912583,
+      "max": 1.1543310826995452
+    },
+    "BB_Upper": {
+      "mean": 172.1516714225443,
+      "std": 48.04795604188715,
+      "min": 102.8930377778928,
+      "max": 273.29957547738644
+    },
+    "BB_Width": {
+      "mean": 0.05181942146266622,
+      "std": 0.014263122429349325,
+      "min": 0.0,
+      "max": 0.0826567713221848
+    },
+    "CCI": {
+      "mean": 64.59495050023386,
+      "std": 25.669824533503927,
+      "min": -29.14115509575653,
+      "max": 158.66277848356447
+    },
+    "DOW": {
+      "mean": 6.0,
+      "std": 0.0,
+      "min": 6.0,
+      "max": 6.0
+    },
+    "Donchian_Pos_20": {
+      "mean": 0.29628039599679823,
+      "std": 0.1270000169262067,
+      "min": -0.1494430317121351,
+      "max": 0.5000000000000037
+    },
+    "Donchian_Slope_20": {
+      "mean": 0.00040605757036060107,
+      "std": 0.13079287720326868,
+      "min": -0.3736303870278146,
+      "max": 0.3968530285613915
+    },
+    "Donchian_Width_Rel_20": {
+      "mean": 1.4709886323677663,
+      "std": 0.3535184128025357,
+      "min": 0.0,
+      "max": 3.057991525871996
+    },
+    "EMACross_Diff": {
+      "mean": 0.007531783344711607,
+      "std": 0.00227535506493325,
+      "min": 0.0019976535620366,
+      "max": 0.013564424218794
+    },
+    "EMACross_Signal": {
+      "mean": 0.981,
+      "std": 0.13659303663678343,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "HV": {
+      "mean": 0.06728430427611791,
+      "std": 0.015699127627550564,
+      "min": 0.0289735004848923,
+      "max": 0.1317485835076121
+    },
+    "HeikinAshi_Close": {
+      "mean": 171.48805193280927,
+      "std": 47.91451342902403,
+      "min": 99.7192206315656,
+      "max": 272.50638139011267
+    },
+    "HeikinAshi_High": {
+      "mean": 171.95998294752061,
+      "std": 48.051109430743786,
+      "min": 99.8054019578972,
+      "max": 272.98717382274697
+    },
+    "HeikinAshi_Low": {
+      "mean": 170.789099416367,
+      "std": 47.7052225155626,
+      "min": 99.633039305234,
+      "max": 271.68863962356227
+    },
+    "HeikinAshi_Open": {
+      "mean": 171.14365090850097,
+      "std": 47.8069305047267,
+      "min": 99.7192206315656,
+      "max": 271.8591759022466
+    },
+    "HourOfDay": {
+      "mean": 7.84,
+      "std": 4.816388439235108,
+      "min": 0.0,
+      "max": 16.0
+    },
+    "Ichimoku_Chikou": {
+      "mean": 175.93307835574427,
+      "std": 49.118204180585984,
+      "min": 103.84328651746117,
+      "max": 272.2371507931004
+    },
+    "Ichimoku_Cloud_Thickness": {
+      "mean": 2.7577025461258917,
+      "std": 1.0202330982867425,
+      "min": 1.0524530536451664,
+      "max": 6.736869159685455
+    },
+    "Ichimoku_Composite_Signal": {
+      "mean": 0.9376666666666666,
+      "std": 0.22668958058040842,
+      "min": -0.3333333333333333,
+      "max": 1.0
+    },
+    "Ichimoku_Cross": {
+      "mean": 0.991,
+      "std": 0.09448771310560927,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "Ichimoku_Diff_Norm": {
+      "mean": 49.02036655953072,
+      "std": 10.540267274416882,
+      "min": 21.84397964709496,
+      "max": 109.7040827779664
+    },
+    "Ichimoku_Kijun": {
+      "mean": 169.40222197266598,
+      "std": 47.187198978823915,
+      "min": 101.5888205766536,
+      "max": 267.6269360547011
+    },
+    "Ichimoku_Price_Cloud_Distance": {
+      "mean": 7.191678625849058,
+      "std": 2.800110191800667,
+      "min": 2.444533363866612,
+      "max": 16.58326843536321
+    },
+    "Ichimoku_Senkou_A": {
+      "mean": 165.8777545577264,
+      "std": 45.98280490556252,
+      "min": 102.09137169104967,
+      "max": 260.14148777227655
+    },
+    "Ichimoku_Senkou_B": {
+      "mean": 163.37327290353318,
+      "std": 45.014911894488115,
+      "min": 103.5885478246446,
+      "max": 254.98279053656464
+    },
+    "Ichimoku_Tenkan": {
+      "mean": 170.79068739205653,
+      "std": 47.662743349994955,
+      "min": 100.51547584073003,
+      "max": 270.72528421405536
+    },
+    "Ichimoku_Trend": {
+      "mean": 0.893,
+      "std": 0.3092679204939411,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "KAMA": {
+      "mean": 167.36286313055822,
+      "std": 51.288691230801824,
+      "min": 0.0,
+      "max": 269.48211317299155
+    },
+    "Kalman_Estimate": {
+      "mean": 171.03468539623688,
+      "std": 47.76426984194448,
+      "min": 99.8054019578972,
+      "max": 271.2298008551404
+    },
+    "Kalman_Residual": {
+      "mean": 0.46223434258155377,
+      "std": 0.4580654431439329,
+      "min": -1.021450393639782,
+      "max": 2.786731370828079
+    },
+    "Kalman_Residual_Norm": {
+      "mean": 1.1706995725559082,
+      "std": 1.0373400260477732,
+      "min": -1.9141802916819075,
+      "max": 4.295148523018174
+    },
+    "MACD": {
+      "mean": 0.009902666291715259,
+      "std": 0.05254824351711757,
+      "min": -0.1595819403057319,
+      "max": 0.3060460526732349
+    },
+    "MFI": {
+      "mean": 61.218170696992324,
+      "std": 9.881048973534861,
+      "min": 35.80537584116752,
+      "max": 87.61733039951676
+    },
+    "MinusDI": {
+      "mean": 25.415346606547782,
+      "std": 8.270413237138909,
+      "min": 0.0,
+      "max": 53.52692265217223
+    },
+    "OBV": {
+      "mean": 21158952.18770608,
+      "std": 11510766.253802681,
+      "min": -26495.851821376447,
+      "max": 39217181.50925542
+    },
+    "PlusDI": {
+      "mean": 38.911367134214686,
+      "std": 8.523748959138207,
+      "min": 0.0,
+      "max": 69.6312153473746
+    },
+    "PriceVolumeCorr": {
+      "mean": 0.012832004227394877,
+      "std": 0.2346503824355201,
+      "min": -0.6490820088716188,
+      "max": 0.7430758653709947
+    },
+    "ROC": {
+      "mean": 0.9963506582626259,
+      "std": 0.5080998296326246,
+      "min": -0.7132676429428345,
+      "max": 2.6024738125278013
+    },
+    "RSI": {
+      "mean": 63.82301133847164,
+      "std": 9.152919069486645,
+      "min": 0.0,
+      "max": 77.78116621870116
+    },
+    "ReturnMA_Medium": {
+      "mean": 0.001016085848609604,
+      "std": 0.00033724510552965464,
+      "min": -3.771636174754733e-05,
+      "max": 0.0018929361123335
+    },
+    "ReturnMA_Short": {
+      "mean": 0.0010171465773856972,
+      "std": 0.0008681385450661072,
+      "min": -0.0014816630602393,
+      "max": 0.0038502536208417
+    },
+    "ReturnStdDev": {
+      "mean": 0.004230699398528739,
+      "std": 0.0008651076670353623,
+      "min": 0.0019148010770873,
+      "max": 0.0072496783040964
+    },
+    "Stochastic": {
+      "mean": 75.50822675862626,
+      "std": 11.404218121438547,
+      "min": 41.04383573813603,
+      "max": 99.1875626492959
+    },
+    "Supertrend": {
+      "mean": 162.8675789085328,
+      "std": 44.78527150524659,
+      "min": 98.5792127438092,
+      "max": 258.98429686503493
+    },
+    "Supertrend_Direction": {
+      "mean": 0.92,
+      "std": 0.39211446511669734,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "TEMA": {
+      "mean": 171.4971876412359,
+      "std": 47.908643749625774,
+      "min": 99.8054019578972,
+      "max": 272.146682430598
+    },
+    "VWAP": {
+      "mean": 132.88207017967088,
+      "std": 20.113625722372515,
+      "min": 99.7479477403428,
+      "max": 171.57547606673648
+    },
+    "ZScore": {
+      "mean": 0.00013695136126709917,
+      "std": 0.951097941378442,
+      "min": -2.677388098760963,
+      "max": 2.676507791167186
+    },
+    "atr_10": {
+      "mean": 3.6648022330863452,
+      "std": 1.4481734267530508,
+      "min": 1.2658033438418244,
+      "max": 10.847801040371763
+    },
+    "close": {
+      "mean": 171.49691973881843,
+      "std": 47.90975995353955,
+      "min": 99.8054019578972,
+      "max": 272.2371507931004
+    },
+    "ema_5": {
+      "mean": 171.15357786706264,
+      "std": 47.802438346597825,
+      "min": 99.8054019578972,
+      "max": 271.47633783581466
+    },
+    "high": {
+      "mean": 171.90163791076938,
+      "std": 48.04228899005595,
+      "min": 99.8054019578972,
+      "max": 272.98717382274697
+    },
+    "low": {
+      "mean": 171.0690087559491,
+      "std": 47.78573369644912,
+      "min": 99.633039305234,
+      "max": 272.2371507931004
+    },
+    "open": {
+      "mean": 171.4846413257001,
+      "std": 47.92492813561078,
+      "min": 99.633039305234,
+      "max": 272.6771057329815
+    },
+    "rolling_mean_20": {
+      "mean": 169.8967849244828,
+      "std": 47.38412646461388,
+      "min": 101.19773028249536,
+      "max": 268.8939645008815
+    },
+    "volume": {
+      "mean": 183820.56470019429,
+      "std": 99238.80380013275,
+      "min": 37619.41885614017,
+      "max": 823687.4962201986
+    }
+  },
+  "created_at": "2025-10-07T02:24:34.069476",
+  "version": "1.0",
+  "schema_hash": "c1413927f284447bde03fc6cf1003981a54f6d1b80cb89a65cab90d4172d3dc0"
+}

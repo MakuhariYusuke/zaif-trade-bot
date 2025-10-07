@@ -1,0 +1,15 @@
+{
+  "algorithm": "ppo",
+  "data_path": "ml-dataset-final.csv",
+  "total_timesteps": 20000,
+  "session_id": "sell_mitigation_test",
+  "enable_sell_mitigation": true,
+  "curriculum_stage": "full",
+  "enable_lagrange": true,
+  "enable_probes": true,
+  "enable_weights": true,
+  "probe_csv_path": "sell_probe_test.csv",
+  "checkpoint_dir": "checkpoints_test",
+  "model_dir": "models_test",
+  "tensorboard_log": "tensorboard_logs_test"
+}

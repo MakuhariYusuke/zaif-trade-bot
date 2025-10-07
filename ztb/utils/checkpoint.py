@@ -34,7 +34,7 @@ try:
 
     HAS_ZSTD = True
 except ImportError:
-    zstd = None
+    zstd = None  # type: ignore
     HAS_ZSTD = False
 
 import zlib
@@ -252,7 +252,7 @@ class CheckpointManager:
             # Full checkpoint
             save_data = checkpoint_data
             filename = f"checkpoint_{step:08d}.pkl"
-            self.last_full_checkpoint = checkpoint_data
+            self.last_full_checkpoint = checkpoint_data  # type: ignore[assignment]
             self.last_checkpoint_path = None  # Reset diff chain
 
         # Serialize

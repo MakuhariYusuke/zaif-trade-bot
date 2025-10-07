@@ -5,15 +5,16 @@ Compute Brier score and reliability curves for action probability calibration.
 Helps monitor whether predicted probabilities are well-calibrated.
 """
 
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 import numpy as np
+from numpy.typing import NDArray
 
 
 def compute_brier_score(
-    predicted_probs: np.ndarray,
-    actual_actions: np.ndarray,
+    predicted_probs: NDArray[np.floating[Any]],
+    actual_actions: NDArray[np.integer[Any]],
     n_actions: int = 3,
-) -> Dict[str, float]:
+) -> Dict[str, Any]:
     """
     Compute Brier score for multi-class predictions.
     
@@ -40,7 +41,7 @@ def compute_brier_score(
     overall_brier = np.mean(brier_per_sample)
     
     # Per-action Brier score
-    per_action_brier = {}
+    per_action_brier: Dict[str, float] = {}
     for action_idx in range(n_actions):
         action_name = ["HOLD", "BUY", "SELL"][action_idx] if n_actions == 3 else f"Action_{action_idx}"
         # For samples where this action was taken
@@ -48,7 +49,7 @@ def compute_brier_score(
         if np.sum(mask) > 0:
             per_action_brier[action_name] = float(np.mean(brier_per_sample[mask]))
         else:
-            per_action_brier[action_name] = None
+            per_action_brier[action_name] = 0.0
     
     return {
         "overall": float(overall_brier),
@@ -57,8 +58,8 @@ def compute_brier_score(
 
 
 def compute_reliability_curve(
-    predicted_probs: np.ndarray,
-    actual_actions: np.ndarray,
+    predicted_probs: NDArray[np.floating[Any]],
+    actual_actions: NDArray[np.integer[Any]],
     action_idx: int,
     n_bins: int = 10,
 ) -> Dict[str, Any]:
@@ -113,8 +114,8 @@ def compute_reliability_curve(
             bin_observed_freq.append(float(observed_freq))
         else:
             bin_counts.append(0)
-            bin_predicted_prob.append(None)
-            bin_observed_freq.append(None)
+            bin_predicted_prob.append(0.0)
+            bin_observed_freq.append(0.0)
     
     # Compute Expected Calibration Error (ECE)
     # ECE = weighted average of |predicted_prob - observed_freq|
@@ -136,10 +137,10 @@ def compute_reliability_curve(
 
 
 def compute_full_calibration_report(
-    predicted_probs: np.ndarray,
-    actual_actions: np.ndarray,
+    predicted_probs: NDArray[np.floating[Any]],
+    actual_actions: NDArray[np.integer[Any]],
     n_bins: int = 10,
-    action_names: List[str] = None,
+    action_names: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Compute full calibration report with Brier scores and reliability curves.

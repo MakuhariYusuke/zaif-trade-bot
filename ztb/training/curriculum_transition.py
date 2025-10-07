@@ -3,100 +3,35 @@
 カリキュラム学習 Stage 2: バランス維持しながら通常報酬関数へ移行
 """
 
-import pandas as pd
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.training.training_utils import setup_project_path, create_ppo_model, load_training_data, save_model_with_path, evaluate_model
+from ztb.training.ppo_config import DEFAULT_REWARD_SCALING, DEFAULT_INITIAL_PORTFOLIO_VALUE
 from ztb.trading.environment.environment import HeavyTradingEnv
-
-
-class TrainingCallback(BaseCallback):
-    """トレーニングコールバック - 行動分布とバランススコアを追跡"""
-
-    def __init__(self, verbose: int = 0) -> None:
-        super().__init__(verbose)
-        self.action_counts = [0, 0, 0]  # [HOLD, BUY, SELL]
-        self.episode_rewards: list[float] = []
-        self.current_episode_reward = 0
-
-    def _on_step(self) -> bool:
-        # 行動をカウント（DummyVecEnvから取得）
-        if hasattr(self.locals, "actions"):
-            actions = self.locals["actions"]
-            if len(actions.shape) > 0:
-                for action in actions:
-                    if action < 3:  # 有効な行動のみ
-                        self.action_counts[action] += 1
-            else:
-                action = actions.item()
-                if action < 3:
-                    self.action_counts[action] += 1
-
-        # エピソード報酬を追跡
-        if "rewards" in self.locals:
-            rewards = self.locals["rewards"]
-            if len(rewards.shape) > 0:
-                self.current_episode_reward += rewards[0]
-            else:
-                self.current_episode_reward += rewards
-
-        # エピソード終了時に統計を記録
-        if "dones" in self.locals:
-            dones = self.locals["dones"]
-            done = dones[0] if len(dones.shape) > 0 else dones
-            if done:
-                self.episode_rewards.append(self.current_episode_reward)
-                self.current_episode_reward = 0
-
-        return True
-
-    def _on_training_end(self) -> None:
-        """トレーニング終了時に最終統計を表示"""
-        total_actions = sum(self.action_counts)
-        if total_actions > 0:
-            action_dist = [count / total_actions * 100 for count in self.action_counts]
-
-            # バランススコア計算（低いほどバランスが良い）
-            target_ratio = 1.0 / 3.0
-            balance_score = sum(
-                abs(ratio / 100 - target_ratio) for ratio in action_dist
-            )
-
-            print(
-                "\n=== カリキュラム学習 Stage 2: バランス維持しながら通常報酬関数へ移行 ==="
-            )
-            print(f"総行動数: {total_actions}")
-            print(f"バランススコア: {balance_score:.4f}")
-            print(f"HOLD: {action_dist[0]:.1f}%")
-            print(f"BUY: {action_dist[1]:.1f}%")
-            print(f"SELL: {action_dist[2]:.1f}%")
-            print(f"バランススコア: {balance_score:.4f}")
-
-            if self.episode_rewards:
-                avg_reward = sum(self.episode_rewards) / len(self.episode_rewards)
-                print(f"平均エピソード報酬: {avg_reward:.3f}")
+from ztb.training.callbacks import SimpleTrainingCallback
 
 
 def main() -> None:
     """メイン実行関数"""
     print("=== カリキュラム学習 Stage 2: バランス維持しながら通常報酬関数へ移行 ===")
 
+    # Setup project path
+    setup_project_path()
+
     # データ読み込み
     print("データを読み込み中...")
-    df = pd.read_csv("ml-dataset-enhanced.csv")
-    df = df.sort_values("timestamp").reset_index(drop=True)
+    df = load_training_data()
     print(f"データサイズ: {len(df)} 行")
 
     # 環境設定
     config = {
-        "reward_scaling": 6.0,  # 最適化されたスケーリング
+        "reward_scaling": DEFAULT_REWARD_SCALING,  # 最適化されたスケーリング
         "curriculum_stage": "balanced_transition",  # 新しい移行ステージ
         "max_position_size": 1.0,
         "transaction_cost": 0.0,
         "timeframe": "1m",
         "feature_set": "full",
-        "initial_portfolio_value": 1_000_000.0,
+        "initial_portfolio_value": DEFAULT_INITIAL_PORTFOLIO_VALUE,
         # 報酬設定
         "reward_position_soft_cap": 0.8,
         "reward_position_penalty_scale": 0.5,
@@ -124,25 +59,23 @@ def main() -> None:
 
     # PPOモデル設定（最適化されたハイパーパラメータ）
     print("PPOモデルを作成中...")
-    model = PPO(
-        "MlpPolicy",
-        env,
-        learning_rate=5e-4,  # 最適化済み
-        gamma=0.95,  # 最適化済み
-        gae_lambda=0.8,  # 最適化済み
-        clip_range=0.3,  # 最適化済み
-        vf_coef=0.5,  # 最適化済み
-        max_grad_norm=1.0,  # 最適化済み
-        target_kl=0.005,  # 最適化済み
-        ent_coef=0.05,  # 最適化済み
-        batch_size=64,  # 最適化済み
-        n_epochs=10,
-        verbose=1,
-        tensorboard_log="./tensorboard/",
-    )
+    model_config = {
+        "learning_rate": 5e-4,  # 最適化済み
+        "gamma": 0.95,  # 最適化済み
+        "gae_lambda": 0.8,  # 最適化済み
+        "clip_range": 0.3,  # 最適化済み
+        "vf_coef": 0.5,  # 最適化済み
+        "max_grad_norm": 1.0,  # 最適化済み
+        "target_kl": 0.005,  # 最適化済み
+        "ent_coef": 0.05,  # 最適化済み
+        "batch_size": 64,  # 最適化済み
+        "n_epochs": 10,
+        "verbose": 1,
+    }
+    model = create_ppo_model(env, model_config)
 
     # コールバック設定
-    callback = TrainingCallback()
+    callback = SimpleTrainingCallback()
 
     # トレーニング実行
     print("トレーニングを開始します...")
@@ -153,25 +86,12 @@ def main() -> None:
     model.learn(total_timesteps=total_timesteps, callback=callback, progress_bar=True)
 
     # モデル保存
-    model_path = "models/curriculum_transition.zip"
-    model.save(model_path)
+    model_path = save_model_with_path(model, "curriculum_transition")
     print(f"\nモデルを保存しました: {model_path}")
 
     # 最終評価
     print("\n=== 最終評価 ===")
-    obs = env.reset()
-    episode_reward = 0
-    done = False
-    step_count = 0
-
-    while not done and step_count < 1000:
-        action, _ = model.predict(obs, deterministic=True)  # type: ignore[arg-type]
-        obs, reward, done, _ = env.step(action)  # type: ignore[misc,arg-type]
-        episode_reward += reward[0] if hasattr(reward, "__len__") else reward
-        step_count += 1
-
-        if done:
-            break  # type: ignore[unreachable]
+    episode_reward, step_count = evaluate_model(model, env)
 
     print(f"評価エピソード報酬: {episode_reward:.3f}")
     print(f"ステップ数: {step_count}")

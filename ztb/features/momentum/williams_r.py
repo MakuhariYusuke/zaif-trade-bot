@@ -12,11 +12,12 @@ import pandas as pd
 
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("Williams_R")
 def compute_williams_r(df: pd.DataFrame) -> pd.Series:
-    """Williams %R (Williams Percent Range)"""
+    """Williams %R (Williams Percent Range) using Ta-Lib wrapper"""
     feature = WilliamsR()
     result_df = feature.compute(df)
     return result_df["williams_r"]
@@ -39,12 +40,12 @@ class WilliamsR(BaseFeature):
         """
         period = params.get("period", self.period)
 
-        # Calculate highest high and lowest low over the period
-        highest_high = df["high"].rolling(window=period).max()
-        lowest_low = df["low"].rolling(window=period).min()
+        # Use Ta-Lib wrapper for Williams %R calculation
+        result = TaLibWrapper.williams_r(
+            df["high"].to_numpy(),
+            df["low"].to_numpy(),
+            df["close"].to_numpy(),
+            period
+        )
 
-        # Calculate Williams %R
-        # %R = (Highest High - Close) / (Highest High - Lowest Low) * -100
-        williams_r = ((highest_high - df["close"]) / (highest_high - lowest_low)) * -100
-
-        return pd.DataFrame({"williams_r": williams_r}, index=df.index)
+        return pd.DataFrame({"williams_r": result}, index=df.index)

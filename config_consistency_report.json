@@ -1,0 +1,98 @@
+{
+  "consistency_check": {
+    "common_keys": [
+      "data_path",
+      "training",
+      "comment",
+      "environment",
+      "reward_profit_bonus_multipliers",
+      "model_dir",
+      "session_id",
+      "algorithm",
+      "reward_settings",
+      "log_dir",
+      "checkpoint_dir",
+      "custom_ppo",
+      "total_timesteps",
+      "checkpoint_interval"
+    ],
+    "unique_keys": {
+      "ensemble_A_100k_test.json": [
+        "offline_mode",
+        "verbose",
+        "enable_progress_bar",
+        "staging"
+      ],
+      "ensemble_A_1M.json": [
+        "offline_mode",
+        "verbose",
+        "enable_progress_bar",
+        "staging"
+      ],
+      "ensemble_B_100k_test.json": [
+        "offline_mode",
+        "verbose",
+        "enable_progress_bar",
+        "staging"
+      ],
+      "ensemble_B_1M.json": [
+        "offline_mode",
+        "verbose",
+        "enable_progress_bar",
+        "staging"
+      ],
+      "ensemble_C_100k_test.json": [
+        "offline_mode",
+        "verbose",
+        "enable_progress_bar",
+        "staging"
+      ],
+      "ensemble_C_1M.json": [
+        "offline_mode",
+        "verbose",
+        "enable_progress_bar",
+        "staging"
+      ],
+      "template.json": [
+        "grad_probe_config",
+        "enable_grad_probe_guard",
+        "_usage",
+        "evaluation"
+      ],
+      "template_2M.json": [
+        "rolling_evaluation",
+        "_usage",
+        "resume",
+        "grad_probe_config",
+        "enable_grad_probe_guard",
+        "evaluation"
+      ]
+    },
+    "type_inconsistencies": {
+      "staging": {
+        "ensemble_A_100k_test.json": "<class 'NoneType'>",
+        "ensemble_A_1M.json": "<class 'dict'>",
+        "ensemble_B_100k_test.json": "<class 'NoneType'>",
+        "ensemble_B_1M.json": "<class 'dict'>",
+        "ensemble_C_100k_test.json": "<class 'NoneType'>",
+        "ensemble_C_1M.json": "<class 'dict'>"
+      }
+    },
+    "all_files": [
+      "ensemble_A_100k_test.json",
+      "ensemble_A_1M.json",
+      "ensemble_B_100k_test.json",
+      "ensemble_B_1M.json",
+      "ensemble_C_100k_test.json",
+      "ensemble_C_1M.json",
+      "template.json",
+      "template_2M.json"
+    ]
+  },
+  "summary": {
+    "total_config_files": 8,
+    "common_keys_count": 14,
+    "unique_keys_files": 8,
+    "type_inconsistencies_count": 1
+  }
+}
