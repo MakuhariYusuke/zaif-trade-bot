@@ -391,18 +391,32 @@ class PaperTrader:
             )
             action = np.array([action])  # Wrap for env.step()
 
-            # Debug: Log action distribution for first few steps
+            # Debug: Log action distribution for first few steps AND environment state
             if self.verbose and steps < 10:
-                print(f"\nStep {steps} (Unified Decode Diagnostics):")
-                print(f"  Action selected: {action[0]} ({'HOLD' if action[0] == 0 else 'BUY' if action[0] == 1 else 'SELL'})")
+                env_obj = cast(TradingEnvironment, self.env.envs[0])
+                curriculum_stage = getattr(env_obj, 'curriculum_stage', 'UNKNOWN')
+                print(f"\n{'='*60}")
+                print(f"Step {steps} - Environment & Decode Diagnostics")
+                print(f"{'='*60}")
+                print(f"[Environment State]")
+                print(f"  Curriculum Stage: {curriculum_stage}")
+                print(f"  Current Position: {self.position:.3f}")
+                print(f"  Portfolio Value: ${self.portfolio_value:.2f}")
+                print(f"  Legal Actions Mask: {action_masks}")
+                print(f"\n[Decode Pipeline Results]")
+                action_idx = int(action[0])
+                action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(action_idx, f"UNKNOWN({action_idx})")
+                print(f"  Action Selected: {action_idx} ({action_name})")
                 print(f"  Probabilities: HOLD={decode_info['probabilities'][0]:.4f}, "
                       f"BUY={decode_info['probabilities'][1]:.4f}, "
                       f"SELL={decode_info['probabilities'][2]:.4f}")
-                print(f"  Top2 actions: {decode_info['top2_actions']}")
-                print(f"  Top2 probs: [{decode_info['top2_probs'][0]:.4f}, {decode_info['top2_probs'][1]:.4f}]")
-                print(f"  Margin: {decode_info['margin']:.4f}")
-                print(f"  Tiebreaker activated: {decode_info['tiebreaker_activated']}")
-                print(f"  Legal actions mask: {action_masks}")
+                print(f"  Top2 Actions: {decode_info['top2_actions']} (indices)")
+                print(f"  Top2 Probs: [{decode_info['top2_probs'][0]:.4f}, {decode_info['top2_probs'][1]:.4f}]")
+                print(f"  Margin (p1-p2): {decode_info['margin']:.4f}")
+                print(f"  Tiebreaker Activated: {decode_info['tiebreaker_activated']}")
+                if decode_info.get('tiebreaker_reason'):
+                    print(f"  Tiebreaker Reason: {decode_info['tiebreaker_reason']}")
+                print(f"{'='*60}")
 
             # Record state before action
             prev_portfolio = self.portfolio_value
@@ -435,12 +449,11 @@ class PaperTrader:
                 }
                 episode_trades.append(trade)
 
-                # Log detailed trade information
-                action_name = (
-                    "BUY" if action[0] > 0.1 else "SELL" if action[0] < -0.1 else "HOLD"
-                )
+                # Log detailed trade information with CORRECT discrete action mapping
+                action_idx = int(action[0])
+                action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(action_idx, f"UNKNOWN({action_idx})")
                 self.logger.info(
-                    f"Trade #{len(episode_trades)}: {action_name} | "
+                    f"Trade #{len(episode_trades)}: {action_name} (action_idx={action_idx}) | "
                     f"Position: {prev_position:.3f} -> {self.position:.3f} | "
                     f"Portfolio: ${prev_portfolio:.2f} -> ${self.portfolio_value:.2f} | "
                     f"Change: ${trade['portfolio_change']:.2f}"
@@ -527,13 +540,15 @@ class PaperTrader:
                 float(np.mean(returns) / np.std(returns)) if np.std(returns) > 0 else 0
             )
 
-        # Action distribution
+        # Action distribution (CORRECT: discrete action indices)
         action_counts: Dict[str, int] = {}
         for trade in self.trades:
             action = trade["action"]
             if isinstance(action, (list, np.ndarray)):
                 action = action[0]
-            action_name = "BUY" if action > 0.1 else "SELL" if action < -0.1 else "HOLD"
+            # Convert discrete action index to name
+            action_idx = int(action)
+            action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(action_idx, f"UNKNOWN({action_idx})")
             action_counts[action_name] = action_counts.get(action_name, 0) + 1
         stats["action_distribution"] = action_counts
 
