@@ -48,7 +48,7 @@ def compute_bb_width(
 
     # Width = (upper - lower) / middle
     width = (upper - lower) / np.where(middle == 0, 1, middle)
-    return pd.Series(width, index=df.index).fillna(0)
+    return pd.Series(width, index=df.index, dtype=float).fillna(0.0)
 
 
 @FeatureRegistry.register("BB_Position")
@@ -62,4 +62,4 @@ def compute_bb_position(
     # Position = (close - lower) / (upper - lower)
     denominator = upper - lower
     position = (close_prices - lower) / np.where(denominator == 0, 1, denominator)
-    return pd.Series(position, index=df.index).fillna(0.5)
+    return pd.Series(position, index=df.index, dtype=float).fillna(0.0)

@@ -1266,8 +1266,9 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                     balance_penalty *= 2.0  # Double the penalty
 
                 # Debug output
-                print(
-                    f"DEBUG Balance: total_actions={total_actions}, ratios={action_ratios}, penalty={balance_penalty:.3f}"
+                logger.debug(
+                    "Balance penalty: total_actions=%d, ratios=%s, penalty=%.3f",
+                    total_actions, action_ratios, balance_penalty
                 )
 
             # Calculate base reward using standard logic (from "full" stage)
@@ -1300,7 +1301,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 )
                 if sma_50 > eps:
                     trend_ratio = sma_20 / sma_50
-                    print(f"DEBUG Trend: trend_ratio={trend_ratio:.4f}")
+                    logger.debug(f"Trend: trend_ratio={trend_ratio:.4f}")
                     if (
                         trend_ratio > 1.02
                     ):  # Strong bullish trend (strengthened threshold)
@@ -1482,7 +1483,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 if self.reward_settings
                 else {}
             )
-            print(f"DEBUG Simple portfolio: custom_params={custom_params}")
+            logger.debug(f"Simple portfolio: custom_params={custom_params}")
             # Position-dependent rewards to balance BUY/SELL - SELL bias correction
             if self.position == 0:
                 # No position: strongly encourage BUY, mildly penalize SELL
@@ -1501,7 +1502,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 else:  # SELL
                     reward = custom_params.get("has_position_sell_reward", 2.0)
 
-            print(f"DEBUG Simple portfolio reward: {reward}")
+            logger.debug(f"Simple portfolio reward: {reward}")
             return float(reward)
         elif curriculum_stage == "hold_only":
             # Stage 1: Only HOLD is rewarded, trading is heavily penalized

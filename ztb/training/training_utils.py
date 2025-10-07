@@ -12,7 +12,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.environment import HeavyTradingEnv
-from ztb.training.ppo_config import get_ppo_config
+from ztb.training.ppo_config import get_ppo_config, PPOConfig
 
 
 def setup_project_path() -> Path:
@@ -41,7 +41,7 @@ def create_ppo_model(
     tensorboard_log: str = "./tensorboard"
 ) -> PPO:
     """Create PPO model with common configuration"""
-    ppo_config = get_ppo_config()
+    ppo_config: PPOConfig = get_ppo_config()
 
     # Apply overrides if provided
     if config_override:
@@ -61,7 +61,7 @@ def create_ppo_model(
         ent_coef=ppo_config.get("ent_coef", 0.01),
         vf_coef=ppo_config.get("vf_coef", 0.5),
         max_grad_norm=ppo_config.get("max_grad_norm", 0.5),
-        verbose=int(ppo_config.get("verbose", 1)),
+        verbose=int(ppo_config.get("verbose", 1) or 1),
         tensorboard_log=tensorboard_log,
     )
 

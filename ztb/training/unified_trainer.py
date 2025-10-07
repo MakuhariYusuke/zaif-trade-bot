@@ -402,7 +402,7 @@ class UnifiedTrainer:
                 return None
 
         # Dry run mode
-        print(f"DEBUG: config feature_set = {self.config.get('feature_set', 'full')}")
+        logger.debug(f"config feature_set = {self.config.get('feature_set', 'full')}")
         if self.dry_run:
             logger.info(
                 f"Dry run: would train with session_id {self.config.get('session_id', 'iterative_session')}"
@@ -464,8 +464,8 @@ class UnifiedTrainer:
         ]
 
         # DEBUG: Print sys.argv
-        print(f"DEBUG: sys.argv = {sys.argv}")
-        print(f"DEBUG: feature-set value = {self.config.get('feature_set', 'full')}")
+        logger.debug(f"sys.argv = {sys.argv}")
+        logger.debug(f"feature-set value = {self.config.get('feature_set', 'full')}")
 
         # Add optional arguments
         if self.dry_run:
@@ -486,8 +486,8 @@ class UnifiedTrainer:
             sys.argv.append("--offline-mode")
 
         # DEBUG: Print final config and sys.argv before calling run_1m_main
-        print(f"DEBUG: Final config feature_set = {self.config.get('feature_set')}")
-        print(f"DEBUG: Final sys.argv = {sys.argv}")
+        logger.debug(f"Final config feature_set = {self.config.get('feature_set')}")
+        logger.debug(f"Final sys.argv = {sys.argv}")
 
         return run_1m_main()
 

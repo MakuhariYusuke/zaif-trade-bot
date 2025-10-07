@@ -258,10 +258,8 @@ def main() -> None:
         # Wave3のみをアブレーション（harmfulフラグを無視）
         all_features = ["Ichimoku", "Donchian", "RegimeClustering", "KalmanFilter"]
     else:
-        waves = [int(w.strip()) for w in args.waves.split(",") if w.strip()]
-        all_features = []
-        for wave in waves:
-            all_features.extend(manager.get_enabled_features(wave))
+        # waves = [int(w.strip()) for w in args.waves.split(",") if w.strip()]  # Not used
+        all_features = manager.list()  # Get all registered features
 
     # 出力ディレクトリ
     output_dir = Path("reports/feature_ranking")

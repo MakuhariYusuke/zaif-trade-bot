@@ -8,6 +8,7 @@ Output columns:
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from ztb.features.base import ComputableFeature, MovingAverageFeature
@@ -38,6 +39,6 @@ class KAMA(MovingAverageFeature, ComputableFeature):
         Returns a DataFrame with KAMA values.
         """
         # Use Ta-Lib wrapper for KAMA calculation
-        result = TaLibWrapper.kama(df["close"].to_numpy())
+        result = TaLibWrapper.kama(df["close"].values.astype(np.float64))
 
         return pd.DataFrame({"kama": result})

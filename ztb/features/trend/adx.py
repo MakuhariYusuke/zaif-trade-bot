@@ -3,6 +3,7 @@ ADX (Average Directional Index) implementation.
 トレンド強度を測定する方向性移動指標
 """
 
+import numpy as np
 import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
@@ -17,7 +18,7 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
     close = df["close"]
 
     result = TaLibWrapper.adx(
-        high.to_numpy(), low.to_numpy(), close.to_numpy(), period
+        high.values.astype(np.float64), low.values.astype(np.float64), close.values.astype(np.float64), period
     )
     return pd.Series(result, index=df.index)
 
@@ -30,7 +31,7 @@ def compute_plus_di(df: pd.DataFrame, period: int = 14) -> pd.Series:
     close = df["close"]
 
     result = TaLibWrapper.plus_di(
-        high.to_numpy(), low.to_numpy(), close.to_numpy(), period
+        high.values.astype(np.float64), low.values.astype(np.float64), close.values.astype(np.float64), period
     )
     return pd.Series(result, index=df.index)
 
@@ -43,6 +44,6 @@ def compute_minus_di(df: pd.DataFrame, period: int = 14) -> pd.Series:
     close = df["close"]
 
     result = TaLibWrapper.minus_di(
-        high.to_numpy(), low.to_numpy(), close.to_numpy(), period
+        high.values.astype(np.float64), low.values.astype(np.float64), close.values.astype(np.float64), period
     )
     return pd.Series(result, index=df.index)
