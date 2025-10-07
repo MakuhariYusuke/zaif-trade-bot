@@ -1,0 +1,45 @@
+{
+  "comment": "10k smoke test for 4 high-impact action bias mitigations",
+  "algorithm": "ppo",
+  "data_path": "ml-dataset-enhanced.csv",
+  "total_timesteps": 10000,
+  "learning_rate": 3e-4,
+  "n_steps": 2048,
+  "batch_size": 64,
+  "gamma": 0.99,
+  "ent_coef": 0.01,
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "clip_range": 0.2,
+  "gae_lambda": 0.95,
+  "seed": 42,
+  
+  "environment": {
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "curriculum_stage": "full",
+    "allow_reverse": false
+  },
+  
+  "mitigation": {
+    "enable_lagrange": true,
+    "enable_probes": true,
+    "enable_weights": true,
+    "enable_pan": true,
+    "enable_target_entropy": true,
+    "enable_stratified_sampling": true
+  },
+  
+  "validation": {
+    "target_sell_rate_min": 0.12,
+    "target_sell_rate_optimal": 0.15,
+    "grad_norm_threshold": 1e-6,
+    "moving_window": 5000
+  },
+  
+  "output": {
+    "checkpoint_dir": "./checkpoints/smoke_test_10k",
+    "tensorboard_log": "./logs/smoke_test_10k",
+    "probe_csv": "./checkpoints/smoke_test_10k/sell_probe.csv"
+  }
+}

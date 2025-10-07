@@ -14,10 +14,10 @@ from ztb.training.ppo_trainer import (  # noqa: E402  pylint: disable=wrong-impo
     PPOTrainer,
 )
 from ztb.utils.path_utils import ensure_dir
-from ztb.utils.project_setup import setup_project_path
+from ztb.training.training_utils import setup_project_path
 
 # Setup project path
-setup_project_path(Path(__file__))
+setup_project_path()
 
 LOGGER = logging.getLogger(__name__)
 

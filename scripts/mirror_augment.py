@@ -210,14 +210,15 @@ def main():
     print()
     
     # Summary
-    sell_improvement = (
-        action_counts_after.get(2, 0) / len(df_augmented) - 
-        action_counts_before.get(2, 0) / len(df)
-    ) * 100
-    
-    print("Summary:")
-    print(f"  SELL representation improved by: {sell_improvement:+.1f} percentage points")
-    print(f"  Ready for BC warmstart training")
+    if "action" in df_augmented.columns:
+        sell_improvement = (
+            action_counts_after.get(2, 0) / len(df_augmented) - 
+            action_counts_before.get(2, 0) / len(df)
+        ) * 100
+        
+        print("Summary:")
+        print(f"  SELL representation improved by: {sell_improvement:+.1f} percentage points")
+        print(f"  Ready for BC warmstart training")
 
 
 if __name__ == "__main__":

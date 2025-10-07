@@ -5,14 +5,15 @@ StrictMaskedPolicy: カスタムPPOポリシー（学習時の厳密なマスク
 違法アクションが損失計算に寄与しないことを保証する。
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
+import numpy as np
 import torch
 import torch.nn as nn
 from gymnasium import spaces
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
-from stable_baselines3.common.type_aliases import Schedule
+from stable_baselines3.common.type_aliases import Schedule, PyTorchObs
 
 
 class StrictMaskedPolicy(MaskableActorCriticPolicy):
@@ -29,8 +30,8 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
 
     def __init__(
         self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
+        observation_space: spaces.Space[Any],
+        action_space: spaces.Space[Any],
         lr_schedule: Schedule,
         net_arch: Optional[Dict[str, Any]] = None,
         activation_fn: type[nn.Module] = nn.Tanh,
@@ -71,7 +72,7 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         self,
         obs: torch.Tensor,
         deterministic: bool = False,
-        action_masks: Optional[torch.Tensor] = None,
+        action_masks: Optional[np.ndarray[Any, Any]] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Forward pass with strict mask enforcement.
@@ -105,7 +106,7 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         # 違法アクションのlogitsを -1e9 に設定（事実上の確率ゼロ）
         if action_masks is not None:
             logits = torch.where(
-                action_masks.bool(),
+                torch.from_numpy(action_masks).bool(),
                 logits,
                 torch.tensor(-1e9, dtype=logits.dtype, device=logits.device),
             )
@@ -119,10 +120,10 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
             actions = torch.argmax(logits, dim=-1)
         else:
             # Stochastic: sample from masked distribution
-            actions = distribution.sample()
+            actions = distribution.sample()  # type: ignore[no-untyped-call]
         
         # Compute log probabilities and values
-        log_probs = distribution.log_prob(actions)
+        log_probs = distribution.log_prob(actions)  # type: ignore[no-untyped-call]
         values = self.value_net(latent_vf)
         
         return actions, values, log_probs
@@ -174,8 +175,8 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         distribution = torch.distributions.Categorical(logits=logits)
         
         # Compute log probabilities and entropy
-        log_probs = distribution.log_prob(actions)
-        entropy = distribution.entropy()
+        log_probs = distribution.log_prob(actions)  # type: ignore[no-untyped-call]
+        entropy = distribution.entropy()  # type: ignore[no-untyped-call]
         
         # Compute values
         values = self.value_net(latent_vf)
@@ -184,7 +185,7 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
 
     def predict_values(
         self,
-        obs: torch.Tensor,
+        obs: PyTorchObs,
     ) -> torch.Tensor:
         """
         Predict values for observations.
@@ -208,4 +209,4 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         # Compute values
         values = self.value_net(latent_vf)
         
-        return values
+        return torch.tensor(values)  # Ensure Tensor return type

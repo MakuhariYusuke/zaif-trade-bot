@@ -250,7 +250,7 @@ class ExperimentBase(ABC):
         self._inject_streaming_metrics(result)
 
         # リスク調整指標を計算して追加
-        self._add_risk_adjusted_metrics(result)
+        # self._add_risk_adjusted_metrics(result)  # TODO: Implement risk-adjusted metrics
 
         # 結果保存
         self.save_results(result)

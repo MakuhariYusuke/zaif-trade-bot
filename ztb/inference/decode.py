@@ -16,7 +16,7 @@ Critical Requirements:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple, cast, Union
 
 import numpy as np
 import torch
@@ -110,8 +110,8 @@ def decode_action(
     # Convert to numpy if torch tensor
     is_torch = isinstance(logits, torch.Tensor)
     if is_torch:
-        logits_np = logits.detach().cpu().numpy()
-        mask_np = legal_mask.detach().cpu().numpy()
+        logits_np = cast(torch.Tensor, logits).detach().cpu().numpy()
+        mask_np = cast(torch.Tensor, legal_mask).detach().cpu().numpy()
     else:
         logits_np = np.asarray(logits)
         mask_np = np.asarray(legal_mask)
@@ -213,7 +213,7 @@ def decode_action(
         
         # Initialize selected action with top1 (default)
         selected_action = top1_action
-        tiebreaker_reason = None
+        tiebreaker_reason: Optional[str] = None
         
         # Advantage-aware tiebreaker (Priority 1: strongest signal)
         if (
@@ -294,7 +294,7 @@ def decode_action(
 
     # Remove batch dimension if single observation
     if single_obs:
-        action = int(actions[0])
+        action: Union[int, np.ndarray[Any, Any]] = int(actions[0])
         info["probabilities"] = probabilities[0]
         info["top2_actions"] = top2_actions[0]
         info["top2_probs"] = top2_probs[0]

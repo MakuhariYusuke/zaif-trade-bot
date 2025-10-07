@@ -1,25 +1,33 @@
 """
-SELL Gradient Probe & Failsafe.
+Action Gradient Probe & Failsafe.
 
-Monitors SELL action gradients and advantages during training.
-Triggers early stop if SELL gradient dies (grad_norm ≈ 0) or
-advantage remains non-positive for extended period.
+Monitors specific action gradients and advantages during training.
+Triggers early stop if action gradient dies (grad_norm ≈ 0) or
+advantage remains outside target range for extended period.
+
+Supports HOLD/BUY/SELL action monitoring.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Literal, TextIO
 import numpy as np
 import torch
 from pathlib import Path
 import csv
 
 
-class SELLGradientProbe:
+ActionType = Literal["HOLD", "BUY", "SELL"]
+
+
+class ActionGradientProbe:
     """
-    Probe for monitoring SELL action health during training.
+    Probe for monitoring specific action health during training.
+    
+    Replaces SELLGradientProbe with generalized version.
     """
     
     def __init__(
         self,
+        target_action: ActionType = "SELL",
         grad_norm_threshold: float = 1e-6,
         advantage_threshold: float = 0.0,
         consecutive_failures: int = 200,
@@ -30,12 +38,15 @@ class SELLGradientProbe:
         Initialize gradient probe.
         
         Args:
+            target_action: Action to monitor ("HOLD", "BUY", or "SELL")
             grad_norm_threshold: Minimum grad norm (below = unhealthy)
             advantage_threshold: Minimum advantage (below = unhealthy)
             consecutive_failures: Max consecutive unhealthy updates before stop
             moving_window: Window for moving average
             save_path: Path to save probe CSV
         """
+        self.target_action = target_action
+        self.action_idx = {"HOLD": 0, "BUY": 1, "SELL": 2}[target_action]
         self.grad_norm_threshold = grad_norm_threshold
         self.advantage_threshold = advantage_threshold
         self.consecutive_failures = consecutive_failures
@@ -44,12 +55,14 @@ class SELLGradientProbe:
         
         # Tracking
         self.step_count = 0
-        self.grad_norms = []
-        self.advantages = []
+        self.grad_norms: list[float] = []
+        self.advantages: list[float] = []
         self.consecutive_unhealthy = 0
         self.triggered = False
         
         # CSV writer
+        self.csv_file: Optional[TextIO] = None
+        self.csv_writer: Optional['csv.DictWriter[str]'] = None
         if save_path:
             save_path.parent.mkdir(parents=True, exist_ok=True)
             self.csv_file = open(save_path, "w", newline="")
@@ -57,9 +70,9 @@ class SELLGradientProbe:
                 self.csv_file,
                 fieldnames=[
                     "step",
-                    "grad_norm_sell",
+                    f"grad_norm_{target_action.lower()}",
                     "grad_norm_ma",
-                    "advantage_sell",
+                    f"advantage_{target_action.lower()}",
                     "advantage_ma",
                     "is_healthy",
                     "consecutive_unhealthy",
@@ -77,7 +90,7 @@ class SELLGradientProbe:
         actions: np.ndarray,
     ) -> Tuple[bool, Dict[str, float]]:
         """
-        Probe SELL gradient and advantage.
+        Probe target action gradient and advantage.
         
         Args:
             action_logits: Action logits tensor [batch_size, n_actions] (requires_grad=True)
@@ -91,19 +104,19 @@ class SELLGradientProbe:
         """
         self.step_count += 1
         
-        # Extract SELL logits (action=2)
-        sell_logits = action_logits[:, 2]
+        # Extract target action logits
+        target_logits = action_logits[:, self.action_idx]
         
-        # Compute gradient norm for SELL
-        if sell_logits.requires_grad:
-            # Create dummy loss (sum of SELL logits)
-            sell_loss = sell_logits.sum()
-            sell_loss.backward(retain_graph=True)
+        # Compute gradient norm for target action
+        if target_logits.requires_grad:
+            # Create dummy loss (sum of target logits)
+            target_loss = target_logits.sum()
+            target_loss.backward(retain_graph=True)
             
             # Get gradient
             if action_logits.grad is not None:
-                sell_grad = action_logits.grad[:, 2]
-                grad_norm = torch.norm(sell_grad).item()
+                target_grad = action_logits.grad[:, self.action_idx]
+                grad_norm = torch.norm(target_grad).item()
             else:
                 grad_norm = 0.0
             
@@ -112,16 +125,16 @@ class SELLGradientProbe:
         else:
             grad_norm = 0.0
         
-        # Compute average advantage for SELL actions
-        sell_mask = actions == 2
-        if np.any(sell_mask):
-            advantage_sell = float(np.mean(advantages[sell_mask]))
+        # Compute average advantage for target actions
+        target_mask = actions == self.action_idx
+        if np.any(target_mask):
+            advantage_target = float(np.mean(advantages[target_mask]))
         else:
-            advantage_sell = 0.0
+            advantage_target = 0.0
         
         # Record
         self.grad_norms.append(grad_norm)
-        self.advantages.append(advantage_sell)
+        self.advantages.append(advantage_target)
         
         # Compute moving averages
         recent_grad_norms = self.grad_norms[-self.moving_window:]
@@ -153,9 +166,9 @@ class SELLGradientProbe:
         # Build info dict
         info = {
             "step": self.step_count,
-            "grad_norm_sell": grad_norm,
+            f"grad_norm_{self.target_action.lower()}": grad_norm,
             "grad_norm_ma": grad_norm_ma,
-            "advantage_sell": advantage_sell,
+            f"advantage_{self.target_action.lower()}": advantage_target,
             "advantage_ma": advantage_ma,
             "is_healthy": is_healthy,
             "consecutive_unhealthy": self.consecutive_unhealthy,
@@ -164,7 +177,8 @@ class SELLGradientProbe:
         # Write to CSV
         if self.csv_writer:
             self.csv_writer.writerow(info)
-            self.csv_file.flush()
+            if self.csv_file:
+                self.csv_file.flush()
         
         return not should_stop, info
     
@@ -197,7 +211,7 @@ class SELLGradientProbe:
 
 def create_failsafe_dump(
     model,
-    probe: SELLGradientProbe,
+    probe: ActionGradientProbe,
     output_dir: Path,
 ):
     """
@@ -220,7 +234,7 @@ def create_failsafe_dump(
     stats_path = output_dir / "failsafe_stats.txt"
     
     with open(stats_path, "w") as f:
-        f.write("SELL Gradient Probe Failsafe Triggered\n")
+        f.write(f"{probe.target_action} Gradient Probe Failsafe Triggered\n")
         f.write("=" * 60 + "\n\n")
         
         for key, value in stats.items():
@@ -228,23 +242,28 @@ def create_failsafe_dump(
         
         f.write("\nDiagnostics:\n")
         if stats["grad_norm_mean"] < probe.grad_norm_threshold:
-            f.write("- SELL gradient norm too low (dead gradient)\n")
+            f.write(f"- {probe.target_action} gradient norm too low (dead gradient)\n")
         if stats["advantage_mean"] <= probe.advantage_threshold:
-            f.write("- SELL advantage non-positive (policy not learning SELL value)\n")
+            f.write(f"- {probe.target_action} advantage non-positive (policy not learning value)\n")
         
         f.write(f"\nConsecutive unhealthy updates: {stats['consecutive_unhealthy']}\n")
     
     print(f"Failsafe: Statistics saved to {stats_path}")
-    print("\n⚠️  SELL gradient probe failsafe triggered!")
+    print(f"\n⚠️  {probe.target_action} gradient probe failsafe triggered!")
     print("Review probe CSV and failsafe dump for diagnosis.")
 
 
-def test_sell_gradient_probe():
-    """Test SELL gradient probe with synthetic data."""
-    print("Testing SELL Gradient Probe...")
+# Backward compatibility alias
+SELLGradientProbe = ActionGradientProbe
+
+
+def test_action_gradient_probe():
+    """Test Action gradient probe with synthetic data."""
+    print("Testing Action Gradient Probe...")
     
-    # Create probe
-    probe = SELLGradientProbe(
+    # Create probe for SELL action
+    probe = ActionGradientProbe(
+        target_action="SELL",
         grad_norm_threshold=1e-6,
         advantage_threshold=0.0,
         consecutive_failures=10,
@@ -267,7 +286,8 @@ def test_sell_gradient_probe():
                   f"advantage_ma={info['advantage_ma']:.3f}")
     
     # Reset
-    probe = SELLGradientProbe(
+    probe = ActionGradientProbe(
+        target_action="SELL",
         grad_norm_threshold=1e-6,
         advantage_threshold=0.0,
         consecutive_failures=10,
@@ -299,8 +319,12 @@ def test_sell_gradient_probe():
     for key, value in stats.items():
         print(f"  {key}: {value}")
     
-    print("\n✅ SELL gradient probe test complete")
+    print("\n✅ Action gradient probe test complete")
+
+
+# Keep old function name for backward compatibility
+test_sell_gradient_probe = test_action_gradient_probe
 
 
 if __name__ == "__main__":
-    test_sell_gradient_probe()
+    test_action_gradient_probe()

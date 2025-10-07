@@ -14,10 +14,11 @@ from skopt import gp_minimize
 from skopt.space import Integer, Real
 from skopt.utils import use_named_args
 
+from ztb.training.ppo_config import get_ppo_config
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
-from ztb.utils.project_setup import setup_project_path
+from ztb.training.training_utils import setup_project_path
 
 # Ensure project root is on sys.path
 setup_project_path()
@@ -55,29 +56,32 @@ def objective_function(
         "gae_lambda": gae_lambda,
     }
     try:
-        # Fixed parameters
-        config_dict = {
-            "algorithm": Algorithm.PPO,
-            "data_path": "data/ml-dataset-enhanced-balanced.csv",
+        # Get base config from common configuration
+        base_config = get_ppo_config({
             "total_timesteps": 25000,  # Short training for optimization
-            "n_steps": 2048,
-            "gamma": 0.99,
-            "vf_coef": 0.5,
-            "max_grad_norm": 0.5,
-            "ent_coef": 0.5,
+            "ent_coef": 0.5,  # Override for optimization
             "tensorboard_log": "logs/bayes_opt",
             "model_dir": "models/bayes_opt",
             "checkpoint_dir": "checkpoints/bayes_opt",
             "log_dir": "logs/bayes_opt",
             "offline_mode": True,
-            "feature_set": FeatureSet.FULL,
-            "timeframe": Timeframe.M1,
+            "feature_set": "full",
+            "timeframe": "1m",
             "reward_scaling": 1.0,
             "transaction_cost": 0.0,
             "max_position_size": 1.0,
             "seed": 42,
-            **params,  # Override with optimized parameters
-        }
+        })
+
+        # Override with optimized parameters
+        config_dict = dict(base_config)
+        config_dict.update(params)
+        config_dict.update({
+            "algorithm": Algorithm.PPO,
+            "data_path": "data/ml-dataset-enhanced-balanced.csv",
+            "feature_set": FeatureSet.FULL,
+            "timeframe": Timeframe.M1,
+        })
         config: PPOConfig = PPOConfig(**config_dict)  # type: ignore[arg-type]
 
         trainer = PPOTrainer(
@@ -100,7 +104,7 @@ def objective_function(
 
 
 @use_named_args(SEARCH_SPACE)  # type: ignore[misc]
-def wrapped_objective(**params: Any) -> float:
+def wrapped_objective(**params: Any) -> float:  # type: ignore[misc]
     """Wrapped objective function for skopt."""
     return objective_function(**params)
 
