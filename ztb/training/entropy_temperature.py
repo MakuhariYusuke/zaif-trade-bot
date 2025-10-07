@@ -20,7 +20,7 @@ minority actions continue to be sampled.
 """
 
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, List, Any
 
 import numpy as np
 import torch
@@ -71,6 +71,9 @@ class TargetEntropyController:
         # Optimizer for temperature
         self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=lr_temperature)
         
+        # Initialize statistics
+        self.reset_statistics()
+        
         # Statistics
         self.reset_statistics()
         
@@ -80,9 +83,9 @@ class TargetEntropyController:
             f"α_0={initial_temperature:.6f}"
         )
     
-    def reset_statistics(self):
+    def reset_statistics(self) -> None:
         """Reset statistics tracking."""
-        self.history = {
+        self.history: Dict[str, List[float]] = {
             "alpha": [],
             "entropy": [],
             "loss": []
@@ -147,7 +150,7 @@ class TargetEntropyController:
         
         # Update temperature
         self.alpha_optimizer.zero_grad()
-        temp_loss.backward()
+        temp_loss.backward()  # type: ignore[no-untyped-call]
         self.alpha_optimizer.step()
         
         # Track statistics
@@ -166,7 +169,7 @@ class TargetEntropyController:
         
         return loss_value, current_alpha
     
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> Dict[str, Any]:
         """
         Get current statistics.
         
@@ -203,7 +206,7 @@ class TargetEntropyController:
         return (step % update_frequency) == 0
 
 
-def test_target_entropy_controller():
+def test_target_entropy_controller() -> None:
     """Test Target Entropy Controller functionality."""
     print("Testing Target Entropy Controller...")
     

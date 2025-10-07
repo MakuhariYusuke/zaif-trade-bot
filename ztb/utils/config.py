@@ -6,7 +6,7 @@ Central configuration management for ZTB system
 
 import logging
 import os
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, TypeVar, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +165,8 @@ def get_config_list(
 
 
 def get_config_dict(
-    config_dict: dict[str, Any], key: str, default: Optional[dict[str, Any]] = None
-) -> dict[str, Any]:
+    config_dict: Dict[str, Any], key: str, default: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     Get a dict configuration value.
 

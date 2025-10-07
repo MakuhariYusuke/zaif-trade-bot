@@ -7,6 +7,8 @@ of key components in the trading system.
 
 from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
 from abc import ABC, abstractmethod
+import pandas as pd
+import pandas as pd
 
 
 class TradingEnvironment(Protocol):
@@ -52,6 +54,6 @@ class FeatureRegistryProtocol(Protocol):
         ...
 
     @abstractmethod
-    def compute_features(self, data: Any) -> Dict[str, Any]:
+    def compute_features(self, data: Any) -> Union[Dict[str, Any], pd.DataFrame]:
         """Compute all registered features for given data."""
         ...

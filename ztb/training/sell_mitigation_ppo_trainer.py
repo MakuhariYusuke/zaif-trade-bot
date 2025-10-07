@@ -320,6 +320,15 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     enable_pan=self.enable_pan,
                     enable_target_entropy=self.enable_target_entropy,
                     enable_stratified_sampling=self.enable_stratified_sampling,
+                    # ★ Lagrange constraint parameters
+                    enable_lagrange=self.enable_lagrange,
+                    lagrange_target_action="SELL",
+                    lagrange_r_target=0.15,  # Target 15% SELL rate
+                    lagrange_tolerance=0.05,
+                    lagrange_eta=0.01,
+                    lagrange_lambda_max=1.0,
+                    lagrange_warmup_steps=1000,
+                    # ★ PAN/Entropy/Stratified parameters
                     pan_epsilon=1e-8,
                     target_entropy_ratio=0.7,
                     lr_temperature=3e-4,
