@@ -13,6 +13,35 @@ DEFAULT_TOTAL_TIMESTEPS = 1_000_000
 DEFAULT_INITIAL_PORTFOLIO_VALUE = 1_000_000.0
 DEFAULT_TRAINING_STEPS = 100_000
 
+# === 1M Long-Run Staging Configuration ===
+# Staging design for 1M training with flexible boundaries
+
+# Stage boundaries (can be adjusted ±10% without breaking)
+STAGE_WARMUP_END = 50_000        # 0-50k: Warmup (weights=1.0, λ=0)
+STAGE_TRANSITION_END = 200_000   # 50k-200k: Cosine warmup for weights/λ
+STAGE_MAIN_END = 800_000         # 200k-800k: Main training (standard settings)
+STAGE_FINAL_END = 1_000_000      # 800k-1M: Cosine annealing LR, early stop with 3 conditions
+
+# Checkpoint and evaluation
+CHECKPOINT_INTERVAL = 25_000     # Save checkpoint every 25k steps
+ROLLING_OOS_STEPS = 500          # Paper trade 500 steps for rolling OOS eval (extended from 300)
+
+# Monitoring thresholds (early stop conditions)
+MIN_LEGAL_SELL_RATE = 0.12       # legal_sell_rate < 0.12 for 5k consecutive → stop
+SELL_RATE_PATIENCE_STEPS = 5_000 # Patience for low sell rate
+
+GRAD_NORM_SELL_MIN = 1e-6        # grad_norm(SELL) ≈ 0 → stop (gradient collapse)
+SHARPE_PROXY_THRESHOLD = 0.0     # Sharpe_proxy ≤ 0 for 2 consecutive evals → branch stop
+SHARPE_PATIENCE_EVALS = 2        # Patience for low Sharpe
+
+# KL divergence monitoring
+KL_VIOLATION_THRESHOLD = 0.5     # KL > 0.5 → potential policy collapse
+KL_CRITICAL_THRESHOLD = 1.0      # KL > 1.0 → critical, emergency entropy boost
+
+# Entropy target (H* = 0.7 * log(3) ≈ 0.769)
+TARGET_ENTROPY_RATIO = 0.7       # Target entropy as ratio of max entropy
+MAX_ENTROPY_3_ACTIONS = 1.0986   # log(3) for 3 actions (HOLD/BUY/SELL)
+
 # Environment configuration constants
 DEFAULT_RISK_FREE_RATE = 0.0
 DEFAULT_STOP_LOSS_THRESHOLD = 0.05
@@ -62,6 +91,7 @@ class PPOConfig(TypedDict, total=False):
     position_penalty_scale: float
     inventory_penalty_scale: float
     trade_frequency_penalty: float
+    total_timesteps: int
 
     # Environment parameters
     max_position_size: float
@@ -95,6 +125,7 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
     "position_penalty_scale": 0.01,
     "inventory_penalty_scale": 0.001,
     "trade_frequency_penalty": 0.0001,
+    "total_timesteps": DEFAULT_TOTAL_TIMESTEPS,
 
     # Environment parameters
     "max_position_size": 1.0,

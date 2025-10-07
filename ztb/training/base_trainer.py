@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, Optional, Protocol
 from stable_baselines3.common.callbacks import BaseCallback
 
 from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
+from ztb.training.trainer_params import TrainerParams
 from ztb.types.generics import ConfigurableMixin, StatisticsTracker
 from ztb.utils.logging_utils import get_logger
 
@@ -49,19 +50,14 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
 
     def __init__(
         self,
-        data_path: str,
-        config: Dict[str, Any],
-        checkpoint_dir: str,
-        eval_gates: Optional[EvalGates] = None,
-        halt_callback: Optional[Callable[[str], None]] = None,
-        checkpoint_interval: int = 10000,
+        params: TrainerParams,
     ):
-        super().__init__(config)
-        self.data_path = data_path
-        self.checkpoint_dir = Path(checkpoint_dir)
-        self.eval_gates = eval_gates or EvalGates()
-        self.halt_callback = halt_callback
-        self.checkpoint_interval = checkpoint_interval
+        super().__init__(dict(params.config))  # ConfigurableMixin expects dict
+        self.data_path = params.data_path
+        self.checkpoint_dir = Path(params.checkpoint_dir)
+        self.eval_gates = params.eval_gates or EvalGates()
+        self.halt_callback = params.halt_callback
+        self.checkpoint_interval = params.checkpoint_interval
 
         # Statistics tracking
         self.stats_tracker = StatisticsTracker[Dict[str, float]]()
