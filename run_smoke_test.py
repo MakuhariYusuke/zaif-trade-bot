@@ -24,7 +24,8 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from ztb.training.sell_mitigation_ppo_trainer import SELLBiasMitigationPPOTrainer
-from ztb.training.ppo_trainer import PPOConfig
+from ztb.training.ppo_config import PPOConfig
+from ztb.training.trainer_params import SELLMitigationParams
 
 
 def load_config(config_path: str) -> dict:
@@ -98,8 +99,8 @@ def run_smoke_test(config_path: str = "smoke_test_10k_config.json"):
     print("-"*80 + "\n")
     
     try:
-        # Create trainer
-        trainer = SELLBiasMitigationPPOTrainer(
+        # Create mitigation parameters
+        mitigation_params = SELLMitigationParams(
             data_path=data_path,
             config=ppo_config,
             checkpoint_dir=checkpoint_dir,
@@ -112,6 +113,9 @@ def run_smoke_test(config_path: str = "smoke_test_10k_config.json"):
             allow_reverse=env_config["allow_reverse"],
             probe_csv_path=config_dict["output"]["probe_csv"],
         )
+        
+        # Create trainer with unified params interface
+        trainer = SELLBiasMitigationPPOTrainer(params=mitigation_params)
         
         print("✓ Trainer initialized successfully\n")
         
