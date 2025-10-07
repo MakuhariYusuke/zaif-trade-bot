@@ -1,16 +1,17 @@
 """
-Run Metadata Manager for Training Sessions.
+Run Manifest Manager for Training Sessions.
 
 Generates and validates manifest.json files that contain complete metadata
 about training runs, including git state, configuration, and data fingerprints.
 """
 
+import hashlib
 import json
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-import hashlib
+from typing import Any, Dict, List, cast, Optional
 from dataclasses import asdict, is_dataclass
+import pandas as pd
 
 
 def inference_config_to_dict(config: Any) -> Dict[str, Any]:
@@ -30,7 +31,7 @@ def inference_config_to_dict(config: Any) -> Dict[str, Any]:
         return config
     
     if is_dataclass(config):
-        return asdict(config)
+        return asdict(cast(Any, config))
     
     # Fallback: try to extract attributes
     return {
@@ -98,6 +99,67 @@ def compute_file_hash(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
+def compute_dataset_metadata(dataset_path: Path) -> Dict[str, Any]:
+    """
+    Compute dataset metadata for reproducibility.
+    
+    Args:
+        dataset_path: Path to dataset file (CSV or pickle)
+        
+    Returns:
+        Dictionary with dataset metadata:
+        - sha256: Dataset file SHA256 hash
+        - rows: Number of rows
+        - time_range: [start_timestamp, end_timestamp] (if timestamp column exists)
+        - timezone: Timezone of timestamps (if applicable)
+        - missing_ratio: Ratio of missing values
+    """
+    import pandas as pd
+    
+    # Compute file hash
+    dataset_sha256 = compute_file_hash(dataset_path)
+    
+    # Load dataset to extract metadata
+    if dataset_path.suffix == ".csv":
+        df = pd.read_csv(dataset_path)
+    elif dataset_path.suffix in [".pkl", ".pickle"]:
+        df = pd.read_pickle(dataset_path)
+    else:
+        raise ValueError(f"Unsupported dataset format: {dataset_path.suffix}")
+    
+    rows = len(df)
+    
+    # Extract time range if timestamp column exists
+    time_range = None
+    timezone = None
+    if "timestamp" in df.columns:
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        time_range = [
+            df["timestamp"].min().isoformat(),
+            df["timestamp"].max().isoformat(),
+        ]
+        # Check timezone
+        try:
+            tz = getattr(df["timestamp"].dtype, "tz", None)
+            if tz:
+                timezone = str(tz)
+        except AttributeError:
+            pass
+    
+    # Compute missing ratio
+    total_cells = df.size
+    missing_cells = df.isna().sum().sum()
+    missing_ratio = float(missing_cells) / max(total_cells, 1)
+    
+    return {
+        "sha256": dataset_sha256,
+        "rows": rows,
+        "time_range": time_range,
+        "timezone": timezone,
+        "missing_ratio": round(missing_ratio, 6),
+    }
+
+
 def generate_manifest(
     model_dir: Path,
     config: Dict[str, Any],
@@ -108,6 +170,7 @@ def generate_manifest(
     fingerprint: Optional[str] = None,
     additional_metadata: Optional[Dict[str, Any]] = None,
     inference_config: Optional[Dict[str, Any]] = None,
+    dataset_metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Generate complete manifest for a training run.
@@ -122,6 +185,7 @@ def generate_manifest(
         fingerprint: Configuration fingerprint (optional, will compute from config)
         additional_metadata: Additional metadata to include (optional)
         inference_config: Inference configuration (temperature, tau, tiebreaker, etc.) for reproducibility
+        dataset_metadata: Dataset metadata (sha256, rows, time_range, timezone, missing_ratio) for reproducibility
         
     Returns:
         Dictionary with complete manifest
@@ -171,6 +235,10 @@ def generate_manifest(
         },
     }
     
+    # Add dataset metadata if provided (for data version control)
+    if dataset_metadata:
+        manifest["dataset"] = dataset_metadata
+    
     # Add inference config if provided (for reproducibility in sweeps/evaluations)
     if inference_config:
         manifest["inference"] = inference_config
@@ -211,7 +279,7 @@ def load_manifest(manifest_path: Path) -> Dict[str, Any]:
         json.JSONDecodeError: If manifest file is invalid JSON
     """
     with open(manifest_path, "r") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def validate_manifest(manifest: Dict[str, Any]) -> tuple[bool, List[str]]:
@@ -310,3 +378,67 @@ def compare_manifests(
     
     are_compatible = len(differences) == 0
     return are_compatible, differences
+
+
+def preflight_dataset_check(
+    dataset_path: Path,
+    expected_manifest: Dict[str, Any],
+    strict: bool = True,
+) -> tuple[bool, List[str]]:
+    """
+    Preflight check: Verify dataset matches expected manifest.
+    
+    Args:
+        dataset_path: Path to dataset file
+        expected_manifest: Manifest with expected dataset metadata
+        strict: If True, fail on any mismatch (default: True)
+        
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
+    errors = []
+    
+    # Check if dataset metadata exists in manifest
+    if "dataset" not in expected_manifest:
+        if strict:
+            errors.append("No dataset metadata in manifest (strict mode)")
+        return not strict, errors
+    
+    expected_dataset = expected_manifest["dataset"]
+    
+    # Compute current dataset metadata
+    try:
+        current_metadata = compute_dataset_metadata(dataset_path)
+    except Exception as e:
+        errors.append(f"Failed to compute dataset metadata: {e}")
+        return False, errors
+    
+    # Compare SHA256
+    expected_sha = expected_dataset.get("sha256", "")
+    current_sha = current_metadata.get("sha256", "")
+    if expected_sha != current_sha:
+        errors.append(
+            f"Dataset SHA256 mismatch: "
+            f"expected={expected_sha[:16] if expected_sha else 'N/A'}..., "
+            f"actual={current_sha[:16] if current_sha else 'N/A'}..."
+        )
+    
+    # Compare row count
+    if expected_dataset.get("rows") != current_metadata.get("rows"):
+        errors.append(
+            f"Dataset row count mismatch: "
+            f"expected={expected_dataset.get('rows')}, "
+            f"actual={current_metadata.get('rows')}"
+        )
+    
+    # Compare time range (if exists)
+    if expected_dataset.get("time_range") and current_metadata.get("time_range"):
+        if expected_dataset["time_range"] != current_metadata["time_range"]:
+            errors.append(
+                f"Dataset time range mismatch: "
+                f"expected={expected_dataset['time_range']}, "
+                f"actual={current_metadata['time_range']}"
+            )
+    
+    is_valid = len(errors) == 0
+    return is_valid, errors
