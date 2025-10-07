@@ -8,11 +8,12 @@ advantage remains outside target range for extended period.
 Supports HOLD/BUY/SELL action monitoring.
 """
 
-from typing import Dict, Optional, Tuple, Literal, TextIO
+from typing import Dict, Optional, Tuple, Literal, TextIO, Any
 import numpy as np
 import torch
 from pathlib import Path
 import csv
+from numpy.typing import NDArray
 
 
 ActionType = Literal["HOLD", "BUY", "SELL"]
@@ -86,8 +87,8 @@ class ActionGradientProbe:
     def probe(
         self,
         action_logits: torch.Tensor,
-        advantages: np.ndarray,
-        actions: np.ndarray,
+        advantages: NDArray[Any],
+        actions: NDArray[Any],
     ) -> Tuple[bool, Dict[str, float]]:
         """
         Probe target action gradient and advantage.
@@ -111,7 +112,7 @@ class ActionGradientProbe:
         if target_logits.requires_grad:
             # Create dummy loss (sum of target logits)
             target_loss = target_logits.sum()
-            target_loss.backward(retain_graph=True)
+            target_loss.backward(retain_graph=True)  # type: ignore[no-untyped-call]
             
             # Get gradient
             if action_logits.grad is not None:
@@ -203,17 +204,17 @@ class ActionGradientProbe:
             "triggered": self.triggered,
         }
     
-    def close(self):
+    def close(self) -> None:
         """Close CSV file."""
         if self.csv_file:
             self.csv_file.close()
 
 
 def create_failsafe_dump(
-    model,
+    model: Any,
     probe: ActionGradientProbe,
     output_dir: Path,
-):
+) -> None:
     """
     Create failsafe dump when probe triggers.
     
@@ -257,7 +258,7 @@ def create_failsafe_dump(
 SELLGradientProbe = ActionGradientProbe
 
 
-def test_action_gradient_probe():
+def test_action_gradient_probe() -> None:
     """Test Action gradient probe with synthetic data."""
     print("Testing Action Gradient Probe...")
     
