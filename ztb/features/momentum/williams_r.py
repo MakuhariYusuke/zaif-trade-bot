@@ -8,6 +8,7 @@ Output columns:
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from ..base import BaseFeature
@@ -42,9 +43,9 @@ class WilliamsR(BaseFeature):
 
         # Use Ta-Lib wrapper for Williams %R calculation
         result = TaLibWrapper.williams_r(
-            df["high"].to_numpy(),
-            df["low"].to_numpy(),
-            df["close"].to_numpy(),
+            df["high"].values.astype(np.float64),
+            df["low"].values.astype(np.float64),
+            df["close"].values.astype(np.float64),
             period
         )
 

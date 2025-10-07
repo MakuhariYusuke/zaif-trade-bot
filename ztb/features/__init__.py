@@ -10,9 +10,9 @@ from types import ModuleType
 from .registry import FeatureRegistry
 
 
-def get_feature_manager() -> FeatureRegistry:
-    """Get the feature manager instance"""
-    return FeatureRegistry()
+def get_feature_manager() -> type[FeatureRegistry]:
+    """Get the feature manager class"""
+    return FeatureRegistry
 
 
 # Lazy import feature modules - only import when needed
