@@ -9,7 +9,21 @@ from ztb.training.ppo_config import PPOConfig
 
 @dataclass
 class TrainerParams:
-    """Common trainer parameters for all PPO trainers."""
+    """
+    Common trainer parameters for all PPO trainers.
+
+    This dataclass encapsulates all the parameters needed to initialize
+    any PPO-based trainer in the system, providing a unified interface
+    for trainer configuration.
+
+    Args:
+        data_path: Path to the training dataset file
+        config: PPOConfig containing algorithm hyperparameters
+        checkpoint_dir: Directory path for saving model checkpoints
+        eval_gates: Optional evaluation gates for training validation
+        halt_callback: Optional callback function called when training halts
+        checkpoint_interval: Number of steps between checkpoint saves
+    """
 
     data_path: str
     config: PPOConfig
@@ -21,7 +35,24 @@ class TrainerParams:
 
 @dataclass
 class SELLMitigationParams(TrainerParams):
-    """Extended parameters for SELL bias mitigation trainer."""
+    """
+    Extended parameters for SELL bias mitigation trainer.
+
+    This dataclass extends TrainerParams with additional configuration
+    options specific to SELL bias mitigation techniques, including
+    Lagrange constraints, gradient probes, action weighting, and
+    advanced normalization methods.
+
+    Args:
+        enable_lagrange: Enable Lagrange constraint for minimum action rate
+        enable_probes: Enable gradient probes for monitoring and failsafe
+        enable_weights: Enable enhanced action weighting
+        enable_pan: Enable Per-Action Advantage Normalization
+        enable_target_entropy: Enable automatic entropy control
+        enable_stratified_sampling: Enable stratified mini-batch sampling
+        allow_reverse: Enable Reverse-as-Close flag for environment config
+        probe_csv_path: Optional path for probe CSV output
+    """
 
     enable_lagrange: bool = True
     enable_probes: bool = True

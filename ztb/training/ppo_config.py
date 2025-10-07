@@ -139,7 +139,25 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
 
 
 def get_ppo_config(overrides: Optional[Dict[str, Any]] = None) -> PPOConfig:
-    """Get PPO configuration with optional overrides."""
+    """
+    Get PPO configuration with optional parameter overrides.
+
+    Creates a PPO configuration dictionary starting from DEFAULT_PPO_CONFIG
+    and applying any provided overrides. This allows for flexible configuration
+    while maintaining sensible defaults.
+
+    Args:
+        overrides: Optional dictionary of configuration parameters to override.
+                  Keys should match PPOConfig field names.
+
+    Returns:
+        PPOConfig: Complete PPO configuration dictionary with applied overrides.
+
+    Example:
+        >>> config = get_ppo_config({"learning_rate": 1e-4, "batch_size": 128})
+        >>> print(config["learning_rate"])  # 0.0001
+        >>> print(config["batch_size"])     # 128
+    """
     config: Dict[str, Any] = dict(DEFAULT_PPO_CONFIG)
     if overrides:
         config.update(overrides)
@@ -147,7 +165,21 @@ def get_ppo_config(overrides: Optional[Dict[str, Any]] = None) -> PPOConfig:
 
 
 def get_conservative_ppo_config() -> PPOConfig:
-    """Get conservative PPO configuration for stable training."""
+    """
+    Get conservative PPO configuration for stable training.
+
+    Returns a PPO configuration optimized for stable, reliable training
+    with lower learning rates and more conservative hyperparameters.
+    Suitable for production training or when stability is prioritized
+    over training speed.
+
+    Returns:
+        PPOConfig: Conservative PPO configuration with:
+            - Lower learning rate (1e-4)
+            - Smaller clip range (0.1)
+            - Moderate entropy coefficient (0.01)
+            - Lower max gradient norm (0.3)
+    """
     return get_ppo_config({
         "learning_rate": 1e-4,
         "clip_range": 0.1,
@@ -157,7 +189,21 @@ def get_conservative_ppo_config() -> PPOConfig:
 
 
 def get_aggressive_ppo_config() -> PPOConfig:
-    """Get aggressive PPO configuration for faster learning."""
+    """
+    Get aggressive PPO configuration for faster learning.
+
+    Returns a PPO configuration optimized for faster learning and exploration
+    with higher learning rates and more aggressive hyperparameters.
+    Suitable for initial experimentation or when training speed is prioritized
+    over stability.
+
+    Returns:
+        PPOConfig: Aggressive PPO configuration with:
+            - Higher learning rate (1e-3)
+            - Larger clip range (0.3)
+            - Higher entropy coefficient (0.1)
+            - Higher max gradient norm (1.0)
+    """
     return get_ppo_config({
         "learning_rate": 1e-3,
         "clip_range": 0.3,
