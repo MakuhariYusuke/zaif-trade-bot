@@ -64,7 +64,7 @@ class CustomPPO(MaskablePPO):
         ent_coef: float = 0.0,
         vf_coef: float = 0.5,
         max_grad_norm: float = 0.5,
-        rollout_buffer_class: Optional[Type] = None,
+        rollout_buffer_class: Optional[Type[Any]] = None,
         rollout_buffer_kwargs: Optional[Dict[str, Any]] = None,
         target_kl: Optional[float] = None,
         stats_window_size: int = 100,
@@ -134,7 +134,7 @@ class CustomPPO(MaskablePPO):
         if enable_pan:
             # Determine number of actions from action space
             if isinstance(self.action_space, spaces.Discrete):
-                n_actions = self.action_space.n
+                n_actions = int(self.action_space.n)
             else:
                 n_actions = 3  # Default for trading (HOLD, BUY, SELL)
             
@@ -146,7 +146,7 @@ class CustomPPO(MaskablePPO):
         
         if enable_target_entropy:
             if isinstance(self.action_space, spaces.Discrete):
-                n_actions = self.action_space.n
+                n_actions = int(self.action_space.n)
             else:
                 n_actions = 3
             
@@ -164,7 +164,7 @@ class CustomPPO(MaskablePPO):
                 "Consider using PAN and Target Entropy first."
             )
             self.stratified_sampler = StratifiedSampler(
-                n_actions=n_actions if isinstance(self.action_space, spaces.Discrete) else 3,
+                n_actions=int(self.action_space.n) if isinstance(self.action_space, spaces.Discrete) else 3,
                 regime_window=20,
                 regime_threshold=0.001,
             )
@@ -280,7 +280,8 @@ class CustomPPO(MaskablePPO):
                     with th.no_grad():
                         # Get action logits for entropy computation
                         distribution = self.policy.get_distribution(rollout_data.observations)
-                        action_logits = distribution.distribution.logits
+                        if distribution.distribution is not None:
+                            action_logits = distribution.distribution.logits
                         
                         # Compute entropy (keep as tensor)
                         current_entropy = self.entropy_controller.compute_entropy(action_logits)
@@ -357,7 +358,7 @@ class CustomPPO(MaskablePPO):
                 
                 # Optimization step
                 self.policy.optimizer.zero_grad()
-                loss.backward()
+                loss.backward()  # type: ignore[no-untyped-call]
                 
                 # Clip grad norm
                 th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
@@ -382,7 +383,7 @@ class CustomPPO(MaskablePPO):
         self.logger.record("train/explained_variance", explained_var)
         
         if hasattr(self.policy, "log_std"):
-            self.logger.record("train/std", th.exp(self.policy.log_std).mean().item())
+            self.logger.record("train/std", th.exp(th.tensor(self.policy.log_std)).mean().item())
         
         self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
         self.logger.record("train/clip_range", clip_range)
@@ -391,7 +392,7 @@ class CustomPPO(MaskablePPO):
             self.logger.record("train/clip_range_vf", clip_range_vf)
 
 
-def explained_variance(y_pred: np.ndarray, y_true: np.ndarray) -> float:
+def explained_variance(y_pred: np.ndarray[Any, Any], y_true: np.ndarray[Any, Any]) -> float:
     """
     Computes fraction of variance that ypred explains about y.
     Returns 1 - Var[y-ypred] / Var[y]

@@ -15,7 +15,7 @@ class TradingEnvironment(Protocol):
     """Protocol for trading environments."""
 
     @abstractmethod
-    def reset(self) -> Dict[str, Any]:
+    def reset(self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None) -> Tuple[Any, Dict[str, Any]]:
         """Reset the environment to initial state."""
         ...
 

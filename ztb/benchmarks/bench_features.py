@@ -70,18 +70,18 @@ def _load_real_data_impl(
 
 
 def benchmark_feature(
-    feature_name: str, manager: FeatureRegistry, df: pd.DataFrame, n_runs: int = 5
+    feature_name: str, manager: type[FeatureRegistry], df: pd.DataFrame, n_runs: int = 5
 ) -> Dict[str, float]:
     """単一特徴量のベンチマーク"""
     times = []
     memories = []
 
-    # 特徴量オブジェクトを取得
-    if feature_name not in manager.features:  # type: ignore[attr-defined]
-        print(f"Feature {feature_name} not found in manager")
+    # 特徴量関数を取得
+    try:
+        feature_func = manager.get(feature_name)
+    except KeyError:
+        print(f"Feature {feature_name} not found in registry")
         return {"ms_real": 0.0, "peak_MB": 0.0}
-    feature = manager.features[feature_name]  # type: ignore[attr-defined]
-    params = manager.get_feature_info(feature_name).get("params", {})  # type: ignore[attr-defined]
 
     for _ in range(n_runs):
         # メモリ追跡開始
@@ -90,7 +90,7 @@ def benchmark_feature(
 
         # 特徴量計算
         try:
-            feature.compute(df, **params)
+            feature_func(df)
         except Exception as e:
             print(f"Error computing {feature_name}: {e}")
             tracemalloc.stop()
@@ -107,7 +107,7 @@ def benchmark_feature(
 
 
 def benchmark_bundle(
-    manager: FeatureRegistry, df: pd.DataFrame, waves: Any, n_runs: int = 5
+    manager: type[FeatureRegistry], df: pd.DataFrame, waves: Any, n_runs: int = 5
 ) -> Dict[str, float]:
     """バンドルのベンチマーク（指定されたwavesで実行）"""
     times = []
@@ -118,7 +118,7 @@ def benchmark_bundle(
         start_time = time.perf_counter()
 
         for wave in waves:
-            manager.compute_features(df, wave=wave)  # type: ignore[call-arg]
+            manager.compute_features_batch(df, wave=wave)  # type: ignore[call-arg]
 
         end_time = time.perf_counter()
         _, peak = tracemalloc.get_traced_memory()
@@ -159,6 +159,7 @@ def main() -> None:
 
     # マネージャー初期化
     manager = get_feature_manager()
+    manager.initialize()  # Initialize the registry
 
     # データ読み込み
     sample_path = Path(args.sample)
@@ -176,9 +177,7 @@ def main() -> None:
         output_file = Path(args.output)
     # ベンチマーク対象の特徴量
     waves = [int(w) for w in args.waves.split(",") if w.strip() != ""]
-    enabled_features = []
-    for wave in waves:
-        enabled_features.extend(manager.get_enabled_features(wave))
+    enabled_features = manager.list()  # Get all registered features
 
     results = []
 

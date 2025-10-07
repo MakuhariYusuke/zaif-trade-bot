@@ -144,6 +144,7 @@ class PPOConfig(TypedDict, total=False):
     use_sde: bool
     sde_sample_freq: int
     target_kl: Optional[float]
+    verbose: int
 
     # Trading-specific parameters
     reward_scaling: float
@@ -178,6 +179,7 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
     "use_sde": False,
     "sde_sample_freq": -1,
     "target_kl": None,
+    "verbose": 1,
 
     # Trading-specific parameters
     "reward_scaling": DEFAULT_REWARD_SCALING,  # Optimized value from hyperparameter search

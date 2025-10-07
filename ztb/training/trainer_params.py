@@ -1,7 +1,7 @@
 """Trainer parameter definitions for interface unification."""
 
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 from ztb.training.eval_gates import EvalGates
 from ztb.training.ppo_config import PPOConfig
@@ -52,6 +52,8 @@ class SELLMitigationParams(TrainerParams):
         enable_stratified_sampling: Enable stratified mini-batch sampling
         allow_reverse: Enable Reverse-as-Close flag for environment config
         probe_csv_path: Optional path for probe CSV output
+        lagrange_params: Optional dict with Lagrange constraint parameters
+            (r_target, tolerance, eta, lambda_max, warmup_steps)
     """
 
     enable_lagrange: bool = True
@@ -62,3 +64,4 @@ class SELLMitigationParams(TrainerParams):
     enable_stratified_sampling: bool = True  # Stratified mini-batch
     allow_reverse: bool = False  # Reverse-as-Close flag (env config)
     probe_csv_path: Optional[str] = None
+    lagrange_params: Optional[Dict[str, Union[int, float]]] = None

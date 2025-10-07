@@ -55,7 +55,7 @@ class ParabolicSAR(BaseFeature):
         max_acceleration = params.get("max_acceleration", self.max_acceleration)
 
         # Use Ta-Lib wrapper for Parabolic SAR calculation
-        psar = TaLibWrapper.sar(df["high"].to_numpy(), df["low"].to_numpy(), acceleration, max_acceleration)
+        psar = TaLibWrapper.sar(df["high"].values.astype(np.float64), df["low"].values.astype(np.float64), acceleration, max_acceleration)
 
         # Calculate trend: 1 if PSAR < close (uptrend), -1 if PSAR > close (downtrend)
         trend = np.where(psar < df["close"], 1, -1)
