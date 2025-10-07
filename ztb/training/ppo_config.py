@@ -8,9 +8,9 @@ across training scripts and improve consistency.
 from typing import Dict, Any, List, Optional, TypedDict, cast
 
 # Common constants used across training modules
-DEFAULT_REWARD_SCALING = 6.0
+DEFAULT_REWARD_SCALING = 6.0     # Optimized value from hyperparameter search
 DEFAULT_TOTAL_TIMESTEPS = 1_000_000
-DEFAULT_INITIAL_PORTFOLIO_VALUE = 1_000_000.0
+DEFAULT_INITIAL_PORTFOLIO_VALUE = 1_000_000.0 # in JPY
 DEFAULT_TRAINING_STEPS = 100_000
 
 # === 1M Long-Run Staging Configuration ===
@@ -43,10 +43,10 @@ TARGET_ENTROPY_RATIO = 0.7       # Target entropy as ratio of max entropy
 MAX_ENTROPY_3_ACTIONS = 1.0986   # log(3) for 3 actions (HOLD/BUY/SELL)
 
 # Environment configuration constants
-DEFAULT_RISK_FREE_RATE = 0.0
-DEFAULT_STOP_LOSS_THRESHOLD = 0.05
-DEFAULT_MAX_CONSECUTIVE_TRADES = 5
-DEFAULT_MIN_HOLDING_PERIOD = 3
+DEFAULT_RISK_FREE_RATE = 0.0    # Risk-free rate for Sharpe ratio calculation
+DEFAULT_STOP_LOSS_THRESHOLD = 0.05  # 5% stop-loss threshold
+DEFAULT_MAX_CONSECUTIVE_TRADES = 5  # Maximum number of consecutive trades
+DEFAULT_MIN_HOLDING_PERIOD = 3  # Minimum holding period between trades
 
 # Reward configuration constants
 DEFAULT_REWARD_POSITION_SOFT_CAP = 0.8
