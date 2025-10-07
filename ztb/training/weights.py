@@ -166,7 +166,7 @@ class ActionWeightCalculator:
         
         return False, ""
     
-    def reset_guards(self):
+    def reset_guards(self) -> None:
         """Reset safety guard state (e.g., after intervention)."""
         self._kl_consecutive_violations = 0
         self._weights_active = True
@@ -249,4 +249,4 @@ def cosine_warmup_schedule(
     
     # Cosine interpolation
     progress = (current_step - warmup_start) / (warmup_end - warmup_start)
-    return 0.5 * (1.0 - np.cos(np.pi * progress))
+    return float(0.5 * (1.0 - np.cos(np.pi * progress)))

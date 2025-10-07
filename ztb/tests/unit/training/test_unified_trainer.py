@@ -313,5 +313,5 @@ class TestUnifiedTrainerIntegration:
             trainer = UnifiedTrainer(config)
 
             assert trainer.config_obj.algorithm == enum_val
-            assert trainer.algorithm == string_val</content>
-<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\ztb\tests\unit\training\test_unified_trainer.py
+            assert trainer.algorithm == string_val
+

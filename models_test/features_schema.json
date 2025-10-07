@@ -1,0 +1,892 @@
+{
+  "columns": [
+    "rsi",
+    "sma_short",
+    "sma_long",
+    "price",
+    "qty",
+    "pnl",
+    "win",
+    "ADX",
+    "ATR",
+    "ATR_simplified",
+    "BB_Lower",
+    "BB_Middle",
+    "BB_Position",
+    "BB_Upper",
+    "BB_Width",
+    "Bollinger_Band_Expansion",
+    "Bollinger_Bandwidth",
+    "Bollinger_Percent_B",
+    "Bollinger_Squeeze",
+    "CCI",
+    "CMF",
+    "DOW",
+    "Donchian_Breakout_Strength",
+    "Donchian_Pos_20",
+    "Donchian_Price_Position",
+    "Donchian_Slope_20",
+    "Donchian_Squeeze_Ratio",
+    "Donchian_Width",
+    "Donchian_Width_Rel_20",
+    "EMACross_Diff",
+    "EMACross_Signal",
+    "HV",
+    "HeikinAshi_Close",
+    "HeikinAshi_High",
+    "HeikinAshi_Low",
+    "HeikinAshi_Open",
+    "HourOfDay",
+    "Ichimoku_Chikou",
+    "Ichimoku_Cloud_Thickness",
+    "Ichimoku_Composite_Signal",
+    "Ichimoku_Cross",
+    "Ichimoku_Diff_Norm",
+    "Ichimoku_Kijun",
+    "Ichimoku_Price_Cloud_Distance",
+    "Ichimoku_Senkou_A",
+    "Ichimoku_Senkou_B",
+    "Ichimoku_Tenkan",
+    "Ichimoku_Trend",
+    "KAMA",
+    "Kalman_Estimate",
+    "Kalman_Residual",
+    "Kalman_Residual_Norm",
+    "Keltner_Lower",
+    "Keltner_Position",
+    "Keltner_Upper",
+    "Keltner_Width",
+    "MACD",
+    "MFI",
+    "MinusDI",
+    "OBV",
+    "PSAR",
+    "PSAR_Trend",
+    "PlusDI",
+    "PriceVolumeCorr",
+    "ROC",
+    "RSI",
+    "ReturnMA_Medium",
+    "ReturnMA_Short",
+    "ReturnStdDev",
+    "Stochastic",
+    "Stochastic_Divergence",
+    "Stochastic_Signal_Strength",
+    "Stochastic_Trend_Alignment",
+    "Supertrend",
+    "Supertrend_Direction",
+    "Supertrend_Reversal_Signal",
+    "Supertrend_Strength",
+    "Supertrend_Trend_Duration",
+    "Supertrend_Volatility_Filter",
+    "TEMA",
+    "Time_Day_of_Week",
+    "Time_Hour_of_Day",
+    "Time_Session",
+    "Time_Volatility_Adjustment",
+    "VWAP",
+    "Volume_Profile_Distribution",
+    "Volume_Profile_Point_of_Control",
+    "Volume_Profile_Value_Area_High",
+    "Volume_Profile_Value_Area_Low",
+    "Williams_R",
+    "ZScore",
+    "atr_10",
+    "close",
+    "ema_5",
+    "high",
+    "liquidity_surge",
+    "low",
+    "micro_trend",
+    "micro_volatility",
+    "momentum_burst",
+    "momentum_divergence",
+    "open",
+    "order_flow_imbalance",
+    "price_acceleration",
+    "price_velocity",
+    "rolling_mean_20",
+    "spread_pressure",
+    "tick_volume_ratio",
+    "volume",
+    "volume_surge"
+  ],
+  "dtypes": {
+    "rsi": "float64",
+    "sma_short": "float64",
+    "sma_long": "float64",
+    "price": "float64",
+    "qty": "float64",
+    "pnl": "float64",
+    "win": "int64",
+    "ADX": "float64",
+    "ATR": "float64",
+    "ATR_simplified": "float64",
+    "BB_Lower": "float64",
+    "BB_Middle": "float64",
+    "BB_Position": "float64",
+    "BB_Upper": "float64",
+    "BB_Width": "float64",
+    "Bollinger_Band_Expansion": "float64",
+    "Bollinger_Bandwidth": "float64",
+    "Bollinger_Percent_B": "float64",
+    "Bollinger_Squeeze": "int64",
+    "CCI": "float64",
+    "CMF": "float64",
+    "DOW": "int64",
+    "Donchian_Breakout_Strength": "float64",
+    "Donchian_Pos_20": "float64",
+    "Donchian_Price_Position": "float64",
+    "Donchian_Slope_20": "float64",
+    "Donchian_Squeeze_Ratio": "float64",
+    "Donchian_Width": "float64",
+    "Donchian_Width_Rel_20": "float64",
+    "EMACross_Diff": "float64",
+    "EMACross_Signal": "int64",
+    "HV": "float64",
+    "HeikinAshi_Close": "float64",
+    "HeikinAshi_High": "float64",
+    "HeikinAshi_Low": "float64",
+    "HeikinAshi_Open": "float64",
+    "HourOfDay": "int64",
+    "Ichimoku_Chikou": "float64",
+    "Ichimoku_Cloud_Thickness": "float64",
+    "Ichimoku_Composite_Signal": "float64",
+    "Ichimoku_Cross": "float64",
+    "Ichimoku_Diff_Norm": "float64",
+    "Ichimoku_Kijun": "float64",
+    "Ichimoku_Price_Cloud_Distance": "float64",
+    "Ichimoku_Senkou_A": "float64",
+    "Ichimoku_Senkou_B": "float64",
+    "Ichimoku_Tenkan": "float64",
+    "Ichimoku_Trend": "int64",
+    "KAMA": "float64",
+    "Kalman_Estimate": "float64",
+    "Kalman_Residual": "float64",
+    "Kalman_Residual_Norm": "float64",
+    "Keltner_Lower": "float64",
+    "Keltner_Position": "float64",
+    "Keltner_Upper": "float64",
+    "Keltner_Width": "float64",
+    "MACD": "float64",
+    "MFI": "float64",
+    "MinusDI": "float64",
+    "OBV": "float64",
+    "PSAR": "float64",
+    "PSAR_Trend": "int64",
+    "PlusDI": "float64",
+    "PriceVolumeCorr": "float64",
+    "ROC": "float64",
+    "RSI": "float64",
+    "ReturnMA_Medium": "float64",
+    "ReturnMA_Short": "float64",
+    "ReturnStdDev": "float64",
+    "Stochastic": "float64",
+    "Stochastic_Divergence": "int64",
+    "Stochastic_Signal_Strength": "float64",
+    "Stochastic_Trend_Alignment": "float64",
+    "Supertrend": "float64",
+    "Supertrend_Direction": "float64",
+    "Supertrend_Reversal_Signal": "int64",
+    "Supertrend_Strength": "float64",
+    "Supertrend_Trend_Duration": "float64",
+    "Supertrend_Volatility_Filter": "float64",
+    "TEMA": "float64",
+    "Time_Day_of_Week": "float64",
+    "Time_Hour_of_Day": "float64",
+    "Time_Session": "float64",
+    "Time_Volatility_Adjustment": "float64",
+    "VWAP": "float64",
+    "Volume_Profile_Distribution": "float64",
+    "Volume_Profile_Point_of_Control": "float64",
+    "Volume_Profile_Value_Area_High": "float64",
+    "Volume_Profile_Value_Area_Low": "float64",
+    "Williams_R": "float64",
+    "ZScore": "float64",
+    "atr_10": "float64",
+    "close": "float64",
+    "ema_5": "float64",
+    "high": "float64",
+    "liquidity_surge": "float64",
+    "low": "float64",
+    "micro_trend": "float64",
+    "micro_volatility": "float64",
+    "momentum_burst": "float64",
+    "momentum_divergence": "float64",
+    "open": "float64",
+    "order_flow_imbalance": "float64",
+    "price_acceleration": "float64",
+    "price_velocity": "float64",
+    "rolling_mean_20": "float64",
+    "spread_pressure": "float64",
+    "tick_volume_ratio": "float64",
+    "volume": "float64",
+    "volume_surge": "float64"
+  },
+  "order_hash": "5d150737c1f1179110bdcc72c6116fbfc84b0491ff74b08a05d0f94275efb90d",
+  "statistics": {
+    "rsi": {
+      "mean": 49.770977394744975,
+      "std": 6.370428828380544,
+      "min": 26.36058397457718,
+      "max": 70.16159118717249
+    },
+    "sma_short": {
+      "mean": 99.90286909565611,
+      "std": 2.206253676594484,
+      "min": 96.56040882374243,
+      "max": 103.30291969030893
+    },
+    "sma_long": {
+      "mean": 99.91643494779497,
+      "std": 2.195052616506865,
+      "min": 96.7160037257352,
+      "max": 103.18258679009288
+    },
+    "price": {
+      "mean": 99.90106641975493,
+      "std": 2.2222632078660967,
+      "min": 96.2700894301916,
+      "max": 103.6823514278424
+    },
+    "qty": {
+      "mean": 0.005470166777550235,
+      "std": 0.0026544822732168026,
+      "min": 0.0010010809134007,
+      "max": 0.0099967982573037
+    },
+    "pnl": {
+      "mean": 42.32205389659379,
+      "std": 949.3363977196241,
+      "min": -3801.378196860991,
+      "max": 2850.707737117589
+    },
+    "win": {
+      "mean": 0.5261538461538462,
+      "std": 0.4995076630938005,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "ADX": {
+      "mean": 18.59693004320285,
+      "std": 6.62749034470414,
+      "min": 0.0,
+      "max": 44.29929767794132
+    },
+    "ATR": {
+      "mean": 0.6700360700978433,
+      "std": 0.11366020565995741,
+      "min": 0.3984650457677473,
+      "max": 1.027428976145915
+    },
+    "ATR_simplified": {
+      "mean": 0.6709465908778226,
+      "std": 0.1344830319705168,
+      "min": 0.3582142851986205,
+      "max": 1.0942559281249102
+    },
+    "BB_Lower": {
+      "mean": 99.25457122201666,
+      "std": 2.1765933714563444,
+      "min": 96.03381196541186,
+      "max": 102.83703430678156
+    },
+    "BB_Middle": {
+      "mean": 99.91643494779497,
+      "std": 2.195052616506865,
+      "min": 96.7160037257352,
+      "max": 103.18258679009288
+    },
+    "BB_Position": {
+      "mean": 0.4935265637193631,
+      "std": 0.2759700881738392,
+      "min": -0.3427660806433507,
+      "max": 1.2214231708171
+    },
+    "BB_Upper": {
+      "mean": 100.5782986735733,
+      "std": 2.221823689094293,
+      "min": 97.18513618027846,
+      "max": 103.76643618353934
+    },
+    "BB_Width": {
+      "mean": 0.025851782281070934,
+      "std": 0.006450502599765995,
+      "min": 0.0,
+      "max": 0.0432177660108275
+    },
+    "Bollinger_Band_Expansion": {
+      "mean": 0.03343548739084793,
+      "std": 0.2598786724325477,
+      "min": -0.5041898068899032,
+      "max": 1.1855867558162008
+    },
+    "Bollinger_Bandwidth": {
+      "mean": 0.012925891139241448,
+      "std": 0.0032252512995618273,
+      "min": 0.0,
+      "max": 0.021608883003275
+    },
+    "Bollinger_Percent_B": {
+      "mean": 0.48208828400317194,
+      "std": 0.28375837853970254,
+      "min": -0.3427660783856764,
+      "max": 1.221423161110415
+    },
+    "Bollinger_Squeeze": {
+      "mean": 0.4823076923076923,
+      "std": 0.49987918241856777,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "CCI": {
+      "mean": -3.461720056073019,
+      "std": 80.16523543086248,
+      "min": -323.46534748329043,
+      "max": 213.04257342786013
+    },
+    "CMF": {
+      "mean": -0.03538436521506914,
+      "std": 0.22207651516435764,
+      "min": -0.578076000999868,
+      "max": 0.4848387404171325
+    },
+    "DOW": {
+      "mean": 6.0,
+      "std": 0.0,
+      "min": 6.0,
+      "max": 6.0
+    },
+    "Donchian_Breakout_Strength": {
+      "mean": 2.134472071064926e-05,
+      "std": 0.0002046409273560289,
+      "min": 0.0,
+      "max": 0.0026137396692692
+    },
+    "Donchian_Pos_20": {
+      "mean": -0.011923547924995398,
+      "std": 0.1923035741180855,
+      "min": -0.5000000000000047,
+      "max": 0.4818395543579678
+    },
+    "Donchian_Price_Position": {
+      "mean": 0.48910191200420966,
+      "std": 0.19250664648841861,
+      "min": 0.0,
+      "max": 0.9818395543579648
+    },
+    "Donchian_Slope_20": {
+      "mean": -0.0008978023369654375,
+      "std": 0.19039843009917692,
+      "min": -0.695998598778846,
+      "max": 0.521042516670932
+    },
+    "Donchian_Squeeze_Ratio": {
+      "mean": 0.9945023893835568,
+      "std": 0.14508945495653375,
+      "min": 0.664216116136758,
+      "max": 1.6121362402368338
+    },
+    "Donchian_Width": {
+      "mean": 2.1357555724930433,
+      "std": 0.33265145825893705,
+      "min": 1.1377754470560149,
+      "max": 3.1309057007641314
+    },
+    "Donchian_Width_Rel_20": {
+      "mean": 3.1977741749841293,
+      "std": 0.7891419757697818,
+      "min": 0.0,
+      "max": 6.176303251750965
+    },
+    "EMACross_Diff": {
+      "mean": -2.3582191149597594e-05,
+      "std": 0.002384831421736965,
+      "min": -0.0057847436578729,
+      "max": 0.0063691260430876
+    },
+    "EMACross_Signal": {
+      "mean": 0.46615384615384614,
+      "std": 0.499045099890777,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "HV": {
+      "mean": 0.06481944500194195,
+      "std": 0.014585180832233752,
+      "min": 0.025664732204151,
+      "max": 0.104963145925693
+    },
+    "HeikinAshi_Close": {
+      "mean": 99.90324762487768,
+      "std": 2.2256178701524907,
+      "min": 96.18658442265964,
+      "max": 103.75445877931506
+    },
+    "HeikinAshi_High": {
+      "mean": 100.21638428591088,
+      "std": 2.2348116619609213,
+      "min": 96.6775882589526,
+      "max": 104.27418425019032
+    },
+    "HeikinAshi_Low": {
+      "mean": 99.58232785062589,
+      "std": 2.2257656535820374,
+      "min": 95.70492288205948,
+      "max": 103.33914232272012
+    },
+    "HeikinAshi_Open": {
+      "mean": 99.90651471588791,
+      "std": 2.2145984988170135,
+      "min": 96.46193765553008,
+      "max": 103.54680055101758
+    },
+    "HourOfDay": {
+      "mean": 7.837692307692308,
+      "std": 4.827490010085712,
+      "min": 0.0,
+      "max": 16.0
+    },
+    "Ichimoku_Chikou": {
+      "mean": 99.88700907487758,
+      "std": 2.2332500541147793,
+      "min": 96.2700894301916,
+      "max": 103.6823514278424
+    },
+    "Ichimoku_Cloud_Thickness": {
+      "mean": 0.4329717912662902,
+      "std": 0.26412144796012604,
+      "min": 0.0,
+      "max": 1.3682543756988252
+    },
+    "Ichimoku_Composite_Signal": {
+      "mean": -0.09794871794871796,
+      "std": 0.8527630111368473,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "Ichimoku_Cross": {
+      "mean": 0.45153846153846156,
+      "std": 0.4978374504594872,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "Ichimoku_Diff_Norm": {
+      "mean": 1.657178426214779,
+      "std": 10.2771281597767,
+      "min": -0.502141145525618,
+      "max": 73.23201148497604
+    },
+    "Ichimoku_Kijun": {
+      "mean": 99.92105416145357,
+      "std": 2.213894413206427,
+      "min": 96.7774843620642,
+      "max": 103.27951721373834
+    },
+    "Ichimoku_Price_Cloud_Distance": {
+      "mean": -0.060735450617561255,
+      "std": 1.1467366121291713,
+      "min": -2.47500799248607,
+      "max": 2.670468419977013
+    },
+    "Ichimoku_Senkou_A": {
+      "mean": 99.96813153873659,
+      "std": 2.2115922231165235,
+      "min": 96.68953359711487,
+      "max": 103.26132505668238
+    },
+    "Ichimoku_Senkou_B": {
+      "mean": 100.04238894724355,
+      "std": 2.179761962865845,
+      "min": 96.89224511956286,
+      "max": 103.1468050402602
+    },
+    "Ichimoku_Tenkan": {
+      "mean": 99.90611043763059,
+      "std": 2.226907105326267,
+      "min": 96.51087156673364,
+      "max": 103.39524335887788
+    },
+    "Ichimoku_Trend": {
+      "mean": -0.043076923076923075,
+      "std": 0.8001095442262189,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "KAMA": {
+      "mean": 95.41145689549059,
+      "std": 15.58147045172381,
+      "min": 0.0,
+      "max": 102.53361432477917
+    },
+    "Kalman_Estimate": {
+      "mean": 99.90427391308188,
+      "std": 2.2041094914636408,
+      "min": 96.58578317390337,
+      "max": 103.3563204121818
+    },
+    "Kalman_Residual": {
+      "mean": -0.003207493326947926,
+      "std": 0.24222577697695521,
+      "min": -0.8958948763176409,
+      "max": 0.771172349397446
+    },
+    "Kalman_Residual_Norm": {
+      "mean": -0.03793874017550409,
+      "std": 1.0305088315249793,
+      "min": -3.488570505743428,
+      "max": 3.1663043047424013
+    },
+    "Keltner_Lower": {
+      "mean": 98.58000357875397,
+      "std": 2.17306352436313,
+      "min": 95.17142629618807,
+      "max": 102.0425504988614
+    },
+    "Keltner_Position": {
+      "mean": 0.49015873827744555,
+      "std": 0.1402961199170634,
+      "min": 0.0794376482646209,
+      "max": 0.9110647782754212
+    },
+    "Keltner_Upper": {
+      "mean": 101.2586386406676,
+      "std": 2.2132054858463497,
+      "min": 97.98871502580448,
+      "max": 104.7023775341913
+    },
+    "Keltner_Width": {
+      "mean": 0.026811970474902448,
+      "std": 0.0037752348748609646,
+      "min": 0.0185506267937498,
+      "max": 0.0383795755378467
+    },
+    "MACD": {
+      "mean": 0.0003310114949281297,
+      "std": 0.02837436811784927,
+      "min": -0.0827518801818194,
+      "max": 0.1049263051711067
+    },
+    "MFI": {
+      "mean": 51.62967579103907,
+      "std": 11.307002859314958,
+      "min": 17.979922956073196,
+      "max": 79.31832823994236
+    },
+    "MinusDI": {
+      "mean": 31.554042460172628,
+      "std": 8.509935786170614,
+      "min": 0.0,
+      "max": 61.15121994933853
+    },
+    "OBV": {
+      "mean": 1851764.905956225,
+      "std": 1781563.4390957213,
+      "min": -1881573.6767326728,
+      "max": 5213591.9194988245
+    },
+    "PSAR": {
+      "mean": 99.90605642874007,
+      "std": 2.267426149392137,
+      "min": 95.70492288205948,
+      "max": 104.2566308685149
+    },
+    "PSAR_Trend": {
+      "mean": 0.009230769230769232,
+      "std": 1.0003422165667863,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "PlusDI": {
+      "mean": 29.160412508144535,
+      "std": 8.254595548589023,
+      "min": 0.0,
+      "max": 57.70557678657576
+    },
+    "PriceVolumeCorr": {
+      "mean": 0.0032374508793810734,
+      "std": 0.22018820187936106,
+      "min": -0.5393733639056147,
+      "max": 0.5077384156442195
+    },
+    "ROC": {
+      "mean": -0.00045080426493462536,
+      "std": 0.5048799571794754,
+      "min": -1.5316520122639568,
+      "max": 1.6778103045946264
+    },
+    "RSI": {
+      "mean": 49.61379279292401,
+      "std": 8.024773569011485,
+      "min": 0.0,
+      "max": 71.22856570807535
+    },
+    "ReturnMA_Medium": {
+      "mean": 2.3139338076375845e-06,
+      "std": 0.0003434254131240546,
+      "min": -0.0011330622581395,
+      "max": 0.0011330622581395
+    },
+    "ReturnMA_Short": {
+      "mean": 6.9165782533778815e-06,
+      "std": 0.0008693808912388096,
+      "min": -0.0029385253808748,
+      "max": 0.0027581490522934
+    },
+    "ReturnStdDev": {
+      "mean": 0.002189737664954592,
+      "std": 0.003521379804171493,
+      "min": -0.0057838235149023,
+      "max": 0.0057838235149023
+    },
+    "Stochastic": {
+      "mean": 48.90826404390755,
+      "std": 15.339580331696823,
+      "min": 4.9835248983752045,
+      "max": 87.59413615929058
+    },
+    "Stochastic_Divergence": {
+      "mean": 0.024615384615384615,
+      "std": 0.6537699682867417,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "Stochastic_Signal_Strength": {
+      "mean": 0.2476131754516591,
+      "std": 0.18231491140563488,
+      "min": 0.0,
+      "max": 0.90032950270528
+    },
+    "Stochastic_Trend_Alignment": {
+      "mean": 0.1753846153846154,
+      "std": 0.9770311772104262,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "Supertrend": {
+      "mean": 54.5246103088526,
+      "std": 85.36003925681675,
+      "min": -104.6325250955782,
+      "max": 106.39417053486076
+    },
+    "Supertrend_Direction": {
+      "mean": -0.2692307692307692,
+      "std": 0.9634463218388675,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "Supertrend_Reversal_Signal": {
+      "mean": 0.0,
+      "std": 0.039238321593147524,
+      "min": -1.0,
+      "max": 1.0
+    },
+    "Supertrend_Strength": {
+      "mean": 1.603281250715422,
+      "std": 2.522032234099026,
+      "min": -3.302835176169878,
+      "max": 3.3614909147006564
+    },
+    "Supertrend_Trend_Duration": {
+      "mean": 97.28846153846153,
+      "std": 194.0321013950147,
+      "min": -477.0,
+      "max": 477.0
+    },
+    "Supertrend_Volatility_Filter": {
+      "mean": 1.6019563361202342,
+      "std": 2.579211487154856,
+      "min": -4.763957833615611,
+      "max": 5.1281321589712014
+    },
+    "TEMA": {
+      "mean": 99.90199264757999,
+      "std": 2.2100783033574927,
+      "min": 96.53522714644356,
+      "max": 103.4133672057921
+    },
+    "Time_Day_of_Week": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "Time_Hour_of_Day": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "Time_Session": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "Time_Volatility_Adjustment": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "VWAP": {
+      "mean": 100.76999172907976,
+      "std": 0.7266999653146232,
+      "min": 99.93325962652229,
+      "max": 102.26396520141913
+    },
+    "Volume_Profile_Distribution": {
+      "mean": 0.054559001945475444,
+      "std": 0.054425600878552666,
+      "min": 0.0006628549513157,
+      "max": 1.0
+    },
+    "Volume_Profile_Point_of_Control": {
+      "mean": 100.01420667190705,
+      "std": 2.2914742094243934,
+      "min": 96.47615640519123,
+      "max": 103.1601802723333
+    },
+    "Volume_Profile_Value_Area_High": {
+      "mean": 100.95919844862647,
+      "std": 2.131309567470118,
+      "min": 97.33308254200432,
+      "max": 103.50295072705852
+    },
+    "Volume_Profile_Value_Area_Low": {
+      "mean": 99.0105484135135,
+      "std": 2.1119053796500062,
+      "min": 96.30477117782864,
+      "max": 102.64602459024545
+    },
+    "Williams_R": {
+      "mean": -50.82560240250991,
+      "std": 19.941920262972758,
+      "min": -100.0,
+      "max": -0.0
+    },
+    "ZScore": {
+      "mean": -0.00797542352095215,
+      "std": 0.9611974293917787,
+      "min": -2.884624337073924,
+      "max": 2.638809559064065
+    },
+    "atr_10": {
+      "mean": 1.7459311394948893,
+      "std": 0.37492836560119747,
+      "min": 0.761864784225537,
+      "max": 2.902953776190529
+    },
+    "close": {
+      "mean": 99.90106641975493,
+      "std": 2.2222632078660967,
+      "min": 96.2700894301916,
+      "max": 103.6823514278424
+    },
+    "ema_5": {
+      "mean": 99.90399125861774,
+      "std": 2.2061110987966845,
+      "min": 96.5449212428245,
+      "max": 103.39937862786591
+    },
+    "high": {
+      "mean": 100.1450776484996,
+      "std": 2.244474535385342,
+      "min": 96.2700894301916,
+      "max": 104.27418425019032
+    },
+    "liquidity_surge": {
+      "mean": 0.6738289845767816,
+      "std": 0.452342848914507,
+      "min": 0.0,
+      "max": 3.047598419348827
+    },
+    "low": {
+      "mean": 99.652970156222,
+      "std": 2.2408323306163314,
+      "min": 95.70492288205948,
+      "max": 103.50206531094588
+    },
+    "micro_trend": {
+      "mean": 1.7801082273079457e-05,
+      "std": 0.004346356132850846,
+      "min": -0.0146904809146399,
+      "max": 0.0138289951891972
+    },
+    "micro_volatility": {
+      "mean": 0.0035619632832757852,
+      "std": 0.0015646311591507806,
+      "min": 0.0,
+      "max": 0.009653792905161
+    },
+    "momentum_burst": {
+      "mean": 1.9284428819512828e-05,
+      "std": 0.003345548162920643,
+      "min": -0.0149069972258615,
+      "max": 0.0149069972258615
+    },
+    "momentum_divergence": {
+      "mean": -8.495500717084713e-05,
+      "std": 0.004414460781136827,
+      "min": -0.0138316300312961,
+      "max": 0.0148467834365254
+    },
+    "open": {
+      "mean": 99.91387627503421,
+      "std": 2.2229652794557477,
+      "min": 96.10307941512768,
+      "max": 103.9593890169132
+    },
+    "order_flow_imbalance": {
+      "mean": -3.4632287220457707,
+      "std": 118.06050797504044,
+      "min": -4238.347750021136,
+      "max": 270.8328033791128
+    },
+    "price_acceleration": {
+      "mean": 1.5104968295619207e-05,
+      "std": 0.0028885284209606552,
+      "min": -0.0089446360047921,
+      "max": 0.0090526708079964
+    },
+    "price_velocity": {
+      "mean": -1.5655464007817092e-05,
+      "std": 0.004091143428615511,
+      "min": -0.0124512598494581,
+      "max": 0.0108537209133928
+    },
+    "rolling_mean_20": {
+      "mean": 99.91643494779497,
+      "std": 2.195052616506865,
+      "min": 96.7160037257352,
+      "max": 103.18258679009288
+    },
+    "spread_pressure": {
+      "mean": 8.421073156630571,
+      "std": 127.84695313250441,
+      "min": 0.0,
+      "max": 4581.717517577346
+    },
+    "tick_volume_ratio": {
+      "mean": 1.0265385638155504,
+      "std": 0.5988631086055275,
+      "min": 0.0,
+      "max": 4.102786825467242
+    },
+    "volume": {
+      "mean": 192855.8181745797,
+      "std": 103144.58433553751,
+      "min": 43403.15955197022,
+      "max": 748163.987356086
+    },
+    "volume_surge": {
+      "mean": 0.14,
+      "std": 0.34712056505206246,
+      "min": 0.0,
+      "max": 1.0
+    }
+  },
+  "created_at": "2025-10-06T19:55:31.254071",
+  "version": "1.0",
+  "schema_hash": "d339b0e700d6840a4c41e22ed2605fac5f22afab8daca274c1d06e0f44c525b2"
+}

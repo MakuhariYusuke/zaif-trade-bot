@@ -24,7 +24,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 
 @dataclass
@@ -230,7 +230,7 @@ class ConfigFingerprint:
 
         return self_hash == other_hash
 
-    def diff(self, other: "ConfigFingerprint") -> Dict[str, tuple[str, Any]]:
+    def diff(self, other: "ConfigFingerprint") -> Dict[str, Tuple[Any, Any]]:
         """Compute differences between two fingerprints.
 
         Args:

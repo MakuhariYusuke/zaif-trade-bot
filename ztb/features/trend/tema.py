@@ -14,6 +14,7 @@ import pandas as pd
 
 from ztb.features.base import BaseFeature
 from ztb.features.registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("TEMA")
@@ -44,16 +45,7 @@ class TEMA(BaseFeature):
                 "Input DataFrame must contain a 'close' column for TEMA calculation."
             )
 
-        # Calculate three EMAs - use pre-computed EMA if available for first EMA
-        ema_col = f"ema_{self.period}"
-        if ema_col in df.columns:
-            ema1 = df[ema_col]
-        else:
-            ema1 = df["close"].ewm(span=self.period, adjust=False).mean()
+        # Use Ta-Lib wrapper for TEMA calculation
+        result = TaLibWrapper.tema(df["close"].to_numpy(), self.period)
 
-        ema2 = ema1.ewm(span=self.period, adjust=False).mean()
-        ema3 = ema2.ewm(span=self.period, adjust=False).mean()
-        # TEMA = 3 * EMA1 - 3 * EMA2 + EMA3
-        tema = 3 * ema1 - 3 * ema2 + ema3
-
-        return pd.DataFrame({f"tema_{self.period}": tema}, index=df.index)
+        return pd.DataFrame({f"tema_{self.period}": result}, index=df.index)

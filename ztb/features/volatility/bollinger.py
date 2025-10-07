@@ -7,60 +7,59 @@ import numpy as np
 import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("BB_Upper")
 def compute_bb_upper(
     df: pd.DataFrame, period: int = 20, std_dev: float = 2.0
 ) -> pd.Series:
-    """Compute Bollinger Band Upper"""
-    mean = df["close"].rolling(period).mean()
-    std = df["close"].rolling(period).std()
-    return mean + std_dev * std
+    """Compute Bollinger Band Upper with Ta-Lib support"""
+    close_prices = np.asarray(df["close"].values, dtype=float)
+    upper, middle, lower = TaLibWrapper.bbands(close_prices, period, std_dev, std_dev)
+    return pd.Series(upper, index=df.index).bfill()
 
 
 @FeatureRegistry.register("BB_Lower")
 def compute_bb_lower(
     df: pd.DataFrame, period: int = 20, std_dev: float = 2.0
 ) -> pd.Series:
-    """Compute Bollinger Band Lower"""
-    mean = df["close"].rolling(period).mean()
-    std = df["close"].rolling(period).std()
-    return mean - std_dev * std
+    """Compute Bollinger Band Lower with Ta-Lib support"""
+    close_prices = np.asarray(df["close"].values, dtype=float)
+    upper, middle, lower = TaLibWrapper.bbands(close_prices, period, std_dev, std_dev)
+    return pd.Series(lower, index=df.index).bfill()
 
 
 @FeatureRegistry.register("BB_Middle")
 def compute_bb_middle(df: pd.DataFrame, period: int = 20) -> pd.Series:
-    """Compute Bollinger Band Middle (SMA)"""
-    return df["close"].rolling(period).mean()
+    """Compute Bollinger Band Middle (SMA) with Ta-Lib support"""
+    close_prices = np.asarray(df["close"].values, dtype=float)
+    upper, middle, lower = TaLibWrapper.bbands(close_prices, period, 2.0, 2.0)
+    return pd.Series(middle, index=df.index).bfill()
 
 
 @FeatureRegistry.register("BB_Width")
 def compute_bb_width(
     df: pd.DataFrame, period: int = 20, std_dev: float = 2.0
 ) -> pd.Series:
-    """Compute Bollinger Band Width - Optimized version"""
-    # Calculate mean and std once, reuse for efficiency
-    close_rolling = df["close"].rolling(period)
-    mean = close_rolling.mean()
-    std = close_rolling.std()
+    """Compute Bollinger Band Width with Ta-Lib support"""
+    close_prices = np.asarray(df["close"].values, dtype=float)
+    upper, middle, lower = TaLibWrapper.bbands(close_prices, period, std_dev, std_dev)
 
-    # Width = (upper - lower) / mean = (4 * std_dev * std) / mean
-    # Simplified calculation: width = 4 * std_dev * (std / mean)
-    width = 4 * std_dev * (std / mean.where(mean != 0, np.nan))
-    return width.fillna(0)
+    # Width = (upper - lower) / middle
+    width = (upper - lower) / np.where(middle == 0, 1, middle)
+    return pd.Series(width, index=df.index).fillna(0)
 
 
 @FeatureRegistry.register("BB_Position")
 def compute_bb_position(
     df: pd.DataFrame, period: int = 20, std_dev: float = 2.0
 ) -> pd.Series:
-    """Compute Bollinger Band Position (%B)"""
-    mean = df["close"].rolling(period).mean()
-    std = df["close"].rolling(period).std()
-    upper = mean + std_dev * std
-    lower = mean - std_dev * std
+    """Compute Bollinger Band Position (%B) with Ta-Lib support"""
+    close_prices = np.asarray(df["close"].values, dtype=float)
+    upper, middle, lower = TaLibWrapper.bbands(close_prices, period, std_dev, std_dev)
+
+    # Position = (close - lower) / (upper - lower)
     denominator = upper - lower
-    position = (df["close"] - lower) / denominator
-    # If the band width is zero, treat the position as the middle (0.5)
-    return position.where(denominator != 0, 0.5)
+    position = (close_prices - lower) / np.where(denominator == 0, 1, denominator)
+    return pd.Series(position, index=df.index).fillna(0.5)

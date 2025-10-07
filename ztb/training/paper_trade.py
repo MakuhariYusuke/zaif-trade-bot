@@ -66,10 +66,10 @@ class PaperTrader:
 
         # Inference configuration
         self.inference_config = InferenceConfig(
-            temperature=float(self.config.get("temperature", 0.7)),
-            tiebreaker_tau=float(self.config.get("tiebreaker_tau", 0.05)),
-            enable_tiebreaker=bool(self.config.get("enable_tiebreaker", True)),
-            deterministic=bool(self.config.get("deterministic", False)),
+            temperature=float(cast(float, self.config.get("temperature", 0.7))),
+            tiebreaker_tau=float(cast(float, self.config.get("tiebreaker_tau", 0.05))),
+            enable_tiebreaker=bool(cast(bool, self.config.get("enable_tiebreaker", True))),
+            deterministic=bool(cast(bool, self.config.get("deterministic", False))),
         )
 
     def _get_default_config(self) -> TradingEnvConfig:

@@ -17,6 +17,7 @@ from ztb.utils.path_utils import ensure_dir, get_project_root
 sys.path.append(str(get_project_root()))
 
 # ローカルモジュールのインポート
+from ztb.training.ppo_config import get_ppo_config
 from ztb.training.ppo_trainer import PPOTrainer
 from ztb.utils import DiscordNotifier, LoggerManager
 from ztb.utils.cli_common import CLIFormatter, CLIValidator, create_standard_parser
@@ -62,16 +63,9 @@ def get_default_config() -> dict:
             "total_timesteps": 200000,
             "eval_freq": 5000,
             "n_eval_episodes": 5,
-            "batch_size": 64,
-            "n_steps": 2048,
-            "gamma": 0.99,
-            "learning_rate": 3e-4,
-            "ent_coef": 0.01,
-            "clip_range": 0.2,
-            "n_epochs": 10,
-            "gae_lambda": 0.95,
-            "max_grad_norm": 0.5,
-            "vf_coef": 0.5,
+            **get_ppo_config({
+                "ent_coef": 0.01,  # Override for testing
+            }),
         },
         "environment": {
             "reward_scaling": 1.0,

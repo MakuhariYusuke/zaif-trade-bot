@@ -1,0 +1,135 @@
+"""
+Common PPO training configurations and utilities.
+
+This module provides standardized PPO configurations to reduce duplication
+across training scripts and improve consistency.
+"""
+
+from typing import Dict, Any, List, Optional, TypedDict, cast
+
+# Common constants used across training modules
+DEFAULT_REWARD_SCALING = 6.0
+DEFAULT_TOTAL_TIMESTEPS = 1_000_000
+DEFAULT_INITIAL_PORTFOLIO_VALUE = 1_000_000.0
+DEFAULT_TRAINING_STEPS = 100_000
+
+# Environment configuration constants
+DEFAULT_RISK_FREE_RATE = 0.0
+DEFAULT_STOP_LOSS_THRESHOLD = 0.05
+DEFAULT_MAX_CONSECUTIVE_TRADES = 5
+DEFAULT_MIN_HOLDING_PERIOD = 3
+
+# Reward configuration constants
+DEFAULT_REWARD_POSITION_SOFT_CAP = 0.8
+DEFAULT_REWARD_POSITION_PENALTY_SCALE = 0.5
+DEFAULT_REWARD_POSITION_PENALTY_EXPONENT = 4.0
+DEFAULT_REWARD_INVENTORY_WINDOW = 128
+DEFAULT_REWARD_INVENTORY_PENALTY_SCALE = 0.1
+DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY = 0.2
+DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE = 8.0
+DEFAULT_REWARD_TRADE_COOLDOWN_STEPS = 2
+DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY = 0.2
+DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES = 5
+DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY = 0.1
+DEFAULT_REWARD_VOLATILITY_WINDOW = 32
+DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE = 0.05
+DEFAULT_REWARD_SHARPE_BONUS_SCALE = 0.02
+DEFAULT_REWARD_CLIP_VALUE = 2.0
+
+
+class PPOConfig(TypedDict, total=False):
+    """Type definition for PPO configuration."""
+    # Core PPO parameters
+    learning_rate: float
+    n_steps: int
+    batch_size: int
+    n_epochs: int
+    gamma: float
+    gae_lambda: float
+    clip_range: float
+    clip_range_vf: Optional[float]
+    normalize_advantage: bool
+    ent_coef: float
+    vf_coef: float
+    max_grad_norm: float
+    use_sde: bool
+    sde_sample_freq: int
+    target_kl: Optional[float]
+
+    # Trading-specific parameters
+    reward_scaling: float
+    transaction_cost: float
+    position_penalty_scale: float
+    inventory_penalty_scale: float
+    trade_frequency_penalty: float
+
+    # Environment parameters
+    max_position_size: float
+    fee_model: str
+    fee_rate: float
+    features: List[str]
+
+
+# Default PPO configuration optimized for trading environments
+DEFAULT_PPO_CONFIG: PPOConfig = {
+    # Core PPO parameters
+    "learning_rate": 3e-4,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "clip_range_vf": None,
+    "normalize_advantage": True,
+    "ent_coef": 0.0,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "use_sde": False,
+    "sde_sample_freq": -1,
+    "target_kl": None,
+
+    # Trading-specific parameters
+    "reward_scaling": DEFAULT_REWARD_SCALING,  # Optimized value from hyperparameter search
+    "transaction_cost": 0.001,
+    "position_penalty_scale": 0.01,
+    "inventory_penalty_scale": 0.001,
+    "trade_frequency_penalty": 0.0001,
+
+    # Environment parameters
+    "max_position_size": 1.0,
+    "fee_model": "percentage",
+    "fee_rate": 0.001,
+    "features": [
+        "close", "volume", "returns", "sma_20", "sma_50", "rsi_14",
+        "macd", "bb_upper", "bb_lower", "atr_14", "stoch_k", "stoch_d"
+    ],
+}
+
+
+def get_ppo_config(overrides: Optional[Dict[str, Any]] = None) -> PPOConfig:
+    """Get PPO configuration with optional overrides."""
+    config: Dict[str, Any] = dict(DEFAULT_PPO_CONFIG)
+    if overrides:
+        config.update(overrides)
+    return cast(PPOConfig, config)
+
+
+def get_conservative_ppo_config() -> PPOConfig:
+    """Get conservative PPO configuration for stable training."""
+    return get_ppo_config({
+        "learning_rate": 1e-4,
+        "clip_range": 0.1,
+        "ent_coef": 0.01,
+        "max_grad_norm": 0.3,
+    })
+
+
+def get_aggressive_ppo_config() -> PPOConfig:
+    """Get aggressive PPO configuration for faster learning."""
+    return get_ppo_config({
+        "learning_rate": 1e-3,
+        "clip_range": 0.3,
+        "ent_coef": 0.1,
+        "max_grad_norm": 1.0,
+    })

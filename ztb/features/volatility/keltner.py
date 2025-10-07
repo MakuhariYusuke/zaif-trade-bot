@@ -12,10 +12,12 @@ Output columns:
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("Keltner_Upper")
@@ -73,18 +75,14 @@ class KeltnerChannels(BaseFeature):
         if ema_col in df.columns:
             middle = df[ema_col]
         else:
-            middle = df["close"].ewm(span=period, adjust=False).mean()
+            middle = pd.Series(TaLibWrapper.ema(np.asarray(df["close"]), period), index=df.index)
 
         # Calculate ATR (assuming it's available, otherwise calculate it)
         if "atr" in df.columns:
             atr = df["atr"]
         else:
-            # Simple ATR calculation
-            high_low = df["high"] - df["low"]
-            high_close = (df["high"] - df["close"].shift(1)).abs()
-            low_close = (df["low"] - df["close"].shift(1)).abs()
-            tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-            atr = tr.rolling(window=period).mean()
+            # Use TaLibWrapper for ATR calculation
+            atr = pd.Series(TaLibWrapper.atr(np.asarray(df["high"]), np.asarray(df["low"]), np.asarray(df["close"]), period), index=df.index)
 
         # Calculate Keltner Channels
         upper = middle + (atr * multiplier)

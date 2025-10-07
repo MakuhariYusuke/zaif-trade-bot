@@ -18,6 +18,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.ppo_config import get_ppo_config
 from ztb.utils.cli_common import CLIFormatter
 
 
@@ -46,6 +47,7 @@ class TrainingCallback(BaseCallback):
                 reward = episode_info["r"]
                 length = episode_info["l"]
 
+                self.episode_rewards.append(reward)
                 self.episode_lengths.append(length)
                 self.episode_count += 1
 
@@ -140,23 +142,20 @@ class HyperparameterOptimizer(ABC):
             },
         }
 
-        # Default PPO parameters
-        self.ppo_params: Dict[str, Any] = {
-            "learning_rate": 5e-4,
-            "gamma": 0.95,
-            "gae_lambda": 0.8,
-            "clip_range": 0.3,
-            "vf_coef": 0.5,
-            "max_grad_norm": 1.0,
-            "target_kl": 0.005,
-            "ent_coef": 0.05,
-            "batch_size": 64,
-            "n_epochs": 10,
-            "n_steps": 2048,
+        # Default PPO parameters from common config with optimization overrides
+        base_ppo_config = get_ppo_config({
+            "learning_rate": 5e-4,  # Override for optimization
+            "gamma": 0.95,  # Override for optimization
+            "gae_lambda": 0.8,  # Override for optimization
+            "clip_range": 0.3,  # Override for optimization
+            "max_grad_norm": 1.0,  # Override for optimization
+            "target_kl": 0.005,  # Override for optimization
+            "ent_coef": 0.05,  # Override for optimization
+            "normalize_advantage": False,  # Override for optimization
             "verbose": 1,
             "tensorboard_log": "./tensorboard/",
-            "normalize_advantage": False,
-        }
+        })
+        self.ppo_params: Dict[str, Any] = dict(base_ppo_config)
 
     @property
     @abstractmethod

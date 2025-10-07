@@ -4,6 +4,8 @@
 import numpy as np
 import pandas as pd
 
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 
 def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.DataFrame:
     """サンプル取引データを生成"""
@@ -19,52 +21,42 @@ def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.Da
     prices = base_price * np.exp(np.cumsum(price_changes))
 
     # テクニカル指標の生成
+    # MACDを先に計算
+    macd, macd_signal, macd_hist = TaLibWrapper.macd(prices)
+    # ボリンジャーバンドを先に計算
+    bb_upper, bb_middle, bb_lower = TaLibWrapper.bbands(prices, 20, 2.0, 2.0)
+    
+    # 価格変動率とボラティリティを先に計算
+    price_changes = np.concatenate([[0], np.diff(prices) / prices[:-1]])
+    price_change_1 = np.concatenate([[0], np.diff(prices) / prices[:-1]])
+    price_change_5 = np.concatenate([[0, 0, 0, 0, 0], np.diff(prices, 5) / prices[:-5]])
+    price_change_10 = np.concatenate([[0] * 10, np.diff(prices, 10) / prices[:-10]])
+    volatility_5 = pd.Series(price_changes).rolling(5).std().values
+    volatility_10 = pd.Series(price_changes).rolling(10).std().values
+    volatility_20 = pd.Series(price_changes).rolling(20).std().values
+    
     data = {
         "ts": date_range,
         "price": prices,
         "close": prices,  # 環境が期待するcloseカラム
         "volume": np.random.exponential(100, n_points),
         # 移動平均
-        "sma_5": pd.Series(prices).rolling(5).mean(),
-        "sma_10": pd.Series(prices).rolling(10).mean(),
-        "sma_20": pd.Series(prices).rolling(20).mean(),
-        "sma_50": pd.Series(prices).rolling(50).mean(),
+        "sma_5": TaLibWrapper.sma(prices, 5),
+        "sma_10": TaLibWrapper.sma(prices, 10),
+        "sma_20": TaLibWrapper.sma(prices, 20),
+        "sma_50": TaLibWrapper.sma(prices, 50),
         # RSI
         "rsi_14": 50 + 30 * np.sin(np.linspace(0, 4 * np.pi, n_points)),
         # MACD
-        "macd": pd.Series(prices).ewm(span=12).mean()
-        - pd.Series(prices).ewm(span=26).mean(),
-        "macd_signal": (
-            pd.Series(prices).ewm(span=12).mean()
-            - pd.Series(prices).ewm(span=26).mean()
-        )
-        .ewm(span=9)
-        .mean(),
-        "macd_hist": (
-            pd.Series(prices).ewm(span=12).mean()
-            - pd.Series(prices).ewm(span=26).mean()
-        )
-        - (
-            pd.Series(prices).ewm(span=12).mean()
-            - pd.Series(prices).ewm(span=26).mean()
-        )
-        .ewm(span=9)
-        .mean(),
+        "macd": macd,
+        "macd_signal": macd_signal,
+        "macd_hist": macd_hist,
         # ボリンジャーバンド
-        "bb_upper": pd.Series(prices).rolling(20).mean()
-        + 2 * pd.Series(prices).rolling(20).std(),
-        "bb_middle": pd.Series(prices).rolling(20).mean(),
-        "bb_lower": pd.Series(prices).rolling(20).mean()
-        - 2 * pd.Series(prices).rolling(20).std(),
-        # ATR (Average True Range)
-        "atr_14": pd.Series(
-            [
-                abs(prices[i] - prices[i - 1]) if i > 0 else 0.001
-                for i in range(n_points)
-            ]
-        )
-        .rolling(14)
-        .mean(),
+        "bb_upper": bb_upper,
+        "bb_middle": bb_middle,
+        "bb_lower": bb_lower,
+        # ATR (Average True Range) - high/lowをcloseで近似
+        "atr_14": TaLibWrapper.atr(prices, prices, prices, 14),
         # ストキャスティクス
         "stoch_k": 50 + 40 * np.sin(np.linspace(0, 6 * np.pi, n_points)),
         "stoch_d": 50 + 35 * np.sin(np.linspace(0, 6 * np.pi, n_points)),
@@ -75,13 +67,13 @@ def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.Da
         # ADX (Average Directional Index)
         "adx_14": 20 + 30 * np.random.random(n_points),
         # 価格変動率
-        "price_change_1": pd.Series(prices).pct_change(1),
-        "price_change_5": pd.Series(prices).pct_change(5),
-        "price_change_10": pd.Series(prices).pct_change(10),
+        "price_change_1": price_change_1,
+        "price_change_5": price_change_5,
+        "price_change_10": price_change_10,
         # ボラティリティ
-        "volatility_5": pd.Series(prices).pct_change().rolling(5).std(),
-        "volatility_10": pd.Series(prices).pct_change().rolling(10).std(),
-        "volatility_20": pd.Series(prices).pct_change().rolling(20).std(),
+        "volatility_5": volatility_5,
+        "volatility_10": volatility_10,
+        "volatility_20": volatility_20,
         # 取引所情報
         "exchange": "sample_exchange",
         "pair": "BTC/USD",
