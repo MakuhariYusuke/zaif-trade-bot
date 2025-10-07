@@ -16,10 +16,11 @@ Critical Requirements:
 """
 
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple, cast, Union
+from typing import Any, Optional, Tuple, cast, Union, Dict
 
 import numpy as np
 import torch
+from numpy.typing import NDArray
 
 
 @dataclass
@@ -49,12 +50,12 @@ class InferenceConfig:
 
 
 def decode_action(
-    logits: np.ndarray | torch.Tensor,
-    legal_mask: np.ndarray | torch.Tensor,
+    logits: NDArray[Any] | torch.Tensor,
+    legal_mask: NDArray[Any] | torch.Tensor,
     config: Optional[InferenceConfig] = None,
-    advantages: Optional[np.ndarray | torch.Tensor] = None,
+    advantages: Optional[NDArray[Any] | torch.Tensor] = None,
     current_position: Optional[int] = None,
-) -> Tuple[int | np.ndarray, dict]:
+) -> Tuple[int | NDArray[Any], Dict[str, Any]]:
     """
     Decode action from logits with strict mask enforcement.
 
@@ -191,7 +192,7 @@ def decode_action(
     # Step 4 & 5 & 6: Action selection with advantage-aware tiebreaker and cost gate
     actions = np.zeros(batch_size, dtype=np.int32)
     tiebreaker_activated = np.zeros(batch_size, dtype=bool)
-    tiebreaker_reasons = [None] * batch_size
+    tiebreaker_reasons: list[Optional[str]] = [None] * batch_size
     cost_gate_triggered = np.zeros(batch_size, dtype=bool)
     estimated_costs = np.zeros(batch_size, dtype=np.float32)
     top2_actions = np.zeros((batch_size, 2), dtype=np.int32)
@@ -310,8 +311,8 @@ def decode_action(
 
 
 def compute_legal_sell_rate(
-    actions: np.ndarray, legal_masks: np.ndarray
-) -> dict[str, float]:
+    actions: NDArray[Any], legal_masks: NDArray[Any]
+) -> Dict[str, float]:
     """
     Compute legal SELL rate statistics.
 

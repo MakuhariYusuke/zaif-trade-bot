@@ -3,6 +3,7 @@
 
 import dataclasses
 import gc
+import logging
 import math
 import time
 from collections import deque
@@ -804,6 +805,10 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         self._prime_streaming_data()
 
+        # Memory cleanup
+        if self.current_step % 1000 == 0:
+            gc.collect()
+
         return self._get_observation(), self._get_info()
 
     def _get_reward_setting_int(self, key: str, default: int) -> int:
@@ -1018,8 +1023,13 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 self._log_memory_usage(f"step_{self.current_step}")
                 self._last_memory_log_step = self.current_step
 
+        # Aggressive garbage collection for memory-constrained environments
         if self._gc_step_interval and self.current_step % self._gc_step_interval == 0:
-            gc.collect()
+            gc.collect(generation=0)  # Quick generation 0 collection
+        
+        # Full collection every 500 steps
+        if self.current_step % 500 == 0:
+            gc.collect()  # Full collection
 
         return next_obs, reward, done, False, info
 
@@ -1182,8 +1192,10 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
     ) -> float:
         """Calculate reward with curriculum learning stages."""
         curriculum_stage = self.config.curriculum_stage
-        print(
-            f"DEBUG Curriculum stage: {curriculum_stage}, position: {position}, action: {action}"
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            "Curriculum stage: %s, position: %.2f, action: %d",
+            curriculum_stage, position, action
         )
 
         eps = 1e-8
@@ -1854,13 +1866,16 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         # 特徴量ベクトルの作成
         try:
-            obs = step_data[self.features].to_numpy(dtype=np.float32, copy=False)
+            # Ensure features is a list
+            feature_list = list(self.features) if not isinstance(self.features, list) else self.features
+            obs = step_data[feature_list].to_numpy(dtype=np.float32, copy=False)
         except (KeyError, IndexError, TypeError) as e:
             # デバッグ情報
             available_cols = (
                 list(step_data.index) if hasattr(step_data, "index") else []
             )
-            missing_cols = [f for f in self.features if f not in available_cols]
+            feature_list = list(self.features) if not isinstance(self.features, list) else self.features
+            missing_cols = [f for f in feature_list if f not in available_cols]
             raise ValueError(
                 f"Missing features in observation: {missing_cols}. Available: {available_cols[:10]}..."
             ) from e
