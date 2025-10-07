@@ -18,7 +18,6 @@ sys.path.insert(0, str(project_root))
 
 import argparse
 import json
-import pandas as pd
 import numpy as np
 from datetime import datetime
 from sb3_contrib import MaskablePPO
@@ -27,6 +26,7 @@ from ztb.trading.environment.environment import HeavyTradingEnv, EnvironmentConf
 from ztb.training.lagrange_constraint import LagrangeConstraint, apply_lagrange_to_loss
 from ztb.training.grad_probes import SELLGradientProbe, create_failsafe_dump
 from ztb.training.weights import ActionWeightCalculator
+from ztb.utils.data_utils import load_csv_data_optimized
 
 
 class SELLBiasMitigationCallback(BaseCallback):
@@ -87,7 +87,7 @@ def train_with_full_mitigation(
     
     # Load data
     print("Loading mirror-augmented data...")
-    df = pd.read_csv(data_path)
+    df = load_csv_data_optimized(data_path)
     print(f"  Loaded {len(df)} rows, {len(df.columns)} columns")
     
     # Check action distribution

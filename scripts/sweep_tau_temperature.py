@@ -31,6 +31,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.inference.decode import decode_action, InferenceConfig, compute_legal_sell_rate
+from ztb.utils.data_utils import load_csv_data_optimized
 
 
 def generate_synthetic_uptrend(n_steps: int = 300) -> pd.DataFrame:
@@ -251,19 +252,19 @@ def main():
     datasets = []
     
     if args.data_up:
-        df_up = pd.read_csv(args.data_up, index_col=0, parse_dates=True).tail(args.steps)
+        df_up = load_csv_data_optimized(args.data_up, index_col=0).tail(args.steps)
         datasets.append(("uptrend", df_up))
     else:
         datasets.append(("synth_up", generate_synthetic_uptrend(args.steps)))
     
     if args.data_down:
-        df_down = pd.read_csv(args.data_down, index_col=0, parse_dates=True).tail(args.steps)
+        df_down = load_csv_data_optimized(args.data_down, index_col=0).tail(args.steps)
         datasets.append(("downtrend", df_down))
     else:
         datasets.append(("synth_down", generate_synthetic_downtrend(args.steps)))
     
     if args.data_real:
-        df_real = pd.read_csv(args.data_real, index_col=0, parse_dates=True).tail(args.steps)
+        df_real = load_csv_data_optimized(args.data_real, index_col=0).tail(args.steps)
         datasets.append(("real", df_real))
     
     print(f"Datasets: {len(datasets)}")

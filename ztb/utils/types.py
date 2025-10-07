@@ -75,11 +75,11 @@ class ModelConfig(TypedDict, total=False):
 class TradingEnvironment(Protocol):
     """Protocol for trading environments."""
 
-    def reset(self, **kwargs) -> Tuple[np.ndarray[Any, np.dtype[np.floating]], Dict[str, Any]]:
+    def reset(self: "TradingEnvironment", **kwargs: Any) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], Dict[str, Any]]:
         """Reset environment and return initial observation and info."""
         ...
 
-    def step(self, action: ActionType) -> Tuple[np.ndarray[Any, np.dtype[np.floating]], float, bool, bool, Dict[str, Any]]:
+    def step(self: "TradingEnvironment", action: ActionType) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], float, bool, bool, Dict[str, Any]]:
         """Execute action and return next observation, reward, terminated, truncated, info."""
         ...
 
