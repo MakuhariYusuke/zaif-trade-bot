@@ -19,15 +19,16 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from collections import deque
 
-# Import 1M Long-Run constants
+# Import Long-Run monitoring constants and functions
 from ztb.training.ppo_config import (
     MIN_LEGAL_SELL_RATE,
-    SELL_RATE_PATIENCE_STEPS,
+    get_sell_rate_patience,
     GRAD_NORM_SELL_MIN,
     SHARPE_PROXY_THRESHOLD,
     SHARPE_PATIENCE_EVALS,
     KL_VIOLATION_THRESHOLD,
     KL_CRITICAL_THRESHOLD,
+    DEFAULT_TOTAL_TIMESTEPS,
 )
 
 try:
@@ -111,6 +112,8 @@ def watch_training(
     last_update = None
     
     # Early stop monitoring state
+    # Calculate patience for 1M default (can be overridden if total_timesteps known)
+    sell_rate_patience = get_sell_rate_patience(DEFAULT_TOTAL_TIMESTEPS)
     low_sell_rate_streak = 0
     low_sharpe_streak = 0
     
@@ -145,7 +148,7 @@ def watch_training(
                         if metric == "train/legal_sell_rate" and value < MIN_LEGAL_SELL_RATE:
                             low_sell_rate_streak += 1
                             status_icon = "⚠️ "
-                            if low_sell_rate_streak * interval >= SELL_RATE_PATIENCE_STEPS:
+                            if low_sell_rate_streak * interval >= sell_rate_patience:
                                 warnings.append(f"🚨 EARLY STOP CONDITION 1: Low sell rate for {low_sell_rate_streak * interval}s")
                         else:
                             low_sell_rate_streak = 0
