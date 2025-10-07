@@ -38,20 +38,30 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
 
     This class provides common functionality for training management,
     evaluation gates, checkpointing, and progress tracking.
-    """
 
-class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
-    """
-    Abstract base class for all trainers.
+    Features:
+    - Unified parameter interface via TrainerParams
+    - Evaluation gates for automatic training validation
+    - Checkpoint management with configurable intervals
+    - Progress tracking and statistics collection
+    - Memory-efficient data structures for training history
 
-    This class provides common functionality for training management,
-    evaluation gates, checkpointing, and progress tracking.
+    Subclasses must implement:
+    - train(): Execute the training loop
+    - _create_model(): Initialize the model and environment
+    - _create_callback(): Set up training callbacks
     """
 
     def __init__(
         self,
         params: TrainerParams,
     ):
+        """
+        Initialize base trainer.
+
+        Args:
+            params: TrainerParams containing all training configuration
+        """
         super().__init__(dict(params.config))  # ConfigurableMixin expects dict
         self.data_path = params.data_path
         self.checkpoint_dir = Path(params.checkpoint_dir)
@@ -81,7 +91,13 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
         self.last_gate_check_step = 0
 
     def start_training(self) -> None:
-        """Start training session."""
+        """
+        Start the training session.
+
+        Initializes training state, resets failure counters, and logs
+        the training start event. This method should be called before
+        beginning the training loop.
+        """
         self.is_training = True
         self.halt_reason = None
         self.consecutive_failures = 0
@@ -89,7 +105,15 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
         logger.info("Training started")
 
     def stop_training(self, reason: str = "Manual stop") -> None:
-        """Stop training session."""
+        """
+        Stop the training session.
+
+        Sets the training flag to False and records the halt reason.
+        This method can be called manually or automatically by evaluation gates.
+
+        Args:
+            reason: Description of why training was stopped
+        """
         self.is_training = False
         self.halt_reason = reason
         logger.info(f"Training stopped: {reason}")
@@ -261,12 +285,31 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
 
     @abstractmethod
     def _create_callback(self) -> BaseCallback:
-        """Create training callback - must be implemented by subclasses."""
+        """
+        Create and configure training callback.
+
+        This method must be implemented by subclasses to provide
+        appropriate callbacks for their specific training requirements.
+
+        Returns:
+            BaseCallback: Configured callback instance for training
+        """
         pass
 
     @abstractmethod
     def train(self, session_id: str) -> Any:
-        """Train the model - must be implemented by subclasses."""
+        """
+        Execute the training loop.
+
+        This method must be implemented by subclasses to perform
+        the actual training process with the configured parameters.
+
+        Args:
+            session_id: Unique identifier for this training session
+
+        Returns:
+            Any: Trained model or training result
+        """
         pass
 
 

@@ -22,16 +22,35 @@ class TypeValidator:
     @staticmethod
     def validate_type(value: Any, expected_type: Type[Any], name: str = "value") -> None:
         """
-        Validate that a value matches the expected type.
+        Validate that a value matches the expected type at runtime.
+
+        Performs comprehensive type checking including support for:
+        - Basic types (int, str, float, etc.)
+        - Generic types (List[int], Dict[str, Any], etc.)
+        - Union types (Union[int, str])
+        - Optional types (Optional[str])
+        - NumPy array types (NDArray[np.float64])
 
         Args:
-            value: Value to validate
-            expected_type: Expected type
-            name: Name of the value for error messages
+            value: The value to validate against the expected type.
+            expected_type: The type that value should conform to.
+                          Supports typing module constructs like Union, Optional, List, etc.
+            name: Descriptive name of the value for error messages.
+                 Defaults to "value".
 
         Raises:
-            TypeError: If value doesn't match expected type
+            TypeError: If the value doesn't match the expected type.
+                      Error message includes the value name and actual/expected types.
+
+        Example:
+            >>> TypeValidator.validate_type(42, int, "age")
+            >>> TypeValidator.validate_type([1, 2, 3], List[int], "numbers")
+            >>> TypeValidator.validate_type(None, Optional[str], "optional_name")
         """
+        if not TypeValidator._check_type(value, expected_type):
+            raise TypeError(
+                f"{name} must be of type {expected_type}, got {type(value)}"
+            )
         if not TypeValidator._check_type(value, expected_type):
             raise TypeError(
                 f"{name} must be of type {expected_type}, got {type(value)}"

@@ -21,16 +21,32 @@ def validate_dataframe(
     min_rows: int = 1
 ) -> bool:
     """
-    Validate DataFrame structure and content.
+    Validate DataFrame structure and content for trading data.
+
+    Performs comprehensive validation of pandas DataFrames used in trading
+    applications, checking for required columns, data types, and minimum
+    row counts. This function is critical for ensuring data quality before
+    training or inference.
 
     Args:
-        df: DataFrame to validate
-        required_columns: List of required column names
-        column_types: Optional dict mapping column names to expected dtypes
-        min_rows: Minimum number of rows required
+        df: DataFrame to validate. Must contain trading data with proper structure.
+        required_columns: List of column names that must be present in the DataFrame.
+                          Common examples: ['close', 'volume', 'timestamp']
+        column_types: Optional mapping of column names to expected numpy/pandas dtypes.
+                     Examples: {'close': 'float64', 'volume': 'int64'}
+        min_rows: Minimum number of rows required for valid data. Defaults to 1.
 
     Returns:
-        True if validation passes, False otherwise
+        bool: True if all validation checks pass, False if any check fails.
+             Failed validations are logged as errors.
+
+    Raises:
+        No exceptions raised - validation failures are logged and return False.
+
+    Example:
+        >>> df = pd.DataFrame({'close': [100, 101, 102], 'volume': [1000, 1100, 900]})
+        >>> validate_dataframe(df, ['close', 'volume'], min_rows=3)
+        True
     """
     if df is None or df.empty:
         logger.error("DataFrame is None or empty")
