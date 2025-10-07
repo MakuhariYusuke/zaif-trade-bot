@@ -51,7 +51,7 @@ def run_smoke_test(config_path: str = "smoke_test_10k_config.json"):
     # Create checkpoint directory
     Path(checkpoint_dir).mkdir(parents=True, exist_ok=True)
     
-    # Create PPO config
+    # Create PPO config with environment settings merged
     ppo_config = PPOConfig(
         total_timesteps=config_dict["total_timesteps"],
         learning_rate=config_dict["learning_rate"],
@@ -66,6 +66,13 @@ def run_smoke_test(config_path: str = "smoke_test_10k_config.json"):
         seed=config_dict["seed"],
         tensorboard_log=config_dict["output"]["tensorboard_log"],
     )
+    
+    # Merge environment settings into ppo_config
+    env_config = config_dict["environment"]
+    ppo_config["curriculum_stage"] = env_config["curriculum_stage"]
+    ppo_config["transaction_cost"] = env_config["transaction_cost"]
+    ppo_config["max_position_size"] = env_config["max_position_size"]
+    ppo_config["risk_free_rate"] = env_config.get("risk_free_rate", 0.0)
     
     print("\nConfiguration:")
     print(f"  Total timesteps: {config_dict['total_timesteps']:,}")
