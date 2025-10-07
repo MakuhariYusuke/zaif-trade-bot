@@ -23,7 +23,7 @@ import numpy as np
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Import 1M Long-Run constants
+# Import Long-Run evaluation constants
 from ztb.training.ppo_config import (
     SHARPE_PROXY_THRESHOLD,
     SHARPE_PATIENCE_EVALS,

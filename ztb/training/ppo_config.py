@@ -13,26 +13,86 @@ DEFAULT_TOTAL_TIMESTEPS = 1_000_000
 DEFAULT_INITIAL_PORTFOLIO_VALUE = 1_000_000.0 # in JPY
 DEFAULT_TRAINING_STEPS = 100_000
 
-# === 1M Long-Run Staging Configuration ===
-# Staging design for 1M training with flexible boundaries
+# === Long-Run Staging Configuration ===
+# Staging design with flexible boundaries that adapt to total training steps
+# Default ratios optimized for 1M training, but work for any total_timesteps
 
-# Stage boundaries (can be adjusted ±10% without breaking)
-STAGE_WARMUP_END = 50_000        # 0-50k: Warmup (weights=1.0, λ=0)
-STAGE_TRANSITION_END = 200_000   # 50k-200k: Cosine warmup for weights/λ
-STAGE_MAIN_END = 800_000         # 200k-800k: Main training (standard settings)
-STAGE_FINAL_END = 1_000_000      # 800k-1M: Cosine annealing LR, early stop with 3 conditions
+# Stage boundary ratios (as fraction of total_timesteps)
+STAGE_WARMUP_RATIO = 0.05        # 0-5%: Warmup (weights=1.0, λ=0)
+STAGE_TRANSITION_RATIO = 0.20    # 5-20%: Cosine warmup for weights/λ
+STAGE_MAIN_RATIO = 0.80          # 20-80%: Main training (standard settings)
+STAGE_FINAL_RATIO = 1.00         # 80-100%: Cosine annealing LR, early stop with 3 conditions
 
-# Checkpoint and evaluation
-CHECKPOINT_INTERVAL = 25_000     # Save checkpoint every 25k steps
-ROLLING_OOS_STEPS = 500          # Paper trade 500 steps for rolling OOS eval (extended from 300)
+# Helper functions to calculate stage boundaries based on total steps
+def get_stage_boundaries(total_timesteps: int) -> Dict[str, int]:
+    """
+    Calculate stage boundaries based on total training steps.
+    
+    Args:
+        total_timesteps: Total number of training steps
+        
+    Returns:
+        Dict with stage boundaries (warmup_end, transition_end, main_end, final_end)
+        
+    Example:
+        For 1M steps:
+        - warmup_end: 50,000 (5%)
+        - transition_end: 200,000 (20%)
+        - main_end: 800,000 (80%)
+        - final_end: 1,000,000 (100%)
+    """
+    return {
+        'warmup_end': int(total_timesteps * STAGE_WARMUP_RATIO),
+        'transition_end': int(total_timesteps * STAGE_TRANSITION_RATIO),
+        'main_end': int(total_timesteps * STAGE_MAIN_RATIO),
+        'final_end': int(total_timesteps * STAGE_FINAL_RATIO),
+    }
+
+# Checkpoint and evaluation (adaptive)
+CHECKPOINT_INTERVAL_RATIO = 0.025  # Save checkpoint every 2.5% of total steps (1M → 25k)
+ROLLING_OOS_STEPS = 500            # Paper trade 500 steps for rolling OOS eval (extended from 300)
+
+def get_checkpoint_interval(total_timesteps: int) -> int:
+    """
+    Calculate checkpoint interval based on total training steps.
+    
+    Args:
+        total_timesteps: Total number of training steps
+        
+    Returns:
+        Checkpoint interval (typically 2.5% of total steps)
+        
+    Example:
+        - 1M steps → 25,000
+        - 500k steps → 12,500
+        - 2M steps → 50,000
+    """
+    return int(total_timesteps * CHECKPOINT_INTERVAL_RATIO)
 
 # Monitoring thresholds (early stop conditions)
-MIN_LEGAL_SELL_RATE = 0.12       # legal_sell_rate < 0.12 for 5k consecutive → stop
-SELL_RATE_PATIENCE_STEPS = 5_000 # Patience for low sell rate
+MIN_LEGAL_SELL_RATE = 0.12              # legal_sell_rate < 0.12 for patience period → stop
+SELL_RATE_PATIENCE_RATIO = 0.005        # Patience as ratio of total steps (1M → 5k)
 
-GRAD_NORM_SELL_MIN = 1e-6        # grad_norm(SELL) ≈ 0 → stop (gradient collapse)
-SHARPE_PROXY_THRESHOLD = 0.0     # Sharpe_proxy ≤ 0 for 2 consecutive evals → branch stop
-SHARPE_PATIENCE_EVALS = 2        # Patience for low Sharpe
+GRAD_NORM_SELL_MIN = 1e-6               # grad_norm(SELL) ≈ 0 → stop (gradient collapse)
+SHARPE_PROXY_THRESHOLD = 0.0            # Sharpe_proxy ≤ 0 for patience evals → branch stop
+SHARPE_PATIENCE_EVALS = 2               # Patience for low Sharpe (in evaluation counts)
+
+def get_sell_rate_patience(total_timesteps: int) -> int:
+    """
+    Calculate patience steps for low sell rate based on total training steps.
+    
+    Args:
+        total_timesteps: Total number of training steps
+        
+    Returns:
+        Patience steps (typically 0.5% of total steps)
+        
+    Example:
+        - 1M steps → 5,000
+        - 500k steps → 2,500
+        - 2M steps → 10,000
+    """
+    return int(total_timesteps * SELL_RATE_PATIENCE_RATIO)
 
 # KL divergence monitoring
 KL_VIOLATION_THRESHOLD = 0.5     # KL > 0.5 → potential policy collapse
