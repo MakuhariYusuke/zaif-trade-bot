@@ -21,12 +21,12 @@ sys.path.insert(0, str(project_root))
 
 import argparse
 import json
-import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 from sb3_contrib import MaskablePPO
 from ztb.trading.environment.environment import HeavyTradingEnv, EnvironmentConfig
+from ztb.utils.data_utils import load_csv_data_optimized
 
 
 def calculate_sharpe_ratio(returns: np.ndarray, risk_free_rate: float = 0.0) -> float:
@@ -174,7 +174,7 @@ def long_paper_evaluation(
     
     # Load data
     print("Loading evaluation data...")
-    df = pd.read_csv(data_path)
+    df = load_csv_data_optimized(data_path)
     print(f"  Loaded {len(df)} rows, {len(df.columns)} columns")
     print()
     

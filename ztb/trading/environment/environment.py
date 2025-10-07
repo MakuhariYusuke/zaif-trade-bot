@@ -538,6 +538,9 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         except (TypeError, ValueError):
             self._max_action_history = 512
 
+        # Limit history lengths to prevent memory leaks during long training
+        self._max_history_length = getattr(self.config, "max_history_length", 1000)
+
     def _preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """データの前処理とメモリ最適化"""
         if df.empty:
@@ -996,9 +999,17 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             portfolio_value
         )  # Track portfolio value for stagnation penalty
 
-        # 報酬履歴の更新
+        # 報酬履歴の更新（メモリリーク防止のため長さを制限）
         self.reward_history.append(reward)
         self.position_history.append(self.position)
+
+        # Limit history lengths to prevent memory leaks
+        if len(self.reward_history) > self._max_history_length:
+            self.reward_history.pop(0)
+        if len(self.position_history) > self._max_history_length:
+            self.position_history.pop(0)
+        if len(self.portfolio_value_history) > self._max_history_length:
+            self.portfolio_value_history.pop(0)
 
         if self._memory_logging_enabled and self._memory_log_interval_steps:
             if self.current_step % self._memory_log_interval_steps == 0 and (

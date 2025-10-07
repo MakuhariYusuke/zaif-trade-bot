@@ -36,6 +36,7 @@ from ztb.utils.drift_detection import (
     detect_drift_all_features,
     generate_drift_report_html,
 )
+from ztb.utils.data_utils import load_csv_data_optimized
 
 
 def main():
@@ -96,7 +97,7 @@ def main():
     if train_path.suffix == ".parquet":
         train_df = pd.read_parquet(train_path)
     elif train_path.suffix == ".csv":
-        train_df = pd.read_csv(train_path)
+        train_df = load_csv_data_optimized(train_path)
     else:
         print(f"Error: Unsupported file format: {train_path.suffix}")
         sys.exit(2)
@@ -105,7 +106,7 @@ def main():
     if eval_path.suffix == ".parquet":
         eval_df = pd.read_parquet(eval_path)
     elif eval_path.suffix == ".csv":
-        eval_df = pd.read_csv(eval_path)
+        eval_df = load_csv_data_optimized(eval_path)
     else:
         print(f"Error: Unsupported file format: {eval_path.suffix}")
         sys.exit(2)
