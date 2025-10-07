@@ -62,9 +62,8 @@ def neutralize_policy_bias(model: Optional[MaskablePPO]) -> None:
     if not bias_neutralized and hasattr(policy, "mlp_extractor"):
         if hasattr(policy.mlp_extractor, "policy_net"):
             policy_mlp = policy.mlp_extractor.policy_net
-            if isinstance(policy_mlp, list) or isinstance(policy_mlp, torch.nn.Sequential):
-                last_layer = policy_mlp[-1] if hasattr(policy_mlp, "__getitem__") else None
-                if last_layer and hasattr(last_layer, "bias") and getattr(last_layer, "bias", None) is not None:
+            last_layer = policy_mlp[-1] if hasattr(policy_mlp, "__getitem__") else None
+            if last_layer and hasattr(last_layer, "bias") and getattr(last_layer, "bias", None) is not None:
                     bias = getattr(last_layer, "bias")
                     with torch.no_grad():
                         bias.zero_()
@@ -90,10 +89,7 @@ def get_policy_entropy_coefficient(model: MaskablePPO) -> float:
     """
     if hasattr(model, "ent_coef"):
         ent_coef = model.ent_coef
-        if isinstance(ent_coef, (int, float)):
-            return float(ent_coef)
-        elif hasattr(ent_coef, "item"):
-            return float(ent_coef.item())
+        return float(ent_coef)
     return 0.0
 
 
@@ -106,7 +102,7 @@ def set_policy_entropy_coefficient(model: MaskablePPO, new_ent_coef: float) -> N
         new_ent_coef: The new entropy coefficient value.
     """
     if hasattr(model, "ent_coef"):
-        model.ent_coef = new_ent_coef  # type: ignore[attr-defined]
+        model.ent_coef = new_ent_coef
         logger.debug(f"Updated entropy coefficient to {new_ent_coef:.6f}")
     else:
         logger.warning("Model does not have ent_coef attribute")

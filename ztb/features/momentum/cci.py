@@ -3,6 +3,7 @@ CCI (Commodity Channel Index) implementation.
 CCIの実装
 """
 
+import numpy as np
 import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
@@ -17,6 +18,6 @@ def compute_cci(df: pd.DataFrame, period: int = 20) -> pd.Series:
     close = df["close"]
 
     result = TaLibWrapper.cci(
-        high.to_numpy(), low.to_numpy(), close.to_numpy(), period
+        high.values.astype(np.float64), low.values.astype(np.float64), close.values.astype(np.float64), period
     )
     return pd.Series(result, index=df.index)

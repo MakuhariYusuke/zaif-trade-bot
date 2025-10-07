@@ -151,6 +151,9 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         self.enable_target_entropy = params.enable_target_entropy
         self.enable_stratified_sampling = params.enable_stratified_sampling
         self.allow_reverse = params.allow_reverse
+        
+        # Store Lagrange parameters for CustomPPO creation
+        self.lagrange_params = params.lagrange_params or {}
 
         # Initialize SELL bias mitigation components
         # ★ NOTE: Lagrange, PAN, and Target Entropy are now integrated into CustomPPO
@@ -323,11 +326,11 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     # ★ Lagrange constraint parameters
                     enable_lagrange=self.enable_lagrange,
                     lagrange_target_action="SELL",
-                    lagrange_r_target=0.15,  # Target 15% SELL rate
-                    lagrange_tolerance=0.05,
-                    lagrange_eta=0.01,
-                    lagrange_lambda_max=1.0,
-                    lagrange_warmup_steps=1000,
+                    lagrange_r_target=self.lagrange_params.get("r_target", 0.15),
+                    lagrange_tolerance=self.lagrange_params.get("tolerance", 0.05),
+                    lagrange_eta=self.lagrange_params.get("eta", 0.01),
+                    lagrange_lambda_max=self.lagrange_params.get("lambda_max", 1.0),
+                    lagrange_warmup_steps=int(self.lagrange_params.get("warmup_steps", 1000)),
                     # ★ PAN/Entropy/Stratified parameters
                     pan_epsilon=1e-8,
                     target_entropy_ratio=0.7,

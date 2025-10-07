@@ -258,12 +258,10 @@ def main() -> None:
 
     # Wave指定
     waves = [int(w) for w in args.waves.split(",")]
-    all_features = []
-    for wave in waves:
-        all_features.extend(manager.get_enabled_features(wave))
+    all_features = manager.list()  # Get all registered features
 
     # 特徴量計算
-    df_with_features = manager.compute_features(df)
+    df_with_features = cast(pd.DataFrame, manager.compute_features_batch(df, return_timing=False))
 
     # リターン追加
     df_with_features["return"] = df_with_features["close"].pct_change().fillna(0)

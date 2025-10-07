@@ -8,7 +8,7 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, cast
 
 import numpy as np
 import pandas as pd
@@ -200,13 +200,11 @@ def main() -> None:
     df = generate_synthetic_data(args.n_rows)
 
     # Wave指定
-    waves = [int(w) for w in args.waves.split(",")]
-    all_features = []
-    for wave in waves:
-        all_features.extend(manager.get_enabled_features(wave))
+    # waves = [int(w) for w in args.waves.split(",")]  # Not used
+    # all_features = manager.list()  # Not used
 
     # 特徴量計算
-    df_with_features = manager.compute_features(df)
+    df_with_features = cast(pd.DataFrame, manager.compute_features_batch(df, return_timing=False))
 
     # 特徴量列取得
     exclude_cols = ["ts", "exchange", "pair", "episode_id"]

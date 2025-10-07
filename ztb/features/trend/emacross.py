@@ -9,6 +9,7 @@ Output columns:
 
 from typing import Any, Dict, List, Optional, cast
 
+import numpy as np
 import pandas as pd
 
 from ..base import ParameterizedFeature
@@ -68,10 +69,10 @@ class EMACross(ParameterizedFeature):
         # Only compute EMA/SMA if not already present, and avoid overwriting
         if fast_col not in df.columns:
             from ztb.utils.talib_wrapper import TaLibWrapper
-            df[fast_col] = TaLibWrapper.ema(df["close"].to_numpy(), fast_period)
+            df[fast_col] = TaLibWrapper.ema(df["close"].values.astype(np.float64), fast_period)
         if slow_col not in df.columns:
             from ztb.utils.talib_wrapper import TaLibWrapper
-            df[slow_col] = TaLibWrapper.sma(df["close"].to_numpy(), slow_period)
+            df[slow_col] = TaLibWrapper.sma(df["close"].values.astype(np.float64), slow_period)
 
         # Prevent division by zero by replacing zeros with np.nan
         slow_col_safe = df[slow_col].replace(0, pd.NA)
