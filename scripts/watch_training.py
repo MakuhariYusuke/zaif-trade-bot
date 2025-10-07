@@ -72,7 +72,7 @@ def watch_training(
     metrics: Optional[List[str]] = None,
     compact: bool = False,
 ):
-    """学習進捗をリアルタイム監視"""
+    """学習進捗をリアルタイム監視（1M早期停止条件も監視）"""
     if not TENSORBOARD_AVAILABLE:
         print("❌ TensorBoard is required for this tool")
         sys.exit(1)
@@ -81,13 +81,14 @@ def watch_training(
         print(f"❌ Log directory not found: {log_dir}")
         sys.exit(1)
     
-    # デフォルトの重要指標
+    # デフォルトの重要指標（1M設計対応）
     if metrics is None:
         metrics = [
-            "train/legal_sell_rate",
-            "train/entropy",
-            "eval/sharpe_proxy",
-            "train/grad_norm(SELL)",
+            "train/legal_sell_rate",         # Early stop condition 1
+            "train/grad_norm(SELL)",         # Early stop condition 2
+            "eval/sharpe_proxy",             # Early stop condition 3
+            "train/entropy",                 # Target entropy monitoring
+            "train/kl_divergence",           # KL violation monitoring
             "rollout/ep_rew_mean",
             "train/pan_total_samples",
             "train/loss",
@@ -97,12 +98,21 @@ def watch_training(
     print(f"📊 Refresh interval: {interval}s")
     print(f"📈 Metrics: {len(metrics)}")
     print("=" * 100)
+    print("\n🚨 Early Stop Conditions (1M Long-Run Design):")
+    print(f"  1️⃣  legal_sell_rate < {MIN_LEGAL_SELL_RATE:.2f} for {SELL_RATE_PATIENCE_STEPS:,} steps")
+    print(f"  2️⃣  grad_norm(SELL) ≈ 0 (< {GRAD_NORM_SELL_MIN:.1e})")
+    print(f"  3️⃣  Sharpe_proxy ≤ {SHARPE_PROXY_THRESHOLD} for {SHARPE_PATIENCE_EVALS} consecutive evals")
+    print(f"  ⚠️  KL violation: {KL_VIOLATION_THRESHOLD:.1f} (warning), {KL_CRITICAL_THRESHOLD:.1f} (critical)")
     print()
     print("Press Ctrl+C to stop")
     print()
     
     ea = event_accumulator.EventAccumulator(str(log_dir))
     last_update = None
+    
+    # Early stop monitoring state
+    low_sell_rate_streak = 0
+    low_sharpe_streak = 0
     
     try:
         iteration = 0
@@ -119,6 +129,8 @@ def watch_training(
                 print("=" * 100)
             
             metrics_found = 0
+            warnings = []
+            
             for metric in metrics:
                 result = get_latest_value(ea, metric)
                 if result:
@@ -127,7 +139,38 @@ def watch_training(
                     
                     # コンパクトモード
                     if compact:
-                        print(f"{metric:35s}: {formatted_value} (step {step:7d})")
+                        status_icon = ""
+                        
+                        # Check early stop conditions
+                        if metric == "train/legal_sell_rate" and value < MIN_LEGAL_SELL_RATE:
+                            low_sell_rate_streak += 1
+                            status_icon = "⚠️ "
+                            if low_sell_rate_streak * interval >= SELL_RATE_PATIENCE_STEPS:
+                                warnings.append(f"🚨 EARLY STOP CONDITION 1: Low sell rate for {low_sell_rate_streak * interval}s")
+                        else:
+                            low_sell_rate_streak = 0
+                        
+                        if metric == "train/grad_norm(SELL)" and value < GRAD_NORM_SELL_MIN:
+                            status_icon = "🚨 "
+                            warnings.append(f"🚨 EARLY STOP CONDITION 2: Gradient collapse (grad_norm={value:.2e})")
+                        
+                        if metric == "eval/sharpe_proxy" and value <= SHARPE_PROXY_THRESHOLD:
+                            low_sharpe_streak += 1
+                            status_icon = "⚠️ "
+                            if low_sharpe_streak >= SHARPE_PATIENCE_EVALS:
+                                warnings.append(f"🚨 EARLY STOP CONDITION 3: Low Sharpe for {low_sharpe_streak} consecutive evals")
+                        else:
+                            low_sharpe_streak = 0
+                        
+                        if metric == "train/kl_divergence":
+                            if value > KL_CRITICAL_THRESHOLD:
+                                status_icon = "🔴 "
+                                warnings.append(f"🔴 CRITICAL: KL divergence = {value:.2f} > {KL_CRITICAL_THRESHOLD:.1f}")
+                            elif value > KL_VIOLATION_THRESHOLD:
+                                status_icon = "⚠️ "
+                                warnings.append(f"⚠️  WARNING: KL divergence = {value:.2f} > {KL_VIOLATION_THRESHOLD:.1f}")
+                        
+                        print(f"{status_icon}{metric:35s}: {formatted_value} (step {step:7d})")
                     else:
                         # 時刻も表示
                         timestamp = datetime.fromtimestamp(wall_time).strftime('%H:%M:%S')
@@ -135,6 +178,13 @@ def watch_training(
                     
                     metrics_found += 1
                     last_update = wall_time
+            
+            # Display warnings
+            if warnings:
+                print("\n" + "🚨" * 50)
+                for warning in warnings:
+                    print(warning)
+                print("🚨" * 50)
             
             if metrics_found == 0:
                 print("⚠️  No metrics found yet. Waiting for training to start...")

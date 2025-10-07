@@ -3,6 +3,7 @@
 ローリング評価ツール
 
 学習中のモデルを定期的に評価し、過学習を検出します。
+1Mロングラン設計の早期停止条件（Sharpe_proxy）を検出します。
 
 Usage:
     python scripts/rolling_evaluation.py --checkpoint-dir checkpoints/ensemble_B_100k_test --data-path ml-dataset-enhanced.csv
@@ -21,6 +22,13 @@ import numpy as np
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# Import 1M Long-Run constants
+from ztb.training.ppo_config import (
+    SHARPE_PROXY_THRESHOLD,
+    SHARPE_PATIENCE_EVALS,
+    ROLLING_OOS_STEPS,
+)
 
 
 @dataclass
@@ -179,13 +187,13 @@ def rolling_evaluation(
 
 
 def print_summary(results: List[EvaluationResult]):
-    """サマリーを表示"""
+    """サマリーを表示（1M早期停止条件も表示）"""
     if not results:
         print("❌ No results to display")
         return
     
     print("\n" + "=" * 100)
-    print("📊 Rolling Evaluation Summary")
+    print("📊 Rolling Evaluation Summary (1M Long-Run Design)")
     print("=" * 100)
     print()
     
@@ -195,6 +203,7 @@ def print_summary(results: List[EvaluationResult]):
     
     # 各チェックポイント
     best_sharpe = max(results, key=lambda r: r.metrics.get("sharpe_ratio", float('-inf')))
+    low_sharpe_streak = 0
     
     for result in results:
         mean_reward = result.metrics["mean_reward"]
@@ -203,6 +212,13 @@ def print_summary(results: List[EvaluationResult]):
         
         # ベストモデルにマーク
         marker = "⭐" if result == best_sharpe else "  "
+        
+        # 早期停止条件3: Sharpe_proxy ≤ 0 for 2 consecutive evals
+        if sharpe <= SHARPE_PROXY_THRESHOLD:
+            low_sharpe_streak += 1
+            marker = "⚠️ "
+        else:
+            low_sharpe_streak = 0
         
         print(
             f"{marker} {result.checkpoint_name:23s} {result.step:10d} "
@@ -216,6 +232,13 @@ def print_summary(results: List[EvaluationResult]):
     print(f"   Mean Reward: {best_sharpe.metrics['mean_reward']:.2f} ± {best_sharpe.metrics['std_reward']:.2f}")
     print()
     
+    # 早期停止条件チェック
+    if low_sharpe_streak >= SHARPE_PATIENCE_EVALS:
+        print("🚨 EARLY STOP CONDITION 3 DETECTED:")
+        print(f"   Sharpe_proxy ≤ {SHARPE_PROXY_THRESHOLD} for {low_sharpe_streak} consecutive evaluations")
+        print(f"   (Threshold: {SHARPE_PATIENCE_EVALS} consecutive evals)")
+        print()
+    
     # 過学習検出
     if len(results) >= 3:
         # 最後の3つのチェックポイントで性能が悪化していないかチェック
@@ -227,6 +250,13 @@ def print_summary(results: List[EvaluationResult]):
             print(f"⚠️  Potential overfitting detected:")
             print(f"   Performance degraded by {degradation:.1f}% in last 3 checkpoints")
             print()
+    
+    # 設定情報表示
+    print(f"ℹ️  Configuration:")
+    print(f"   Rolling OOS steps: {ROLLING_OOS_STEPS}")
+    print(f"   Sharpe threshold: {SHARPE_PROXY_THRESHOLD}")
+    print(f"   Sharpe patience: {SHARPE_PATIENCE_EVALS} evaluations")
+    print()
 
 
 def main():

@@ -10,7 +10,7 @@ PPO Trainer implementations:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Protocol, cast
+from typing import Any, Dict, Optional, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -148,7 +148,23 @@ class PPOConfig:
 
 
 class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
-    """PPO Trainer with evaluation gates and auto-halt functionality (旧trading/ppo_trainer.py)."""
+    """
+    PPO Trainer with evaluation gates and auto-halt functionality.
+
+    This trainer extends BaseTrainer with comprehensive PPO training capabilities,
+    including automatic evaluation gates, training halt conditions, and progress
+    tracking. It supports both standard PPO and custom PPO implementations.
+
+    Features:
+    - Evaluation gates for automatic training quality assessment
+    - Auto-halt functionality based on gate results
+    - Checkpoint management with configurable intervals
+    - Progress tracking and statistics collection
+    - Custom callback integration for advanced training control
+
+    Args:
+        params: TrainerParams containing all training configuration
+    """
 
     def __init__(
         self,
@@ -157,14 +173,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         # Convert PPOConfig to dict for BaseTrainer
         config_dict = dict(params.config)  # PPOConfig is TypedDict, so convert to dict
         
-        super().__init__(
-            data_path=params.data_path,
-            config=config_dict,
-            checkpoint_dir=params.checkpoint_dir,
-            eval_gates=params.eval_gates,
-            halt_callback=params.halt_callback,
-            checkpoint_interval=params.checkpoint_interval,
-        )
+        super().__init__(params)
         self.ppo_config = params.config
         self.model: Optional[CustomPPO] = None
 
@@ -174,7 +183,23 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
     # - save_checkpoint, load_checkpoint (from CheckpointMixin)
 
     def _create_callback(self) -> BaseCallback:
-        """Create composite training callback with progress tracking."""
+        """
+        Create and configure composite training callback.
+
+        Sets up a CompositeTrainingCallback with appropriate configuration
+        for PPO training, including progress tracking, gradient probe guards,
+        and entropy scheduling based on trainer configuration.
+
+        The callback configuration is determined by:
+        - enable_grad_probe_guard: Whether to enable gradient monitoring
+        - grad_probe_config: Configuration for gradient probes
+        - enable_progress_bar: Always enabled for user feedback
+        - enable_entropy_schedule: Disabled (handled elsewhere)
+
+        Returns:
+            BaseCallback: Configured CompositeTrainingCallback instance
+                         ready for use in PPO training loop.
+        """
         # Get grad_probe_guard config from self.config
         enable_grad_probe_guard = self.config.get("enable_grad_probe_guard", False)
         grad_probe_config = self.config.get("grad_probe_config", None)
@@ -198,6 +223,42 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         logger.info("Policy head bias neutralized via policy_utils")
 
     def train(self, session_id: str) -> CustomPPO:
+        """
+        Execute the complete PPO training pipeline.
+
+        This method orchestrates the entire training process including:
+        1. Model initialization (if not already created)
+        2. Environment setup with action masking
+        3. Policy bias neutralization
+        4. Training execution with callbacks
+        5. Model return for evaluation/inference
+
+        The training process includes:
+        - Data loading from CSV file specified in data_path
+        - Environment creation with trading-specific configuration
+        - Action masking for valid trading actions only
+        - Custom PPO model with bias mitigation features
+        - Policy bias neutralization before training
+        - Training with progress tracking and evaluation gates
+        - TensorBoard logging with session identifier
+
+        Args:
+            session_id: Unique identifier for this training session.
+                       Used for logging, checkpointing, and TensorBoard naming.
+
+        Returns:
+            CustomPPO: Trained PPO model ready for evaluation or inference.
+                       The model includes all trained parameters and can be saved/loaded.
+
+        Raises:
+            FileNotFoundError: If the data file specified in data_path doesn't exist.
+            ValueError: If configuration parameters are invalid.
+            RuntimeError: If training fails due to environment or model issues.
+
+        Note:
+            This method modifies the trainer's internal state (self.model).
+            Subsequent calls will reuse the trained model unless manually reset.
+        """
         if self.model is None:
             import pandas as pd
 
@@ -234,7 +295,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
 PPO Trainer with auto-halt functionality for training gates.
 """
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback
@@ -272,17 +333,22 @@ class PPOTrainer(BaseTrainer, PPOTrainerProtocol):
     - Performance thresholds for reward, win rate, max drawdown
     - Early stopping on convergence or degradation
     - Custom gate functions for domain-specific criteria
+
+    Args:
+        params: TrainerParams containing all training configuration
     """
 
     def __init__(  # type: ignore[misc]  # mypy incorrectly reports missing super() for protocol implementations
         self,
-        data_path: str,
-        config: Dict[str, Any],
-        checkpoint_dir: str,
-        eval_gates: Optional[EvalGates] = None,
-        halt_callback: Optional[Callable[[str], None]] = None,
-        checkpoint_interval: int = 10000,
+        params: TrainerParams,
     ):
+        """
+        Initialize PPO trainer.
+
+        Args:
+            params: TrainerParams containing data path, config, checkpoint directory,
+                   evaluation gates, halt callback, and checkpoint interval
+        """
         """
         Initialize PPO trainer.
 
@@ -294,14 +360,7 @@ class PPOTrainer(BaseTrainer, PPOTrainerProtocol):
             halt_callback: Callback function called when training should halt
             checkpoint_interval: Steps between checkpoints
         """
-        super().__init__(
-            data_path=data_path,
-            config=config,
-            checkpoint_dir=checkpoint_dir,
-            eval_gates=eval_gates,
-            halt_callback=halt_callback,
-            checkpoint_interval=checkpoint_interval,
-        )
+        super().__init__(params)
         self.model: Optional[CustomPPO] = None
 
     def _create_callback(self) -> BaseCallback:
