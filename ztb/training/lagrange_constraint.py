@@ -1,30 +1,38 @@
 """
-Lagrange Constraint for Target SELL Rate.
+Lagrange Constraint for Target Action Rate.
 
-Adds explicit constraint to maintain minimum SELL rate during training:
-L(θ) = L_PPO(θ) - λ * max(0, r_min - r_sell(θ))
+Adds explicit constraint to maintain target action rate during training:
+L(θ) = L_PPO(θ) - λ * max(0, |r_target - r_actual(θ)| - tolerance)
 
 Where:
-- r_min: Target minimum SELL rate (e.g., 0.15 = 15%)
-- r_sell: Current batch SELL rate (legal steps only)
+- r_target: Target action rate (e.g., 0.33 = 33% for balanced)
+- r_actual: Current batch action rate (legal steps only)
 - λ: Lagrange multiplier (dual variable)
+- tolerance: Allowed deviation before penalty
 
-Dual update: λ ← clip(λ + η * (r_min - r_sell), 0, λ_max)
+Dual update: λ ← clip(λ + η * (|r_target - r_actual| - tolerance), 0, λ_max)
 """
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Literal
 import numpy as np
 import torch
 
 
+ActionType = Literal["HOLD", "BUY", "SELL"]
+
+
 class LagrangeConstraint:
     """
-    Lagrange constraint manager for target SELL rate.
+    Lagrange constraint manager for target action rate.
+    
+    Supports HOLD/BUY/SELL action balance constraints.
     """
     
     def __init__(
         self,
-        r_min: float = 0.15,
+        target_action: ActionType = "SELL",
+        r_target: float = 0.15,
+        tolerance: float = 0.05,
         eta: float = 1e-3,
         lambda_max: float = 1.0,
         warmup_steps: int = 5000,
@@ -33,24 +41,31 @@ class LagrangeConstraint:
         Initialize Lagrange constraint.
         
         Args:
-            r_min: Target minimum SELL rate (default: 0.15 = 15%)
+            target_action: Action to balance ("HOLD", "BUY", or "SELL")
+            r_target: Target action rate (default: 0.15 = 15%)
+            tolerance: Allowed deviation before penalty (default: 0.05 = ±5%)
             eta: Dual learning rate (default: 1e-3)
             lambda_max: Maximum lambda value (default: 1.0)
             warmup_steps: Steps before activating constraint (default: 5000)
         """
-        self.r_min = r_min
+        self.target_action = target_action
+        self.r_target = r_target
+        self.tolerance = tolerance
         self.eta = eta
         self.lambda_max = lambda_max
         self.warmup_steps = warmup_steps
+        
+        # Action index mapping
+        self.action_idx = {"HOLD": 0, "BUY": 1, "SELL": 2}[target_action]
         
         # Dual variable
         self.lambda_dual = 0.0
         
         # Statistics
         self.step_count = 0
-        self.sell_rates = []
-        self.penalties = []
-        self.lambda_history = []
+        self.action_rates: list[float] = []
+        self.penalties: list[float] = []
+        self.lambda_history: list[float] = []
     
     def compute_penalty(
         self,
@@ -71,32 +86,33 @@ class LagrangeConstraint:
         """
         self.step_count += 1
         
-        # Compute SELL rate (legal steps only)
+        # Compute target action rate (legal steps only)
         # Actions: 0=HOLD, 1=BUY, 2=SELL
-        sell_mask = actions == 2
-        legal_sell_mask = legal_masks[:, 2] == 1  # SELL is legal
+        action_mask = actions == self.action_idx
+        legal_action_mask = legal_masks[:, self.action_idx] == 1  # Target action is legal
         
-        # Count legal steps where SELL was chosen AND legal
-        legal_sell_count = np.sum(sell_mask & legal_sell_mask)
+        # Count legal steps where target action was chosen AND legal
+        legal_action_count = np.sum(action_mask & legal_action_mask)
         
         # Count total legal steps (where at least one action is legal)
         legal_steps_mask = np.any(legal_masks == 1, axis=1)
         total_legal_steps = np.sum(legal_steps_mask)
         
         if total_legal_steps > 0:
-            r_sell = legal_sell_count / total_legal_steps
+            r_actual = legal_action_count / total_legal_steps
         else:
-            r_sell = 0.0
+            r_actual = 0.0
         
         # Compute penalty (only if past warmup)
         if self.step_count > self.warmup_steps:
-            # penalty = -λ * max(0, r_min - r_sell)
-            constraint_violation = max(0.0, self.r_min - r_sell)
+            # penalty = -λ * max(0, |r_target - r_actual| - tolerance)
+            deviation = abs(self.r_target - r_actual)
+            constraint_violation = max(0.0, deviation - self.tolerance)
             penalty = -self.lambda_dual * constraint_violation
             
             # Update dual variable
-            # λ ← clip(λ + η * (r_min - r_sell), 0, λ_max)
-            lambda_delta = self.eta * (self.r_min - r_sell)
+            # λ ← clip(λ + η * (|r_target - r_actual| - tolerance), 0, λ_max)
+            lambda_delta = self.eta * (deviation - self.tolerance)
             self.lambda_dual = np.clip(
                 self.lambda_dual + lambda_delta,
                 0.0,
@@ -105,19 +121,21 @@ class LagrangeConstraint:
         else:
             penalty = 0.0
             constraint_violation = 0.0
+            deviation = 0.0
         
         # Record statistics
-        self.sell_rates.append(r_sell)
+        self.action_rates.append(r_actual)
         self.penalties.append(penalty)
         self.lambda_history.append(self.lambda_dual)
         
         info = {
-            "r_sell": r_sell,
-            "r_min": self.r_min,
+            f"r_{self.target_action.lower()}": r_actual,
+            "r_target": self.r_target,
+            "deviation": deviation,
             "lambda_dual": self.lambda_dual,
             "constraint_violation": constraint_violation,
             "penalty": penalty,
-            "legal_sell_count": int(legal_sell_count),
+            f"legal_{self.target_action.lower()}_count": int(legal_action_count),
             "total_legal_steps": int(total_legal_steps),
         }
         
@@ -133,19 +151,19 @@ class LagrangeConstraint:
         Returns:
             Dictionary with statistics
         """
-        if len(self.sell_rates) == 0:
+        if len(self.action_rates) == 0:
             return {
-                "r_sell_mean": 0.0,
+                f"r_{self.target_action.lower()}_mean": 0.0,
                 "lambda_dual": self.lambda_dual,
                 "penalty_mean": 0.0,
             }
         
-        recent_rates = self.sell_rates[-window:]
+        recent_rates = self.action_rates[-window:]
         recent_penalties = self.penalties[-window:]
         
         return {
-            "r_sell_mean": float(np.mean(recent_rates)),
-            "r_sell_std": float(np.std(recent_rates)),
+            f"r_{self.target_action.lower()}_mean": float(np.mean(recent_rates)),
+            f"r_{self.target_action.lower()}_std": float(np.std(recent_rates)),
             "lambda_dual": self.lambda_dual,
             "penalty_mean": float(np.mean(recent_penalties)),
             "constraint_active": self.step_count > self.warmup_steps,
@@ -155,7 +173,7 @@ class LagrangeConstraint:
         """Reset constraint state."""
         self.lambda_dual = 0.0
         self.step_count = 0
-        self.sell_rates = []
+        self.action_rates = []
         self.penalties = []
         self.lambda_history = []
 
@@ -192,9 +210,11 @@ def test_lagrange_constraint():
     """Test Lagrange constraint with synthetic data."""
     print("Testing Lagrange Constraint...")
     
-    # Create constraint
+    # Create constraint for SELL action
     constraint = LagrangeConstraint(
-        r_min=0.15,
+        target_action="SELL",
+        r_target=0.15,
+        tolerance=0.05,
         eta=1e-3,
         lambda_max=1.0,
         warmup_steps=100,

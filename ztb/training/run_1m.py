@@ -16,6 +16,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.training.ppo_trainer import PPOTrainer
+from ztb.training.ppo_config import get_ppo_config
 from ztb.utils import DiscordNotifier
 
 
@@ -51,6 +52,12 @@ def main() -> int:
         "--checkpoint-dir",
         default="checkpoints",
         help="Checkpoint directory (default: checkpoints)",
+    )
+    parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=10000,
+        help="Steps between checkpoints (default: 10000)",
     )
     parser.add_argument(
         "--log-dir", default="logs", help="Log directory (default: logs)"
@@ -203,17 +210,8 @@ def main() -> int:
             "reward_max_consecutive_trades": args.reward_max_consecutive_trades,
             "reward_consecutive_trade_penalty": args.reward_consecutive_trade_penalty,
             "features": args.feature_set,  # PPOTrainer expects 'features' key
-            # PPO hyperparameters (conservative defaults)
-            "learning_rate": 3e-4,
-            "n_steps": 2048,
-            "batch_size": 64,
-            "n_epochs": 10,
-            "gamma": 0.99,
-            "gae_lambda": 0.95,
-            "clip_range": 0.2,
-            "ent_coef": 0.0,
-            "vf_coef": 0.5,
-            "max_grad_norm": 0.5,
+            # PPO hyperparameters from common config
+            **get_ppo_config(),
             # Evaluation settings
             "eval_freq": 10000,
             "n_eval_episodes": 5,
@@ -245,9 +243,9 @@ def main() -> int:
 
         # Create trainer
         trainer = PPOTrainer(
-            data_path=str(data_path) if not args.enable_streaming else None,  # type: ignore[arg-type]
+            data_path=str(data_path) if not args.enable_streaming else None,
             config=config,
-            checkpoint_interval=10000,
+            checkpoint_interval=args.checkpoint_interval,
             checkpoint_dir=args.checkpoint_dir,
         )
 

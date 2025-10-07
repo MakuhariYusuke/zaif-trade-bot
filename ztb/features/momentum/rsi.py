@@ -3,15 +3,17 @@ RSI (Relative Strength Index) implementation.
 RSIの実装
 """
 
+import numpy as np
 import pandas as pd
 
 from ztb.features.feature_cache import feature_cache
 from ztb.features.registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("RSI")
 def compute_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
-    """Compute RSI (Relative Strength Index) - Optimized version"""
+    """Compute RSI (Relative Strength Index) - Optimized version with Ta-Lib support"""
     if not FeatureRegistry.is_cache_enabled():
         return _compute_rsi_optimized(df, period)
 
@@ -24,20 +26,16 @@ def compute_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
 
 
 def _compute_rsi_optimized(df: pd.DataFrame, period: int = 14) -> pd.Series:
-    """Optimized RSI computation using pandas only"""
-    # Calculate price changes
-    delta = df["close"].astype(float).diff()
+    """Optimized RSI computation using Ta-Lib when available, fallback to custom implementation"""
+    close_prices = np.asarray(df["close"].values)
 
-    # Calculate gains and losses
-    gain = delta.where(delta > 0, 0.0)
-    loss = -delta.where(delta < 0, 0.0)
+    # Use Ta-Lib if available, otherwise use custom implementation
+    rsi_values = TaLibWrapper.rsi(close_prices, period)
 
-    # Calculate average gains and losses using EMA for smoothing
-    avg_gain = gain.ewm(span=period, adjust=False).mean()
-    avg_loss = loss.ewm(span=period, adjust=False).mean()
+    # Convert to pandas Series and handle NaN values
+    rsi_series = pd.Series(rsi_values, index=df.index)
 
-    # Calculate RS and RSI
-    rs = avg_gain / avg_loss.replace(0, 1e-8)  # Avoid division by zero
-    rsi = 100 - (100 / (1 + rs))
+    # Fill initial NaN values with 50 (neutral RSI)
+    rsi_series = rsi_series.fillna(50)
 
-    return rsi.fillna(50)
+    return rsi_series

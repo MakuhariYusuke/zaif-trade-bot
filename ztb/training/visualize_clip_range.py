@@ -19,6 +19,7 @@ from ztb.utils.project_setup import setup_project_path
 # Setup project path
 setup_project_path(Path(__file__))
 
+from ztb.training.ppo_config import get_ppo_config
 from ztb.training.ppo_trainer_old import PPOTrainer  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
@@ -29,19 +30,14 @@ def simulate_policy_updates(
 ) -> Dict[str, List[float]]:
     """Simulate policy updates with given clip_range and track metrics."""
     try:
-        config = {
+        # Get base PPO config and override clip_range
+        config: Dict[str, Any] = dict(get_ppo_config({"clip_range": clip_range}))
+        config.update({
             "algorithm": "ppo",
             "data_path": "data/ml-dataset-enhanced-balanced.csv",
             "total_timesteps": 10000,  # Short training for visualization
-            "learning_rate": 3e-4,
-            "n_steps": 2048,
-            "batch_size": 256,
-            "gamma": 0.99,
-            "gae_lambda": 0.95,
-            "clip_range": clip_range,
-            "vf_coef": 0.5,
-            "max_grad_norm": 0.5,
-            "ent_coef": 0.5,
+            "batch_size": 256,  # Override for visualization
+            "ent_coef": 0.5,  # Override for visualization
             "tensorboard_log": f"logs/clip_viz_{clip_range}",
             "model_dir": f"models/clip_viz_{clip_range}",
             "checkpoint_dir": f"checkpoints/clip_viz_{clip_range}",
@@ -53,14 +49,14 @@ def simulate_policy_updates(
             "transaction_cost": 0.0,
             "max_position_size": 1.0,
             "seed": 42,
-        }
+        })
 
         from ztb.utils.config import get_config_value
 
         trainer = PPOTrainer(
-            data_path=get_config_value(config, "data_path", str),
+            data_path=get_config_value(config, "data_path", str, ""),
             config=config,
-            checkpoint_dir=get_config_value(config, "checkpoint_dir", str),
+            checkpoint_dir=get_config_value(config, "checkpoint_dir", str, ""),
         )
 
         # Track metrics over updates

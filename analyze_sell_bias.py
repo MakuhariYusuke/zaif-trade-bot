@@ -27,7 +27,7 @@ else:
     raise ImportError("Cannot load environment module")
 
 
-def analyze_reward_function():
+def analyze_reward_function() -> None:
     """報酬関数の詳細分析"""
     print("=== 報酬関数の詳細分析 ===")
 
@@ -88,7 +88,7 @@ def analyze_reward_function():
         print(".4f")
 
 
-def analyze_forced_diversity_penalty():
+def analyze_forced_diversity_penalty() -> None:
     """強制アクション多様性のペナルティ分析"""
     print("\n=== 強制アクション多様性のペナルティ分析 ===")
 
@@ -124,7 +124,7 @@ def analyze_forced_diversity_penalty():
         print(f"Action counts {counts}: ratios={[f'{r:.1f}' for r in action_ratios]}, unused_penalty={unused_penalty:.2f}, ratio_penalty={ratio_penalty:.2f}, balance_bonus={balance_bonus:.2f}")
 
 
-def analyze_data_distribution():
+def analyze_data_distribution() -> None:
     """学習データの分布分析"""
     print("\n=== 学習データの分布分析 ===")
 
@@ -149,7 +149,7 @@ def analyze_data_distribution():
     print(f"BUY関連特徴量: {buy_related_features}")
 
 
-def test_environment_bias():
+def test_environment_bias() -> None:
     """環境の行動バイアス検証"""
     print("\n=== 環境の行動バイアス検証 ===")
 
@@ -203,7 +203,7 @@ def test_environment_bias():
         env = HeavyTradingEnv(df=df, config=test_config['config'])
 
         # ランダム行動での報酬分布をテスト
-        rewards_by_action = {0: [], 1: [], 2: []}
+        rewards_by_action: Dict[int, List[float]] = {0: [], 1: [], 2: []}
 
         for step in range(min(1000, len(df) - 1)):
             env.current_step = step
@@ -231,7 +231,7 @@ def test_environment_bias():
                 print(".4f")
 
 
-def main():
+def main() -> None:
     """メイン実行関数"""
     print("SELLバイアスの根本原因調査を開始します...")
 

@@ -211,7 +211,7 @@ class UnifiedTrainer:
             raise ValueError(f"Unknown algorithm: {self.config_obj.algorithm}")
 
     def _train_ppo(self) -> Any:
-        """Train using PPO algorithm."""
+        """Train using PPO algorithm with optional SELL bias mitigation."""
         # Set environment variables before importing torch
         import os
 
@@ -219,18 +219,58 @@ class UnifiedTrainer:
         os.environ["TORCH_USE_CUDA_DSA"] = "1"
         os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
-        try:
-            from ztb.training.ppo_trainer import PPOTrainer
-        except ImportError as e:
-            raise ImportError(
-                f"PPO training is not available due to import failure: {e}. Try using 'base_ml' algorithm instead."
+        # Import PPOConfig for both cases
+        from ztb.training.ppo_trainer import PPOConfig
+
+        trainer_class: Any = None
+
+        # Check if SELL bias mitigation is enabled
+        enable_sell_mitigation = self.config.get("enable_sell_mitigation", False)
+
+        if enable_sell_mitigation:
+            self.logger.info("SELL bias mitigation enabled - using enhanced trainer")
+            try:
+                from ztb.training.sell_mitigation_ppo_trainer import SELLBiasMitigationPPOTrainer
+                trainer_class = SELLBiasMitigationPPOTrainer
+            except ImportError as e:
+                self.logger.warning(f"SELL mitigation trainer not available: {e}. Falling back to standard PPO.")
+                enable_sell_mitigation = False
+
+        if not enable_sell_mitigation:
+            try:
+                from ztb.training.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
+                trainer_class = PPOTrainer
+            except ImportError as e:
+                raise ImportError(
+                    f"PPO training is not available due to import failure: {e}. Try using 'base_ml' algorithm instead."
+                )
+
+        # Convert config to PPOConfig
+        ppo_config = PPOConfig.from_common_config(self.config)
+
+        # Get checkpoint interval from config (default: 25000 for 1M training = 40 checkpoints)
+        checkpoint_interval = self.config.get("checkpoint_interval", 25000)
+
+        # Create trainer with SELL mitigation if enabled
+        if enable_sell_mitigation:
+            trainer = trainer_class(
+                data_path=self.config.get("data_path"),  # type: ignore[arg-type]
+                config=ppo_config,
+                checkpoint_dir=self.config.get("checkpoint_dir", "checkpoints"),
+                checkpoint_interval=checkpoint_interval,
+                enable_lagrange=self.config.get("enable_lagrange", True),
+                enable_probes=self.config.get("enable_probes", True),
+                enable_weights=self.config.get("enable_weights", True),
+                probe_csv_path=self.config.get("probe_csv_path"),
+            )
+        else:
+            trainer = trainer_class(
+                data_path=self.config.get("data_path"),  # type: ignore[arg-type]
+                config=ppo_config,
+                checkpoint_dir=self.config.get("checkpoint_dir", "checkpoints"),
+                checkpoint_interval=checkpoint_interval,
             )
 
-        trainer = PPOTrainer(
-            data_path=self.config.get("data_path"),  # type: ignore[arg-type]
-            config=self.config,
-            checkpoint_dir=self.config.get("checkpoint_dir", "checkpoints"),
-        )
         model = trainer.train(session_id=self.config.get("session_id", "ppo_session"))
 
         # Save final model to models directory
@@ -376,6 +416,9 @@ class UnifiedTrainer:
         # Import and use run_1m logic
         from ztb.training.run_1m import main as run_1m_main
 
+        # Get checkpoint interval from config (default: 10000 for iterative training)
+        checkpoint_interval = self.config.get("checkpoint_interval", 10000)
+
         # Set up arguments for run_1m
         sys.argv = [
             "run_1m.py",
@@ -395,6 +438,8 @@ class UnifiedTrainer:
             self.config.get("timeframe", "1m"),
             "--checkpoint-dir",
             self.config.get("checkpoint_dir", "checkpoints"),
+            "--checkpoint-interval",
+            str(checkpoint_interval),
             "--log-dir",
             self.config.get("log_dir", "logs"),
             "--model-dir",
@@ -556,6 +601,13 @@ def main() -> int:
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Set logging level (default: INFO). Overrides --verbose flag.",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Force execution without long-running operation confirmation",
@@ -586,10 +638,18 @@ def main() -> int:
     args = parser.parse_args()
 
     # Setup logging
-    log_level = logging.DEBUG if args.verbose else logging.INFO
+    # --log-level takes precedence over --verbose
+    if hasattr(args, 'log_level') and args.log_level:
+        log_level = getattr(logging, args.log_level)
+    else:
+        log_level = logging.DEBUG if args.verbose else logging.INFO
+    
     logging.basicConfig(
         level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
+    
+    # Also set the root logger level to suppress third-party DEBUG logs
+    logging.getLogger().setLevel(log_level)
 
     logger = get_logger(__name__)
 

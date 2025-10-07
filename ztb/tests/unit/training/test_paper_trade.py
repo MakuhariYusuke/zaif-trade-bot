@@ -228,5 +228,5 @@ class TestPaperTraderIntegration:
             assert "episodes" in results
             assert "mean_reward" in results
             assert "total_trades" in results
-            assert results["episodes"] == 1</content>
-<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\ztb\tests\unit\training\test_paper_trade.py
+            assert results["episodes"] == 1
+

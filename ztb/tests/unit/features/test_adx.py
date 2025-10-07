@@ -5,7 +5,7 @@ Tests for ADX feature implementation.
 import numpy as np
 import pandas as pd
 
-from ztb.features.trend.adx import ADX
+from ztb.features.trend.adx import compute_adx, compute_plus_di, compute_minus_di
 
 
 class TestADX:
@@ -22,19 +22,22 @@ class TestADX:
 
         df = pd.DataFrame({"high": high, "low": low, "close": close})
 
-        adx_feature = ADX(period=14)
-        result = adx_feature.compute(df)
+        adx_result = compute_adx(df, period=14)
+        plus_di_result = compute_plus_di(df, period=14)
+        minus_di_result = compute_minus_di(df, period=14)
 
-        # Check output columns exist
-        expected_columns = [f"adx_14", f"plus_di_14", f"minus_di_14"]
-        for col in expected_columns:
-            assert col in result.columns, f"Missing column: {col}"
+        # Check results are pandas Series
+        assert isinstance(adx_result, pd.Series)
+        assert isinstance(plus_di_result, pd.Series)
+        assert isinstance(minus_di_result, pd.Series)
 
         # Check output shape
-        assert len(result) == len(df), "Output length should match input"
+        assert len(adx_result) == len(df), "ADX output length should match input"
+        assert len(plus_di_result) == len(df), "Plus DI output length should match input"
+        assert len(minus_di_result) == len(df), "Minus DI output length should match input"
 
         # Check for reasonable values (ADX typically 0-100)
-        adx_values = result[f"adx_14"].dropna()
+        adx_values = adx_result.dropna()
         if len(adx_values) > 0:
             assert all(
                 0 <= val <= 100 for val in adx_values
@@ -47,25 +50,31 @@ class TestADX:
             {"high": [100, 101, 102], "low": [99, 98, 97], "close": [100, 100, 100]}
         )
 
-        adx_feature = ADX(period=14)
-        result = adx_feature.compute(df)
+        adx_result = compute_adx(df, period=14)
+        plus_di_result = compute_plus_di(df, period=14)
+        minus_di_result = compute_minus_di(df, period=14)
 
         # Should still produce output, but values might be NaN
-        assert len(result) == len(df), "Output length should match input"
-        assert not result.empty, "Should produce some output"
+        assert len(adx_result) == len(df), "ADX output length should match input"
+        assert len(plus_di_result) == len(df), "Plus DI output length should match input"
+        assert len(minus_di_result) == len(df), "Minus DI output length should match input"
 
     def test_adx_edge_cases(self):
         """Test ADX with edge cases."""
         # Flat market (no movement)
         df = pd.DataFrame({"high": [100] * 20, "low": [100] * 20, "close": [100] * 20})
 
-        adx_feature = ADX(period=14)
-        result = adx_feature.compute(df)
+        adx_result = compute_adx(df, period=14)
+        plus_di_result = compute_plus_di(df, period=14)
+        minus_di_result = compute_minus_di(df, period=14)
 
         # Should handle flat market gracefully
-        assert len(result) == len(df)
+        assert len(adx_result) == len(df)
+        assert len(plus_di_result) == len(df)
+        assert len(minus_di_result) == len(df)
+        
         # ADX should be low or NaN in flat market
-        adx_values = result[f"adx_14"].dropna()
+        adx_values = adx_result.dropna()
         if len(adx_values) > 0:
             assert all(val >= 0 for val in adx_values), "ADX should be non-negative"
 
@@ -79,14 +88,16 @@ class TestADX:
             }
         )
 
-        adx_feature = ADX(period=10)
-        result = adx_feature.compute(df)
+        adx_result = compute_adx(df, period=10)
+        plus_di_result = compute_plus_di(df, period=10)
+        minus_di_result = compute_minus_di(df, period=10)
 
-        expected_columns = ["adx_10", "plus_di_10", "minus_di_10"]
-        for col in expected_columns:
-            assert col in result.columns, f"Expected column {col} not found"
+        # Check that results are Series (not DataFrame columns)
+        assert isinstance(adx_result, pd.Series)
+        assert isinstance(plus_di_result, pd.Series)
+        assert isinstance(minus_di_result, pd.Series)
 
         # Check that we have some non-NaN values
-        total_values = len(result)
-        nan_count = result.isnull().sum().sum()
-        assert nan_count < total_values, "Should have some valid values"
+        assert not adx_result.isnull().all(), "ADX should have some valid values"
+        assert not plus_di_result.isnull().all(), "Plus DI should have some valid values"
+        assert not minus_di_result.isnull().all(), "Minus DI should have some valid values"

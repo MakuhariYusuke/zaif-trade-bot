@@ -9,7 +9,7 @@ import time
 from functools import lru_cache
 from typing import Any, Callable, Dict, Optional, Tuple, Union, cast
 
-import numba as nb
+import numba as nb  # type: ignore[import-untyped]
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray

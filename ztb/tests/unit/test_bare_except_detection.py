@@ -20,7 +20,7 @@ def find_bare_except_clauses(source_code: str) -> List[Tuple[int, str]]:
     Returns:
         List of (line_number, line_content) tuples for bare except clauses
     """
-    violations = []
+    violations: list[tuple[int, str]] = []
 
     try:
         tree = ast.parse(source_code)

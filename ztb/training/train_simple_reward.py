@@ -3,102 +3,15 @@
 Simple reward function training test
 """
 
-import sys
-from pathlib import Path
-from typing import Dict, List, cast
+from typing import Dict, List
 
 # Type alias for configuration
 ConfigType = Dict[str, str | float]
-from collections import Counter
 
-import numpy as np
-import pandas as pd
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
-
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
+from ztb.training.training_utils import setup_project_path, create_ppo_model, load_training_data, save_model_with_path, print_training_results, print_training_start
+from ztb.trading.env_config import get_trading_env_config
 from ztb.trading.environment import HeavyTradingEnv
-
-
-class TrainingCallback(BaseCallback):
-    """Callback for logging training progress"""
-
-    def __init__(self, verbose: int = 0) -> None:
-        super().__init__(verbose)
-        self.episode_rewards: list[float] = []
-        self.episode_lengths: list[int] = []
-        self.action_counts: list[dict[str, int]] = []
-        self.portfolio_values: list[float] = []
-        self.episode_count = 0
-
-    def _on_step(self) -> bool:
-        return True
-
-    def _on_rollout_end(self) -> None:
-        # Log episode info
-        episode_reward = sum(self.locals["rewards"])
-        episode_length = len(self.locals["rewards"])
-        actions = self.locals.get("actions", [])
-
-        self.episode_rewards.append(episode_reward)
-        self.episode_lengths.append(episode_length)
-        self.episode_count += 1
-
-        # Count actions
-        actions_list = [int(a) for a in actions] if hasattr(actions, "__iter__") else []
-        action_count = Counter(actions_list)
-        self.action_counts.append(
-            {
-                "HOLD": action_count.get(0, 0),
-                "BUY": action_count.get(1, 0),
-                "SELL": action_count.get(2, 0),
-            }
-        )
-
-        # Get portfolio value from info if available
-        if hasattr(self.locals, "infos") and self.locals["infos"]:
-            info = (
-                self.locals["infos"][0]
-                if isinstance(self.locals["infos"], list)
-                else self.locals["infos"]
-            )
-            if isinstance(info, dict) and "portfolio_value" in info:
-                self.portfolio_values.append(info["portfolio_value"])
-
-        # Log to TensorBoard every 10 episodes
-        if self.episode_count % 10 == 0:
-            self.logger.record("episode/reward", episode_reward)
-            self.logger.record("episode/length", episode_length)
-
-            if self.portfolio_values:
-                self.logger.record("episode/portfolio_value", self.portfolio_values[-1])
-
-            # Log action distribution
-            total_actions = sum(action_count.values())
-            if total_actions > 0:
-                self.logger.record(
-                    "actions/hold_ratio", action_count.get(0, 0) / total_actions
-                )
-                self.logger.record(
-                    "actions/buy_ratio", action_count.get(1, 0) / total_actions
-                )
-                self.logger.record(
-                    "actions/sell_ratio", action_count.get(2, 0) / total_actions
-                )
-
-            print(
-                f"Episode {self.episode_count}: Reward={episode_reward:.4f}, "
-                f"Length={episode_length}, Portfolio={self.portfolio_values[-1] if self.portfolio_values else 'N/A'}, "
-                f"Actions: H={action_count.get(0, 0)}, B={action_count.get(1, 0)}, S={action_count.get(2, 0)}"
-            )
-
-        if len(self.episode_rewards) % 10 == 0:
-            avg_reward = np.mean(self.episode_rewards[-10:])
-            print(f"Episode {len(self.episode_rewards)}: Avg Reward = {avg_reward:.4f}")
+from ztb.training.callbacks import SimpleTrainingCallback
 
 
 def train_simple_reward(
@@ -109,20 +22,18 @@ def train_simple_reward(
 ) -> str:
     """Train with simple portfolio reward for 100k steps with configurable parameters"""
 
+    # Setup project path
+    setup_project_path()
+
     # Load data
-    data_path = PROJECT_ROOT / "ml-dataset-enhanced.csv"
-    df = pd.read_csv(data_path)
+    df = load_training_data()
 
     # Create environment with simple reward
-    env_config = {
+    env_config = dict(get_trading_env_config())
+    env_config.update({
         "reward_scaling": reward_scaling,
-        "transaction_cost": 0.001,
-        "max_position_size": 1.0,
-        "risk_free_rate": 0.02,
-        "feature_set": "full",
-        "initial_portfolio_value": 1000000.0,
         "curriculum_stage": "simple_portfolio",  # Use simple reward
-    }
+    })
 
     env = HeavyTradingEnv(
         df=df,
@@ -132,64 +43,29 @@ def train_simple_reward(
         max_features=68,
     )
 
-    # Create PPO model with TensorBoard logging
-    model = PPO(
-        "MlpPolicy",
-        env,
-        learning_rate=learning_rate,
-        n_steps=2048,
-        batch_size=64,
-        n_epochs=10,
-        gamma=0.99,
-        gae_lambda=0.95,
-        clip_range=0.2,
-        ent_coef=entropy_coef,  # Configurable entropy coefficient
-        vf_coef=0.5,
-        max_grad_norm=0.5,
-        verbose=1,
-        tensorboard_log="./tensorboard",  # Enable TensorBoard logging
-    )
+    # Create PPO model with custom config
+    model_config = {
+        "learning_rate": learning_rate,
+        "ent_coef": entropy_coef,
+    }
+    model = create_ppo_model(env, model_config)
 
     # Create callback
-    callback = TrainingCallback()
+    callback = SimpleTrainingCallback()
 
-    print(f"Starting training with config: {config_name}")
-    print(
-        f"Reward scaling: {reward_scaling}, Entropy coef: {entropy_coef}, Learning rate: {learning_rate}"
-    )
-    print("Training for 100,000 steps...")
+    print_training_start(config_name, reward_scaling, entropy_coef, learning_rate)
 
     # Train for 100k steps
     model.learn(total_timesteps=100000, callback=callback)
 
-    print("\n=== Training Results ===")
-    print(f"Total episodes: {len(callback.episode_rewards)}")
-    print(f"Average episode reward: {np.mean(callback.episode_rewards):.6f}")
-    print(f"Reward std: {np.std(callback.episode_rewards):.6f}")
-    print(f"Best episode reward: {np.max(callback.episode_rewards):.6f}")
-    print(f"Worst episode reward: {np.min(callback.episode_rewards):.6f}")
-
-    # Analyze action distribution
-    if callback.action_counts:
-        total_actions = {"HOLD": 0, "BUY": 0, "SELL": 0}
-        for counts in callback.action_counts:
-            for action, count in counts.items():
-                total_actions[action] += count
-
-        total_count = sum(total_actions.values())
-        print("\nAction distribution:")
-        for action, count in total_actions.items():
-            percentage = count / total_count * 100 if total_count > 0 else 0
-            print(f"  {action}: {count} ({percentage:.1f}%)")
+    print_training_results(callback.episode_rewards)
 
     # Save model with config name
-    model_path = PROJECT_ROOT / "models" / f"aggressive_{config_name}.zip"
-    model_path.parent.mkdir(exist_ok=True)
-    model.save(str(model_path))
+    model_path = save_model_with_path(model, f"aggressive_{config_name}")
     print(f"\nModel saved to: {model_path}")
 
     env.close()
-    return str(model_path)
+    return model_path
 
 
 if __name__ == "__main__":
@@ -249,10 +125,10 @@ if __name__ == "__main__":
 
         try:
             model_path = train_simple_reward(
-                config_name=cast(str, config["name"]),
-                reward_scaling=cast(float, config["reward_scaling"]),
-                entropy_coef=cast(float, config["entropy_coef"]),
-                learning_rate=cast(float, config["learning_rate"]),
+                config_name=config["name"],  # type: ignore
+                reward_scaling=config["reward_scaling"],  # type: ignore
+                entropy_coef=config["entropy_coef"],  # type: ignore
+                learning_rate=config["learning_rate"],  # type: ignore
             )
             trained_models.append((config["name"], model_path))
             print(f"✅ Successfully trained: {config['name']}")

@@ -9,23 +9,20 @@ import pandas as pd
 
 from ztb.features.feature_cache import feature_cache
 from ztb.features.registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("ROC")
 def compute_roc(df: pd.DataFrame, period: int = 10) -> pd.Series:
-    """Compute ROC (Rate of Change)"""
+    """Compute ROC (Rate of Change) using Ta-Lib wrapper"""
     if not FeatureRegistry.is_cache_enabled():
-        roc = (
-            (df["close"] - df["close"].shift(period)) / df["close"].shift(period)
-        ) * 100
-        return roc.fillna(0)
+        result = TaLibWrapper.roc(df["close"].to_numpy(), period)
+        return pd.Series(result, index=df.index)
 
     cache_key = f"roc_{feature_cache.generate_dataframe_hash(df, ['close'], {'period': period})}"
 
     def compute() -> pd.Series:
-        roc = (
-            (df["close"] - df["close"].shift(period)) / df["close"].shift(period)
-        ) * 100
-        return roc.fillna(0)
+        result = TaLibWrapper.roc(df["close"].to_numpy(), period)
+        return pd.Series(result, index=df.index)
 
     return feature_cache.get_or_compute(cache_key, compute)

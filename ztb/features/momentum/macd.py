@@ -3,9 +3,11 @@ MACD (Moving Average Convergence Divergence) implementation.
 MACDの実装
 """
 
+import numpy as np
 import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("MACD")
@@ -15,31 +17,15 @@ def compute_macd(
     slow_period: int = 26,
     signal_period: int = 9,
 ) -> pd.Series:
-    """Compute MACD (Moving Average Convergence Divergence) - Optimized version"""
-    # Use pre-computed EMAs if available, otherwise compute them
-    fast_col = f"ema_{fast_period}"
-    slow_col = f"ema_{slow_period}"
+    """Compute MACD (Moving Average Convergence Divergence) - Optimized version with Ta-Lib support"""
+    close_prices = np.asarray(df["close"].values)
 
-    if fast_col in df.columns:
-        ema_fast = df[fast_col]
-    else:
-        ema_fast = df["close"].ewm(span=fast_period, adjust=False).mean()
-
-    if slow_col in df.columns:
-        ema_slow = df[slow_col]
-    else:
-        ema_slow = df["close"].ewm(span=slow_period, adjust=False).mean()
-
-    # MACD line
-    macd = ema_fast - ema_slow
-
-    # Signal line (EMA of MACD)
-    signal_col = f"ema_{signal_period}"
-    if signal_col in df.columns:
-        signal = df[signal_col]
-    else:
-        signal = macd.ewm(span=signal_period, adjust=False).mean()
+    # Use Ta-Lib if available, otherwise use custom implementation
+    macd, signal, hist = TaLibWrapper.macd(
+        close_prices, fast_period, slow_period, signal_period
+    )
 
     # Return MACD histogram (MACD - Signal) as it's the most useful component
-    macd_hist = macd - signal
-    return macd_hist.fillna(0)
+    macd_hist = pd.Series(hist, index=df.index).fillna(0)
+
+    return macd_hist

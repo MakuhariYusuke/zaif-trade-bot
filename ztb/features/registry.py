@@ -4,6 +4,7 @@ Feature registry for trading features.
 """
 
 import gc
+import logging
 import os
 import random
 import time
@@ -16,6 +17,10 @@ import pandas as pd
 import psutil
 from pandas.api import types as ptypes
 
+from ztb.types.protocols import FeatureRegistryProtocol
+
+logger = logging.getLogger(__name__)
+
 from ztb.features.utils.rolling import generate_intermediate_report
 from ztb.utils.memory.dtypes import optimize_dtypes
 
@@ -25,7 +30,7 @@ except ImportError:  # pragma: no cover - tqdm optional
     tqdm = None  # type: ignore
 
 
-class FeatureRegistry:
+class FeatureRegistry(FeatureRegistryProtocol):
     """全特徴量関数を一元管理するレジストリ"""
 
     _registry: Dict[str, Callable[..., pd.Series]] = {}
@@ -532,7 +537,7 @@ class FeatureRegistry:
             feature_name, feature_series, computation_time, nan_rate, error = result
 
             if error is not None:
-                print(f"Error computing {feature_name}: {error}")
+                logger.error(f"Error computing {feature_name}: {error}")
                 perf_metrics["failed_features"].append(feature_name)
             else:
                 features_df[feature_name] = feature_series
