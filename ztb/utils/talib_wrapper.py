@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 # Try to import Ta-Lib, fallback to custom implementations if not available
 try:
@@ -65,7 +66,7 @@ class TaLibWrapper:
         return TALIB_AVAILABLE
 
     @staticmethod
-    def _validate_input_data(data: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series], name: str) -> np.ndarray[Any, np.dtype[np.floating]]:
+    def _validate_input_data(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], name: str) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
         """Validate and convert input data to numpy array."""
         if data is None:
             raise TaLibError(f"{name} cannot be None")
@@ -91,7 +92,7 @@ class TaLibWrapper:
         return period
 
     @staticmethod
-    def sma(data: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series], period: int) -> np.ndarray[Any, np.dtype[np.floating]]:
+    def sma(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], period: int) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
         """
         Simple Moving Average.
 
@@ -122,7 +123,7 @@ class TaLibWrapper:
             raise TaLibError(f"SMA calculation failed: {e}")
 
     @staticmethod
-    def ema(data: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series], period: int) -> np.ndarray[Any, np.dtype[np.floating]]:
+    def ema(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], period: int) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
         """
         Exponential Moving Average.
 
@@ -152,7 +153,7 @@ class TaLibWrapper:
             raise TaLibError(f"EMA calculation failed: {e}")
 
     @staticmethod
-    def rsi(data: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series], period: int = 14) -> np.ndarray[Any, np.dtype[np.floating]]:
+    def rsi(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], period: int = 14) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
         """
         Relative Strength Index.
 
@@ -183,11 +184,11 @@ class TaLibWrapper:
 
     @staticmethod
     def macd(
-        data: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series],
+        data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9
-    ) -> Tuple[np.ndarray[Any, np.dtype[np.floating]], np.ndarray[Any, np.dtype[np.floating]], np.ndarray[Any, np.dtype[np.floating]]]:
+    ) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], np.ndarray[Any, np.dtype[np.floating[Any]]], np.ndarray[Any, np.dtype[np.floating[Any]]]]:
         """
         MACD (Moving Average Convergence Divergence).
 
@@ -240,13 +241,13 @@ class TaLibWrapper:
 
     @staticmethod
     def stoch(
-        high: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series],
-        low: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series],
-        close: Union[np.ndarray[Any, np.dtype[np.floating]], pd.Series],
+        high: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
+        low: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
+        close: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
         fastk_period: int = 14,
         slowk_period: int = 3,
         slowd_period: int = 3
-    ) -> Tuple[np.ndarray[Any, np.dtype[np.floating]], np.ndarray[Any, np.dtype[np.floating]]]:
+    ) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], np.ndarray[Any, np.dtype[np.floating[Any]]]]:
         """
         Stochastic Oscillator.
 
@@ -297,11 +298,11 @@ class TaLibWrapper:
 
     @staticmethod
     def adx(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Average Directional Index (ADX).
 
@@ -339,11 +340,11 @@ class TaLibWrapper:
 
     @staticmethod
     def plus_di(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Plus Directional Indicator (+DI).
 
@@ -381,11 +382,11 @@ class TaLibWrapper:
 
     @staticmethod
     def minus_di(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Minus Directional Indicator (-DI).
 
@@ -422,51 +423,12 @@ class TaLibWrapper:
             raise TaLibError(f"-DI calculation failed: {e}")
 
     @staticmethod
-    def _adx_custom(
-        high: np.ndarray,
-        low: np.ndarray,
-        close: np.ndarray,
-        period: int = 14
-    ) -> np.ndarray:
-        """
-        Custom ADX implementation as fallback.
-        """
-        # Calculate True Range
-        tr1 = high - low
-        tr2 = np.abs(high - np.roll(close, 1))
-        tr3 = np.abs(low - np.roll(close, 1))
-        tr = np.maximum.reduce([tr1, tr2, tr3])
-
-        # Calculate Directional Movement
-        dm_plus = np.where((high - np.roll(high, 1)) > (np.roll(low, 1) - low),
-                          np.maximum(high - np.roll(high, 1), 0), 0)
-        dm_minus = np.where((np.roll(low, 1) - low) > (high - np.roll(high, 1)),
-                           np.maximum(np.roll(low, 1) - low, 0), 0)
-
-        # Smooth with EMA
-        tr_smooth = TaLibWrapper._ema_custom(tr, period)
-        dm_plus_smooth = TaLibWrapper._ema_custom(dm_plus, period)
-        dm_minus_smooth = TaLibWrapper._ema_custom(dm_minus, period)
-
-        # Calculate Directional Indicators
-        di_plus = 100 * dm_plus_smooth / tr_smooth
-        di_minus = 100 * dm_minus_smooth / tr_smooth
-
-        # Calculate DX
-        dx = 100 * np.abs(di_plus - di_minus) / (di_plus + di_minus)
-
-        # Calculate ADX
-        adx = TaLibWrapper._ema_custom(dx, period)
-
-        return np.nan_to_num(adx, nan=np.nan)
-
-    @staticmethod
     def _plus_di_custom(
-        high: np.ndarray,
-        low: np.ndarray,
-        close: np.ndarray,
+        high: NDArray[np.float64],
+        low: NDArray[np.float64],
+        close: NDArray[np.float64],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Custom +DI implementation as fallback.
         """
@@ -491,11 +453,11 @@ class TaLibWrapper:
 
     @staticmethod
     def _minus_di_custom(
-        high: np.ndarray,
-        low: np.ndarray,
-        close: np.ndarray,
+        high: NDArray[np.float64],
+        low: NDArray[np.float64],
+        close: NDArray[np.float64],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Custom -DI implementation as fallback.
         """
@@ -520,11 +482,11 @@ class TaLibWrapper:
 
     @staticmethod
     def williams_r(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Williams %R Oscillator.
 
@@ -562,11 +524,11 @@ class TaLibWrapper:
 
     @staticmethod
     def cci(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 20
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Commodity Channel Index (CCI).
 
@@ -603,7 +565,7 @@ class TaLibWrapper:
             raise TaLibError(f"CCI calculation failed: {e}")
 
     @staticmethod
-    def tema(data: Union[np.ndarray, pd.Series], period: int) -> np.ndarray:
+    def tema(data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """
         Triple Exponential Moving Average (TEMA).
 
@@ -633,7 +595,7 @@ class TaLibWrapper:
             raise TaLibError(f"TEMA calculation failed: {e}")
 
     @staticmethod
-    def kama(data: Union[np.ndarray, pd.Series], period: int = 30) -> np.ndarray:
+    def kama(data: Union[NDArray[np.float64], pd.Series], period: int = 30) -> NDArray[np.float64]:
         """
         Kaufman Adaptive Moving Average (KAMA).
 
@@ -663,7 +625,7 @@ class TaLibWrapper:
             raise TaLibError(f"KAMA calculation failed: {e}")
 
     @staticmethod
-    def roc(data: Union[np.ndarray, pd.Series], period: int = 10) -> np.ndarray:
+    def roc(data: Union[NDArray[np.float64], pd.Series], period: int = 10) -> NDArray[np.float64]:
         """
         Rate of Change (ROC).
 
@@ -693,7 +655,7 @@ class TaLibWrapper:
             raise TaLibError(f"ROC calculation failed: {e}")
 
     @staticmethod
-    def wma(data: Union[np.ndarray, pd.Series], period: int) -> np.ndarray:
+    def wma(data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """
         Weighted Moving Average (WMA).
 
@@ -724,12 +686,12 @@ class TaLibWrapper:
 
     @staticmethod
     def mfi(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
-        volume: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
+        volume: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Money Flow Index (MFI).
 
@@ -763,15 +725,15 @@ class TaLibWrapper:
                 result = talib.MFI(high, low, close, volume, timeperiod=period)
                 return np.nan_to_num(result, nan=np.nan)
             else:
-                return TaLibWrapper._mfi_custom(high, low, close, volume, period)
+                raise TaLibError("MFI calculation requires Ta-Lib library")
         except Exception as e:
             raise TaLibError(f"MFI calculation failed: {e}")
 
     @staticmethod
     def obv(
-        close: Union[np.ndarray, pd.Series],
-        volume: Union[np.ndarray, pd.Series]
-    ) -> np.ndarray:
+        close: Union[NDArray[np.float64], pd.Series],
+        volume: Union[NDArray[np.float64], pd.Series]
+    ) -> NDArray[np.float64]:
         """
         On Balance Volume (OBV).
 
@@ -802,11 +764,11 @@ class TaLibWrapper:
 
     @staticmethod
     def sar(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
         acceleration: float = 0.02,
         maximum: float = 0.2
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Parabolic SAR.
 
@@ -839,11 +801,11 @@ class TaLibWrapper:
 
     @staticmethod
     def atr(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Average True Range (ATR).
 
@@ -881,11 +843,11 @@ class TaLibWrapper:
 
     @staticmethod
     def bbands(
-        data: Union[np.ndarray, pd.Series],
+        data: Union[NDArray[np.float64], pd.Series],
         period: int = 20,
         nbdevup: float = 2.0,
         nbdevdn: float = 2.0
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """
         Bollinger Bands.
 
@@ -922,38 +884,39 @@ class TaLibWrapper:
 
     @staticmethod
     def _mfi_custom(
-        low: np.ndarray,
-        close: np.ndarray,
-        volume: np.ndarray,
+        high: NDArray[np.float64],
+        low: NDArray[np.float64],
+        close: NDArray[np.float64],
+        volume: NDArray[np.float64],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Custom MFI implementation as fallback.
         """
         # Typical Price
-        typical_price = (high + low + close) / 3
+        typical_price = ((high + low + close) / 3).astype(np.float64)
 
         # Raw Money Flow
-        money_flow = typical_price * volume
+        money_flow = (typical_price * volume).astype(np.float64)
 
         # Positive and Negative Money Flow
         price_diff = np.diff(close, prepend=close[0])
-        positive_flow = np.where(price_diff > 0, money_flow, 0.0)
-        negative_flow = np.where(price_diff < 0, money_flow, 0.0)
+        positive_flow = np.where(price_diff > 0, money_flow, 0.0).astype(np.float64)
+        negative_flow = np.where(price_diff < 0, money_flow, 0.0).astype(np.float64)
 
         # Money Flow Ratio
-        pos_mf_sum = TaLibWrapper._rolling_sum_custom(positive_flow, period)
-        neg_mf_sum = TaLibWrapper._rolling_sum_custom(negative_flow, period)
+        pos_mf_sum: NDArray[np.float64] = TaLibWrapper._rolling_sum_custom(positive_flow, period)
+        neg_mf_sum: NDArray[np.float64] = TaLibWrapper._rolling_sum_custom(negative_flow, period)
 
-        money_flow_ratio = pos_mf_sum / np.where(neg_mf_sum == 0, 1e-8, neg_mf_sum)
+        money_flow_ratio: NDArray[np.float64] = pos_mf_sum / np.where(neg_mf_sum == 0, 1e-8, neg_mf_sum)
 
         # MFI calculation
-        mfi = 100 - (100 / (1 + money_flow_ratio))
+        mfi = (100 - (100 / (1 + money_flow_ratio))).astype(np.float64)
 
-        return np.nan_to_num(mfi, nan=50)
+        return np.nan_to_num(mfi, nan=50.0).astype(np.float64)
 
     @staticmethod
-    def _obv_custom(close: np.ndarray, volume: np.ndarray) -> np.ndarray:
+    def _obv_custom(close: NDArray[np.float64], volume: NDArray[np.float64]) -> NDArray[np.float64]:
         """
         Custom OBV implementation as fallback.
         """
@@ -972,11 +935,11 @@ class TaLibWrapper:
 
     @staticmethod
     def _sar_custom(
-        high: np.ndarray,
-        low: np.ndarray,
+        high: NDArray[np.float64],
+        low: NDArray[np.float64],
         acceleration: float = 0.02,
         maximum: float = 0.2
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """
         Custom Parabolic SAR implementation as fallback.
         This is a simplified implementation.
@@ -1018,42 +981,35 @@ class TaLibWrapper:
         return sar
 
     @staticmethod
-    def _rolling_sum_custom(data: np.ndarray, period: int) -> np.ndarray:
-        """
-        Custom rolling sum implementation for fallback functions.
-        """
-        result = np.zeros_like(data)
-        for i in range(len(data)):
-            start = max(0, i - period + 1)
-            result[i] = np.sum(data[start:i+1])
-        return result
-
-    # Custom implementations for fallback
-    @staticmethod
-    def _sma_custom(data: Union[np.ndarray, pd.Series], period: int) -> np.ndarray:
+    def _sma_custom(data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """Custom SMA implementation."""
-        data = np.asarray(data, dtype=float)
+        data = np.asarray(data, dtype=np.float64)
         weights = np.ones(period) / period
-        return np.convolve(data, weights, mode='valid')
+        return np.convolve(data, weights, mode='valid').astype(np.float64)
 
     @staticmethod
-    def _ema_custom(data: Union[np.ndarray, pd.Series], period: int) -> np.ndarray:
+    def _ema_custom(data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """Custom EMA implementation."""
-        data = np.asarray(data, dtype=float)
-        return pd.Series(data).ewm(span=period, adjust=False).mean().values
+        data = np.asarray(data, dtype=np.float64)
+        return pd.Series(data).ewm(span=period, adjust=False).mean().values.astype(np.float64)
 
     @staticmethod
-    def _rsi_custom(data: Union[np.ndarray, pd.Series], period: int = 14) -> np.ndarray:
+    def _rolling_sum_custom(data: NDArray[np.float64], period: int) -> NDArray[np.float64]:
+        """Custom rolling sum implementation."""
+        return pd.Series(data).rolling(window=period).sum().values.astype(np.float64)
+
+    @staticmethod
+    def _rsi_custom(data: Union[NDArray[np.float64], pd.Series], period: int = 14) -> NDArray[np.float64]:
         """Custom RSI implementation."""
         data = np.asarray(data, dtype=float)
         delta = np.diff(data)
         gain = np.where(delta > 0, delta, 0)
         loss = np.where(delta < 0, -delta, 0)
 
-        avg_gain = pd.Series(gain).ewm(span=period, adjust=False).mean().values
-        avg_loss = pd.Series(loss).ewm(span=period, adjust=False).mean().values
+        avg_gain = pd.Series(gain).ewm(span=period, adjust=False).mean().values.astype(np.float64)
+        avg_loss = pd.Series(loss).ewm(span=period, adjust=False).mean().values.astype(np.float64)
 
-        rs = avg_gain / np.where(avg_loss == 0, 1e-8, avg_loss)
+        rs = avg_gain / np.where(avg_loss == 0, 1e-8, avg_loss).astype(np.float64)
         rsi = 100 - (100 / (1 + rs))
 
         # Pad with NaN to match input length
@@ -1063,11 +1019,11 @@ class TaLibWrapper:
 
     @staticmethod
     def _macd_custom(
-        data: Union[np.ndarray, pd.Series],
+        data: Union[NDArray[np.float64], pd.Series],
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """Custom MACD implementation."""
         data = np.asarray(data, dtype=float)
         ema_fast = TaLibWrapper._ema_custom(data, fast_period)
@@ -1079,17 +1035,17 @@ class TaLibWrapper:
 
     @staticmethod
     def _bbands_custom(
-        data: Union[np.ndarray, pd.Series],
+        data: Union[NDArray[np.float64], pd.Series],
         period: int = 20,
         nbdevup: float = 2.0,
         nbdevdn: float = 2.0
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """Custom Bollinger Bands implementation."""
         data = np.asarray(data, dtype=float)
         sma = TaLibWrapper._sma_custom(data, period)
 
         # Calculate standard deviation
-        rolling_std = pd.Series(data).rolling(window=period).std().values
+        rolling_std = pd.Series(data).rolling(window=period).std().values.astype(np.float64)
 
         upper = sma + (rolling_std * nbdevup)
         lower = sma - (rolling_std * nbdevdn)
@@ -1109,11 +1065,11 @@ class TaLibWrapper:
 
     @staticmethod
     def _atr_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Custom ATR implementation."""
         high = np.asarray(high, dtype=float)
         low = np.asarray(low, dtype=float)
@@ -1131,21 +1087,21 @@ class TaLibWrapper:
 
     @staticmethod
     def _stoch_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         fastk_period: int = 14,
         slowk_period: int = 3,
         slowd_period: int = 3
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Custom Stochastic Oscillator implementation."""
         high = np.asarray(high, dtype=float)
         low = np.asarray(low, dtype=float)
         close = np.asarray(close, dtype=float)
 
         # Fast %K
-        lowest_low = pd.Series(low).rolling(window=fastk_period).min().values
-        highest_high = pd.Series(high).rolling(window=fastk_period).max().values
+        lowest_low = pd.Series(low).rolling(window=fastk_period).min().values.astype(np.float64)
+        highest_high = pd.Series(high).rolling(window=fastk_period).max().values.astype(np.float64)
         fastk = 100 * (close - lowest_low) / (highest_high - lowest_low)
 
         # Slow %K (SMA of Fast %K)
@@ -1158,11 +1114,11 @@ class TaLibWrapper:
 
     @staticmethod
     def _adx_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Custom ADX implementation."""
         high = np.asarray(high, dtype=float)
         low = np.asarray(low, dtype=float)
@@ -1199,30 +1155,31 @@ class TaLibWrapper:
 
     @staticmethod
     def _williams_r_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 14
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Custom Williams %R implementation."""
-        high = np.asarray(high, dtype=float)
-        low = np.asarray(low, dtype=float)
-        close = np.asarray(close, dtype=float)
+        high = np.asarray(high, dtype=np.float64)
+        low = np.asarray(low, dtype=np.float64)
+        close = np.asarray(close, dtype=np.float64)
 
-        highest_high = pd.Series(high).rolling(window=period).max().values
-        lowest_low = pd.Series(low).rolling(window=period).min().values
+        highest_high: NDArray[np.float64] = pd.Series(high).rolling(window=period).max().values.astype(np.float64)
+        lowest_low: NDArray[np.float64] = pd.Series(low).rolling(window=period).min().values.astype(np.float64)
 
-        williams_r = -100 * (highest_high - close) / np.where(highest_high - lowest_low == 0, 1e-8, highest_high - lowest_low)
+        denominator = np.where(highest_high - lowest_low == 0, 1e-8, highest_high - lowest_low).astype(np.float64)
+        williams_r = (-100 * (highest_high - close) / denominator).astype(np.float64)
 
-        return williams_r
+        return williams_r.astype(np.float64)
 
     @staticmethod
     def _cci_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         period: int = 20
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Custom CCI implementation."""
         high = np.asarray(high, dtype=float)
         low = np.asarray(low, dtype=float)
@@ -1248,7 +1205,7 @@ class TaLibWrapper:
         return result
 
     @staticmethod
-    def _tema_custom(data: Union[np.ndarray, pd.Series], period: int) -> np.ndarray:
+    def _tema_custom(data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """Custom TEMA implementation."""
         data = np.asarray(data, dtype=float)
 
@@ -1263,7 +1220,7 @@ class TaLibWrapper:
         return tema
 
     @staticmethod
-    def _kama_custom(data: Union[np.ndarray, pd.Series], period: int = 30) -> np.ndarray:
+    def _kama_custom(data: Union[NDArray[np.float64], pd.Series], period: int = 30) -> NDArray[np.float64]:
         """Custom KAMA implementation (simplified)."""
         data = np.asarray(data, dtype=float)
 
@@ -1272,11 +1229,13 @@ class TaLibWrapper:
         return TaLibWrapper._ema_custom(data, period)
 
     @staticmethod
-    def _roc_custom(data: Union[np.ndarray, pd.Series], period: int = 10) -> np.ndarray:
+    def _roc_custom(data: Union[NDArray[np.float64], pd.Series], period: int = 10) -> NDArray[np.float64]:
         """Custom ROC implementation."""
-        data = np.asarray(data, dtype=float)
+        data = np.asarray(data, dtype=np.float64)
 
-        roc = 100 * (data - np.roll(data, period)) / np.where(np.roll(data, period) == 0, 1e-8, np.roll(data, period))
+        rolled_data = np.roll(data, period).astype(np.float64)
+        denominator = np.where(rolled_data == 0, 1e-8, rolled_data).astype(np.float64)
+        roc = (100 * (data - rolled_data) / denominator).astype(np.float64)
 
         # Set first 'period' values to NaN
         roc[:period] = np.nan
@@ -1284,7 +1243,7 @@ class TaLibWrapper:
         return roc
 
     @staticmethod
-    def _wma_custom(data: Union[np.ndarray, pd.Series], period: int) -> np.ndarray:
+    def _wma_custom(data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """Custom WMA implementation."""
         data = np.asarray(data, dtype=float)
         n = len(data)
@@ -1297,111 +1256,8 @@ class TaLibWrapper:
         return result
 
     @staticmethod
-    def _atr_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
-        period: int = 14
-    ) -> np.ndarray:
-        """Custom ATR implementation."""
-        high = np.asarray(high, dtype=float)
-        low = np.asarray(low, dtype=float)
-        close = np.asarray(close, dtype=float)
-
-        # True Range
-        tr1 = high - low
-        tr2 = np.abs(high - np.roll(close, 1))
-        tr3 = np.abs(low - np.roll(close, 1))
-        tr = np.maximum(tr1, np.maximum(tr2, tr3))
-        tr[0] = tr1[0]  # First value is just high - low
-
-        # ATR is EMA of True Range
-        atr = TaLibWrapper._ema_custom(tr, period)
-
-        return atr
-
-    @staticmethod
-    def _bbands_custom(
-        data: Union[np.ndarray, pd.Series],
-        period: int = 20,
-        nbdevup: float = 2.0,
-        nbdevdn: float = 2.0
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Custom Bollinger Bands implementation."""
-        data = np.asarray(data, dtype=float)
-
-        # Middle band is SMA
-        middle = TaLibWrapper._sma_custom(data, period)
-
-        # Standard deviation
-        std = np.full_like(data, np.nan)
-        for i in range(period - 1, len(data)):
-            std[i] = np.std(data[i - period + 1:i + 1], ddof=1)
-
-        # Upper and lower bands
-        upper = middle + nbdevup * std
-        lower = middle - nbdevdn * std
-
-        return upper, middle, lower
-
-    @staticmethod
-    def _cci_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
-        period: int = 20
-    ) -> np.ndarray:
-        """Custom CCI implementation."""
-        high = np.asarray(high, dtype=float)
-        low = np.asarray(low, dtype=float)
-        close = np.asarray(close, dtype=float)
-
-        # Typical Price
-        tp = (high + low + close) / 3
-
-        # SMA of Typical Price
-        tp_sma = TaLibWrapper._sma_custom(tp, period)
-
-        # Mean Deviation
-        mean_dev = np.zeros_like(tp)
-        for i in range(period - 1, len(tp)):
-            mean_dev[i] = np.mean(np.abs(tp[i-period+1:i+1] - tp_sma[i-period+1]))
-
-        # CCI
-        cci = (tp - tp_sma) / (0.015 * np.where(mean_dev == 0, 1e-8, mean_dev))
-
-        # Pad to match input length
-        result = np.full(len(tp), np.nan)
-        result[period-1:] = cci[period-1:]
-        return result
-
-    @staticmethod
-    def _stoch_custom(
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
-        fastk_period: int = 14,
-        slowk_period: int = 3,
-        slowd_period: int = 3
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Custom Stochastic Oscillator implementation."""
-        high = np.asarray(high, dtype=float)
-        low = np.asarray(low, dtype=float)
-        close = np.asarray(close, dtype=float)
-
-        # Fast %K
-        lowest_low = pd.Series(low).rolling(window=fastk_period).min().values
-        highest_high = pd.Series(high).rolling(window=fastk_period).max().values
-        fastk = 100 * (close - lowest_low) / (highest_high - lowest_low)
-
-        # Slow %K (SMA of Fast %K)
-        slowk = TaLibWrapper._sma_custom(fastk, slowk_period)
-
-        # Slow %D (SMA of Slow %K)
-        slowd = TaLibWrapper._sma_custom(slowk, slowd_period)
-
-        return slowk, slowd
-    return {
+    def get_indicator_info() -> Dict[str, Dict[str, Any]]:
+        return {
         "SMA": {
             "description": "Simple Moving Average",
             "talib_available": TALIB_AVAILABLE,

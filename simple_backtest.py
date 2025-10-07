@@ -12,7 +12,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 import numpy as np
-import pandas as pd
+from ztb.utils.data_utils import load_csv_data_optimized
 from stable_baselines3 import PPO
 from ztb.trading.environment.environment import HeavyTradingEnv
 
@@ -22,7 +22,7 @@ def run_simple_backtest(model_path="models/progress_bar_test.zip", data_path="ml
     print(f"Loading model from {model_path}")
 
     # Load data
-    df = pd.read_csv(data_path)
+    df = load_csv_data_optimized(data_path)
     print(f"Loaded {len(df)} rows of data")
 
     # Create environment

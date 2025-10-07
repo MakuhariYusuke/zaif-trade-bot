@@ -128,10 +128,6 @@ def validate_config_dict(
     Returns:
         True if validation passes, False otherwise
     """
-    if not isinstance(config, dict):
-        logger.error("Configuration must be a dictionary")
-        return False
-
     missing_keys = set(required_keys) - set(config.keys())
     if missing_keys:
         logger.error(f"Missing required configuration keys: {missing_keys}")

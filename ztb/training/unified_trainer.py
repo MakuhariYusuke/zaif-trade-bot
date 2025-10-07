@@ -56,6 +56,7 @@ import os
 
 from ztb.utils.errors import safe_operation
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.data_utils import load_csv_data_optimized
 
 logger = get_logger(__name__)
 
@@ -294,7 +295,7 @@ class UnifiedTrainer:
 
                 data_path = self.config.get("data_path")
                 if data_path:
-                    df = pd.read_csv(data_path)
+                    df = load_csv_data_optimized(data_path)
                     # Auto-detect feature columns (exclude meta columns)
                     exclude_cols = {
                         "ts",
