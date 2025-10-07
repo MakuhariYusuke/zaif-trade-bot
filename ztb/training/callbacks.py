@@ -425,3 +425,91 @@ class CompositeTrainingCallback(BaseCallback):
             self.progress.stop()
             self.progress = None
             self.task_id = None
+
+
+class CheckpointGCCallback(BaseCallback):
+    """
+    Callback to run checkpoint garbage collection after each checkpoint save.
+    
+    Integrates with CheckpointGarbageCollector from scripts/gc_artifacts.py
+    to automatically clean up old checkpoints during 1M long-run training.
+    
+    Usage:
+        from ztb.training.callbacks import CheckpointGCCallback
+        
+        gc_callback = CheckpointGCCallback(
+            checkpoint_dir="checkpoints/ensemble_C_1M",
+            keep_last=4,
+            keep_best=3,
+            ttl_days=14,
+            check_interval=25000,  # Run GC every 25k steps
+        )
+        
+        model.learn(total_timesteps=1_000_000, callback=gc_callback)
+    """
+
+    def __init__(
+        self,
+        checkpoint_dir: str,
+        keep_last: int = 4,
+        keep_best: int = 3,
+        ttl_days: int = 14,
+        check_interval: int = 25000,
+        verbose: int = 0,
+    ):
+        super().__init__(verbose)
+        self.checkpoint_dir = checkpoint_dir
+        self.keep_last = keep_last
+        self.keep_best = keep_best
+        self.ttl_days = ttl_days
+        self.check_interval = check_interval
+        self.last_gc_step = 0
+
+    def _on_step(self) -> bool:
+        """Run GC at specified intervals."""
+        # Check if we should run GC
+        if self.num_timesteps - self.last_gc_step >= self.check_interval:
+            self._run_gc()
+            self.last_gc_step = self.num_timesteps
+        return True
+
+    def _run_gc(self) -> None:
+        """Execute checkpoint garbage collection."""
+        try:
+            # Import here to avoid circular dependency
+            from pathlib import Path
+            import sys
+
+            # Add scripts directory to path
+            scripts_dir = Path(__file__).parent.parent.parent / "scripts"
+            if str(scripts_dir) not in sys.path:
+                sys.path.insert(0, str(scripts_dir))
+
+            from gc_artifacts import CheckpointGarbageCollector
+
+            gc = CheckpointGarbageCollector(
+                checkpoint_dir=Path(self.checkpoint_dir),
+                keep_last=self.keep_last,
+                keep_best=self.keep_best,
+                ttl_days=self.ttl_days,
+                dry_run=False,  # Execute cleanup
+            )
+
+            if self.verbose > 0:
+                from ztb.utils.logging_utils import get_logger
+
+                logger = get_logger(__name__)
+                logger.info(
+                    f"Running checkpoint GC at step {self.num_timesteps} "
+                    f"(interval={self.check_interval})"
+                )
+
+            # Run GC (will log summary)
+            gc.run()
+
+        except Exception as e:
+            # Don't halt training on GC failure
+            from ztb.utils.logging_utils import get_logger
+
+            logger = get_logger(__name__)
+            logger.error(f"Checkpoint GC failed at step {self.num_timesteps}: {e}")
