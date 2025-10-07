@@ -27,6 +27,7 @@ from ztb.training.eval_gates import EvalGates
 from ztb.training.policy_utils import neutralize_policy_bias
 from ztb.training.ppo_config import DEFAULT_PPO_CONFIG, DEFAULT_REWARD_SCALING, DEFAULT_TOTAL_TIMESTEPS, DEFAULT_INITIAL_PORTFOLIO_VALUE
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.data_utils import load_csv_data_optimized
 
 logger = get_logger(__name__)
 
@@ -260,9 +261,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             Subsequent calls will reuse the trained model unless manually reset.
         """
         if self.model is None:
-            import pandas as pd
-
-            df = pd.read_csv(self.data_path)
+            df = load_csv_data_optimized(self.data_path)
             # Use self.config (Dict) directly, as HeavyTradingEnv expects Dict
             env = HeavyTradingEnv(df=df, config=self.config)
 
@@ -301,9 +300,15 @@ from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback
 
 from ztb.training.custom_ppo import CustomPPO
+from ztb.training.trainer_params import TrainerParams
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.base_trainer import BaseTrainer
+from ztb.training.callbacks import CompositeTrainingCallback
 from ztb.training.eval_gates import EvalGates
+from ztb.training.policy_utils import neutralize_policy_bias
+from ztb.training.ppo_config import DEFAULT_PPO_CONFIG, DEFAULT_REWARD_SCALING, DEFAULT_TOTAL_TIMESTEPS, DEFAULT_INITIAL_PORTFOLIO_VALUE
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.data_utils import load_csv_data_optimized
 
 logger = get_logger(__name__)
 
@@ -399,9 +404,7 @@ class PPOTrainer(BaseTrainer, PPOTrainerProtocol):
         """Train the PPO model."""
         if self.model is None:
             # Load data
-            import pandas as pd
-
-            df = pd.read_csv(self.data_path)
+            df = load_csv_data_optimized(self.data_path)
 
             # Create environment
             env = HeavyTradingEnv(df=df, config=self.config)

@@ -118,3 +118,85 @@ def load_csv_data_iter(
         return pd.read_csv(file_path, chunksize=chunksize, **kwargs)
     except Exception as e:
         raise ValueError(f"Failed to load data from {file_path}: {e}") from e
+
+
+def load_csv_data_optimized(
+    file_path: str | Path,
+    usecols: list[str] | None = None,
+    dtype: dict[str, Any] | None = None,
+    parse_dates: list[str] | None = None,
+    **kwargs: Any
+) -> pd.DataFrame:
+    """
+    Load CSV data with memory optimization.
+
+    Args:
+        file_path: Path to the CSV file
+        usecols: List of columns to read (None for all columns)
+        dtype: Dictionary mapping column names to dtypes for memory optimization
+        **kwargs: Additional arguments passed to pd.read_csv
+
+    Returns:
+        Loaded DataFrame with optimized memory usage
+
+    Raises:
+        FileNotFoundError: If the file doesn't exist
+        ValueError: If the file cannot be loaded
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"Data file not found: {file_path}")
+
+    try:
+        # Default dtype optimizations for common trading data columns
+        if dtype is None:
+            dtype = {
+                # Price and volume data - use float32 for memory efficiency
+                'close': 'float32', 'high': 'float32', 'low': 'float32', 'open': 'float32',
+                'volume': 'float32', 'qty': 'float32', 'price': 'float32',
+                # Technical indicators - float32 is usually sufficient
+                'rsi': 'float32', 'sma_short': 'float32', 'sma_long': 'float32',
+                'ADX': 'float32', 'ATR': 'float32', 'ATR_simplified': 'float32',
+                'BB_Lower': 'float32', 'BB_Middle': 'float32', 'BB_Position': 'float32',
+                'BB_Upper': 'float32', 'BB_Width': 'float32', 'CCI': 'float32',
+                'DOW': 'float32', 'Donchian_Pos_2': 'float32', 'Donchian_Slope_20': 'float32',
+                'Donchian_Width_Rel_20': 'float32', 'EMACross_Diff': 'float32',
+                'EMACross_Signal': 'float32', 'HV': 'float32', 'HeikinAshi_Close': 'float32',
+                'HeikinAshi_High': 'float32', 'HeikinAshi_Low': 'float32',
+                'HeikinAshi_Open': 'float32', 'HourOfDay': 'int32',
+                'Ichimoku_Chikou': 'float32', 'Ichimoku_Cloud_Thickness': 'float32',
+                'Ichimoku_Composite_Signal': 'float32', 'Ichimoku_Cross': 'float32',
+                'Ichimoku_Diff_Norm': 'float32', 'Ichimoku_Kijun': 'float32',
+                'Ichimoku_Price_Cloud_Distance': 'float32', 'Ichimoku_Senkou_A': 'float32',
+                'Ichimoku_Senkou_B': 'float32', 'Ichimoku_Tenkan': 'float32',
+                'Ichimoku_Trend': 'float32', 'KAMA': 'float32', 'Kalman_Estimate': 'float32',
+                'Kalman_Residual': 'float32', 'Kalman_Residual_Norm': 'float32',
+                'MACD': 'float32', 'MFI': 'float32', 'MinusDI': 'float32', 'OBV': 'float32',
+                'PlusDI': 'float32', 'PriceVolumeCorr': 'float32', 'ROC': 'float32',
+                'RSI': 'float32', 'ReturnMA_Medium': 'float32', 'ReturnMA_Short': 'float32',
+                'ReturnStdDev': 'float32', 'Stochastic': 'float32', 'Supertrend': 'float32',
+                'Supertrend_Direction': 'float32', 'TEMA': 'float32', 'VWAP': 'float32',
+                'ZScore': 'float32', 'atr_10': 'float32', 'ema_5': 'float32',
+                'rolling_mean_20': 'float32',
+                # Integer columns
+                'win': 'int32'
+            }
+
+        # Default parse_dates for timestamp columns
+        if parse_dates is None:
+            parse_dates = ['timestamp']
+
+        df = cast(pd.DataFrame, pd.read_csv(
+            file_path,
+            usecols=usecols,
+            dtype=cast(Any, dtype),
+            parse_dates=parse_dates,
+            **kwargs
+        ))
+
+        if df.empty:
+            raise ValueError(f"Loaded data is empty: {file_path}")
+
+        return df
+    except Exception as e:
+        raise ValueError(f"Failed to load optimized data from {file_path}: {e}") from e

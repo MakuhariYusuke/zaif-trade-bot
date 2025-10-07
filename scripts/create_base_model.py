@@ -13,10 +13,10 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import argparse
-import pandas as pd
 import numpy as np
 from sb3_contrib import MaskablePPO
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.utils.data_utils import load_csv_data_optimized
 
 
 def create_base_model(
@@ -45,7 +45,7 @@ def create_base_model(
     
     # Load data
     print("Loading data...")
-    df = pd.read_csv(data_path)
+    df = load_csv_data_optimized(data_path)
     print(f"  Loaded {len(df)} rows, {len(df.columns)} columns")
     
     # Drop non-feature columns

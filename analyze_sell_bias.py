@@ -8,9 +8,9 @@ import os
 import sys
 import json
 import numpy as np
-import pandas as pd
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, List
+from ztb.utils.data_utils import load_csv_data_optimized
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -37,7 +37,7 @@ def analyze_reward_function() -> None:
         print(f"データファイルが見つかりません: {data_path}")
         return
 
-    df = pd.read_csv(data_path)
+    df = load_csv_data_optimized(data_path)
     print(f"データ読み込み完了: {len(df)} 行")
 
     # 環境設定
@@ -133,7 +133,7 @@ def analyze_data_distribution() -> None:
         print(f"データファイルが見つかりません: {data_path}")
         return
 
-    df = pd.read_csv(data_path)
+    df = load_csv_data_optimized(data_path)
 
     # 価格変動の分析
     if 'close' in df.columns:
@@ -158,7 +158,7 @@ def test_environment_bias() -> None:
         print(f"データファイルが見つかりません: {data_path}")
         return
 
-    df = pd.read_csv(data_path)
+    df = load_csv_data_optimized(data_path)
 
     # 異なる設定での環境テスト
     configs = [

@@ -19,6 +19,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+from ztb.utils.data_utils import load_csv_data_optimized
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -157,7 +158,7 @@ def main():
     
     # Load data
     print("Loading dataset...")
-    df = pd.read_csv(args.input)
+    df = load_csv_data_optimized(args.input)
     print(f"  Original size: {len(df)} rows, {len(df.columns)} columns")
     
     # Check action distribution (before)

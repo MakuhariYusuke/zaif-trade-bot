@@ -153,23 +153,17 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         self.allow_reverse = params.allow_reverse
 
         # Initialize SELL bias mitigation components
-        self.lagrange = None
+        # ★ NOTE: Lagrange, PAN, and Target Entropy are now integrated into CustomPPO
+        # We only keep separate instances for Probes and Weight Calculator
         self.probe = None
         self.weight_calc = None
-        self.pan_normalizer = None
-        self.entropy_controller = None
-        self.stratified_sampler = None
+
+        # ★ REMOVED: self.lagrange, self.pan_normalizer, self.entropy_controller
+        # These are now created and managed by CustomPPO model
 
         if params.enable_lagrange:
-            self.lagrange = LagrangeConstraint(
-                target_action="SELL",
-                r_target=0.15,  # 15% minimum SELL rate
-                tolerance=0.05,
-                eta=1e-3,    # Dual learning rate
-                lambda_max=1.0,  # Maximum penalty
-                warmup_steps=5000,  # Warmup period
-            )
-            logger.info("Lagrange constraint enabled (r_target=15%, warmup=5k steps)")
+            # ★ Lagrange is created by CustomPPO, just log here
+            logger.info("Lagrange constraint will be enabled in CustomPPO (r_target=15%, warmup=5k steps)")
 
         if params.enable_probes:
             probe_path = params.probe_csv_path or f"{params.checkpoint_dir}/sell_probe.csv"
@@ -229,13 +223,20 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         """Create composite training callback with SELL bias mitigation."""
         base_callback = PPOTrainer._create_callback(self)  # type: ignore[attr-defined]
 
+        # ★ Get components from model (not from self)
+        # Lagrange, PAN, and Entropy Controller are managed by CustomPPO
+        lagrange = self.model.lagrange if self.model is not None else None
+        pan_normalizer = self.model.pan_normalizer if self.model is not None else None
+        entropy_controller = self.model.entropy_controller if self.model is not None else None
+        stratified_sampler = self.model.stratified_sampler if self.model is not None else None
+
         mitigation_callback = SELLBiasMitigationCallback(
-            lagrange=self.lagrange,
+            lagrange=lagrange,
             probe=self.probe,
             weight_calc=self.weight_calc,
-            pan_normalizer=self.pan_normalizer,  # New
-            entropy_controller=self.entropy_controller,  # New
-            stratified_sampler=self.stratified_sampler,  # New
+            pan_normalizer=pan_normalizer,
+            entropy_controller=entropy_controller,
+            stratified_sampler=stratified_sampler,
             verbose=0,
         )
 
@@ -372,10 +373,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
     def _final_validation(self) -> None:
         """Perform final validation of SELL bias mitigation."""
-        if self.lagrange is None:
+        # ★ Get Lagrange from model (not self.lagrange which doesn't exist)
+        if self.model is None or not hasattr(self.model, 'lagrange') or self.model.lagrange is None:
+            logger.warning("Lagrange constraint not available for final validation")
             return
 
-        final_stats = self.lagrange.get_statistics()
+        final_stats = self.model.lagrange.get_statistics()
         logger.info("Final Lagrange Statistics:")
         logger.info(f"  SELL Rate (avg): {final_stats.get('r_sell_mean', 0):.1%}")
         logger.info(f"  Lambda (final): {final_stats.get('lambda_dual', 0):.6f}")
@@ -450,7 +453,8 @@ def test_sell_mitigation_trainer() -> None:
     trainer = SELLBiasMitigationPPOTrainer(params)
 
     print("✅ SELL Bias Mitigation Trainer created successfully")
-    print(f"   Lagrange: {'✅' if trainer.lagrange else '❌'}")
+    # ★ NOTE: Lagrange is now in model, not trainer
+    print(f"   Lagrange: Integrated into CustomPPO")
     print(f"   Probes: {'✅' if trainer.probe else '❌'}")
     print(f"   Weights: {'✅' if trainer.weight_calc else '❌'}")
 

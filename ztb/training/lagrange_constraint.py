@@ -13,9 +13,10 @@ Where:
 Dual update: λ ← clip(λ + η * (|r_target - r_actual| - tolerance), 0, λ_max)
 """
 
-from typing import Dict, Tuple, Literal
+from typing import Dict, Tuple, Literal, Any
 import numpy as np
 import torch
+from numpy.typing import NDArray
 
 
 ActionType = Literal["HOLD", "BUY", "SELL"]
@@ -69,8 +70,8 @@ class LagrangeConstraint:
     
     def compute_penalty(
         self,
-        actions: np.ndarray,
-        legal_masks: np.ndarray,
+        actions: NDArray[Any],
+        legal_masks: NDArray[Any],
     ) -> Tuple[float, Dict[str, float]]:
         """
         Compute Lagrange penalty term.
@@ -169,7 +170,7 @@ class LagrangeConstraint:
             "constraint_active": self.step_count > self.warmup_steps,
         }
     
-    def reset(self):
+    def reset(self) -> None:
         """Reset constraint state."""
         self.lambda_dual = 0.0
         self.step_count = 0
@@ -180,8 +181,8 @@ class LagrangeConstraint:
 
 def apply_lagrange_to_loss(
     ppo_loss: torch.Tensor,
-    actions: np.ndarray,
-    legal_masks: np.ndarray,
+    actions: NDArray[Any],
+    legal_masks: NDArray[Any],
     lagrange: LagrangeConstraint,
 ) -> Tuple[torch.Tensor, Dict[str, float]]:
     """
@@ -206,7 +207,7 @@ def apply_lagrange_to_loss(
     return constrained_loss, info
 
 
-def test_lagrange_constraint():
+def test_lagrange_constraint() -> None:
     """Test Lagrange constraint with synthetic data."""
     print("Testing Lagrange Constraint...")
     

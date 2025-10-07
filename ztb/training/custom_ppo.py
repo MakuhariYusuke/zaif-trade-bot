@@ -28,6 +28,7 @@ from stable_baselines3.common.utils import obs_as_tensor
 from ztb.training.adv_norm import PerActionAdvantageNormalizer
 from ztb.training.entropy_temperature import TargetEntropyController
 from ztb.training.stratified_sampler import StratifiedSampler
+from ztb.training.lagrange_constraint import LagrangeConstraint
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -77,10 +78,18 @@ class CustomPPO(MaskablePPO):
         enable_pan: bool = True,
         enable_target_entropy: bool = True,
         enable_stratified_sampling: bool = False,  # Disabled by default (complex integration)
+        enable_lagrange: bool = False,  # Lagrange constraint for action balance
         pan_epsilon: float = 1e-8,
         target_entropy_ratio: float = 0.7,
         lr_temperature: float = 3e-4,
         initial_temperature: float = 0.01,
+        # Lagrange constraint parameters
+        lagrange_target_action: str = "SELL",
+        lagrange_r_target: float = 0.15,
+        lagrange_tolerance: float = 0.05,
+        lagrange_eta: float = 1e-3,
+        lagrange_lambda_max: float = 1.0,
+        lagrange_warmup_steps: int = 5000,
     ):
         # Initialize parent (note: MaskablePPO doesn't support use_sde and sde_sample_freq)
         super().__init__(
@@ -114,11 +123,13 @@ class CustomPPO(MaskablePPO):
         self.enable_pan = enable_pan
         self.enable_target_entropy = enable_target_entropy
         self.enable_stratified_sampling = enable_stratified_sampling
+        self.enable_lagrange = enable_lagrange
         
         # Initialize custom components
         self.pan_normalizer: Optional[PerActionAdvantageNormalizer] = None
         self.entropy_controller: Optional[TargetEntropyController] = None
         self.stratified_sampler: Optional[StratifiedSampler] = None
+        self.lagrange: Optional[LagrangeConstraint] = None
         
         if enable_pan:
             # Determine number of actions from action space
@@ -158,6 +169,17 @@ class CustomPPO(MaskablePPO):
                 regime_threshold=0.001,
             )
             logger.info("✓ Stratified Sampler enabled (experimental)")
+        
+        if enable_lagrange:
+            self.lagrange = LagrangeConstraint(
+                target_action=lagrange_target_action,  # type: ignore[arg-type]
+                r_target=lagrange_r_target,
+                tolerance=lagrange_tolerance,
+                eta=lagrange_eta,
+                lambda_max=lagrange_lambda_max,
+                warmup_steps=lagrange_warmup_steps,
+            )
+            logger.info(f"✓ Lagrange Constraint enabled (target={lagrange_target_action}, r_target={lagrange_r_target:.1%})")
     
     def train(self) -> None:
         """
@@ -226,6 +248,26 @@ class CustomPPO(MaskablePPO):
                     if self.normalize_advantage and len(advantages) > 1:
                         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
                 
+                # ★ CUSTOM: Compute Lagrange penalty (if enabled)
+                lagrange_penalty = 0.0
+                if self.enable_lagrange and self.lagrange is not None:
+                    # Get action masks from rollout data (MaskableRolloutBuffer stores these)
+                    # action_masks shape: [batch_size, n_actions]
+                    if hasattr(rollout_data, 'action_masks'):
+                        action_masks_np = rollout_data.action_masks.cpu().numpy()
+                        actions_np = actions.cpu().numpy()
+                        
+                        # Compute penalty and update dual variable
+                        penalty_value, lagrange_info = self.lagrange.compute_penalty(
+                            actions=actions_np,
+                            legal_masks=action_masks_np,
+                        )
+                        lagrange_penalty = penalty_value
+                        
+                        # Log Lagrange statistics
+                        for key, value in lagrange_info.items():
+                            self.logger.record(f"train/lagrange_{key}", value)
+                
                 # Evaluate policy
                 values, log_prob, entropy = self.policy.evaluate_actions(
                     rollout_data.observations, actions
@@ -293,6 +335,12 @@ class CustomPPO(MaskablePPO):
                 
                 # Total loss
                 loss = policy_loss + ent_coef_current * entropy_loss + self.vf_coef * value_loss
+                
+                # ★ CUSTOM: Add Lagrange penalty to total loss
+                # Penalty is positive when constraint is violated, so we ADD it to minimize
+                if self.enable_lagrange and lagrange_penalty != 0.0:
+                    lagrange_penalty_tensor = th.tensor(lagrange_penalty, device=self.device, dtype=th.float32)
+                    loss = loss + lagrange_penalty_tensor
                 
                 # Calculate approximate KL divergence
                 with th.no_grad():
