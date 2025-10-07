@@ -28,6 +28,7 @@ from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnviro
 from ztb.training.ppo_config import get_ppo_config
 from ztb.trading.env_config import get_trading_env_config, TradingEnvConfig
 from ztb.utils import DiscordNotifier
+from ztb.utils.data_utils import load_csv_data_optimized
 from ztb.utils.file_utils import safe_json_load
 from ztb.inference.decode import decode_action, InferenceConfig
 
@@ -56,8 +57,18 @@ class PaperTrader:
         self.episode_results: List[Dict[str, Any]] = []
         self._normalization_stats: Optional[Any] = None  # Store loaded normalization stats
 
+        # Load test data first
+        self.logger.info(f"Loading test data from {self.test_data_path}")
+        self.test_df = load_csv_data_optimized(str(self.test_data_path))
+        self.logger.info(f"Loaded {len(self.test_df)} rows of test data")
+
         # Initialize environment
         self.env = self._create_env()
+
+        # Load model
+        self.logger.info(f"Loading model from {self.model_path}")
+        self._load_model()
+        self.logger.info("Model loaded successfully")
 
         # Trading results
         self.trades: List[Dict[str, Any]] = []
@@ -210,7 +221,7 @@ class PaperTrader:
     def _load_test_data(self) -> None:
         """Load test data for evaluation."""
         if self.test_data_path.exists():
-            self.test_df = pd.read_csv(self.test_data_path)
+            self.test_df = load_csv_data_optimized(self.test_data_path)
             # Use a subset for testing (e.g., last 20% of data)
             test_size = int(len(self.test_df) * 0.2)
             self.test_df = self.test_df.tail(test_size)
