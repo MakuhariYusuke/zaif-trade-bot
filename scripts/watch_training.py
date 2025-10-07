@@ -3,6 +3,7 @@
 学習進捗リアルタイム監視ツール
 
 TensorBoardなしでコマンドラインから学習進捗を確認できます。
+1Mロングラン設計の早期停止条件を監視します。
 
 Usage:
     python scripts/watch_training.py --log-dir logs/ensemble_B_100k_test
@@ -14,8 +15,20 @@ import argparse
 import time
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime
+from collections import deque
+
+# Import 1M Long-Run constants
+from ztb.training.ppo_config import (
+    MIN_LEGAL_SELL_RATE,
+    SELL_RATE_PATIENCE_STEPS,
+    GRAD_NORM_SELL_MIN,
+    SHARPE_PROXY_THRESHOLD,
+    SHARPE_PATIENCE_EVALS,
+    KL_VIOLATION_THRESHOLD,
+    KL_CRITICAL_THRESHOLD,
+)
 
 try:
     from tensorboard.backend.event_processing import event_accumulator

@@ -20,8 +20,11 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
+from ztb.training.custom_ppo import CustomPPO
+from ztb.training.trainer_params import SELLMitigationParams
 from ztb.trading.environment.environment import HeavyTradingEnv
-from ztb.training.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer, PPOConfig
+from ztb.training.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
+from ztb.training.ppo_config import PPOConfig
 from ztb.training.lagrange_constraint import LagrangeConstraint, apply_lagrange_to_loss
 from ztb.training.grad_probes import SELLGradientProbe, create_failsafe_dump
 from ztb.training.weights import ActionWeightCalculator
@@ -29,6 +32,7 @@ from ztb.training.adv_norm import PerActionAdvantageNormalizer  # New: PAN
 from ztb.training.entropy_temperature import TargetEntropyController  # New: Target Entropy
 from ztb.training.stratified_sampler import StratifiedSampler  # New: Stratified Sampling
 from ztb.types.generics import ConfigurableMixin, ConfigDict
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -120,29 +124,17 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
     def __init__(
         self,
-        data_path: str,
-        config: PPOConfig,
-        checkpoint_dir: str,
-        enable_lagrange: bool = True,
-        enable_probes: bool = True,
-        enable_weights: bool = True,
-        # New: 4 high-impact modifications
-        enable_pan: bool = True,  # Per-Action Advantage Normalization
-        enable_target_entropy: bool = True,  # Automatic entropy control
-        enable_stratified_sampling: bool = True,  # Stratified mini-batch
-        allow_reverse: bool = False,  # Reverse-as-Close flag (env config)
-        probe_csv_path: Optional[str] = None,
-        **kwargs: Any
+        params: SELLMitigationParams,
     ):
-        super().__init__(data_path, config, checkpoint_dir, **kwargs)
+        super().__init__(params)
 
-        self.enable_lagrange = enable_lagrange
-        self.enable_probes = enable_probes
-        self.enable_weights = enable_weights
-        self.enable_pan = enable_pan
-        self.enable_target_entropy = enable_target_entropy
-        self.enable_stratified_sampling = enable_stratified_sampling
-        self.allow_reverse = allow_reverse
+        self.enable_lagrange = params.enable_lagrange
+        self.enable_probes = params.enable_probes
+        self.enable_weights = params.enable_weights
+        self.enable_pan = params.enable_pan
+        self.enable_target_entropy = params.enable_target_entropy
+        self.enable_stratified_sampling = params.enable_stratified_sampling
+        self.allow_reverse = params.allow_reverse
 
         # Initialize SELL bias mitigation components
         self.lagrange = None
@@ -152,7 +144,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         self.entropy_controller = None
         self.stratified_sampler = None
 
-        if enable_lagrange:
+        if params.enable_lagrange:
             self.lagrange = LagrangeConstraint(
                 target_action="SELL",
                 r_target=0.15,  # 15% minimum SELL rate
@@ -163,8 +155,8 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             )
             logger.info("Lagrange constraint enabled (r_target=15%, warmup=5k steps)")
 
-        if enable_probes:
-            probe_path = probe_csv_path or f"{checkpoint_dir}/sell_probe.csv"
+        if params.enable_probes:
+            probe_path = params.probe_csv_path or f"{params.checkpoint_dir}/sell_probe.csv"
             self.probe = SELLGradientProbe(
                 grad_norm_threshold=1e-6,
                 advantage_threshold=0.0,
@@ -174,7 +166,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             )
             logger.info(f"Gradient probes enabled (failsafe after 200 unhealthy steps, CSV: {probe_path})")
 
-        if enable_weights:
+        if params.enable_weights:
             self.weight_calc = ActionWeightCalculator(
                 beta=3.0,
                 ema_alpha=0.1,
@@ -186,7 +178,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             logger.info("Action weighting enabled (beta=3.0, ema_alpha=0.1)")
         
         # New: Initialize PAN (Per-Action Advantage Normalization)
-        if enable_pan:
+        if params.enable_pan:
             self.pan_normalizer = PerActionAdvantageNormalizer(
                 n_actions=3,  # HOLD, BUY, SELL
                 epsilon=1e-8,
@@ -195,7 +187,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             logger.info("PAN (Per-Action Advantage Normalization) enabled")
         
         # New: Initialize Target Entropy Controller
-        if enable_target_entropy:
+        if params.enable_target_entropy:
             self.entropy_controller = TargetEntropyController(
                 n_actions=3,
                 target_entropy_ratio=0.7,  # 0.7 × log(3) ≈ 0.769
@@ -205,7 +197,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             logger.info("Target Entropy Controller enabled (target=0.769)")
         
         # New: Initialize Stratified Sampler
-        if enable_stratified_sampling:
+        if params.enable_stratified_sampling:
             self.stratified_sampler = StratifiedSampler(
                 n_actions=3,
                 regime_window=20,
