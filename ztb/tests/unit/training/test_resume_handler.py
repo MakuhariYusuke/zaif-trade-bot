@@ -4,7 +4,7 @@ Unit tests for resume_handler.py module.
 
 from unittest.mock import Mock, patch
 
-from ztb.training.resume_handler import ResumeHandler, ResumeState
+from ztb.training.checkpoint.resume_handler import ResumeHandler, ResumeState
 
 
 class TestResumeHandler:

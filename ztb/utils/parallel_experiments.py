@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
@@ -446,7 +446,7 @@ class ParallelExperimentRunner:
             # Run experiment
             result = experiment.execute()
 
-            return cast(ExperimentResult, result)
+            return result  # type: ignore[return-value]
 
         except Exception as e:
             # Return error result（効率化: エラーハンドリング改善）

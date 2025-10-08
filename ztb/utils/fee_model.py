@@ -6,7 +6,7 @@ Fee model abstraction for trading costs
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 from ztb.utils.file_utils import safe_json_load
 
@@ -69,7 +69,7 @@ class FixedFeeModel(FeeModel):
 class TieredFeeModel(FeeModel):
     """Tiered fee model with volume-based rates"""
 
-    def __init__(self, tiers: Optional[Dict[str, List[Any]]] = None):
+    def __init__(self, tiers: Optional[Dict[str, List[Tuple[float, float]]]] = None):
         """
         Initialize tiered fee model
 
@@ -120,8 +120,8 @@ class TieredFeeModel(FeeModel):
         # For now, return the base rate.
         # In a real implementation, this would track volume.
         if trade_type.lower() == "sell":
-            return cast(float, self.sell_tiers[0][1])
-        return cast(float, self.buy_tiers[0][1])
+            return self.sell_tiers[0][1]
+        return self.buy_tiers[0][1]
 
 
 class ExchangeFeeModel(FeeModel):

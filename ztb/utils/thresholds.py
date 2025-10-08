@@ -3,7 +3,7 @@ Adaptive Threshold Manager for dynamic quality gates
 """
 
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
 import numpy as np
 
@@ -67,7 +67,7 @@ class AdaptiveThresholdManager:
                 else:
                     self.thresholds_cache[metric_name] = 0.0
 
-        return cast(float, self.thresholds_cache[metric_name])
+        return self.thresholds_cache[metric_name]
 
     def get_adaptive_gates(self) -> Dict[str, float]:
         """Get adaptive quality gates based on historical data"""

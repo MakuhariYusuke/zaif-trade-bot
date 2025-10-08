@@ -4,7 +4,6 @@
 import gc
 import time
 from collections import deque
-from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -14,7 +13,6 @@ from typing import (
     Optional,
     Set,
     Tuple,
-    TypedDict,
     Union,
     cast,
 )
@@ -30,56 +28,19 @@ from pandas.api import types as ptypes
 from ztb.features.registry import FeatureRegistry
 from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 from ztb.utils.fee_model import ExchangeFeeModel
-from ztb.utils.memory.dtypes import optimize_dtypes
 from ztb.types.protocols import TradingEnvironment
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
-from ztb.trading.environment.components import PositionManager, RewardCalculator
+from ztb.trading.environment.components import (
+    ActionValidator,
+    DataProcessor,
+    MemoryManager,
+    ObservationBuilder,
+    PositionManager,
+    RewardCalculator,
+    StreamingHandler,
+)
 
-# Type aliases for better type safety
-Observation = np.ndarray[tuple[int, ...], np.dtype[np.float32]]
-Action = int
-Reward = float
-
-
-class InfoDict(TypedDict, total=False):
-    """Info dictionary returned by environment step/reset.
-    
-    Extends gymnasium's standard info dict with trading-specific information.
-    """
-    # Gymnasium standard fields (inherited)
-    # current_step: int
-    # total_steps: int
-    
-    # Trading-specific fields
-    position: float
-    total_pnl: float
-    trades_count: int
-    features: List[str]
-    config: "EnvironmentConfig"  # Forward reference to avoid circular import
-    pnl: float
-    action: int
-    step: int
-    portfolio_value: float
-    atr: float
-    position_utilisation: float
-    action_masks: NDArray[np.bool_]
-
-
-class StatisticsDict(TypedDict, total=False):
-    """Statistics dictionary returned by get_statistics."""
-    total_reward: float
-    mean_reward: float
-    std_reward: float
-    sharpe_ratio: float
-    max_reward: float
-    total_trades: int
-    win_rate: float
-
-
-Info = InfoDict
-
-
-EPSILON = 1e-6  # 小さい値（ゼロ除算防止用）
+from ztb.trading.environment.types import EPSILON, StatisticsDict
 
 
 if TYPE_CHECKING:
@@ -119,41 +80,24 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
     - Features: Price data, technical indicators, risk metrics, position info
     """
 
+    # Class constants for better maintainability
+    DEFAULT_MEMORY_LOG_INTERVAL = 2000
+    DEFAULT_GC_STEP_INTERVAL = 1000
+    DEFAULT_MAX_HISTORY_LENGTH = 512
+    DEFAULT_MAX_ACTION_HISTORY = 256
+    DEFAULT_INVENTORY_WINDOW = 64
+    DEFAULT_VOLATILITY_WINDOW = 16
+    DEFAULT_MIN_WINDOW_SIZE = 8
+    DEFAULT_TRADE_INTERVAL_WINDOW = 32
+    DEFAULT_RANDOM_START_BUFFER = 100
+    DEFAULT_STREAM_BATCH_SIZE = 256
+    DEFAULT_PREPROCESS_CHUNK_SIZE = 32
+
     _current_episode_actions: List[int]
     portfolio_value_history: deque[float]  # Memory optimized: deque with maxlen
     # action_history: deque[int] - defined in __init__ with maxlen
 
-    def _log_memory_usage(
-        self, context: str, *, df_override: Optional[pd.DataFrame] = None
-    ) -> None:
-        if not getattr(self, "_memory_logging_enabled", False):
-            return
 
-        process = getattr(self, "_process", None)
-        if process is None:
-            process = psutil.Process()
-            self._process = process
-
-        rss_mb = process.memory_info().rss / 1024 / 1024
-        target_df = (
-            df_override if df_override is not None else getattr(self, "df", None)
-        )
-        df_mem_mb = (
-            target_df.memory_usage(deep=True).sum() / 1024 / 1024
-            if isinstance(target_df, pd.DataFrame)
-            else 0.0
-        )
-
-        message = f"[Memory][HeavyTradingEnv][{context}] df={df_mem_mb:.2f} MB RSS={rss_mb:.2f} MB"
-        print(message)
-
-        log_path = getattr(self, "_memory_log_path", None)
-        if log_path is not None:
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            with log_path.open("a", encoding="utf-8") as handle:
-                handle.write(
-                    f"{pd.Timestamp.now().isoformat()},{context},{df_mem_mb:.4f},{rss_mb:.4f}\n"
-                )
 
     def __init__(
         self,
@@ -176,6 +120,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             self.config = config
         else:
             self.config = EnvironmentConfig.from_dict(config)
+
+        self.random_start = random_start
 
         self._process = psutil.Process()
         # 報酬関連の安全なデフォルトを設定
@@ -219,106 +165,22 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         self.initial_portfolio_value = float(self.config.initial_portfolio_value)
         self.portfolio_value = self.initial_portfolio_value
 
-        inventory_window = max(8, self._get_reward_setting_int("inventory_window", 64))
-        volatility_window = max(
-            8, self._get_reward_setting_int("volatility_window", 16)
-        )
-        self.position_abs_history: deque[float] = deque(maxlen=inventory_window)
-        self.pnl_history: deque[float] = deque(maxlen=volatility_window)
-        self.trade_interval_history: deque[int] = deque(maxlen=32)
-        self._last_trade_step: Optional[int] = None
-        self._consecutive_trade_steps = 0
+        # Initialize all components
+        self._initialize_components(streaming_pipeline, stream_batch_size, df)
 
-        memory_log_path_cfg = getattr(self.config, "memory_log_path", None)
-        self._memory_log_path = (
-            Path(memory_log_path_cfg) if memory_log_path_cfg else None
-        )
-        if self._memory_log_path and not self._memory_log_path.exists():
-            self._memory_log_path.parent.mkdir(parents=True, exist_ok=True)
-            self._memory_log_path.write_text(
-                "timestamp,context,df_mb,rss_mb\n", encoding="utf-8"
-            )
+        # Initialize data structures
+        self._initialize_data_structures()
 
-        self._memory_logging_enabled = bool(
-            getattr(self.config, "memory_logging_enabled", False)
-        )
+        # Load and preprocess data
+        self._initialize_data(df)
 
-        memory_interval_cfg = getattr(self.config, "memory_log_interval_steps", None)
-        try:
-            self._memory_log_interval_steps = max(1, int(memory_interval_cfg or 2000))
-        except (TypeError, ValueError):
-            self._memory_log_interval_steps = 2000
+        # Initialize features and observation/action spaces
+        self._initialize_features_and_spaces(max_features)
 
-        gc_interval_cfg = getattr(self.config, "gc_collect_interval_steps", None)
-        try:
-            self._gc_step_interval = max(0, int(gc_interval_cfg or 0))  # Default to 0 for memory efficiency
-        except (TypeError, ValueError):
-            self._gc_step_interval = 0
+        # Initialize remaining components
+        self._initialize_remaining_components()
 
-        preprocess_chunk_cfg = getattr(self.config, "preprocess_chunk_size", None)
-        try:
-            self._preprocess_chunk_size = max(1, int(preprocess_chunk_cfg or 32))
-        except (TypeError, ValueError):
-            self._preprocess_chunk_size = 32
-
-        self._last_memory_log_step = 0
-        # Use random_start from parameter, fallback to config if available
-        self.random_start = random_start or getattr(self.config, "random_start", False)
-
-        self.streaming_pipeline = streaming_pipeline
-        self.stream_batch_size = max(1, int(stream_batch_size))
-        self.stream_to_bars_converter = stream_to_bars_converter
-        self._stream_last_timestamp: Optional[pd.Timestamp] = None
-        self._stream_rows_appended = 0
-        self._base_columns: List[str] = []
-
-        # Fast-access buffers (populated after preprocessing)
-        self._feature_matrix: NDArray[np.float32] = np.empty((0, 0), dtype=np.float32)
-        self._price_array: Optional[NDArray[np.float32]] = None
-        self._close_array: Optional[NDArray[np.float32]] = None
-        self._atr_array: Optional[NDArray[np.float32]] = None
-        self._episode_id_array: Optional[np.ndarray] = None
-        self._nonfinite_rows: Set[int] = set()
-        self._nonfinite_warned_rows: Set[int] = set()
-
-        # Memory optimization: avoid unnecessary copy
-        if df is not None:
-            base_df = df  # Use reference instead of copy
-        else:
-            base_df = self._fetch_streaming_snapshot(
-                required_rows=self.stream_batch_size
-            )
-            if base_df.empty:
-                raise ValueError("Streaming pipeline did not provide initial data")
-
-        # データの前処理
-        self.df = self._preprocess_data(base_df)
-        if df is None:  # Only delete if we created it
-            del base_df
-        gc.collect()
-        self._log_memory_usage("post_init")
-
-        # 積極的なメモリ最適化
-        # Note: Removed redundant copy() - _preprocess_data already returns a copy if needed
-        if hasattr(self, "_memory_logging_enabled") and self._memory_logging_enabled:
-            # インデックスを最適化（インプレース操作）
-            if not self.df.index.is_monotonic_increasing:
-                self.df.sort_index(inplace=True)
-
-        self.n_steps = len(self.df)
-        self._base_columns = list(self.df.columns)
-
-        # 特徴量の選択（除外する列を指定）
-        exclude_cols = [
-            "ts",
-            "timestamp",
-            "exchange",
-            "pair",
-            "episode_id",
-            "side",
-            "source",
-        ]
-        all_features = [c for c in self.df.columns if c not in exclude_cols]
+    def _initialize_features_and_spaces(self, max_features: Optional[int]) -> None:
         if not all_features:
             # 全特徴量が除外された場合は全列を利用
             all_features = list(self.df.columns)
@@ -463,7 +325,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             print(f"   Removed {removed_count} low-variance features")
             print(f"   Final feature count: {len(self.features)}")
 
-        self._apply_feature_storage_dtype()
+        self.data_processor.apply_feature_storage_dtype(self.df, self.features, self.config.__dict__)
 
         # Precompute fast-access numpy buffers to avoid per-step pandas overhead
         self._build_fast_access_buffers()
@@ -502,6 +364,20 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             initial_portfolio_value=self.initial_portfolio_value,
         )
 
+        # Initialize ObservationBuilder
+        self.observation_builder = ObservationBuilder(
+            features=self.features,
+            feature_matrix=self._feature_matrix,
+            nonfinite_rows=self._nonfinite_rows,
+            nonfinite_warned_rows=self._nonfinite_warned_rows,
+        )
+
+        # Initialize ActionValidator
+        self.action_validator = ActionValidator(
+            config=self.config,
+            initial_portfolio_value=self.initial_portfolio_value,
+        )
+
         # ストリーミング関連
         self._timestamp_column = "timestamp" if "timestamp" in self.df.columns else None
         self._episode_id_column = (
@@ -512,7 +388,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         # 報酬計算用の履歴
         # Memory optimization: Use deque with maxlen instead of list
-        self._max_history_length = getattr(self.config, "max_history_length", 512)
+        self._max_history_length = getattr(self.config, "max_history_length", self.DEFAULT_MAX_HISTORY_LENGTH)
         self.reward_history: deque[float] = deque(maxlen=self._max_history_length)
         self.position_history: deque[float] = deque(maxlen=self._max_history_length)
         self._action_counts: list[int] = [
@@ -525,81 +401,96 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         # Memory optimization: Use deque for action_history with maxlen
         action_history_limit = getattr(self.config, "max_action_history", None)
         try:
-            self._max_action_history = max(10, int(action_history_limit or 256))
+            self._max_action_history = max(10, int(action_history_limit or self.DEFAULT_MAX_ACTION_HISTORY))
         except (TypeError, ValueError):
-            self._max_action_history = 256
+            self._max_action_history = self.DEFAULT_MAX_ACTION_HISTORY
         
         self.action_history: deque[int] = deque(maxlen=self._max_action_history)
 
         # Note: _max_history_length is already set above for reward/position history
 
-    def _preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """データの前処理とメモリ最適化"""
-        if df.empty:
-            return df.copy()  # Empty DataFrame, safe to copy
 
-        # Memory optimization: Use inplace operations where possible
-        df_processed = df.fillna(0)
-        
-        # Reset index only if needed, using inplace operation
-        if not df_processed.index.equals(
-            pd.RangeIndex(start=0, stop=len(df_processed), step=1)
-        ):
-            df_processed.reset_index(drop=True, inplace=True)
-        # Note: Removed unnecessary copy() when index is already correct
 
-        exclude_cols = [
-            "ts",
-            "timestamp",
-            "exchange",
-            "pair",
-            "episode_id",
-            "side",
-            "source",
-        ]
-        df_processed = df_processed.drop(
-            columns=[c for c in exclude_cols if c in df_processed.columns],
-            errors="ignore",
+    def _initialize_components(
+        self,
+        streaming_pipeline: Optional["StreamingPipeline"],
+        stream_batch_size: int,
+        df: Optional[pd.DataFrame]
+    ) -> None:
+        """Initialize all environment components."""
+        self.memory_manager = MemoryManager(
+            memory_log_path=getattr(self.config, "memory_log_path", None),
+            memory_logging_enabled=getattr(self.config, "memory_logging_enabled", False),
+            memory_log_interval_steps=getattr(self.config, "memory_log_interval_steps", self.DEFAULT_MEMORY_LOG_INTERVAL),
+            gc_step_interval=getattr(self.config, "gc_collect_interval_steps", 0),
         )
 
-        optimized, _ = optimize_dtypes(
-            df_processed,
-            target_float_dtype="float32",
-            target_int_dtype="int32",
-            convert_objects_to_category=True,
-            chunk_size=self._preprocess_chunk_size,
-            memory_report=self._memory_logging_enabled,
+        self.data_processor = DataProcessor(
+            preprocess_chunk_size=getattr(self.config, "preprocess_chunk_size", self.DEFAULT_PREPROCESS_CHUNK_SIZE),
+            memory_logging_enabled=self.memory_manager.memory_logging_enabled,
+            gc_step_interval=self.memory_manager.gc_step_interval,
         )
 
-        numeric_cols = optimized.select_dtypes(include=[np.number]).columns
-        if len(numeric_cols) > 0:
-            optimized[numeric_cols] = optimized[numeric_cols].astype(
-                np.float32, copy=False
+        self.streaming_handler = StreamingHandler(
+            streaming_pipeline=streaming_pipeline,
+            stream_batch_size=max(1, int(stream_batch_size)),
+            timestamp_column="timestamp" if "timestamp" in (df.columns if df is not None else []) else None,
+            episode_id_column="episode_id" if "episode_id" in (df.columns if df is not None else []) else None,
+        )
+
+    def _initialize_data_structures(self) -> None:
+        """Initialize data structures and histories."""
+        inventory_window = max(self.DEFAULT_MIN_WINDOW_SIZE, self._get_reward_setting_int("inventory_window", self.DEFAULT_INVENTORY_WINDOW))
+        volatility_window = max(
+            self.DEFAULT_MIN_WINDOW_SIZE, self._get_reward_setting_int("volatility_window", self.DEFAULT_VOLATILITY_WINDOW)
+        )
+        self.position_abs_history: deque[float] = deque(maxlen=inventory_window)
+        self.pnl_history: deque[float] = deque(maxlen=volatility_window)
+        self.trade_interval_history: deque[int] = deque(maxlen=self.DEFAULT_TRADE_INTERVAL_WINDOW)
+        self._last_trade_step: Optional[int] = None
+        self._consecutive_trade_steps = 0
+
+        # Fast-access buffers (populated after preprocessing)
+        self._feature_matrix: NDArray[np.float32] = np.empty((0, 0), dtype=np.float32)
+        self._price_array: Optional[NDArray[np.float32]] = None
+        self._close_array: Optional[NDArray[np.float32]] = None
+        self._atr_array: Optional[NDArray[np.float32]] = None
+        self._episode_id_array: Optional[NDArray[Any]] = None
+        self._nonfinite_rows: Set[int] = set()
+        self._nonfinite_warned_rows: Set[int] = set()
+
+    def _initialize_data(self, df: Optional[pd.DataFrame]) -> None:
+        """Load and preprocess initial data."""
+        # Memory optimization: avoid unnecessary copy
+        if df is not None:
+            base_df = df  # Use reference instead of copy
+        else:
+            base_df = self._fetch_streaming_snapshot(
+                required_rows=self.streaming_handler.stream_batch_size
             )
+            if base_df.empty:
+                raise ValueError("Streaming pipeline did not provide initial data")
 
-        bool_cols = optimized.select_dtypes(include=["bool"]).columns
-        if len(bool_cols) > 0:
-            optimized[bool_cols] = optimized[bool_cols].astype(np.int8, copy=False)
+        # データの前処理
+        self.df = self.data_processor.preprocess_data(base_df)
+        if df is None:  # Only delete if we created it
+            del base_df
+        gc.collect()
+        self.memory_manager.log_memory_usage("post_init", df_override=self.df)
 
-        self._log_memory_usage("preprocess", df_override=optimized)
+        # 積極的なメモリ最適化
+        # Note: Removed redundant copy() - _preprocess_data already returns a copy if needed
+        # インデックスを最適化（インプレース操作）
+        if not self.df.index.is_monotonic_increasing:
+            self.df.sort_index(inplace=True)
 
-        del df_processed
-        if not self._gc_step_interval:
-            gc.collect()
+        self.n_steps = len(self.df)
+        self._base_columns = list(self.df.columns)
 
-        return optimized
 
     def _fetch_streaming_snapshot(self, required_rows: int) -> pd.DataFrame:
         """ストリーミングパイプラインから初期スナップショットを取得"""
-        if not self.streaming_pipeline:
-            return pd.DataFrame()
-
-        snapshot = self.streaming_pipeline.buffer.to_dataframe(
-            last_n=max(required_rows, self.stream_batch_size)
-        )
-        if snapshot.empty:
-            return snapshot
-        return snapshot.reset_index(drop=True)
+        return self.streaming_handler.fetch_streaming_snapshot(required_rows)
 
     def _prepare_stream_batch(self, batch: pd.DataFrame) -> pd.DataFrame:
         """環境が扱える形式にストリーミングデータを整形"""
@@ -619,20 +510,20 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             self.df = self.df.reindex(columns=self._base_columns, fill_value=0)
 
         batch = batch[self._base_columns]
-        return self._preprocess_data(batch)
+        return self.data_processor.preprocess_data(batch)
 
     def _append_streaming_rows(self) -> bool:
         """ストリーミングバッファから新規行を取り込み"""
-        if not self.streaming_pipeline:
+        if not self.streaming_handler.streaming_pipeline:
             return False
 
-        buffer_df = self.streaming_pipeline.buffer.to_dataframe()
+        buffer_df = self.streaming_handler.streaming_pipeline.buffer.to_dataframe()
         if buffer_df.empty:
             return False
 
         if self._timestamp_column and "timestamp" in buffer_df.columns:
             buffer_df = buffer_df.sort_values("timestamp").reset_index(drop=True)
-            if self._stream_last_timestamp is not None:
+            if self._stream_last_timestamp is not None:  # type: ignore[comparison-overlap]
                 buffer_df = buffer_df[
                     buffer_df["timestamp"] > self._stream_last_timestamp
                 ]
@@ -642,8 +533,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         if buffer_df.empty:
             return False
 
-        if self.stream_batch_size:
-            buffer_df = buffer_df.tail(self.stream_batch_size)
+        if self.streaming_handler.stream_batch_size:
+            buffer_df = buffer_df.tail(self.streaming_handler.stream_batch_size)
 
         prepared = self._prepare_stream_batch(buffer_df)
         if prepared.empty:
@@ -657,13 +548,13 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             self._stream_last_timestamp = pd.to_datetime(buffer_df["timestamp"]).max()
 
         self._refresh_features()
-        self._apply_feature_storage_dtype()
+        self.data_processor.apply_feature_storage_dtype(self.df, self.features, self.config.__dict__)
         self._build_fast_access_buffers()
-        self._log_memory_usage("stream_append")
+        self.memory_manager.log_memory_usage("stream_append", df_override=self.df)
 
         del prepared
         del buffer_df
-        if not self._gc_step_interval:
+        if self.memory_manager.should_collect_garbage:
             gc.collect()
 
         return True
@@ -684,52 +575,23 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             ),
         )
 
-    def _apply_feature_storage_dtype(self) -> None:
-        """Ensure feature columns use the configured storage dtype"""
-        feature_dtype = str(
-            getattr(self.config, "feature_storage_dtype", "float16")
-        ).lower()
-        dtype_map = {"float16": np.float16, "float32": np.float32}
-        target_dtype = dtype_map.get(feature_dtype, np.float32)
 
-        protected = {
-            str(col).lower() for col in getattr(self.config, "precision_columns", [])
-        }
-        candidate_features = [
-            col
-            for col in self.features
-            if col in self.df.columns
-            and ptypes.is_numeric_dtype(self.df[col])
-            and col.lower() not in protected
-        ]
-        if not candidate_features:
-            return
-
-        safe_features = []
-        if target_dtype is np.float16:
-            max_float16 = np.finfo(np.float16).max
-            for col in candidate_features:
-                series = self.df[col]
-                if series.isnull().all():
-                    safe_features.append(col)
-                    continue
-                max_abs = float(
-                    np.nanmax(np.abs(series.to_numpy(dtype=np.float32, copy=False)))
-                )
-                if max_abs <= max_float16:
-                    safe_features.append(col)
-        else:
-            safe_features = candidate_features
-
-        if not safe_features:
-            return
-
-        self.df[safe_features] = self.df[safe_features].astype(target_dtype, copy=False)
-        if self._memory_logging_enabled:
-            self._log_memory_usage("feature_dtype")
 
     def _build_fast_access_buffers(self) -> None:
-        """Precompute numpy buffers to avoid repeated pandas operations during training."""
+        """
+        Precompute numpy buffers to avoid repeated pandas operations during training.
+
+        This method creates contiguous numpy arrays for fast access to:
+        - Feature matrix: All selected features for all time steps
+        - Price arrays: Close and general price data
+        - ATR array: Average True Range for reward calculation
+        - Episode ID array: For episode boundary detection
+
+        Memory optimization:
+        - Uses contiguous arrays for better cache performance
+        - Sets write=False flags to prevent accidental modification
+        - Handles NaN values by zero-filling and tracking affected rows
+        """
         if not self.features:
             self._feature_matrix = np.empty((0, 0), dtype=np.float32)
             self._price_array = None
@@ -740,12 +602,14 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             self._nonfinite_warned_rows.clear()
             return
 
+        # Build feature matrix with memory-efficient operations
         feature_view = self.df[self.features]
         feature_matrix = feature_view.to_numpy(dtype=np.float32, copy=False)
         if feature_matrix.ndim == 1:
             feature_matrix = feature_matrix.reshape(-1, 1)
         self._feature_matrix = np.ascontiguousarray(feature_matrix)
 
+        # Handle non-finite values efficiently
         mask = ~np.isfinite(self._feature_matrix)
         if np.any(mask):
             affected_rows = np.where(np.any(mask, axis=1))[0]
@@ -757,15 +621,17 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 posinf=0.0,
                 neginf=0.0,
             )
-            if affected_rows.size:
+            if affected_rows.size and affected_rows.size not in self._nonfinite_warned_rows:
                 print(
                     f"⚠️  Feature matrix contained non-finite values. Sanitized {affected_rows.size} rows."
                 )
+                self._nonfinite_warned_rows.add(affected_rows.size)
         else:
             self._nonfinite_rows.clear()
         self._nonfinite_warned_rows.clear()
         self._feature_matrix.setflags(write=False)
 
+        # Build price arrays
         self._price_array = self._extract_numeric_column(
             ("price", "close", "adj_close", "open"), fallback=None
         )
@@ -777,6 +643,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             fallback=1.0,
         )
 
+        # Set write flags for performance and safety
         if self._price_array is not None and self._price_array.size:
             self._price_array.setflags(write=False)
         if self._close_array is not None and self._close_array.size:
@@ -784,6 +651,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         if self._atr_array is not None and self._atr_array.size:
             self._atr_array.setflags(write=False)
 
+        # Build episode ID array if available
         if self._episode_id_column and self._episode_id_column in self.df.columns:
             self._episode_id_array = self.df[self._episode_id_column].to_numpy(
                 copy=False
@@ -829,9 +697,9 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         """必要なインデックスまでデータを拡張"""
         if index < self.n_steps:
             return
-        if not self.streaming_pipeline:
+        if not self.streaming_handler.streaming_pipeline:
             return
-        self.streaming_pipeline.prefetch_async()
+        self.streaming_handler.streaming_pipeline.prefetch_async()
         attempts = 0
         while index >= self.n_steps:
             if self._append_streaming_rows():
@@ -844,7 +712,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
     def _prime_streaming_data(self) -> None:
         """リセット時にストリーミングデータを確保"""
-        if not self.streaming_pipeline:
+        if not self.streaming_handler.streaming_pipeline:
             return
         self._append_streaming_rows()
         self._ensure_data_available(self.current_step)
@@ -852,7 +720,26 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
     def reset(
         self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
     ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
-        """環境のリセット"""
+        """
+        Reset the trading environment to initial state.
+
+        This method prepares the environment for a new episode by:
+        1. Setting random seed if provided
+        2. Handling random start positioning for evaluation
+        3. Resetting all position and reward tracking state
+        4. Clearing episode-specific histories
+        5. Ensuring streaming data availability
+        6. Performing initial memory cleanup
+
+        Args:
+            seed: Random seed for reproducible episodes
+            options: Additional reset options (e.g., {"random_start": True})
+
+        Returns:
+            Tuple of (initial_observation, info):
+            - initial_observation: First observation of the episode
+            - info: Initial diagnostic information
+        """
         super().reset(seed=seed)
 
         # Check if random start is requested (for evaluation)
@@ -863,7 +750,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         if random_start:
             # Use random start point for evaluation
             min_start = 0
-            max_start = max(0, self.n_steps - 100)  # Leave at least 100 steps
+            max_start = max(0, self.n_steps - self.DEFAULT_RANDOM_START_BUFFER)  # Leave at least buffer steps
             self.current_step = np.random.randint(min_start, max_start + 1)
         else:
             self.current_step = 0
@@ -899,7 +786,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         self._prime_streaming_data()
 
         # Memory cleanup (reduced frequency for efficiency)
-        if self.current_step % 2000 == 0:
+        if self.current_step % self.DEFAULT_MEMORY_LOG_INTERVAL == 0:
             gc.collect()
 
         return self._get_observation(), self._get_info()
@@ -945,108 +832,17 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
     def get_legal_actions(self) -> NDArray[np.int_]:
         """現在の状態で合法なアクションを返す（1=合法, 0=非法）"""
-        legal = np.zeros(3, dtype=np.int_)  # [HOLD, BUY, SELL] - デフォルト非法
-
-        current_price = self._resolve_price()
-        portfolio_value = self.initial_portfolio_value + self.total_pnl
-        position_size = self.config.max_position_size
-        transaction_cost = self.config.transaction_cost
-
-        # HOLDは常に合法
-        legal[0] = 1
-
-        # 取引所別取引頻度制限（Coincheckは手数料無料なので制限緩和）
-        exchange = getattr(self.config, "exchange", "coincheck").lower()
-        if exchange != "coincheck":
-            # Coincheck以外は取引頻度制限を適用
-            # 最小ホールド期間チェック
-            min_holding_period = getattr(self.config, "min_holding_period", 3)
-            if hasattr(self, "_last_trade_step") and self._last_trade_step is not None:
-                steps_since_last_trade = self.current_step - self._last_trade_step
-                if steps_since_last_trade < min_holding_period:
-                    # 最小ホールド期間中でも、ポジションクローズは許可（リスク管理上重要）
-                    if self.position > 0:
-                        # ロングポジション保有中: SELLでクローズ可能
-                        legal[2] = 1
-                    elif self.position < 0:
-                        # ショートポジション保有中: BUYでクローズ可能
-                        legal[1] = 1
-                    # その他の新規建ては制限
-                    return legal
-
-            # 連続取引制限チェック
-            max_consecutive_trades = getattr(self.config, "max_consecutive_trades", 5)
-            if self._consecutive_trade_steps >= max_consecutive_trades:
-                # 連続取引上限に達した場合もポジションクローズは許可
-                if self.position > 0:
-                    legal[2] = 1  # SELL to close long
-                elif self.position < 0:
-                    legal[1] = 1  # BUY to close short
-                return legal
-
-        # 市場ボラティリティチェック（高ボラティリティ時は取引制限）
-        volatility_threshold = getattr(
-            self.config, "volatility_trade_threshold", 0.02
-        )  # 2%ボラティリティ閾値
-        if self.current_step > 20:
-            price_slice: Optional[np.ndarray] = None
-            start_idx = max(0, self.current_step - 20)
-            end_idx = self.current_step
-
-            if (
-                self._close_array is not None
-                and self._close_array.size >= end_idx
-                and end_idx > start_idx
-            ):
-                price_slice = self._close_array[start_idx:end_idx]
-            elif (
-                self._price_array is not None
-                and self._price_array.size >= end_idx
-                and end_idx > start_idx
-            ):
-                price_slice = self._price_array[start_idx:end_idx]
-            elif hasattr(self, "df"):
-                try:
-                    recent_prices = self.df.iloc[start_idx:end_idx]["close"]
-                    if len(recent_prices) > 1:
-                        price_slice = recent_prices.to_numpy(dtype=np.float32, copy=False)
-                except Exception:
-                    price_slice = None
-
-            if price_slice is not None and price_slice.size > 1:
-                finite_mask = np.isfinite(price_slice)
-                if np.count_nonzero(finite_mask) > 1:
-                    valid_prices = price_slice[finite_mask]
-                    with np.errstate(divide="ignore", invalid="ignore"):
-                        denominators = valid_prices[:-1]
-                        returns = np.diff(valid_prices) / np.where(
-                            denominators == 0.0, np.nan, denominators
-                        )
-                    returns = returns[np.isfinite(returns)]
-                    if returns.size:
-                        current_volatility = float(np.std(returns))
-                        if current_volatility > volatility_threshold:
-                            return legal
-
-        # BUY: ショートまたはフラットの場合、かつ十分な残高がある場合
-        if self.position <= 0:
-            buy_cost = position_size * current_price * (1 + transaction_cost)
-            if portfolio_value >= buy_cost:
-                legal[1] = 1
-
-        # SELL: ロングまたはフラットの場合、かつショートポジションがある場合
-        if self.position >= 0:
-            # ショートポジションを開く場合、ポジションサイズ分の価値が必要
-            sell_value = position_size * current_price
-            if portfolio_value >= sell_value:
-                legal[2] = 1
-
-        # Safety check: ensure at least one action is legal (HOLD should always be legal)
-        if not np.any(legal):
-            # This should never happen since HOLD is always legal, but add safety
-            legal[0] = 1  # Force HOLD to be legal
-
-        return legal
+        return self.action_validator.get_legal_actions(
+            self.current_step,
+            self.position,
+            self.total_pnl,
+            self.trades_count,
+            self._last_trade_step,
+            self._consecutive_trade_steps,
+            self._close_array,
+            self._price_array,
+            self.df,
+        )
 
     def action_mask(self) -> NDArray[np.bool_]:
         """Return action mask for gymnasium ActionMasker wrapper."""
@@ -1057,7 +853,28 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         return self.action_mask()
 
     def step(self, action: int) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:  # type: ignore[override]
-        """ステップ実行"""
+        """
+        Execute one step in the trading environment.
+
+        This method implements the core trading simulation logic:
+        1. Execute the requested action through PositionManager
+        2. Apply stop-loss logic if configured
+        3. Calculate portfolio value and PnL
+        4. Compute reward using RewardCalculator
+        5. Update environment state and check for episode termination
+        6. Perform memory management operations
+
+        Args:
+            action: Action to execute (0=hold, 1=buy, 2=sell)
+
+        Returns:
+            Tuple of (observation, reward, terminated, truncated, info):
+            - observation: Current market state as feature vector
+            - reward: Calculated reward for the action
+            - terminated: Whether episode has ended naturally
+            - truncated: Whether episode was cut short (always False)
+            - info: Additional diagnostic information
+        """
         # Execute action using PositionManager with min_holding_period constraint
         old_position = self.position_manager.position
         min_holding_period = getattr(self.config, "min_holding_period", 0)
@@ -1179,27 +996,43 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         # Note: All histories use deque with maxlen for automatic size limiting
         # No manual pop(0) needed anymore
 
-        if self._memory_logging_enabled and self._memory_log_interval_steps:
-            if self.current_step % self._memory_log_interval_steps == 0 and (
-                self.current_step != self._last_memory_log_step
-            ):
-                self._log_memory_usage(f"step_{self.current_step}")
-                self._last_memory_log_step = self.current_step
+        if self.memory_manager.should_log_memory(self.current_step):
+            self.memory_manager.log_memory_usage(f"step_{self.current_step}")
 
         # Aggressive garbage collection for memory-constrained environments
-        if self._gc_step_interval and self.current_step % self._gc_step_interval == 0:
-            gc.collect(generation=0)  # Quick generation 0 collection
-        
+        if self.memory_manager.should_collect_garbage:
+            self.memory_manager.collect_garbage(generation=0)  # Quick generation 0 collection
+
         # Full collection every 1000 steps (reduced frequency for memory efficiency)
-        if self.current_step % 1000 == 0:
-            gc.collect()  # Full collection
+        if self.current_step % self.DEFAULT_GC_STEP_INTERVAL == 0:
+            self.memory_manager.collect_garbage()  # Full collection
 
         return next_obs, reward, done, False, info
 
     def _resolve_price(self, step: Optional[int] = None) -> float:
+        """
+        Resolve the current price for the given step.
+
+        Attempts to find price data in the following order:
+        1. Pre-computed price array (fastest)
+        2. DataFrame columns: price, close, adj_close, open
+        3. Fallback to first numeric column
+
+        Args:
+            step: Step index to resolve price for (default: current_step)
+
+        Returns:
+            Resolved price value, or 0.0 if no valid price found
+
+        Raises:
+            ValueError: If step is out of bounds and no fallback available
+        """
         step = (
             self.current_step if step is None else max(0, min(step, self.n_steps - 1))
         )
+        if step >= self.n_steps:
+            raise ValueError(f"Step {step} is out of bounds (max: {self.n_steps - 1})")
+
         if self._price_array is not None and self._price_array.size:
             idx = min(step, self._price_array.shape[0] - 1)
             value = float(self._price_array[idx])
@@ -1207,8 +1040,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 return value
         try:
             row = self.df.iloc[step]
-        except (IndexError, KeyError):
-            return 0.0
+        except (IndexError, KeyError) as e:
+            raise ValueError(f"Could not access data for step {step}") from e
 
         for column in ("price", "close", "adj_close", "open"):
             if column in row.index:
@@ -1250,47 +1083,21 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
     def _get_observation(self) -> NDArray[np.float32]:
         """現在の状態を取得"""
         self._ensure_data_available(self.current_step)
-
-        if self._feature_matrix.size:
-            max_index = self._feature_matrix.shape[0] - 1
-            index = min(max(self.current_step, 0), max_index)
-            obs = self._feature_matrix[index]
-
-            if (
-                self._nonfinite_rows
-                and index in self._nonfinite_rows
-                and index not in self._nonfinite_warned_rows
-            ):
-                if len(self._nonfinite_warned_rows) < 5 or index % 1000 == 0:
-                    print(
-                        f"Warning: Step {index} had non-finite feature values. Replaced with zeros for stability."
-                    )
-                self._nonfinite_warned_rows.add(index)
-
-            return obs
-
-        # Fallback path (should rarely execute) - preserve previous behaviour
-        if self.current_step >= self.n_steps:
-            step_data = self.df.iloc[-1]
-        else:
-            step_data = self.df.iloc[self.current_step]
-
-        feature_list = list(self.features)
-        obs = step_data[feature_list].to_numpy(dtype=np.float32, copy=False)
-        return np.nan_to_num(obs, nan=0.0, posinf=0.0, neginf=0.0)
+        return self.observation_builder.get_observation(
+            self.current_step, self.n_steps, self.df
+        )
 
     def _get_info(self) -> Dict[str, Any]:
         """追加情報を取得"""
-        return {
-            "current_step": self.current_step,
-            "total_steps": self.n_steps,
-            "position": self.position,
-            "total_pnl": self.total_pnl,
-            "trades_count": self.trades_count,
-            "features": self.features,
-            "config": self.config,
-            "pnl": self.total_pnl,
-        }
+        return self.observation_builder.get_info(
+            self.current_step,
+            self.n_steps,
+            self.position,
+            self.total_pnl,
+            self.trades_count,
+            self.features,
+            self.config,
+        )
 
     def render(self, mode: str = "human") -> None:
         """環境の描画"""
@@ -1325,7 +1132,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         self._action_counts = [0, 0, 0]
         
         # Force garbage collection
-        gc.collect()
+        self.memory_manager.collect_garbage_aggressive()
 
     # ユーティリティメソッド
     def get_feature_names(self) -> list[str]:
