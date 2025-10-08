@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from ztb.training.simple_reward import TrainingCallback
+from ztb.training.utils.simple_reward import TrainingCallback
 
 
 class TestTrainingCallback:

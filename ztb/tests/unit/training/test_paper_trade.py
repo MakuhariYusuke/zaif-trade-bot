@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 import torch
 
-from ztb.training.paper_trade import PaperTrader
+from ztb.training.scripts.paper_trade import PaperTrader
 
 
 class TestPaperTrader:

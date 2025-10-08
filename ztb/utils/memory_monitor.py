@@ -4,7 +4,7 @@ memory_monitor.py
 Memory monitoring utilities for development and testing
 """
 
-from typing import cast
+
 
 import psutil
 
@@ -36,7 +36,7 @@ def get_memory_usage() -> float:
         Memory usage in MB
     """
     process = psutil.Process()
-    return cast(float, process.memory_info().rss / 1024 / 1024)
+    return process.memory_info().rss / 1024 / 1024
 
 
 def log_memory_usage(label: str = "") -> None:

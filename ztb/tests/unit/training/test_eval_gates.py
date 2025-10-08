@@ -4,7 +4,7 @@ Unit tests for evaluation gates with auto-halt functionality.
 
 from unittest.mock import MagicMock, patch
 
-from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
+from ztb.training.evaluation.eval_gates import EvalGates, GateResult, GateStatus
 
 
 class TestEvalGatesAutoHalt:

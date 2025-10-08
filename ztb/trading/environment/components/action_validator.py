@@ -1,0 +1,183 @@
+# Action validation utilities for trading environment
+# 取引環境のアクション検証ユーティリティ
+
+from typing import TYPE_CHECKING, Any, Optional
+
+import numpy as np
+from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from ztb.trading.environment.utils.config import EnvironmentConfig
+
+
+class ActionValidator:
+    """Handles action validation and masking for trading actions."""
+
+    def __init__(  # type: ignore[misc]
+        self,
+        config: "EnvironmentConfig",
+        initial_portfolio_value: float,
+    ):
+        self.config = config
+        self.initial_portfolio_value = initial_portfolio_value
+
+    def get_legal_actions(
+        self,
+        current_step: int,
+        position: float,
+        total_pnl: float,
+        trades_count: int,
+        last_trade_step: Optional[int],
+        consecutive_trade_steps: int,
+        close_array: Optional[NDArray[np.float32]] = None,
+        price_array: Optional[NDArray[np.float32]] = None,
+        df: Optional[Any] = None,
+    ) -> NDArray[np.int_]:
+        """現在の状態で合法なアクションを返す（1=合法, 0=非法）"""
+        legal = np.zeros(3, dtype=np.int_)  # [HOLD, BUY, SELL] - デフォルト非法
+
+        current_price = self._resolve_price(current_step, price_array, df)
+        portfolio_value = self.initial_portfolio_value + total_pnl
+        position_size = self.config.max_position_size
+        transaction_cost = self.config.transaction_cost
+
+        # HOLDは常に合法
+        legal[0] = 1
+
+        # 取引所別取引頻度制限（Coincheckは手数料無料なので制限緩和）
+        exchange = getattr(self.config, "exchange", "coincheck").lower()
+        if exchange != "coincheck":
+            # Coincheck以外は取引頻度制限を適用
+            # 最小ホールド期間チェック
+            min_holding_period = getattr(self.config, "min_holding_period", 3)
+            if last_trade_step is not None:
+                steps_since_last_trade = current_step - last_trade_step
+                if steps_since_last_trade < min_holding_period:
+                    # 最小ホールド期間中でも、ポジションクローズは許可（リスク管理上重要）
+                    if position > 0:
+                        # ロングポジション保有中: SELLでクローズ可能
+                        legal[2] = 1
+                    elif position < 0:
+                        # ショートポジション保有中: BUYでクローズ可能
+                        legal[1] = 1
+                    # その他の新規建ては制限
+                    return legal
+
+            # 連続取引制限チェック
+            max_consecutive_trades = getattr(self.config, "max_consecutive_trades", 5)
+            if consecutive_trade_steps >= max_consecutive_trades:
+                # 連続取引上限に達した場合もポジションクローズは許可
+                if position > 0:
+                    legal[2] = 1  # SELL to close long
+                elif position < 0:
+                    legal[1] = 1  # BUY to close short
+                return legal
+
+        # 市場ボラティリティチェック（高ボラティリティ時は取引制限）
+        volatility_threshold = getattr(
+            self.config, "volatility_trade_threshold", 0.02
+        )  # 2%ボラティリティ閾値
+        if current_step > 20 and self._check_volatility(
+            current_step, volatility_threshold, close_array, price_array, df
+        ):
+            return legal
+
+        # BUY: ショートまたはフラットの場合、かつ十分な残高がある場合
+        if position <= 0:
+            buy_cost = position_size * current_price * (1 + transaction_cost)
+            if portfolio_value >= buy_cost:
+                legal[1] = 1
+
+        # SELL: ロングまたはフラットの場合、かつショートポジションがある場合
+        if position >= 0:
+            # ショートポジションを開く場合、ポジションサイズ分の価値が必要
+            sell_value = position_size * current_price
+            if portfolio_value >= sell_value:
+                legal[2] = 1
+
+        # Safety check: ensure at least one action is legal (HOLD should always be legal)
+        if not np.any(legal):
+            # This should never happen since HOLD is always legal, but add safety
+            legal[0] = 1  # Force HOLD to be legal
+
+        return legal
+
+    def _resolve_price(
+        self,
+        current_step: int,
+        price_array: Optional[NDArray[np.float32]],
+        df: Optional[Any],
+    ) -> float:
+        """Resolve current price for action validation."""
+        if price_array is not None and price_array.size > current_step:
+            return float(price_array[current_step])
+
+        if df is not None and hasattr(df, 'iloc'):
+            try:
+                row = df.iloc[current_step]
+                for column in ("price", "close", "adj_close", "open"):
+                    if column in row.index:
+                        value = row[column]
+                        if np.isfinite(value):
+                            return float(value)
+            except (IndexError, KeyError):
+                pass
+
+        return 0.0
+
+    def _check_volatility(
+        self,
+        current_step: int,
+        threshold: float,
+        close_array: Optional[NDArray[np.float32]],
+        price_array: Optional[NDArray[np.float32]],
+        df: Optional[Any],
+    ) -> bool:
+        """Check if current market volatility exceeds threshold."""
+        price_slice: Optional[NDArray[np.float32]] = None
+        start_idx = max(0, current_step - 20)
+        end_idx = current_step
+
+        if (
+            close_array is not None
+            and close_array.size >= end_idx
+            and end_idx > start_idx
+        ):
+            price_slice = close_array[start_idx:end_idx]
+        elif (
+            price_array is not None
+            and price_array.size >= end_idx
+            and end_idx > start_idx
+        ):
+            price_slice = price_array[start_idx:end_idx]
+        elif df is not None:
+            try:
+                recent_prices = df.iloc[start_idx:end_idx]["close"]
+                if len(recent_prices) > 1:
+                    price_slice = recent_prices.to_numpy(dtype=np.float32, copy=False)
+            except Exception:
+                price_slice = None
+
+        if price_slice is not None and price_slice.size > 1:
+            finite_mask = np.isfinite(price_slice)
+            if np.count_nonzero(finite_mask) > 1:
+                valid_prices = price_slice[finite_mask]
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    denominators = valid_prices[:-1]
+                    returns = np.diff(valid_prices) / np.where(
+                        denominators == 0.0, np.nan, denominators
+                    )
+                returns = returns[np.isfinite(returns)]
+                if returns.size:
+                    current_volatility = float(np.std(returns))
+                    return current_volatility > threshold
+
+        return False
+
+    def action_mask(self, legal_actions: NDArray[np.int_]) -> NDArray[np.bool_]:
+        """Return action mask for gymnasium ActionMasker wrapper."""
+        return legal_actions.astype(np.bool_)
+
+    def get_action_masks(self, legal_actions: NDArray[np.int_]) -> NDArray[np.bool_]:
+        """Return action masks for SB3 MaskablePPO."""
+        return self.action_mask(legal_actions)
