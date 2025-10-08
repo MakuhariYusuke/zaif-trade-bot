@@ -6,7 +6,7 @@ configuration files in YAML and JSON formats.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
@@ -32,7 +32,7 @@ def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
     with open(file_path, "r", encoding="utf-8") as f:
-        return cast(Dict[str, Any], yaml.safe_load(f))
+        return yaml.safe_load(f)
 
 
 def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -53,7 +53,7 @@ def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    return cast(Dict[str, Any], safe_json_load(file_path))
+    return safe_json_load(file_path)
 
 
 def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:

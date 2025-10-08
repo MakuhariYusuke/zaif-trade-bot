@@ -18,7 +18,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.environment import HeavyTradingEnv
-from ztb.training.ppo_config import get_ppo_config
+from ztb.training.config.ppo_config import get_ppo_config
 from ztb.utils.cli_common import CLIFormatter
 
 
@@ -190,7 +190,17 @@ class HyperparameterOptimizer(ABC):
         env = Monitor(env)
         env = DummyVecEnv([lambda: env])
 
-        return PPO("MlpPolicy", env, **self.ppo_params)
+        # Filter out environment-specific parameters that shouldn't go to PPO
+        ppo_params_copy = self.ppo_params.copy()
+        env_specific_params = [
+            "reward_scaling", "transaction_cost", "position_penalty_scale",
+            "inventory_penalty_scale", "trade_frequency_penalty", "max_position_size",
+            "fee_model", "fee_rate", "features", "total_timesteps"
+        ]
+        for param in env_specific_params:
+            ppo_params_copy.pop(param, None)
+
+        return PPO("MlpPolicy", env, **ppo_params_copy)
 
     def train_model(
         self, total_timesteps: int = 100000

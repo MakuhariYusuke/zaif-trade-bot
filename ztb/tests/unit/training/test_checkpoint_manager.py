@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 import pandas as pd
 
-from ztb.training.checkpoint_manager import (
+from ztb.training.checkpoint.checkpoint_manager import (
     TrainingCheckpointConfig,
     TrainingCheckpointManager,
 )

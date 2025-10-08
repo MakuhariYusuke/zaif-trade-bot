@@ -7,6 +7,7 @@ Provides adapters to wrap different trading strategies for unified backtest inte
 from typing import Any, Dict, Optional, Protocol
 
 import pandas as pd
+from ztb.training.policies.policy_utils import predict_with_masks
 
 
 class StrategyAdapter(Protocol):
@@ -68,8 +69,10 @@ class RLPolicyAdapter:
 
         obs = data[features].iloc[-1].values.astype(np.float32)
 
-        # Predict action
-        action, _ = self.model.predict(obs, deterministic=True)
+        # Predict action (using predict_with_masks for MaskablePPO support)
+        # Note: No environment available in backtest adapter, so action masks won't be applied
+        # TODO: Refactor to pass environment instance for proper action masking
+        action, _ = predict_with_masks(self.model, obs, env=None, deterministic=True)
 
         # Map action to signal
         action_map = {0: "hold", 1: "buy", 2: "sell"}

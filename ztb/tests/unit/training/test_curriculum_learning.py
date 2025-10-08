@@ -5,7 +5,7 @@ Unit tests for curriculum_learning.py module.
 from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
-from ztb.training.curriculum_learning import (
+from ztb.training.experiments.curriculum_learning import (
     evaluate_stage_performance,
     run_curriculum_stage,
 )

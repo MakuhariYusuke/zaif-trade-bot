@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from ztb.training.run_seal import EnvironmentSnapshot, RunSeal, RunSealManager
+from ztb.training.scripts.run_seal import EnvironmentSnapshot, RunSeal, RunSealManager
 
 
 class TestRunSealManager:

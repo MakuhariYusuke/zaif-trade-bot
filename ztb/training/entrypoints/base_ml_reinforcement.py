@@ -9,15 +9,15 @@ import json
 import logging
 import random
 import time
+from collections import deque
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Union, cast
+from typing import Any, Dict, List, Union
 
 import psutil
 
 from ztb.experiments.base import (
-    ExperimentConfig,
     ExperimentMetrics,
     ExperimentResult,
     ScalingExperiment,
@@ -66,7 +66,7 @@ class MLReinforcementExperiment(ScalingExperiment):
 
         config["checkpoint_interval"] = checkpoint_interval
 
-        super().__init__(cast(ExperimentConfig, config), total_steps=total_steps)
+        super().__init__(config, total_steps=total_steps)  # type: ignore[arg-type]
         self.dataset = config.get("dataset", "coingecko")
         self.current_step = 0  # 現在のステップを追跡
 
@@ -87,10 +87,8 @@ class MLReinforcementExperiment(ScalingExperiment):
 
         # 実験状態
         self.best_reward = float("-inf")
-
-        # 実験状態
-        self.best_reward = float("-inf")
-        self.step_results: List[StepResult] = []
+        # Memory optimized: Limit step_results history to prevent unbounded growth
+        self.step_results: deque[StepResult] = deque(maxlen=1000)  # Keep last 1000 steps only
 
     def run(self) -> ExperimentResult:
         """実験実行"""
@@ -178,7 +176,7 @@ class MLReinforcementExperiment(ScalingExperiment):
             best_reward=self.best_reward,
             model_state={"dummy": "model"},
             optimizer_state={"dummy": "optimizer"},
-            step_results=self.step_results[-100:],  # last 100 steps
+            step_results=list(self.step_results)[-100:],  # Convert deque to list, last 100 steps
         )
         self.checkpoint_manager.save_async(
             asdict(checkpoint_data),
