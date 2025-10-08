@@ -5,10 +5,12 @@ Supports Discord webhooks for real-time notifications.
 """
 
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import requests
+from requests.exceptions import RequestException, Timeout
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,18 @@ class DiscordNotifier:
     Discord webhook notifier for trading alerts.
     """
 
-    def __init__(self, webhook_url: Optional[str] = None):
+    def __init__(
+        self,
+        webhook_url: Optional[str] = None,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+        timeout: float = 10.0,
+    ):
         self.webhook_url = webhook_url
         self.enabled = webhook_url is not None
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self.timeout = timeout
 
     def send_notification(
         self,
@@ -74,15 +85,49 @@ class DiscordNotifier:
             if not self.webhook_url:
                 logger.error("Webhook URL not configured")
                 return False
-            response = requests.post(
-                self.webhook_url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=10,
-            )
-            response.raise_for_status()
-            logger.info(f"Discord notification sent: {title}")
-            return True
+
+            payload = {"embeds": [embed]}
+
+            # Retry logic with exponential backoff
+            for attempt in range(self.max_retries + 1):
+                try:
+                    response = requests.post(
+                        self.webhook_url,
+                        json=payload,
+                        headers={"Content-Type": "application/json"},
+                        timeout=self.timeout,
+                    )
+                    response.raise_for_status()
+                    logger.info(f"Discord notification sent: {title}")
+                    return True
+
+                except Timeout as e:
+                    error_msg = f"Timeout sending Discord notification (attempt {attempt + 1}/{self.max_retries + 1})"
+                    logger.warning(f"{error_msg}: {e}")
+                    if attempt < self.max_retries:
+                        time.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+                        continue
+                    else:
+                        logger.error(f"Failed to send Discord notification after {self.max_retries + 1} attempts: {e}")
+                        return False
+
+                except RequestException as e:
+                    error_msg = f"Request error sending Discord notification (attempt {attempt + 1}/{self.max_retries + 1})"
+                    logger.warning(f"{error_msg}: {e}")
+                    if attempt < self.max_retries:
+                        time.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+                        continue
+                    else:
+                        logger.error(f"Failed to send Discord notification after {self.max_retries + 1} attempts: {e}")
+                        return False
+
+                except Exception as e:
+                    # For unexpected errors, don't retry
+                    logger.error(f"Unexpected error sending Discord notification: {e}")
+                    return False
+
+            return False
+
         except Exception as e:
             logger.error(f"Failed to send Discord notification: {e}")
             return False

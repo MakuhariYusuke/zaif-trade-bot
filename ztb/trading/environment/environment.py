@@ -1,10 +1,7 @@
 # Heavy Trading Environment for Reinforcement Learning
 # 重特徴量ベースの取引環境
 
-import dataclasses
 import gc
-import logging
-import math
 import time
 from collections import deque
 from pathlib import Path
@@ -12,8 +9,10 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Iterable,
     List,
     Optional,
+    Set,
     Tuple,
     TypedDict,
     Union,
@@ -29,191 +28,55 @@ from numpy.typing import NDArray
 from pandas.api import types as ptypes
 
 from ztb.features.registry import FeatureRegistry
+from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 from ztb.utils.fee_model import ExchangeFeeModel
 from ztb.utils.memory.dtypes import optimize_dtypes
 from ztb.types.protocols import TradingEnvironment
-from ztb.training.ppo_config import (
-    DEFAULT_REWARD_SCALING, DEFAULT_RISK_FREE_RATE, DEFAULT_STOP_LOSS_THRESHOLD,
-    DEFAULT_MAX_CONSECUTIVE_TRADES, DEFAULT_MIN_HOLDING_PERIOD,
-    DEFAULT_REWARD_POSITION_SOFT_CAP, DEFAULT_REWARD_POSITION_PENALTY_SCALE,
-    DEFAULT_REWARD_POSITION_PENALTY_EXPONENT, DEFAULT_REWARD_INVENTORY_WINDOW,
-    DEFAULT_REWARD_INVENTORY_PENALTY_SCALE, DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY,
-    DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE, DEFAULT_REWARD_TRADE_COOLDOWN_STEPS,
-    DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY, DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES,
-    DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY, DEFAULT_REWARD_VOLATILITY_WINDOW,
-    DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE, DEFAULT_REWARD_SHARPE_BONUS_SCALE,
-    DEFAULT_REWARD_CLIP_VALUE
-)
+from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+from ztb.trading.environment.components import PositionManager, RewardCalculator
 
 # Type aliases for better type safety
 Observation = np.ndarray[tuple[int, ...], np.dtype[np.float32]]
 Action = int
 Reward = float
-Info = Dict[str, Any]
 
 
-class RewardSettings(TypedDict, total=False):
-    """Type-safe reward settings configuration."""
-
-    position_soft_cap: float
-    position_penalty_scale: float
-    position_penalty_exp: float
-    inventory_window: int
-    inventory_penalty_scale: float
-    trade_frequency_penalty: float
-    trade_frequency_halflife: float
-    trade_cooldown_steps: int
-    trade_cooldown_penalty: float
-    max_consecutive_trades: int
-    consecutive_trade_penalty: float
-    volatility_window: int
-    volatility_penalty_scale: float
-    sharpe_bonus_scale: float
-    sortino_bonus_scale: float
-    calmar_bonus_scale: float
-    reward_clip_value: float
-    profit_bonus_multipliers: List[float]
-    enable_forced_diversity: bool
-    custom_reward_params: Dict[str, float]
-
-
-# Configuration dataclass to replace Dict[str, Any]
-@dataclasses.dataclass
-class EnvironmentConfig:
-    """Configuration for HeavyTradingEnv with proper typing."""
-
-    # Core settings
-    reward_scaling: float = DEFAULT_REWARD_SCALING
-    transaction_cost: float = 0.0
-    max_position_size: float = 1.0
-    risk_free_rate: float = DEFAULT_RISK_FREE_RATE
-    timeframe: str = "1m"
-    feature_set: str = "full"
-    curriculum_stage: str = "forced_balance"
-    feature_storage_dtype: str = "float16"
-    precision_columns: List[str] = dataclasses.field(
-        default_factory=lambda: ["close", "open", "high", "low", "volume"]
-    )
-    exchange: str = "coincheck"
-    stop_loss_threshold: float = DEFAULT_STOP_LOSS_THRESHOLD
-    max_consecutive_trades: int = DEFAULT_MAX_CONSECUTIVE_TRADES
-    min_holding_period: int = DEFAULT_MIN_HOLDING_PERIOD
-
-    # Reward settings
-    reward_position_soft_cap: float = DEFAULT_REWARD_POSITION_SOFT_CAP
-    reward_position_penalty_scale: float = DEFAULT_REWARD_POSITION_PENALTY_SCALE
-    reward_position_penalty_exponent: float = DEFAULT_REWARD_POSITION_PENALTY_EXPONENT
-    reward_inventory_window: int = DEFAULT_REWARD_INVENTORY_WINDOW
-    reward_inventory_penalty_scale: float = DEFAULT_REWARD_INVENTORY_PENALTY_SCALE
-    reward_trade_frequency_penalty: float = DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY
-    reward_trade_frequency_halflife: float = DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE
-    reward_trade_cooldown_steps: int = DEFAULT_REWARD_TRADE_COOLDOWN_STEPS
-    reward_trade_cooldown_penalty: float = DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY
-    reward_max_consecutive_trades: int = DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES
-    reward_consecutive_trade_penalty: float = DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY
-    reward_volatility_window: int = DEFAULT_REWARD_VOLATILITY_WINDOW
-    reward_volatility_penalty_scale: float = DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE
-    reward_sharpe_bonus_scale: float = DEFAULT_REWARD_SHARPE_BONUS_SCALE
-    reward_clip_value: float = DEFAULT_REWARD_CLIP_VALUE
-    enable_forced_diversity: bool = False
-    initial_portfolio_value: float = 1_000_000.0
-    reward_profit_bonus_multipliers: List[float] = dataclasses.field(
-        default_factory=lambda: [1.0, 1.0, 0.8]
-    )
-    reward_settings: Optional[
-        Dict[str, Union[int, float, bool, str, List[Union[int, float, bool, str]]]]
-    ] = None
-
-    # Memory and performance settings
-    memory_logging_enabled: bool = False
-    memory_log_interval_steps: Optional[int] = None
-    max_action_history: int = 512
+class InfoDict(TypedDict, total=False):
+    """Info dictionary returned by environment step/reset.
     
-    # Trading behavior settings
-    allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
+    Extends gymnasium's standard info dict with trading-specific information.
+    """
+    # Gymnasium standard fields (inherited)
+    # current_step: int
+    # total_steps: int
+    
+    # Trading-specific fields
+    position: float
+    total_pnl: float
+    trades_count: int
+    features: List[str]
+    config: "EnvironmentConfig"  # Forward reference to avoid circular import
+    pnl: float
+    action: int
+    step: int
+    portfolio_value: float
+    atr: float
+    position_utilisation: float
+    action_masks: NDArray[np.bool_]
 
-    @classmethod
-    def from_dict(
-        cls,
-        config_dict: Optional[
-            Dict[str, Union[int, float, bool, str, List[Union[int, float, bool, str]]]]
-        ] = None,
-    ) -> "EnvironmentConfig":
-        """Create config from dictionary, with defaults for missing values."""
-        if config_dict is None:
-            return cls()
 
-        # Convert dictionary to config, handling type conversions
-        config_kwargs = {}
-        for field in dataclasses.fields(cls):
-            if field.name in config_dict:
-                value = config_dict[field.name]
-                # Basic type conversion for common cases
-                if field.name in ["enable_forced_diversity", "allow_reverse"] and not isinstance(
-                    value, bool
-                ):
-                    value = cls._as_bool(value)  # type: ignore[arg-type]
-                elif field.name in [
-                    "max_consecutive_trades",
-                    "min_holding_period",
-                    "reward_inventory_window",
-                    "reward_trade_cooldown_steps",
-                    "reward_max_consecutive_trades",
-                    "reward_volatility_window",
-                ] and isinstance(value, (float, str)):
-                    try:
-                        value = int(float(value))
-                    except (ValueError, TypeError):
-                        pass  # Keep original value
-                elif field.name in [
-                    "reward_scaling",
-                    "transaction_cost",
-                    "max_position_size",
-                    "risk_free_rate",
-                    "stop_loss_threshold",
-                    "reward_position_soft_cap",
-                    "reward_position_penalty_scale",
-                    "reward_position_penalty_exponent",
-                    "reward_inventory_penalty_scale",
-                    "reward_trade_frequency_penalty",
-                    "reward_trade_frequency_halflife",
-                    "reward_trade_cooldown_penalty",
-                    "reward_consecutive_trade_penalty",
-                    "reward_volatility_penalty_scale",
-                    "reward_sharpe_bonus_scale",
-                    "reward_clip_value",
-                    "initial_portfolio_value",
-                ] and isinstance(value, str):
-                    try:
-                        value = float(value)
-                    except (ValueError, TypeError):
-                        pass  # Keep original value
-                config_kwargs[field.name] = value
-            # Field will use default if not in config_dict
+class StatisticsDict(TypedDict, total=False):
+    """Statistics dictionary returned by get_statistics."""
+    total_reward: float
+    mean_reward: float
+    std_reward: float
+    sharpe_ratio: float
+    max_reward: float
+    total_trades: int
+    win_rate: float
 
-        return cls(**config_kwargs)  # type: ignore[arg-type]
 
-    @staticmethod
-    def _as_bool(
-        value: Union[bool, int, float, str, None], default: bool = False
-    ) -> bool:
-        """Convert various types to boolean."""
-        if isinstance(value, bool):
-            return value
-        if value is None:
-            return default
-        if isinstance(value, (int, float)):
-            return bool(value)
-        value_str = str(value).strip().lower()
-        if value_str in {"true", "1", "yes", "y", "on"}:
-            return True
-        if value_str in {"false", "0", "no", "n", "off"}:
-            return False
-        return default
-
-    def as_dict(self) -> Dict[str, Any]:
-        """Convert config back to dictionary for compatibility."""
-        return dataclasses.asdict(self)
+Info = InfoDict
 
 
 EPSILON = 1e-6  # 小さい値（ゼロ除算防止用）
@@ -257,8 +120,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
     """
 
     _current_episode_actions: List[int]
-    portfolio_value_history: List[float]
-    action_history: List[int]
+    portfolio_value_history: deque[float]  # Memory optimized: deque with maxlen
+    # action_history: deque[int] - defined in __init__ with maxlen
 
     def _log_memory_usage(
         self, context: str, *, df_override: Optional[pd.DataFrame] = None
@@ -344,9 +207,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         # configからreward_settingsをマージ（上書き）
         if hasattr(self.config, "reward_settings") and self.config.reward_settings:
-            self.reward_settings = cast(
-                RewardSettings, {**self.reward_settings, **self.config.reward_settings}
-            )
+            self.reward_settings = {**self.reward_settings, **self.config.reward_settings}  # type: ignore[assignment]
 
         # 取引コストを動的に設定（取引所に基づく）
         self.fee_model = ExchangeFeeModel()
@@ -358,13 +219,13 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         self.initial_portfolio_value = float(self.config.initial_portfolio_value)
         self.portfolio_value = self.initial_portfolio_value
 
-        inventory_window = max(8, self._get_reward_setting_int("inventory_window", 128))
+        inventory_window = max(8, self._get_reward_setting_int("inventory_window", 64))
         volatility_window = max(
-            8, self._get_reward_setting_int("volatility_window", 32)
+            8, self._get_reward_setting_int("volatility_window", 16)
         )
         self.position_abs_history: deque[float] = deque(maxlen=inventory_window)
         self.pnl_history: deque[float] = deque(maxlen=volatility_window)
-        self.trade_interval_history: deque[int] = deque(maxlen=64)
+        self.trade_interval_history: deque[int] = deque(maxlen=32)
         self._last_trade_step: Optional[int] = None
         self._consecutive_trade_steps = 0
 
@@ -378,19 +239,19 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 "timestamp,context,df_mb,rss_mb\n", encoding="utf-8"
             )
 
-        self._memory_logging_enabled = EnvironmentConfig._as_bool(
+        self._memory_logging_enabled = bool(
             getattr(self.config, "memory_logging_enabled", False)
         )
 
         memory_interval_cfg = getattr(self.config, "memory_log_interval_steps", None)
         try:
-            self._memory_log_interval_steps = max(1, int(memory_interval_cfg or 1000))
+            self._memory_log_interval_steps = max(1, int(memory_interval_cfg or 2000))
         except (TypeError, ValueError):
-            self._memory_log_interval_steps = 1000
+            self._memory_log_interval_steps = 2000
 
         gc_interval_cfg = getattr(self.config, "gc_collect_interval_steps", None)
         try:
-            self._gc_step_interval = max(0, int(gc_interval_cfg or 0))
+            self._gc_step_interval = max(0, int(gc_interval_cfg or 0))  # Default to 0 for memory efficiency
         except (TypeError, ValueError):
             self._gc_step_interval = 0
 
@@ -401,7 +262,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             self._preprocess_chunk_size = 32
 
         self._last_memory_log_step = 0
-        self.random_start = random_start
+        # Use random_start from parameter, fallback to config if available
+        self.random_start = random_start or getattr(self.config, "random_start", False)
 
         self.streaming_pipeline = streaming_pipeline
         self.stream_batch_size = max(1, int(stream_batch_size))
@@ -410,8 +272,19 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         self._stream_rows_appended = 0
         self._base_columns: List[str] = []
 
-        base_df = df.copy() if df is not None else None
-        if base_df is None:
+        # Fast-access buffers (populated after preprocessing)
+        self._feature_matrix: NDArray[np.float32] = np.empty((0, 0), dtype=np.float32)
+        self._price_array: Optional[NDArray[np.float32]] = None
+        self._close_array: Optional[NDArray[np.float32]] = None
+        self._atr_array: Optional[NDArray[np.float32]] = None
+        self._episode_id_array: Optional[np.ndarray] = None
+        self._nonfinite_rows: Set[int] = set()
+        self._nonfinite_warned_rows: Set[int] = set()
+
+        # Memory optimization: avoid unnecessary copy
+        if df is not None:
+            base_df = df  # Use reference instead of copy
+        else:
             base_df = self._fetch_streaming_snapshot(
                 required_rows=self.stream_batch_size
             )
@@ -420,17 +293,17 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         # データの前処理
         self.df = self._preprocess_data(base_df)
-        del base_df
+        if df is None:  # Only delete if we created it
+            del base_df
         gc.collect()
         self._log_memory_usage("post_init")
 
         # 積極的なメモリ最適化
+        # Note: Removed redundant copy() - _preprocess_data already returns a copy if needed
         if hasattr(self, "_memory_logging_enabled") and self._memory_logging_enabled:
-            # DataFrameの断片化を防ぐ
-            self.df = self.df.copy()
-            # インデックスを最適化
+            # インデックスを最適化（インプレース操作）
             if not self.df.index.is_monotonic_increasing:
-                self.df = self.df.sort_index()
+                self.df.sort_index(inplace=True)
 
         self.n_steps = len(self.df)
         self._base_columns = list(self.df.columns)
@@ -452,6 +325,76 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         # 特徴量セットに基づいてフィルタリング
         feature_set = getattr(self.config, "feature_set", "full")
+        
+        # ========================================================================
+        # CURATED FEATURES FILTERING (v377)
+        # ========================================================================
+        # Apply whitelist filtering if enabled
+        enable_feature_filtering = getattr(self.config, "enable_feature_filtering", False)
+        feature_filter_mode = getattr(self.config, "feature_filter_mode", "whitelist")
+        
+        if enable_feature_filtering and feature_filter_mode == "whitelist":
+            # Try to load curated features list
+            curated_features_spec = getattr(self.config, "curated_features_list", None)
+            if curated_features_spec:
+                try:
+                    # Parse spec like "curated_features.py::CURATED_FEATURES"
+                    if "::" in curated_features_spec:
+                        module_name = curated_features_spec.split("::")[0].replace(".py", "")
+                        var_name = curated_features_spec.split("::")[1]
+                        
+                        # Dynamic import
+                        import importlib.util
+                        import sys
+                        spec = importlib.util.spec_from_file_location(
+                            module_name,
+                            curated_features_spec.split("::")[0]
+                        )
+                        if spec and spec.loader:
+                            module = importlib.util.module_from_spec(spec)
+                            sys.modules[module_name] = module
+                            spec.loader.exec_module(module)
+                            curated_list = getattr(module, var_name, None)
+                            
+                            if curated_list:
+                                # Filter to only curated features that exist in data
+                                original_count = len(all_features)
+                                all_features = [f for f in curated_list if f in all_features]
+                                removed = original_count - len(all_features)
+                                print(f"✅ Applied curated features filter: kept {len(all_features)}/{original_count} features (removed {removed})")
+                            else:
+                                print(f"⚠️  Warning: Could not find {var_name} in {module_name}")
+                    else:
+                        print(f"⚠️  Warning: Invalid curated_features_list format: {curated_features_spec}")
+                except Exception as e:
+                    print(f"⚠️  Warning: Failed to load curated features: {e}")
+                    import traceback
+                    traceback.print_exc()
+        
+        # ========================================================================
+        # UNIFIED MAX_FEATURES EXTRACTION (Bug #52 fix)
+        # ========================================================================
+        # Extract max_features from multiple possible sources with priority:
+        # 1) Constructor argument (max_features parameter)
+        # 2) Top-level config.max_features
+        # 3) memory_optimization.max_features section
+        # 4) ppo.max_features section
+        # 5) Direct config attribute
+        max_features_limit = max_features
+        if max_features_limit is None:
+            # Try dict-like access first (for Dict[str, Any] config)
+            if hasattr(self.config, 'get') and callable(getattr(self.config, 'get')):
+                config_dict = self.config  # type: ignore[assignment]
+                max_features_limit = (
+                    config_dict.get("max_features") or  # type: ignore[attr-defined]
+                    (config_dict.get("memory_optimization", {}) or {}).get("max_features") or  # type: ignore[attr-defined]
+                    (config_dict.get("ppo", {}) or {}).get("max_features")  # type: ignore[attr-defined]
+                )
+            
+            # Fall back to attribute access (for EnvironmentConfig objects)
+            if max_features_limit is None:
+                max_features_limit = getattr(self.config, "max_features", None)
+        
         if feature_set != "full":
             # TODO: Implement feature set filtering
             # For now, use all available features
@@ -488,13 +431,42 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
                 print(
                     f"Warning: Failed to apply correlation-based feature reduction: {e}"
                 )
-
-        # 特徴量数を制限
-        if max_features is not None and len(self.features) > max_features:
-            self.features = self.features[:max_features]
-            print(f"Limited features to {max_features}: {self.features}")
+        
+        # CRITICAL: Apply hard feature limit if specified
+        if max_features_limit and len(self.features) > max_features_limit:
+            # Select features with highest variance (most informative)
+            print(f"⚠️  MEMORY OPTIMIZATION: Reducing features from {len(self.features)} to {max_features_limit}")
+            
+            # Calculate variance for each feature
+            feature_variances: List[Tuple[str, float]] = []
+            for feat in self.features:
+                if feat in self.df.columns:
+                    try:
+                        var_value = self.df[feat].var()
+                        if pd.notna(var_value) and isinstance(var_value, (int, float, np.number)):
+                            var = float(var_value)
+                            if not np.isnan(var) and not np.isinf(var):
+                                feature_variances.append((feat, var))
+                        else:
+                            var = 0.0
+                            feature_variances.append((feat, var))
+                    except (TypeError, ValueError):
+                        # Skip features that can't be processed for variance
+                        continue
+            
+            # Sort by variance (descending) and take top N
+            feature_variances.sort(key=lambda x: x[1], reverse=True)
+            selected_features = [f for f, _ in feature_variances[:max_features_limit]]
+            
+            removed_count = len(self.features) - len(selected_features)
+            self.features = selected_features
+            print(f"   Removed {removed_count} low-variance features")
+            print(f"   Final feature count: {len(self.features)}")
 
         self._apply_feature_storage_dtype()
+
+        # Precompute fast-access numpy buffers to avoid per-step pandas overhead
+        self._build_fast_access_buffers()
 
         # 状態空間: 特徴量ベクトル
         self.observation_space = cast(
@@ -509,11 +481,26 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         # 環境状態
         self.current_step = 0
-        self.position = 0.0  # -1, 0, 1
+        
+        # Initialize PositionManager
+        self.position_manager = PositionManager(
+            config=self.config,
+            get_price_callback=self._resolve_price,
+        )
+        
+        # Backward compatibility: expose position manager properties
+        self.position = 0.0  # Will be synced with position_manager
         self.entry_price = 0.0
         self.total_pnl = 0.0
-        self.realized_pnl = 0.0  # Realized PnL (accumulated on position close)
+        self.realized_pnl = 0.0
         self.trades_count = 0
+
+        # Initialize RewardCalculator
+        self.reward_calculator = RewardCalculator(
+            config=self.config,
+            reward_settings=self.reward_settings,
+            initial_portfolio_value=self.initial_portfolio_value,
+        )
 
         # ストリーミング関連
         self._timestamp_column = "timestamp" if "timestamp" in self.df.columns else None
@@ -524,36 +511,42 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             self._stream_rows_appended = len(self.df)
 
         # 報酬計算用の履歴
-        self.reward_history: list[float] = []
-        self.position_history: list[float] = []
+        # Memory optimization: Use deque with maxlen instead of list
+        self._max_history_length = getattr(self.config, "max_history_length", 512)
+        self.reward_history: deque[float] = deque(maxlen=self._max_history_length)
+        self.position_history: deque[float] = deque(maxlen=self._max_history_length)
         self._action_counts: list[int] = [
             0,
             0,
             0,
         ]  # Track action usage for balance bonus
         self._current_episode_actions: list[int] = []
-        self.action_history: list[int] = []
+        
+        # Memory optimization: Use deque for action_history with maxlen
         action_history_limit = getattr(self.config, "max_action_history", None)
         try:
-            self._max_action_history = max(10, int(action_history_limit or 512))
+            self._max_action_history = max(10, int(action_history_limit or 256))
         except (TypeError, ValueError):
-            self._max_action_history = 512
+            self._max_action_history = 256
+        
+        self.action_history: deque[int] = deque(maxlen=self._max_action_history)
 
-        # Limit history lengths to prevent memory leaks during long training
-        self._max_history_length = getattr(self.config, "max_history_length", 1000)
+        # Note: _max_history_length is already set above for reward/position history
 
     def _preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """データの前処理とメモリ最適化"""
         if df.empty:
-            return df.copy()
+            return df.copy()  # Empty DataFrame, safe to copy
 
+        # Memory optimization: Use inplace operations where possible
         df_processed = df.fillna(0)
+        
+        # Reset index only if needed, using inplace operation
         if not df_processed.index.equals(
             pd.RangeIndex(start=0, stop=len(df_processed), step=1)
         ):
-            df_processed = df_processed.reset_index(drop=True)
-        else:
-            df_processed = df_processed.copy()
+            df_processed.reset_index(drop=True, inplace=True)
+        # Note: Removed unnecessary copy() when index is already correct
 
         exclude_cols = [
             "ts",
@@ -665,6 +658,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         self._refresh_features()
         self._apply_feature_storage_dtype()
+        self._build_fast_access_buffers()
         self._log_memory_usage("stream_append")
 
         del prepared
@@ -734,6 +728,103 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         if self._memory_logging_enabled:
             self._log_memory_usage("feature_dtype")
 
+    def _build_fast_access_buffers(self) -> None:
+        """Precompute numpy buffers to avoid repeated pandas operations during training."""
+        if not self.features:
+            self._feature_matrix = np.empty((0, 0), dtype=np.float32)
+            self._price_array = None
+            self._close_array = None
+            self._atr_array = None
+            self._episode_id_array = None
+            self._nonfinite_rows.clear()
+            self._nonfinite_warned_rows.clear()
+            return
+
+        feature_view = self.df[self.features]
+        feature_matrix = feature_view.to_numpy(dtype=np.float32, copy=False)
+        if feature_matrix.ndim == 1:
+            feature_matrix = feature_matrix.reshape(-1, 1)
+        self._feature_matrix = np.ascontiguousarray(feature_matrix)
+
+        mask = ~np.isfinite(self._feature_matrix)
+        if np.any(mask):
+            affected_rows = np.where(np.any(mask, axis=1))[0]
+            self._nonfinite_rows = {int(idx) for idx in affected_rows}
+            np.nan_to_num(
+                self._feature_matrix,
+                copy=False,
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
+            )
+            if affected_rows.size:
+                print(
+                    f"⚠️  Feature matrix contained non-finite values. Sanitized {affected_rows.size} rows."
+                )
+        else:
+            self._nonfinite_rows.clear()
+        self._nonfinite_warned_rows.clear()
+        self._feature_matrix.setflags(write=False)
+
+        self._price_array = self._extract_numeric_column(
+            ("price", "close", "adj_close", "open"), fallback=None
+        )
+        self._close_array = self._extract_numeric_column(
+            ("close", "price", "adj_close", "open"), fallback=None
+        )
+        self._atr_array = self._extract_numeric_column(
+            ("atr_10", "atr_14", "atr_simplified", "ATR", "ATR_simplified"),
+            fallback=1.0,
+        )
+
+        if self._price_array is not None and self._price_array.size:
+            self._price_array.setflags(write=False)
+        if self._close_array is not None and self._close_array.size:
+            self._close_array.setflags(write=False)
+        if self._atr_array is not None and self._atr_array.size:
+            self._atr_array.setflags(write=False)
+
+        if self._episode_id_column and self._episode_id_column in self.df.columns:
+            self._episode_id_array = self.df[self._episode_id_column].to_numpy(
+                copy=False
+            )
+        else:
+            self._episode_id_array = None
+
+    def _extract_numeric_column(
+        self, candidates: Iterable[str], *, fallback: Optional[float]
+    ) -> Optional[NDArray[np.float32]]:
+        """
+        Extract a contiguous float32 numpy array for the first available candidate column.
+
+        Args:
+            candidates: Ordered iterable of column names to attempt.
+            fallback: Value used to replace non-finite entries. If None, values are preserved.
+
+        Returns:
+            Contiguous float32 numpy array or None if no candidate column exists.
+        """
+        for name in candidates:
+            if name not in self.df.columns:
+                continue
+            series = self.df[name]
+            if not ptypes.is_numeric_dtype(series):
+                continue
+            array = np.ascontiguousarray(series.to_numpy(dtype=np.float32, copy=False))
+            if fallback is not None and array.size:
+                np.nan_to_num(
+                    array, copy=False, nan=fallback, posinf=fallback, neginf=fallback
+                )
+            return array
+
+        if fallback is None:
+            return None
+
+        if self.n_steps <= 0:
+            return np.empty(0, dtype=np.float32)
+
+        return np.full(self.n_steps, fallback, dtype=np.float32)
+
     def _ensure_data_available(self, index: int) -> None:
         """必要なインデックスまでデータを拡張"""
         if index < self.n_steps:
@@ -777,27 +868,29 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         else:
             self.current_step = 0
 
+        # Reset PositionManager and RewardCalculator
+        self.position_manager.reset()
+        self.reward_calculator.reset()
+        
+        # Backward compatibility: sync properties
         self.position = 0.0
         self.entry_price = 0.0
         self.total_pnl = 0.0
         self.trades_count = 0
-        self.reward_history = []
-        self.position_history = []
+        self.realized_pnl = 0.0
+        
+        # Reset reward tracking
+        self.reward_history.clear()
+        self.position_history.clear()
         self.portfolio_value = self.initial_portfolio_value
         self.pnl_history.clear()
         self.position_abs_history.clear()
         self.trade_interval_history.clear()
         self._last_trade_step = None
         self._consecutive_trade_steps = 0
-        self._current_episode_actions.clear()  # Reset action tracking for forced diversity
-        self._action_counts = [
-            0,
-            0,
-            0,
-        ]  # Reset action counts for forced diversity per episode
-        self.portfolio_value_history = (
-            []
-        )  # Initialize portfolio value history for stagnation penalty
+        self._current_episode_actions.clear()
+        self._action_counts = [0, 0, 0]
+        self.portfolio_value_history = deque(maxlen=self._max_history_length)  # Memory optimized
         self.action_history.clear()
 
         # Reset previous portfolio value for step-wise reward calculation
@@ -805,8 +898,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         self._prime_streaming_data()
 
-        # Memory cleanup
-        if self.current_step % 1000 == 0:
+        # Memory cleanup (reduced frequency for efficiency)
+        if self.current_step % 2000 == 0:
             gc.collect()
 
         return self._get_observation(), self._get_info()
@@ -832,6 +925,24 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             return value
         return default
 
+    def _sync_from_position_manager(self) -> None:
+        """
+        Sync all state from PositionManager to maintain backward compatibility.
+        
+        Centralizes synchronization logic to prevent bugs like Bug #24 where
+        attributes were forgotten during manual syncing.
+        
+        Note: This method should be called after ANY PositionManager operation
+        that modifies state (execute_action, close_position, etc.).
+        """
+        pos_info = self.position_manager.get_position_info()
+        self.position = pos_info["position"]
+        self.entry_price = pos_info["entry_price"]
+        self.realized_pnl = pos_info["realized_pnl"]
+        self.total_pnl = pos_info["total_pnl"]
+        self.trades_count = pos_info["trades_count"]
+        # Note: consecutive_trade_steps is internal state, not exposed in get_position_info
+
     def get_legal_actions(self) -> NDArray[np.int_]:
         """現在の状態で合法なアクションを返す（1=合法, 0=非法）"""
         legal = np.zeros(3, dtype=np.int_)  # [HOLD, BUY, SELL] - デフォルト非法
@@ -853,33 +964,69 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             if hasattr(self, "_last_trade_step") and self._last_trade_step is not None:
                 steps_since_last_trade = self.current_step - self._last_trade_step
                 if steps_since_last_trade < min_holding_period:
-                    # 最小ホールド期間が経過していない場合、BUY/SELLを非法に
+                    # 最小ホールド期間中でも、ポジションクローズは許可（リスク管理上重要）
+                    if self.position > 0:
+                        # ロングポジション保有中: SELLでクローズ可能
+                        legal[2] = 1
+                    elif self.position < 0:
+                        # ショートポジション保有中: BUYでクローズ可能
+                        legal[1] = 1
+                    # その他の新規建ては制限
                     return legal
 
             # 連続取引制限チェック
             max_consecutive_trades = getattr(self.config, "max_consecutive_trades", 5)
             if self._consecutive_trade_steps >= max_consecutive_trades:
-                # 連続取引上限に達したら、BUY/SELLを非法に
+                # 連続取引上限に達した場合もポジションクローズは許可
+                if self.position > 0:
+                    legal[2] = 1  # SELL to close long
+                elif self.position < 0:
+                    legal[1] = 1  # BUY to close short
                 return legal
 
         # 市場ボラティリティチェック（高ボラティリティ時は取引制限）
         volatility_threshold = getattr(
             self.config, "volatility_trade_threshold", 0.02
         )  # 2%ボラティリティ閾値
-        if hasattr(self, "df") and self.current_step > 20:
-            try:
-                # 直近20期間のボラティリティを計算
-                recent_prices = self.df.iloc[
-                    max(0, self.current_step - 20) : self.current_step
-                ]["close"]
-                if len(recent_prices) > 1:
-                    returns = recent_prices.pct_change().dropna()
-                    current_volatility = returns.std()
-                    if current_volatility > volatility_threshold:
-                        # 高ボラティリティ時はBUY/SELLを非法に
-                        return legal
-            except:
-                pass  # ボラティリティ計算失敗時は無視
+        if self.current_step > 20:
+            price_slice: Optional[np.ndarray] = None
+            start_idx = max(0, self.current_step - 20)
+            end_idx = self.current_step
+
+            if (
+                self._close_array is not None
+                and self._close_array.size >= end_idx
+                and end_idx > start_idx
+            ):
+                price_slice = self._close_array[start_idx:end_idx]
+            elif (
+                self._price_array is not None
+                and self._price_array.size >= end_idx
+                and end_idx > start_idx
+            ):
+                price_slice = self._price_array[start_idx:end_idx]
+            elif hasattr(self, "df"):
+                try:
+                    recent_prices = self.df.iloc[start_idx:end_idx]["close"]
+                    if len(recent_prices) > 1:
+                        price_slice = recent_prices.to_numpy(dtype=np.float32, copy=False)
+                except Exception:
+                    price_slice = None
+
+            if price_slice is not None and price_slice.size > 1:
+                finite_mask = np.isfinite(price_slice)
+                if np.count_nonzero(finite_mask) > 1:
+                    valid_prices = price_slice[finite_mask]
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        denominators = valid_prices[:-1]
+                        returns = np.diff(valid_prices) / np.where(
+                            denominators == 0.0, np.nan, denominators
+                        )
+                    returns = returns[np.isfinite(returns)]
+                    if returns.size:
+                        current_volatility = float(np.std(returns))
+                        if current_volatility > volatility_threshold:
+                            return legal
 
         # BUY: ショートまたはフラットの場合、かつ十分な残高がある場合
         if self.position <= 0:
@@ -894,6 +1041,11 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             if portfolio_value >= sell_value:
                 legal[2] = 1
 
+        # Safety check: ensure at least one action is legal (HOLD should always be legal)
+        if not np.any(legal):
+            # This should never happen since HOLD is always legal, but add safety
+            legal[0] = 1  # Force HOLD to be legal
+
         return legal
 
     def action_mask(self) -> NDArray[np.bool_]:
@@ -906,9 +1058,13 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
     def step(self, action: int) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:  # type: ignore[override]
         """ステップ実行"""
-        # 行動の実行
-        old_position = self.position
-        self._execute_action(action)
+        # Execute action using PositionManager with min_holding_period constraint
+        old_position = self.position_manager.position
+        min_holding_period = getattr(self.config, "min_holding_period", 0)
+        trade_pnl = self.position_manager.execute_action(action, self.current_step, min_holding_period)
+        
+        # Sync backward compatibility properties using centralized method
+        self._sync_from_position_manager()
 
         # ストップロスチェック（損失が閾値を超えたらポジション強制クローズ）
         stop_loss_threshold = self.config.stop_loss_threshold
@@ -917,36 +1073,42 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             if self.position > 0:  # ロングポジション
                 loss_ratio = (self.entry_price - current_price) / self.entry_price
                 if loss_ratio > stop_loss_threshold:
-                    self._close_position()
+                    # Close position and capture realized PnL for reward
+                    forced_close_pnl = self.position_manager.close_position(self.current_step)
+                    trade_pnl += forced_close_pnl  # Add forced close PnL to action PnL
+                    # Sync ALL properties using centralized method (Bug #24 fix)
+                    self._sync_from_position_manager()
             elif self.position < 0:  # ショートポジション
                 loss_ratio = (current_price - self.entry_price) / self.entry_price
                 if loss_ratio > stop_loss_threshold:
-                    self._close_position()
+                    # Close position and capture realized PnL for reward
+                    forced_close_pnl = self.position_manager.close_position(self.current_step)
+                    trade_pnl += forced_close_pnl  # Add forced close PnL to action PnL
+                    # Sync ALL properties using centralized method (Bug #24 fix)
+                    self._sync_from_position_manager()
 
         # Track action for forced diversity
         self._current_episode_actions.append(action)
 
         # Track rolling action history for diversity-focused rewards
         self.action_history.append(action)
-        max_history = getattr(self, "_max_action_history", 512)
-        if len(self.action_history) > max_history:
-            del self.action_history[:-max_history]
+        # Note: deque with maxlen automatically removes old items, no manual deletion needed
 
-        # Unrealized PnL calculation (for open positions)
-        unrealized_pnl = self._calculate_pnl()
+        # Calculate unrealized PnL using PositionManager
+        unrealized_pnl = self.position_manager.calculate_unrealized_pnl()
 
         # Portfolio value = initial + realized + unrealized
-        # Note: total_pnl is kept as realized_pnl for backward compatibility
         portfolio_value = self.initial_portfolio_value + self.realized_pnl + unrealized_pnl
         self.portfolio_value = portfolio_value
         
-        # pnl for reward calculation (unrealized PnL)
-        pnl = unrealized_pnl
+        # pnl for reward calculation (trade PnL from this specific action, not total unrealized)
+        pnl = trade_pnl
 
         current_price = self._resolve_price()
         atr = self._resolve_atr()
 
-        reward = self._calculate_reward(
+        # Calculate reward using RewardCalculator
+        reward = self.reward_calculator.calculate_reward(
             action=action,
             current_price=current_price,
             position=self.position,
@@ -958,6 +1120,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             old_position=old_position,
             step=self.current_step,
             observation=self._get_observation(),
+            reward_history=list(self.reward_history),  # Convert deque to list
+            portfolio_value_history=list(self.portfolio_value_history),  # Convert deque to list
         )
 
         # 次のステップへ
@@ -966,13 +1130,17 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
 
         # エピソード終了判定
         done = self.current_step >= self.n_steps - 1
-        if not done and self._episode_id_column and self.current_step < self.n_steps:
-            current_episode = self.df.iloc[self.current_step - 1][
-                self._episode_id_column
-            ]
-            next_episode = self.df.iloc[self.current_step][self._episode_id_column]
-            if current_episode != next_episode:
-                done = True
+        if (
+            not done
+            and self._episode_id_array is not None
+            and self.current_step < len(self._episode_id_array)
+        ):
+            prev_idx = max(self.current_step - 1, 0)
+            if prev_idx < len(self._episode_id_array):
+                current_episode = self._episode_id_array[prev_idx]
+                next_episode = self._episode_id_array[self.current_step]
+                if current_episode != next_episode:
+                    done = True
 
         # 次の状態
         next_obs = self._get_observation()
@@ -1004,17 +1172,12 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             portfolio_value
         )  # Track portfolio value for stagnation penalty
 
-        # 報酬履歴の更新（メモリリーク防止のため長さを制限）
+        # 報酬履歴の更新（dequeのmaxlenで自動制限）
         self.reward_history.append(reward)
         self.position_history.append(self.position)
 
-        # Limit history lengths to prevent memory leaks
-        if len(self.reward_history) > self._max_history_length:
-            self.reward_history.pop(0)
-        if len(self.position_history) > self._max_history_length:
-            self.position_history.pop(0)
-        if len(self.portfolio_value_history) > self._max_history_length:
-            self.portfolio_value_history.pop(0)
+        # Note: All histories use deque with maxlen for automatic size limiting
+        # No manual pop(0) needed anymore
 
         if self._memory_logging_enabled and self._memory_log_interval_steps:
             if self.current_step % self._memory_log_interval_steps == 0 and (
@@ -1027,8 +1190,8 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         if self._gc_step_interval and self.current_step % self._gc_step_interval == 0:
             gc.collect(generation=0)  # Quick generation 0 collection
         
-        # Full collection every 500 steps
-        if self.current_step % 500 == 0:
+        # Full collection every 1000 steps (reduced frequency for memory efficiency)
+        if self.current_step % 1000 == 0:
             gc.collect()  # Full collection
 
         return next_obs, reward, done, False, info
@@ -1037,6 +1200,11 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         step = (
             self.current_step if step is None else max(0, min(step, self.n_steps - 1))
         )
+        if self._price_array is not None and self._price_array.size:
+            idx = min(step, self._price_array.shape[0] - 1)
+            value = float(self._price_array[idx])
+            if np.isfinite(value):
+                return value
         try:
             row = self.df.iloc[step]
         except (IndexError, KeyError):
@@ -1058,830 +1226,58 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         step = (
             self.current_step if step is None else max(0, min(step, self.n_steps - 1))
         )
+        if self._atr_array is not None and self._atr_array.size:
+            idx = min(step, self._atr_array.shape[0] - 1)
+            value = float(self._atr_array[idx])
+            if np.isfinite(value) and value > 0:
+                return value
         if step >= len(self.df):
             return default
         row = self.df.iloc[step]
-        if isinstance(row, pd.Series):
-            for column in (
-                "atr_10",
-                "atr_14",
-                "atr_simplified",
-                "ATR",
-                "ATR_simplified",
-            ):
-                if column in row.index:
-                    value = row[column]
-                    if pd.notna(value) and value > 0:
-                        return float(value)
+        for column in (
+            "atr_10",
+            "atr_14",
+            "atr_simplified",
+            "ATR",
+            "ATR_simplified",
+        ):
+            if column in row.index:
+                value = row[column]
+                if pd.notna(value) and value > 0:
+                    return float(value)
         return default
-
-    def _execute_action(self, action: int) -> None:
-        """行動の実行
-        
-        allow_reverse=True (default): 従来通りの動作
-            - Long中のSELL: Close→即Short
-            - Short中のBUY: Close→即Long
-        
-        allow_reverse=False: 反転禁止モード
-            - Long中のSELL: Close only (Flatに戻る)
-            - Short中のBUY: Close only (Flatに戻る)
-            - Flat状態からのSELL/BUYは従来通り開く
-        """
-        if action == 0:  # HOLD
-            # HOLDの場合は連続取引カウンターをリセット
-            self._consecutive_trade_steps = 0
-            pass  # ポジション維持
-        elif action == 1:  # BUY
-            if self.position < 0:  # ショートポジション保有中
-                # ショートクローズ
-                self._close_position()
-                self._consecutive_trade_steps += 1
-                
-                # allow_reverse=Trueの場合のみ、即座にロングを開く
-                if self.config.allow_reverse:
-                    self._open_position(1)
-            elif self.position == 0:  # フラット状態
-                # 通常のロングオープン
-                self._open_position(1)
-                self._consecutive_trade_steps += 1
-            # position > 0 (既にロング)の場合は何もしない
-        elif action == 2:  # SELL
-            if self.position > 0:  # ロングポジション保有中
-                # ロングクローズ
-                self._close_position()
-                self._consecutive_trade_steps += 1
-                
-                # allow_reverse=Trueの場合のみ、即座にショートを開く
-                if self.config.allow_reverse:
-                    self._open_position(-1)
-            elif self.position == 0:  # フラット状態
-                # 通常のショートオープン
-                self._open_position(-1)
-                self._consecutive_trade_steps += 1
-            # position < 0 (既にショート)の場合は何もしない
-
-    def _open_position(self, direction: int) -> None:
-        """ポジションオープン（エントリーコストを即座に反映）"""
-        current_price = self._resolve_price()
-        position_size = getattr(self.config, "max_position_size", 1.0)
-        
-        # Calculate entry cost
-        entry_cost = abs(position_size) * current_price * self.config.transaction_cost
-        
-        # Deduct entry cost from realized PnL
-        self.realized_pnl -= entry_cost
-        self.total_pnl = self.realized_pnl  # Keep total_pnl in sync
-        
-        # Open position
-        self.position = direction * position_size
-        self.entry_price = current_price
-        self.trades_count += 1
-        self._last_trade_step = self.current_step
-
-    def _close_position(self) -> None:
-        """ポジションクローズ"""
-        if self.position != 0:
-            # Calculate realized PnL before closing position
-            current_price = self._resolve_price()
-            price_change = current_price - self.entry_price
-            realized_trade_pnl = float(self.position) * price_change
-            
-            # Deduct transaction cost (exit cost)
-            exit_cost = abs(self.position) * current_price * self.config.transaction_cost
-            realized_trade_pnl -= exit_cost
-            
-            # Accumulate realized PnL
-            self.realized_pnl += realized_trade_pnl
-            self.total_pnl = self.realized_pnl  # Keep total_pnl in sync for backward compatibility
-            
-            self.trades_count += 1
-            self.position = 0.0
-            self.entry_price = 0.0
-
-    def _calculate_pnl(self) -> float:
-        """Calculate unrealized PnL for current open position.
-        
-        Realized PnL is accumulated in _close_position().
-        This method only returns unrealized PnL for reward calculation.
-        """
-        if self.position == 0:
-            return 0.0
-
-        current_price = self._resolve_price()
-        entry_price = self.entry_price
-        price_change = current_price - entry_price
-
-        # Unrealized PnL (price change only, no exit cost yet)
-        unrealized_pnl = float(self.position) * price_change
-
-        return float(unrealized_pnl)
-
-    def _calculate_reward(
-        self,
-        action: int,
-        current_price: float,
-        position: float,
-        portfolio_value: float,
-        atr: float,
-        transaction_cost: float,
-        reward_scaling: float,
-        pnl: float,
-        old_position: float,
-        step: int,
-        observation: Optional[Any],
-    ) -> float:
-        """Calculate reward with curriculum learning stages."""
-        curriculum_stage = self.config.curriculum_stage
-        logger = logging.getLogger(__name__)
-        logger.debug(
-            "Curriculum stage: %s, position: %.2f, action: %d",
-            curriculum_stage, position, action
-        )
-
-        eps = 1e-8
-        atr = atr if atr > eps else 1.0
-        max_position_size = max(eps, self.config.max_position_size)
-
-        atr_normalised = pnl / atr
-        portfolio_return = pnl / max(abs(self.initial_portfolio_value), eps)
-
-        # Initialize balance_bonus for all curriculum stages
-        balance_bonus = 0.0
-
-        # Curriculum learning stages
-        if curriculum_stage == "forced_balance":
-            # Stage 0: Force balanced action distribution (33% each action)
-            # Track action counts and reward only when actions are balanced
-            action_counts = getattr(self, "_action_counts", [0, 0, 0])
-            action_counts[action] += 1
-            self._action_counts = action_counts
-
-            total_actions = sum(action_counts)
-            if total_actions >= 3:  # Need at least 3 actions to evaluate balance
-                action_ratios = [count / total_actions for count in action_counts]
-                target_ratio = 1.0 / 3.0  # 33.33% each
-
-                # Calculate balance score (lower is better balance)
-                balance_penalty = sum(
-                    abs(ratio - target_ratio) for ratio in action_ratios
-                )
-
-                # Reward for good balance, penalty for imbalance
-                if balance_penalty < 0.1:  # Very balanced (within 10% of target)
-                    reward = 2.0
-                elif balance_penalty < 0.2:  # Moderately balanced
-                    reward = 1.0
-                elif balance_penalty < 0.3:  # Somewhat balanced
-                    reward = 0.5
-                else:  # Imbalanced
-                    reward = -1.0
-            else:
-                # Early stage - small reward for any action to encourage exploration
-                reward = 0.1
-
-            return float(reward)
-        elif curriculum_stage == "balanced_transition":
-            # Stage 1: Normal reward function but with balance penalty to maintain diversity
-            # Use standard reward calculation but add penalty for imbalanced actions
-            action_counts = getattr(self, "_action_counts", [0, 0, 0])
-            action_counts[action] += 1
-            self._action_counts = action_counts
-
-            total_actions = sum(action_counts)
-            balance_penalty = 0.0
-
-            if total_actions >= 10:  # Require minimum actions before enforcing balance
-                action_ratios = [count / total_actions for count in action_counts]
-                target_ratio = 1.0 / 3.0
-
-                # Calculate balance deviation
-                balance_penalty = sum(
-                    abs(ratio - target_ratio) for ratio in action_ratios
-                )
-
-                # Strong penalty for very imbalanced distributions
-                if (
-                    balance_penalty > 0.5
-                ):  # More than 50% deviation from perfect balance
-                    balance_penalty *= 2.0  # Double the penalty
-
-                # Debug output
-                logger.debug(
-                    "Balance penalty: total_actions=%d, ratios=%s, penalty=%.3f",
-                    total_actions, action_ratios, balance_penalty
-                )
-
-            # Calculate base reward using standard logic (from "full" stage)
-            base_component = 0.0
-
-            # Profit bonus for profitable trades (significantly increased for scalping)
-            base_profit_bonus = (
-                max(0.0, 1.5 * atr_normalised + 1.2 * portfolio_return)
-                if pnl > 0
-                else 0.0
-            )
-
-            # Trend-aware adjustment based on SMA_20/SMA_50 ratio
-            trend_multiplier = 1.0
-            if observation is not None and len(observation) > 5:
-                # Get raw SMA values from dataframe instead of normalized observation
-                if self.current_step >= self.n_steps:
-                    step_data = self.df.iloc[-1]
-                else:
-                    step_data = self.df.iloc[self.current_step]
-
-                sma_20 = step_data.get("sma_short", 0.0)
-                sma_50 = step_data.get("sma_long", 0.0)
-                rsi = step_data.get(
-                    "rsi", 50.0
-                )  # Add RSI for downward signal enhancement
-
-                print(
-                    f"DEBUG Trend: sma_20={sma_20:.4f}, sma_50={sma_50:.4f}, rsi={rsi:.4f}"
-                )
-                if sma_50 > eps:
-                    trend_ratio = sma_20 / sma_50
-                    logger.debug(f"Trend: trend_ratio={trend_ratio:.4f}")
-                    if (
-                        trend_ratio > 1.02
-                    ):  # Strong bullish trend (strengthened threshold)
-                        if action == 1:  # BUY
-                            trend_multiplier = 1.5  # Enhanced bonus
-                        elif action == 2:  # SELL
-                            trend_multiplier = 0.5  # Enhanced penalty
-                    elif (
-                        trend_ratio < 0.98
-                    ):  # Strong bearish trend (strengthened threshold)
-                        if action == 1:  # BUY
-                            trend_multiplier = 0.5  # Enhanced penalty
-                        elif action == 2:  # SELL
-                            trend_multiplier = 1.5  # Enhanced bonus
-                    elif trend_ratio > 1.005:  # Mild bullish trend
-                        if action == 1:  # BUY
-                            trend_multiplier = 1.1
-                        elif action == 2:  # SELL
-                            trend_multiplier = 0.9
-                    elif trend_ratio < 0.995:  # Mild bearish trend
-                        if action == 1:  # BUY
-                            trend_multiplier = 0.9
-                        elif action == 2:  # SELL
-                            trend_multiplier = 1.1
-                    # HOLD gets neutral multiplier
-
-                    # Enhanced downward signal: RSI oversold (< 40) boosts SELL in bearish trends
-                    if rsi < 40.0 and trend_ratio < 1.0:  # Relaxed downward signal
-                        if action == 2:  # SELL
-                            trend_multiplier *= 1.3  # Additional boost for SELL in oversold bearish conditions
-                        elif action == 1:  # BUY
-                            trend_multiplier *= (
-                                0.7  # Additional penalty for BUY in oversold conditions
-                            )
-
-            # Balance BUY/SELL actions to encourage balanced trading (configurable multipliers)
-            multipliers = self.reward_settings.get(
-                "profit_bonus_multipliers", [1.0, 1.0, 0.8]
-            )
-            if action == 1:  # BUY action
-                profit_bonus = base_profit_bonus * multipliers[0] * trend_multiplier
-            elif action == 2:  # SELL action
-                profit_bonus = base_profit_bonus * multipliers[1] * trend_multiplier
-            else:  # HOLD
-                profit_bonus = base_profit_bonus * multipliers[2] * trend_multiplier
-
-            # Symmetrical action penalty for BUY/SELL
-            action_penalty = 0.015 if action in [1, 2] else 0.0
-
-            # Dynamic HOLD penalty based on position size and market volatility
-            if action == 0:
-                position_size_factor = abs(position) / max_position_size
-                volatility_factor = min(
-                    atr / (current_price * 0.01), 1.0
-                )  # Normalized ATR
-                action_penalty = 0.01 + (
-                    0.04 * position_size_factor * volatility_factor
-                )  # Range: 0.01-0.05
-
-            # Loss penalty for unprofitable trades (simplified for symmetry)
-            loss_penalty = -0.2 * abs(atr_normalised) if pnl < 0 else 0.0
-
-            # No hold bonus to encourage active trading
-            hold_bonus = 0.0
-
-            position_utilisation = abs(position) / max_position_size
-            soft_cap = self._get_reward_setting_float("position_soft_cap", 0.8)
-            position_penalty = 0.0
-            if position_utilisation > soft_cap:
-                overuse = position_utilisation - soft_cap
-                position_penalty = self._get_reward_setting_float(
-                    "position_penalty_scale", 0.5
-                ) * (
-                    math.exp(
-                        overuse
-                        * self._get_reward_setting_float("position_penalty_exp", 4.0)
-                    )
-                    - 1.0
-                )
-
-            recent_positions = list(self.position_abs_history)
-            recent_positions.append(abs(position))
-            avg_inventory = (
-                sum(recent_positions) / len(recent_positions)
-                if recent_positions
-                else 0.0
-            )
-            inventory_penalty = (
-                self._get_reward_setting_float("inventory_penalty_scale", 0.1)
-                * avg_inventory
-            )
-
-            position_changed = abs(position - old_position) > 1e-6
-            trade_penalty = 0.0
-            delta_steps = None
-            if position_changed:
-                if self._last_trade_step is not None:
-                    delta_steps = max(1, step - self._last_trade_step)
-                    self.trade_interval_history.append(delta_steps)
-                else:
-                    delta_steps = self.reward_settings.get("trade_cooldown_steps", 2)
-                self._last_trade_step = step
-                self._consecutive_trade_steps += 1
-            else:
-                self._consecutive_trade_steps = 0
-
-            if position_changed:
-                halflife = max(
-                    1.0,
-                    self._get_reward_setting_float("trade_frequency_halflife", 8.0),
-                )
-                trade_penalty = self._get_reward_setting_float(
-                    "trade_frequency_penalty", 0.2
-                ) * math.exp(-(delta_steps or halflife) / halflife)
-                if (
-                    delta_steps is not None
-                    and delta_steps
-                    < self._get_reward_setting_int("trade_cooldown_steps", 2)
-                ):
-                    trade_penalty += self._get_reward_setting_float(
-                        "trade_cooldown_penalty", 0.2
-                    )
-                if self._consecutive_trade_steps > self._get_reward_setting_int(
-                    "max_consecutive_trades", 5
-                ):
-                    trade_penalty += self._get_reward_setting_float(
-                        "consecutive_trade_penalty", 0.1
-                    ) * (
-                        self._consecutive_trade_steps
-                        - self._get_reward_setting_int("max_consecutive_trades", 5)
-                    )
-
-            projected_returns = list(self.pnl_history)
-            projected_returns.append(pnl)
-            volatility_penalty = 0.0
-            sharpe_bonus = 0.0
-            # Remove sharpe_bonus entirely to avoid rewarding HOLD in uptrend
-            # if len(projected_returns) >= 2:
-            #     mean_return = float(np.mean(projected_returns))
-            #     std_return = float(np.std(projected_returns))
-            #     if std_return > eps:
-            #         sharpe_ratio = mean_return / std_return
-            #         # Only apply sharpe bonus for profitable trades to avoid rewarding BUY bias in uptrend
-            #         if pnl > 0:
-            #             sharpe_bonus = self.reward_settings.get("sharpe_bonus_scale", 0.02) * max(0.0, sharpe_ratio)
-
-            # Combine all reward components
-            reward = (
-                base_component
-                + profit_bonus
-                - loss_penalty
-                - action_penalty
-                + hold_bonus
-                - position_penalty
-                - inventory_penalty
-                - trade_penalty
-                - volatility_penalty
-                + sharpe_bonus
-            )
-
-            # Clip reward
-            reward = np.clip(
-                reward,
-                -self._get_reward_setting_float("reward_clip_value", 2.0),
-                self._get_reward_setting_float("reward_clip_value", 2.0),
-            )
-
-            # Add balance penalty to maintain diversity during transition
-            reward -= balance_penalty * 2.0  # Moderate penalty for imbalance
-            print(
-                f"DEBUG Reward: action={action}, base_reward={profit_bonus:.3f}, balance_penalty={balance_penalty * 2.0:.3f}, trend_multiplier={trend_multiplier:.1f}, final_reward={reward:.3f}"
-            )
-            return float(reward)
-        elif curriculum_stage == "simple_portfolio":
-            # Completely action-focused reward: ignore PnL, reward SELL heavily, penalize HOLD/BUY
-            # Allow custom reward parameters for optimization
-            custom_params: Dict[str, float] = (
-                self.reward_settings.get("custom_reward_params", {})
-                if self.reward_settings
-                else {}
-            )
-            logger.debug(f"Simple portfolio: custom_params={custom_params}")
-            # Position-dependent rewards to balance BUY/SELL - SELL bias correction
-            if self.position == 0:
-                # No position: strongly encourage BUY, mildly penalize SELL
-                if action == 0:  # HOLD
-                    reward = custom_params.get("no_position_hold_penalty", -2.0)
-                elif action == 1:  # BUY
-                    reward = custom_params.get("no_position_buy_reward", 2.0)
-                else:  # SELL
-                    reward = custom_params.get("no_position_sell_penalty", -2.0)
-            else:
-                # Have position: encourage SELL, penalize BUY
-                if action == 0:  # HOLD
-                    reward = custom_params.get("has_position_hold_penalty", -2.0)
-                elif action == 1:  # BUY
-                    reward = custom_params.get("has_position_buy_penalty", -2.0)
-                else:  # SELL
-                    reward = custom_params.get("has_position_sell_reward", 2.0)
-
-            logger.debug(f"Simple portfolio reward: {reward}")
-            return float(reward)
-        elif curriculum_stage == "hold_only":
-            # Stage 1: Only HOLD is rewarded, trading is heavily penalized
-            base_component = 0.0
-            profit_bonus = 0.0
-            loss_penalty = 0.0  # No loss penalty in hold_only stage
-            hold_bonus = 0.5 if action == 0 else 0.0
-            action_penalty = -0.5 if action in [1, 2] else 0.0
-        elif curriculum_stage == "profit_only":
-            # Stage 2: Only profitable trades are rewarded, HOLD gets small reward
-            base_component = 0.0
-            profit_bonus = (
-                max(0.0, 0.6 * atr_normalised + 0.4 * portfolio_return)
-                if pnl > 0
-                else 0.0
-            )
-            loss_penalty = 0.0  # No loss penalty in profit_only stage
-            hold_bonus = 0.01 if action == 0 and abs(position) < 1e-6 else 0.0
-            action_penalty = 0.05 if action in [1, 2] else 0.0
-        else:  # "full"
-            # Stage 3: Scalping-optimized reward function to encourage high-frequency profitable trading
-            base_component = 0.0
-
-            # Profit bonus for profitable trades (significantly increased for scalping)
-            base_profit_bonus = (
-                max(0.0, 1.5 * atr_normalised + 1.2 * portfolio_return)
-                if pnl > 0
-                else 0.0
-            )
-
-            # Balance BUY/SELL actions to encourage balanced trading (configurable multipliers)
-            multipliers = self.reward_settings.get(
-                "profit_bonus_multipliers", [1.0, 1.0, 0.8]
-            )
-            if action == 1:  # BUY action
-                profit_bonus = base_profit_bonus * multipliers[0]
-                action_penalty = 0.015  # Symmetrized penalty
-            elif action == 2:  # SELL action
-                profit_bonus = base_profit_bonus * multipliers[1]
-                action_penalty = 0.015  # Symmetrized penalty
-            else:  # HOLD
-                profit_bonus = base_profit_bonus * multipliers[2]
-                # Dynamic HOLD penalty based on position size and market volatility
-                position_size_factor = abs(position) / max_position_size
-                volatility_factor = min(
-                    atr / (current_price * 0.01), 1.0
-                )  # Normalized ATR
-                action_penalty = 0.01 + (
-                    0.04 * position_size_factor * volatility_factor
-                )  # Range: 0.01-0.05
-
-            # Loss penalty for unprofitable trades (simplified for symmetry)
-            loss_penalty = -0.2 * abs(atr_normalised) if pnl < 0 else 0.0
-
-            # Action balance bonus to encourage using all actions (optional forced diversity)
-            if self._get_reward_setting_bool("enable_forced_diversity", False):
-                action_counts = getattr(self, "_action_counts", [0, 0, 0])
-                action_counts[action] += 1
-                self._action_counts = action_counts
-
-                total_actions = sum(action_counts)
-                if (
-                    total_actions >= 5
-                ):  # Require minimum actions before enforcing diversity - reduced from 10
-                    action_ratios = [count / total_actions for count in action_counts]
-                    min_required_ratio = 0.1  # Require at least 10% for each action
-
-                    # Strong penalty for not using actions at all
-                    unused_penalty = 0.0
-                    for _, count in enumerate(action_counts):
-                        if count == 0:
-                            unused_penalty += 1.0  # Equal penalty for all actions
-
-                    # Penalty for actions below minimum ratio
-                    ratio_penalty = 0.0
-                    for ratio in action_ratios:
-                        if ratio < min_required_ratio and ratio > 0:
-                            ratio_penalty += (min_required_ratio - ratio) * 2.0
-
-                    balance_bonus = max(
-                        0.0, 0.5 - unused_penalty - ratio_penalty
-                    )  # Max 0.5 bonus for good balance
-                else:
-                    balance_bonus = 0.0
-            else:
-                balance_bonus = 0.0
-
-            # No hold bonus to encourage active trading
-            hold_bonus = 0.0
-
-        position_utilisation = abs(position) / max_position_size
-        soft_cap = self.reward_settings.get("position_soft_cap", 0.8)
-        position_penalty = 0.0
-        if position_utilisation > soft_cap:
-            overuse = position_utilisation - soft_cap
-            position_penalty = self.reward_settings.get(
-                "position_penalty_scale", 0.5
-            ) * (
-                math.exp(
-                    overuse * self.reward_settings.get("position_penalty_exp", 4.0)
-                )
-                - 1.0
-            )
-
-        recent_positions = list(self.position_abs_history)
-        recent_positions.append(abs(position))
-        avg_inventory = (
-            sum(recent_positions) / len(recent_positions) if recent_positions else 0.0
-        )
-        inventory_penalty = (
-            self.reward_settings.get("inventory_penalty_scale", 0.1) * avg_inventory
-        )
-
-        position_changed = abs(position - old_position) > 1e-6
-        trade_penalty = 0.0
-        delta_steps = None
-        if position_changed:
-            if self._last_trade_step is not None:
-                delta_steps = max(1, step - self._last_trade_step)
-                self.trade_interval_history.append(delta_steps)
-            else:
-                delta_steps = self.reward_settings.get("trade_cooldown_steps", 2)
-            self._last_trade_step = step
-            self._consecutive_trade_steps += 1
-        else:
-            self._consecutive_trade_steps = 0
-
-        if position_changed:
-            halflife = max(
-                1.0, float(self.reward_settings.get("trade_frequency_halflife", 8.0))
-            )
-            trade_penalty = self.reward_settings.get(
-                "trade_frequency_penalty", 0.2
-            ) * math.exp(-(delta_steps or halflife) / halflife)
-            if delta_steps is not None and delta_steps < self.reward_settings.get(
-                "trade_cooldown_steps", 2
-            ):
-                trade_penalty += self.reward_settings.get("trade_cooldown_penalty", 0.2)
-            if self._consecutive_trade_steps > self.reward_settings.get(
-                "max_consecutive_trades", 5
-            ):
-                trade_penalty += self.reward_settings.get(
-                    "consecutive_trade_penalty", 0.1
-                ) * (
-                    self._consecutive_trade_steps
-                    - self.reward_settings.get("max_consecutive_trades", 5)
-                )
-
-        projected_returns = list(self.pnl_history)
-        projected_returns.append(pnl)
-        volatility_penalty = 0.0
-        sharpe_bonus = 0.0
-        if len(projected_returns) >= 2:
-            mean_return = float(np.mean(projected_returns))
-            std_return = float(np.std(projected_returns))
-            if std_return > eps:
-                volatility_penalty = (
-                    self._get_reward_setting_float("volatility_penalty_scale", 0.05)
-                    * std_return
-                )
-                sharpe_ratio = mean_return / (std_return + eps)
-                if sharpe_ratio > 0:
-                    sharpe_bonus = (
-                        self._get_reward_setting_float("sharpe_bonus_scale", 0.02)
-                        * sharpe_ratio
-                    )
-
-                # Sortino ratio calculation (downside deviation only)
-                negative_returns = [r for r in projected_returns if r < 0]
-                if negative_returns:
-                    downside_std = float(np.std(negative_returns))
-                    if downside_std > eps:
-                        sortino_ratio = mean_return / (downside_std + eps)
-                        if sortino_ratio > 0:
-                            sortino_bonus = (
-                                self._get_reward_setting_float(
-                                    "sortino_bonus_scale", 0.01
-                                )
-                                * sortino_ratio
-                            )
-                            sharpe_bonus += sortino_bonus
-
-                # Calmar ratio calculation (annualized return / max drawdown)
-                if len(self.portfolio_value_history) >= 10:
-                    recent_values = self.portfolio_value_history[-10:]
-                    peak = max(recent_values)
-                    trough = min(recent_values)
-                    if peak > eps:
-                        max_drawdown = (peak - trough) / peak
-                        if max_drawdown > eps:
-                            calmar_ratio = mean_return / max_drawdown
-                            if calmar_ratio > 0:
-                                calmar_bonus = (
-                                    self._get_reward_setting_float(
-                                        "calmar_bonus_scale", 0.005
-                                    )
-                                    * calmar_ratio
-                                )
-                                sharpe_bonus += calmar_bonus
-
-        drawdown_penalty = self._calculate_drawdown_penalty()
-        win_streak_bonus = self._calculate_win_streak_bonus()
-        stagnation_penalty = self._calculate_stagnation_penalty()
-        growth_bonus = self._calculate_growth_bonus()
-
-        cost_penalty = transaction_cost * abs(position - old_position)
-
-        # Forced diversity penalty to encourage balanced action distribution
-        forced_diversity_penalty = 0.0
-        if self._get_reward_setting_bool("enable_forced_diversity", False):
-            if len(self.action_history) >= 10:
-                recent_actions = self.action_history[-10:]
-                buy_count = sum(1 for a in recent_actions if a == 1)
-                sell_count = sum(1 for a in recent_actions if a == 2)
-                total_trades = buy_count + sell_count
-                if total_trades > 0:
-                    buy_ratio = buy_count / total_trades
-                    sell_ratio = sell_count / total_trades
-                    # Penalize BUY if BUY ratio is too high (>20% - further strengthened threshold)
-                    if action == 1 and buy_ratio > 0.20:
-                        forced_diversity_penalty = (
-                            buy_ratio - 0.20
-                        ) * 2.0  # Further strengthened penalty
-                    # Penalize SELL if SELL ratio is too high (>20% - further strengthened threshold)
-                    elif action == 2 and sell_ratio > 0.20:
-                        forced_diversity_penalty = (
-                            sell_ratio - 0.20
-                        ) * 2.0  # Further strengthened penalty
-        # Use curriculum-defined action_penalty instead of overriding it
-        # action_penalty is already set in curriculum stages above
-
-        total_penalty = (
-            position_penalty
-            + inventory_penalty
-            + trade_penalty
-            + volatility_penalty
-            + drawdown_penalty
-            + stagnation_penalty  # Add stagnation penalty
-            + cost_penalty
-            + action_penalty
-            + loss_penalty  # Add loss penalty
-            + forced_diversity_penalty  # Add forced diversity penalty
-        )
-
-        reward = (
-            base_component
-            - total_penalty
-            + win_streak_bonus
-            + sharpe_bonus
-            + profit_bonus
-            + hold_bonus
-            + balance_bonus
-            + growth_bonus
-        )
-        reward *= reward_scaling
-
-        clip_value = self.reward_settings.get("reward_clip_value", 2.0)
-        if clip_value > 0:
-            reward = max(-clip_value, min(clip_value, reward))
-
-        if not math.isfinite(reward):
-            reward = 0.0
-
-        return float(reward)
-
-    def _calculate_drawdown_penalty(self) -> float:
-        """ドローダウンペナルティの計算（50%超えの場合）"""
-        if len(self.reward_history) < 20:  # より長い期間でチェック
-            return 0.0
-
-        # 最近20ステップの累積リワード
-        recent_rewards = self.reward_history[-20:]
-        cumulative_reward = sum(recent_rewards)
-
-        # 基準となる初期累積リワード（最初の10ステップ）
-        if len(self.reward_history) >= 30:
-            initial_rewards = self.reward_history[-30:-20]
-            initial_cumulative = sum(initial_rewards)
-
-            # ドローダウンが50%超えた場合のみペナルティ
-            if initial_cumulative > 0:
-                drawdown_ratio = (
-                    initial_cumulative - cumulative_reward
-                ) / initial_cumulative
-                if drawdown_ratio > 0.5:  # 50%超え
-                    return drawdown_ratio * 0.05  # 軽めのペナルティ（5%）
-
-        return 0.0
-
-    def _calculate_stagnation_penalty(self) -> float:
-        """資産停滞ペナルティの計算（資産が増加していない場合）"""
-        if len(self.portfolio_value_history) < 30:  # より長い期間が必要
-            return 0.0
-
-        # 最近30ステップのポートフォリオ価値を取得
-        recent_values = self.portfolio_value_history[-30:]
-        initial_value = recent_values[0]
-        final_value = recent_values[-1]
-
-        # ポートフォリオ価値の変化率を計算
-        if initial_value > 0:
-            growth_rate = (final_value - initial_value) / initial_value
-
-            # 変化率がマイナスまたは非常に小さい場合に軽いペナルティ（HOLDを促す）
-            stagnation_threshold = -0.005  # -0.5%を最低ラインとする
-            if growth_rate < stagnation_threshold:
-                # 停滞度に応じた軽いペナルティ（最大0.02）
-                stagnation_penalty: float = min(
-                    0.02, abs(growth_rate - stagnation_threshold) * 0.5
-                )
-                return stagnation_penalty
-
-        return 0.0
-
-    def _calculate_growth_bonus(self) -> float:
-        """資産増加ボーナスの計算（資産が増加した場合）"""
-        if len(self.portfolio_value_history) < 30:  # 十分な履歴が必要
-            return 0.0
-
-        # 最近30ステップのポートフォリオ価値を取得
-        recent_values = self.portfolio_value_history[-30:]
-        initial_value = recent_values[0]
-        final_value = recent_values[-1]
-
-        # ポートフォリオ価値の変化率を計算
-        if initial_value > 0:
-            growth_rate = (final_value - initial_value) / initial_value
-
-            # 変化率がプラスの場合にボーナス
-            growth_threshold = 0.005  # 0.5%以上の増加でボーナス
-            if growth_rate > growth_threshold:
-                # 増加度に応じたボーナス（最大0.05）
-                growth_bonus: float = min(0.05, growth_rate * 0.5)
-                return growth_bonus
-
-        return 0.0
-
-    def _calculate_win_streak_bonus(self) -> float:
-        """連勝ボーナスの計算"""
-        if len(self.reward_history) < 5:
-            return 0.0
-
-        # 最近5ステップの勝ち数をカウント
-        recent_rewards = self.reward_history[-5:]
-        win_count = sum(1 for r in recent_rewards if r > 0)
-
-        # 3勝以上でボーナス
-        if win_count >= 3:
-            bonus = win_count * 0.01  # 1% per win
-            return bonus
-
-        return 0.0
 
     def _get_observation(self) -> NDArray[np.float32]:
         """現在の状態を取得"""
         self._ensure_data_available(self.current_step)
 
+        if self._feature_matrix.size:
+            max_index = self._feature_matrix.shape[0] - 1
+            index = min(max(self.current_step, 0), max_index)
+            obs = self._feature_matrix[index]
+
+            if (
+                self._nonfinite_rows
+                and index in self._nonfinite_rows
+                and index not in self._nonfinite_warned_rows
+            ):
+                if len(self._nonfinite_warned_rows) < 5 or index % 1000 == 0:
+                    print(
+                        f"Warning: Step {index} had non-finite feature values. Replaced with zeros for stability."
+                    )
+                self._nonfinite_warned_rows.add(index)
+
+            return obs
+
+        # Fallback path (should rarely execute) - preserve previous behaviour
         if self.current_step >= self.n_steps:
             step_data = self.df.iloc[-1]
         else:
             step_data = self.df.iloc[self.current_step]
 
-        # 特徴量ベクトルの作成
-        try:
-            # Ensure features is a list
-            feature_list = list(self.features) if not isinstance(self.features, list) else self.features
-            obs = step_data[feature_list].to_numpy(dtype=np.float32, copy=False)
-        except (KeyError, IndexError, TypeError) as e:
-            # デバッグ情報
-            available_cols = (
-                list(step_data.index) if hasattr(step_data, "index") else []
-            )
-            feature_list = list(self.features) if not isinstance(self.features, list) else self.features
-            missing_cols = [f for f in feature_list if f not in available_cols]
-            raise ValueError(
-                f"Missing features in observation: {missing_cols}. Available: {available_cols[:10]}..."
-            ) from e
-
-        return obs
+        feature_list = list(self.features)
+        obs = step_data[feature_list].to_numpy(dtype=np.float32, copy=False)
+        return np.nan_to_num(obs, nan=0.0, posinf=0.0, neginf=0.0)
 
     def _get_info(self) -> Dict[str, Any]:
         """追加情報を取得"""
@@ -1893,6 +1289,7 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             "trades_count": self.trades_count,
             "features": self.features,
             "config": self.config,
+            "pnl": self.total_pnl,
         }
 
     def render(self, mode: str = "human") -> None:
@@ -1907,19 +1304,35 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
             print("-" * 40)
 
     def close(self) -> None:
-        """環境のクリーンアップ"""
+        """環境のクリーンアップ（メモリ最適化）"""
+        # Clear all histories
         self.reward_history.clear()
         self.position_history.clear()
-        self.df = pd.DataFrame()
-        if not self._gc_step_interval:
-            gc.collect()
+        self.portfolio_value_history.clear()
+        self.action_history.clear()
+        
+        # Clear deques
+        self.position_abs_history.clear()
+        self.pnl_history.clear()
+        self.trade_interval_history.clear()
+        
+        # Clear DataFrame
+        if hasattr(self, 'df'):
+            self.df = pd.DataFrame()
+        
+        # Clear large objects
+        self._current_episode_actions.clear()
+        self._action_counts = [0, 0, 0]
+        
+        # Force garbage collection
+        gc.collect()
 
     # ユーティリティメソッド
     def get_feature_names(self) -> list[str]:
         """特徴量名を取得"""
         return self.features
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> StatisticsDict:
         """統計情報を取得"""
         if len(self.reward_history) == 0:
             return {}
@@ -1927,13 +1340,13 @@ class HeavyTradingEnv(gym.Env[NDArray[np.float32], spaces.Discrete], TradingEnvi
         rewards = np.array(self.reward_history)
 
         return {
-            "total_reward": np.sum(rewards),
-            "mean_reward": np.mean(rewards),
-            "std_reward": np.std(rewards),
-            "sharpe_ratio": np.mean(rewards) / (np.std(rewards) + EPSILON),
-            "max_reward": np.max(rewards),
+            "total_reward": float(np.sum(rewards)),
+            "mean_reward": float(np.mean(rewards)),
+            "std_reward": float(np.std(rewards)),
+            "sharpe_ratio": float(np.mean(rewards) / (np.std(rewards) + EPSILON)),
+            "max_reward": float(np.max(rewards)),
             "total_trades": self.trades_count,
-            "win_rate": np.sum(rewards > 0) / len(rewards) if len(rewards) > 0 else 0,
+            "win_rate": float(np.sum(rewards > 0) / len(rewards)) if len(rewards) > 0 else 0.0,
         }
 
     def get_trades_per_1k(self) -> float:
@@ -2002,10 +1415,10 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
         """Execute flipped action and return flipped results."""
         # Flip action: BUY<->SELL, HOLD remains
         flipped_action = action
-        if action == 1:  # BUY -> SELL
-            flipped_action = 2
-        elif action == 2:  # SELL -> BUY
-            flipped_action = 1
+        if action == ACTION_BUY:
+            flipped_action = ACTION_SELL
+        elif action == ACTION_SELL:
+            flipped_action = ACTION_BUY
 
         # Execute flipped action
         obs, reward, done, truncated, info = super().step(flipped_action)

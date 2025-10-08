@@ -127,9 +127,6 @@ class StreamingPipeline:
         max_backoff_seconds: float = 60.0,
         observability: Optional[ObservabilityClient] = None,
     ) -> None:
-        super().__init__()
-        super().__init__()
-
         self._shutdown = False
         self._background_stop = threading.Event()
         self._background_thread = None
