@@ -26,7 +26,7 @@ sys.path.insert(0, str(project_root))
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from ztb.training.custom_ppo import CustomPPO
+from ztb.training.models.custom_ppo import CustomPPO
 from ztb.training.binary_search.base_optimizer import (
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
@@ -36,13 +36,13 @@ from ztb.training.binary_search.base_optimizer import (
 class LagrangeOptimizerBase(HyperparameterOptimizer):
     """Base class for Lagrange parameter optimizers using CustomPPO."""
 
-    def __init__(self, project_root: Any = None) -> None:  # type: ignore[override]
+    def __init__(self, project_root: Any = None) -> None:
         """Initialize optimizer with full curriculum stage for realistic rewards."""
         super().__init__(project_root)
         # Override curriculum_stage to use full environment (not simple_portfolio)
         self.env_config["curriculum_stage"] = "full"
 
-    def create_model(self, env: Any) -> Any:  # type: ignore[override]
+    def create_model(self, env: Any) -> Any:
         """Create CustomPPO model with Lagrange parameters."""
         # Wrap environment
         env = Monitor(env)
@@ -74,7 +74,7 @@ class LagrangeOptimizerBase(HyperparameterOptimizer):
             **ppo_kwargs,
         )
 
-    def train_model(self, total_timesteps: int = 100000) -> Tuple[Any, Any]:  # type: ignore[override]
+    def train_model(self, total_timesteps: int = 100000) -> Tuple[Any, Any]:
         """Train model and return model and callback."""
         from ztb.training.binary_search.base_optimizer import TrainingCallback
         
@@ -111,7 +111,7 @@ class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
         self.ppo_params["lagrange_params"]["r_target"] = float(value)
         self.ppo_params["enable_lagrange"] = True
 
-    def evaluate_result(self, callback: Any) -> float:  # type: ignore[override]
+    def evaluate_result(self, callback: Any) -> float:
         """
         Evaluate training result.
         
@@ -255,7 +255,7 @@ def main() -> None:
     }
 
     optimizer_class = optimizer_map[args.parameter]
-    optimizer = optimizer_class()
+    optimizer = optimizer_class()  # type: ignore[abstract]
 
     if args.mode == "single":
         # Get parameter-specific argument or use --value

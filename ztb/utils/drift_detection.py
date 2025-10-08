@@ -10,16 +10,32 @@ Thresholds:
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, TypedDict
 
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
 from scipy import stats
 
 
+class DriftResultDict(TypedDict):
+    """Drift detection result dictionary."""
+    feature_name: str
+    psi: float
+    psi_drift: bool
+    ks_statistic: float
+    ks_p_value: float
+    ks_drift: bool
+    drift_detected: bool
+    train_mean: float
+    eval_mean: float
+    train_std: float
+    eval_std: float
+
+
 def calculate_psi(
-    expected: np.ndarray[Any, np.dtype[np.floating[Any]]],
-    actual: np.ndarray[Any, np.dtype[np.floating[Any]]],
+    expected: NDArray[np.float32],
+    actual: NDArray[np.float32],
     bins: int = 10,
     epsilon: float = 1e-10,
 ) -> float:
@@ -84,8 +100,8 @@ def calculate_psi(
 
 
 def calculate_ks(
-    expected: np.ndarray[Any, np.dtype[np.floating[Any]]],
-    actual: np.ndarray[Any, np.dtype[np.floating[Any]]],
+    expected: NDArray[np.float32],
+    actual: NDArray[np.float32],
 ) -> Tuple[float, float]:
     """
     Calculate Kolmogorov-Smirnov test statistic and p-value.
@@ -127,12 +143,12 @@ def calculate_ks(
 
 
 def detect_drift_single_feature(
-    train_values: np.ndarray[Any, np.dtype[np.floating[Any]]],
-    eval_values: np.ndarray[Any, np.dtype[np.floating[Any]]],
+    train_values: NDArray[np.float32],
+    eval_values: NDArray[np.float32],
     feature_name: str,
     psi_threshold: float = 0.2,
     ks_p_threshold: float = 0.01,
-) -> Dict[str, Any]:
+) -> DriftResultDict:
     """
     Detect drift for a single feature.
     

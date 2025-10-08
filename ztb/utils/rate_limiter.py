@@ -9,7 +9,7 @@ import asyncio
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Union, cast
+from typing import Any, Callable, Dict, Optional
 
 from ztb.utils.logging_utils import get_logger
 
@@ -140,15 +140,9 @@ class RateLimiter:
         self.strategy = strategy
 
         if strategy == "token_bucket":
-            self._limiter = cast(
-                Union[TokenBucketRateLimiter, SlidingWindowRateLimiter],
-                TokenBucketRateLimiter(self.config),
-            )
+            self._limiter = TokenBucketRateLimiter(self.config)
         elif strategy == "sliding_window":
-            self._limiter = cast(
-                Union[TokenBucketRateLimiter, SlidingWindowRateLimiter],
-                SlidingWindowRateLimiter(self.config),
-            )
+            self._limiter = SlidingWindowRateLimiter(self.config)
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 

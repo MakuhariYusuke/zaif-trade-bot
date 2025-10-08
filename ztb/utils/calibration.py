@@ -5,16 +5,39 @@ Compute Brier score and reliability curves for action probability calibration.
 Helps monitor whether predicted probabilities are well-calibrated.
 """
 
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict, List, Tuple, Any, Optional, TypedDict
 import numpy as np
 from numpy.typing import NDArray
 
 
+class BrierScoreDict(TypedDict):
+    """Brier score result dictionary."""
+    overall_brier: float
+    per_action_brier: Dict[str, float]
+
+
+class ReliabilityCurveDict(TypedDict):
+    """Reliability curve result dictionary."""
+    bin_edges: List[float]
+    bin_counts: List[int]
+    bin_predicted_prob: List[float]
+    bin_observed_freq: List[float]
+    expected_calibration_error: float
+
+
+class CalibrationReportDict(TypedDict):
+    """Calibration analysis report dictionary."""
+    brier_score: BrierScoreDict
+    reliability_curves: Dict[str, ReliabilityCurveDict]
+    n_samples: int
+    n_actions: int
+
+
 def compute_brier_score(
-    predicted_probs: NDArray[np.floating[Any]],
-    actual_actions: NDArray[np.integer[Any]],
+    predicted_probs: NDArray[np.float32],
+    actual_actions: NDArray[np.int64],
     n_actions: int = 3,
-) -> Dict[str, Any]:
+) -> BrierScoreDict:
     """
     Compute Brier score for multi-class predictions.
     
@@ -52,17 +75,17 @@ def compute_brier_score(
             per_action_brier[action_name] = 0.0
     
     return {
-        "overall": float(overall_brier),
-        "per_action": per_action_brier,
+        "overall_brier": float(overall_brier),
+        "per_action_brier": per_action_brier,
     }
 
 
 def compute_reliability_curve(
-    predicted_probs: NDArray[np.floating[Any]],
-    actual_actions: NDArray[np.integer[Any]],
+    predicted_probs: NDArray[np.float32],
+    actual_actions: NDArray[np.int64],
     action_idx: int,
     n_bins: int = 10,
-) -> Dict[str, Any]:
+) -> ReliabilityCurveDict:
     """
     Compute reliability curve for a specific action.
     
@@ -137,11 +160,11 @@ def compute_reliability_curve(
 
 
 def compute_full_calibration_report(
-    predicted_probs: NDArray[np.floating[Any]],
-    actual_actions: NDArray[np.integer[Any]],
+    predicted_probs: NDArray[np.float32],
+    actual_actions: NDArray[np.int64],
     n_bins: int = 10,
     action_names: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+) -> CalibrationReportDict:
     """
     Compute full calibration report with Brier scores and reliability curves.
     

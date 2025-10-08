@@ -1,6 +1,6 @@
 # Conditional import for PPO trainer
 try:
-    from ztb.training.ppo_trainer_old import (  # type: ignore[attr-defined]
+    from ztb.training.archive.ppo_trainer_old import (  # type: ignore[attr-defined]
         CheckpointCallback,
         PPOTrainer,
         SafetyCallback,
