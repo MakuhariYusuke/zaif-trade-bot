@@ -23,11 +23,8 @@ from ztb.utils.config import ZTBConfig
 # Ensure project root is on sys.path
 setup_project_path()
 
-from ztb.training.core.ppo_trainer import (  # noqa: E402  # type: ignore[attr-defined]
-    Algorithm,
-    FeatureSet,
-    PPOTrainer,
-    Timeframe,
+from ztb.training.core.ppo_trainer import PPOTrainer  # noqa: E402  # type: ignore[attr-defined]
+from ztb.features.curated_features import FeatureSet  # noqa: E402
 )
 
 LOGGER = get_logger(__name__)
@@ -76,10 +73,10 @@ def objective_function(
         config_dict = cast(Dict[str, Any], base_config)
         config_dict.update(params)
         config_dict.update({
-            "algorithm": Algorithm.PPO,
+            "algorithm": "PPO",
             "data_path": "data/ml-dataset-enhanced-balanced.csv",
             "feature_set": FeatureSet.FULL,
-            "timeframe": Timeframe.M1,
+            "timeframe": "M1",
         })
         config = config_dict
 
