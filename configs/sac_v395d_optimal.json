@@ -1,0 +1,70 @@
+{
+  "model_name": "sac_v395d_optimal",
+  "algorithm": "sac",
+  "total_timesteps": 5000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 20000,
+    "learning_starts": 500,
+    "batch_size": 128,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "target_entropy": -0.5
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.1,
+      "consecutive_hold_penalty": 0.05,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.3,
+      "profit_reward_multiplier": 10.0,
+      "action_diversity_bonus": 0.1,
+      "successful_trade_bonus": 5.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 1000,
+  "notes": "SAC v395d: Best of both worlds - combines low loss from v395a with stable ent_coef from v395b/c",
+  "analysis_summary": {
+    "based_on": "Comparison of v395a, v395b, v395c over 5000 timesteps",
+    "key_findings": [
+      "v395a had lowest Actor/Critic Loss but ent_coef too high (4.03)",
+      "v395b/c had ideal ent_coef (1.53) but higher losses",
+      "target_entropy=-0.5 is critical for proper exploration control"
+    ],
+    "parameter_choices": {
+      "learning_rate": "0.0003 from v395a (lowest losses)",
+      "batch_size": "128 from v395b (reduce variance)",
+      "gamma": "0.99 from v395a (better Q-value estimation)",
+      "train_freq": "1 from v395a (stability over efficiency)",
+      "target_entropy": "-0.5 from v395b/c (control ent_coef)",
+      "buffer_size": "20000 from v395b (more diverse experiences)",
+      "learning_starts": "500 from v395b (initial stability)"
+    },
+    "expected_outcomes": {
+      "ent_coef": "1.0-2.0 (controlled exploration)",
+      "critic_loss": "< 1e8 (stable learning)",
+      "actor_loss": "< 1e5 (effective policy)",
+      "overall": "Best balance of exploration and exploitation"
+    }
+  }
+}

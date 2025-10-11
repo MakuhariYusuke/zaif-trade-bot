@@ -6,10 +6,10 @@ This module separates the complex reward calculation logic from the main environ
 
 # mypy: disable-error-code=literal-required
 
-import logging
 import math
 from typing import Any, List, Optional
 
+from ztb.utils.logging_utils import get_logger
 from ztb.trading.constants import (
     ACTION_HOLD,
     ACTION_BUY,
@@ -49,7 +49,7 @@ class RewardCalculator:
         self.config = config
         self.reward_settings = reward_settings
         self.initial_portfolio_value = initial_portfolio_value
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger("ztb.trading.environment.reward")
         
         # Internal state for tracking
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
@@ -119,6 +119,15 @@ class RewardCalculator:
         Returns:
             Calculated reward value
         """
+        # Check if simple reward is enabled
+        use_simple_reward = self.get_setting_bool("use_simple_reward", False)
+        
+        if use_simple_reward:
+            return self.calculate_reward_simple(
+                pnl, portfolio_value, position, old_position, action
+            )
+        
+        # Original complex reward function
         curriculum_stage = self.config.curriculum_stage
         self.logger.debug(
             "Curriculum stage: %s, position: %.2f, action: %d",
@@ -460,6 +469,73 @@ class RewardCalculator:
     def reset(self) -> None:
         """Reset internal state."""
         self._action_counts = [0, 0, 0]
+
+    def calculate_reward_simple(
+        self,
+        pnl: float,
+        portfolio_value: float,
+        position: float,
+        old_position: float,
+        action: int = 0,
+    ) -> float:
+        """
+        Simple PnL-based reward function v3.0
+        
+        Design principles:
+        1. PnL (profit/loss) as the primary signal
+        2. Normalize by portfolio value
+        3. Scale to reasonable range
+        4. Small penalties to reduce zero rewards
+        
+        v3.0 improvements (from environment diagnostics):
+        - Added action parameter for context-aware penalties
+        - Inactivity penalty only for HOLD when no position
+        - Opportunity cost for HOLD when holding position (missed trading)
+        
+        Args:
+            pnl: Profit/Loss from action (in currency units)
+            portfolio_value: Current portfolio value
+            position: Current position size
+            old_position: Position before action
+            action: Action taken (0=HOLD, 1=BUY, 2=SELL)
+            
+        Returns:
+            Normalized reward in range [clip_min, clip_max]
+        """
+        # 1. Normalize PnL by portfolio value
+        # Example: pnl=1000, portfolio_value=200000 → pnl_ratio=0.005 (0.5%)
+        pnl_ratio = pnl / max(portfolio_value, 1.0)
+        
+        # 2. Scale: 0.1% profit = reward 1.0
+        # This makes rewards human-interpretable
+        reward_scale = self.get_setting_float("reward_scale", 1000.0)
+        reward = pnl_ratio * reward_scale
+        
+        # 3. Clip to prevent extreme values
+        # Typical range: [-1, 1] for ±0.1% profit/loss (v395h)
+        clip_min = self.get_setting_float("reward_clip_min", -10.0)
+        clip_max = self.get_setting_float("reward_clip_max", 10.0)
+        reward = max(clip_min, min(clip_max, reward))
+        
+        # 4. Penalty for inactivity (HOLD with no position)
+        # Diagnostic finding: 64.3% zero rewards → insufficient learning signal
+        # Solution: Small penalty to encourage exploration
+        if self.get_setting_bool("enable_inactivity_penalty", False):
+            if action == 0 and position == 0.0 and old_position == 0.0:
+                # Default: -0.001 per step of doing nothing
+                inactivity_penalty_rate = self.get_setting_float("inactivity_penalty_rate", 0.001)
+                reward -= inactivity_penalty_rate
+        
+        # 5. Opportunity cost for HOLD when holding position
+        # When holding a position but not trading, there's missed opportunity
+        # This encourages active management
+        if self.get_setting_bool("enable_opportunity_cost", False):
+            if action == 0 and position != 0.0:
+                # Default: -0.0005 per step of holding without action
+                opportunity_cost_rate = self.get_setting_float("opportunity_cost_rate", 0.0005)
+                reward -= opportunity_cost_rate
+        
+        return reward
 
 
 __all__ = ["RewardCalculator"]

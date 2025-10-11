@@ -14,7 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 import requests
-import yaml
+
+from ztb.utils.config_loader import ConfigLoader
 
 
 class PromotionResult(Enum):
@@ -257,9 +258,7 @@ class YamlPromotionEngine(PromotionEngine):
                 f"Promotion criteria config not found: {self.config_path}"
             )
 
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-            return cast(Dict[str, Any], config)
+        return ConfigLoader.load(self.config_path)
 
     def _get_category_config(self, category: Optional[str]) -> Dict[str, Any]:
         """Get configuration for a specific category"""
@@ -551,8 +550,7 @@ class PromotionNotifier:
             return {}
 
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f) or {}
+            return ConfigLoader.load(config_path)
         except Exception as e:
             print(f"Failed to load webhook config: {e}")
             return {}

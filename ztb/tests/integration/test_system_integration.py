@@ -19,7 +19,7 @@ from ztb.utils.data_validation import validate_dataframe
 from ztb.utils.talib_wrapper import TaLibWrapper
 from ztb.utils.config import ZTBConfig
 from ztb.utils.logging_utils import setup_logging
-from ztb.training.ppo_trainer import PPOTrainer
+from ztb.training.core.ppo_trainer import PPOTrainer
 from ztb.trading.environment.environment import HeavyTradingEnv
 # from ztb.trading.backtest.runner import BacktestRunner  # Commented out due to import issues
 

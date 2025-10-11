@@ -313,3 +313,17 @@ def validate_model_config(config: Dict[str, Any]) -> None:
 
     if config.get('batch_size', 0) <= 0:
         raise ValueError("batch_size must be positive")
+
+
+def validate_array_type(arr: Any, expected_dtype: np.dtype[Any]) -> bool:
+    """
+    Validate that an array has the expected dtype.
+
+    Args:
+        arr: Array to validate
+        expected_dtype: Expected numpy dtype
+
+    Returns:
+        True if array has expected dtype, False otherwise
+    """
+    return isinstance(arr, np.ndarray) and arr.dtype == expected_dtype

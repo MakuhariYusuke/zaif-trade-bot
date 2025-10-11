@@ -31,6 +31,7 @@ class TrainerParams:
     eval_gates: Optional[EvalGates] = None
     halt_callback: Optional[Callable[[str], None]] = None
     checkpoint_interval: int = 10000
+    progress_bar: bool = True
 
 
 @dataclass

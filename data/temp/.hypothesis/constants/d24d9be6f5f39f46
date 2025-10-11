@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks_legacy.py
+# hypothesis_version: 6.140.3
+
+[-0.1, 0.0, 0.01, 0.1, 10000.0, 25000, 100000, 'BUY', 'BaseTrainer', 'HOLD', 'Progress', 'SELL', 'TaskID', '[green]Training...', '__iter__', '_last_position_size', 'action_counts', 'actions', 'checkpoint_dir', 'checkpoints', 'config', 'cosine_decay', 'done', 'episode_count', 'episode_lengths', 'episode_rewards', 'locals', 'portfolio_values', 'position_sizes', 'rewards', 'scripts', 'session_id', 'total_timesteps', 'trade_counts']

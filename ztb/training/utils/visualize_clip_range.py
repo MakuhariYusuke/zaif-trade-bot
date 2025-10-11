@@ -15,6 +15,7 @@ import pandas as pd
 
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.project_setup import setup_project_path
+from ztb.utils.config import ZTBConfig
 
 # Setup project path
 setup_project_path(Path(__file__))
@@ -39,7 +40,7 @@ def simulate_policy_updates(
             "batch_size": 256,  # Override for visualization
             "ent_coef": 0.5,  # Override for visualization
             "tensorboard_log": f"logs/clip_viz_{clip_range}",
-            "model_dir": f"models/clip_viz_{clip_range}",
+            "model_dir": f"{ZTBConfig().get_model_dir()}/clip_viz_{clip_range}",
             "checkpoint_dir": f"checkpoints/clip_viz_{clip_range}",
             "log_dir": f"logs/clip_viz_{clip_range}",
             "offline_mode": True,

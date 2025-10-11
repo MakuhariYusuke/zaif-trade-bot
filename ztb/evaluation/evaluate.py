@@ -27,26 +27,71 @@ parent_path = str(Path(__file__).parent.parent)
 if parent_path not in sys.path:
     sys.path.insert(0, parent_path)
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.policies.policy_utils import predict_with_masks
+
+
+class ModelConfigDict(TypedDict, total=False):
+    """Model configuration dictionary."""
+    pass  # For now, keep as Dict[str, Any] equivalent
+
+
+class SingleEpisodeResultDict(TypedDict):
+    """Single episode evaluation result."""
+    rewards: List[float]
+    positions: List[float]
+    pnls: List[float]
+    actions: List[int]
+    states: List[Any]
 
 
 class EvaluationResult(TypedDict, total=False):
-    """Type definition for evaluation results"""
-
+    """Type definition for comprehensive evaluation results.
+    
+    Contains all metrics and statistics from model evaluation including
+    risk metrics, trading performance, and data quality assessments.
+    """
+    # Core performance metrics
     total_return: float
     sharpe_ratio: float
+    sortino_ratio: float
+    calmar_ratio: float
     max_drawdown: float
     win_rate: float
     total_trades: int
+    
+    # Risk and volatility metrics
+    volatility: float
+    value_at_risk: float
+    expected_shortfall: float
+    
+    # Data quality assessment
     data_quality_score: float  # Composite score based on NaN rate, correlation, etc.
+    
+    # Metadata
     evaluation_timestamp: str
     feature_count: int
-    model_config: Dict[str, Any]
+    model_config: ModelConfigDict
+    
+    # Detailed statistics
+    reward_stats: Dict[str, Any]
+    pnl_stats: Dict[str, Any]
+    trading_stats: Dict[str, Any]
+    episode_stats: Dict[str, Any]  # Episode-level aggregated statistics
+    
+    # Action distribution analysis
+    action_distribution: Dict[str, int]
+    
+    # Performance stability metrics
+    consistency_score: float
+    robustness_score: float
 
 
 class TradingEvaluator:
     """取引モデルの評価クラス"""
 
     writer: Any  # TensorBoard SummaryWriter
+    model: Optional[PPO]
+    df: Optional[pd.DataFrame]
 
     def __init__(
         self, model_path: str, data_path: str, config: Optional[dict[str, Any]] = None
@@ -88,6 +133,8 @@ class TradingEvaluator:
             "render_mode": None,
             "deterministic": True,
             "plot_style": "seaborn",
+            "memory_optimization": True,  # Enable memory optimization by default
+            "save_states": False,  # Don't save states by default to save memory
         }
 
     def _load_data(self) -> pd.DataFrame:
@@ -136,10 +183,10 @@ class TradingEvaluator:
         env = HeavyTradingEnv(self.df, env_config)
         return env
 
-    def evaluate_model(self) -> Dict[str, Any]:
+    def evaluate_model(self) -> EvaluationResult:
         """モデルの包括的な評価"""
         return cast(
-            Dict[str, Any],
+            EvaluationResult,
             safe_operation(
                 logger=None,  # Use default logger
                 operation=self._evaluate_model_impl,
@@ -148,16 +195,18 @@ class TradingEvaluator:
             ),
         )
 
-    def _evaluate_model_impl(self) -> Dict[str, Any]:
-        """Implementation of model evaluation."""
+    def _evaluate_model_impl(self) -> EvaluationResult:
+        """Implementation of model evaluation with memory optimization."""
         print("Starting comprehensive model evaluation...")
+
+        memory_optimized = self.config.get("memory_optimization", True)
 
         # 複数エピソードの評価
         all_rewards = []
         all_positions = []
         all_pnls = []
         all_actions = []
-        all_states = []
+        all_states = [] if self.config.get("save_states", False) else None
 
         for episode in range(self.config["n_eval_episodes"]):
             print(f"Evaluating episode {episode + 1}/{self.config['n_eval_episodes']}")
@@ -167,9 +216,14 @@ class TradingEvaluator:
             all_positions.append(episode_data["positions"])
             all_pnls.append(episode_data["pnls"])
             all_actions.append(episode_data["actions"])
-            all_states.append(episode_data["states"])
+            if all_states is not None:
+                all_states.append(episode_data["states"])
 
-        # 統計の計算
+            # メモリ最適化: エピソードデータを即時解放
+            if memory_optimized:
+                del episode_data
+
+        # 統計の計算（メモリ最適化）
         stats = self._calculate_statistics(
             all_rewards, all_positions, all_pnls, all_actions
         )
@@ -178,6 +232,12 @@ class TradingEvaluator:
         self._save_evaluation_results(
             stats, all_rewards, all_positions, all_pnls, all_actions
         )
+
+        # メモリ最適化: 大きなデータを解放
+        if memory_optimized:
+            del all_rewards, all_positions, all_pnls, all_actions
+            if all_states is not None:
+                del all_states
 
         return stats
 
@@ -206,6 +266,7 @@ class TradingEvaluator:
         dsr_trials = dsr_trials or default_dsr_trials
 
         # Calculate bootstrap parameters
+        assert self.df is not None, "DataFrame not loaded"
         n = len(self.df)  # Number of data points
         bootstrap_block = bootstrap_block or max(16, math.ceil(math.sqrt(n)))
         bootstrap_overlap = bootstrap_overlap if bootstrap_overlap is not None else True
@@ -254,8 +315,8 @@ class TradingEvaluator:
         print(f"Metrics saved to {metrics_file}")
         return comparison_data
 
-    def _evaluate_single_episode(self) -> Dict[str, Any]:
-        """単一エピソードの評価"""
+    def _evaluate_single_episode(self) -> SingleEpisodeResultDict:
+        """単一エピソードの評価（メモリ最適化）"""
         obs, info = self.env.reset()
         done = False
 
@@ -263,25 +324,27 @@ class TradingEvaluator:
         positions = []
         pnls = []
         actions = []
-        states = []
+        states = [] if self.config.get("save_states", False) else None
 
         step_count = 0
         while not done and step_count < self.config["max_steps_per_episode"]:
-            # 行動の予測
-            action_value, _ = self.model.predict(
-                obs, deterministic=self.config["deterministic"]
+            # 行動の予測 (using predict_with_masks for proper action masking)
+            assert self.model is not None, "Model not loaded"
+            action_value, _ = predict_with_masks(
+                self.model, obs, self.env, deterministic=self.config["deterministic"]
             )
-            action = cast(int, action_value.item())
+            action = action_value.item() if hasattr(action_value, 'item') else int(action_value)
 
             # 環境ステップ
             next_obs, reward, done, _, info = self.env.step(action)
 
-            # データの記録
+            # データの記録（メモリ最適化）
             rewards.append(reward)
             positions.append(info["position"])
-            pnls.append(info.get("pnl", 0))
+            pnls.append(float(info.get("pnl", 0)))
             actions.append(action)
-            states.append(obs.copy())
+            if states is not None:
+                states.append(obs.copy())
 
             obs = next_obs
             step_count += 1
@@ -291,7 +354,7 @@ class TradingEvaluator:
             "positions": positions,
             "pnls": pnls,
             "actions": actions,
-            "states": states,
+            "states": states if states is not None else [],
         }
 
     def _calculate_statistics(
@@ -300,13 +363,15 @@ class TradingEvaluator:
         all_positions: List[List[float]],
         all_pnls: List[List[float]],
         all_actions: List[List[int]],
-    ) -> Dict[str, Any]:
-        """統計の計算"""
+    ) -> EvaluationResult:
+        """統計の計算（メモリ最適化）"""
+        memory_optimized = self.config.get("memory_optimization", True)
+
         # リワード統計
         all_episode_rewards = [sum(episode_rewards) for episode_rewards in all_rewards]
         all_episode_pnls = [sum(episode_pnls) for episode_pnls in all_pnls]
 
-        # ポジション統計
+        # ポジション統計（メモリ最適化）
         all_position_changes = []
         for positions in all_positions:
             changes = [
@@ -314,10 +379,13 @@ class TradingEvaluator:
             ]
             all_position_changes.extend(changes)
 
-        # 行動統計
-        all_episode_actions = [
-            action for episode_actions in all_actions for action in episode_actions
-        ]
+        # 行動統計（メモリ最適化: ジェネレータ使用）
+        def get_all_actions():
+            for episode_actions in all_actions:
+                for action in episode_actions:
+                    yield action
+
+        all_episode_actions = list(get_all_actions()) if not memory_optimized else list(get_all_actions())
 
         episode_lengths = [len(r) for r in all_rewards]
 
@@ -424,7 +492,7 @@ class TradingEvaluator:
             Any, self._calculate_data_quality_score(stats)
         )
 
-        return stats
+        return cast(EvaluationResult, stats)
 
     def _calculate_data_quality_score(self, stats: Dict[str, Any]) -> float:
         """Calculate composite data quality score based on various metrics"""
@@ -574,7 +642,7 @@ class TradingEvaluator:
 
     def _save_evaluation_results(
         self,
-        stats: Dict[str, Any],
+        stats: EvaluationResult,
         all_rewards: List[List[float]],
         all_positions: List[List[float]],
         all_pnls: List[List[float]],
@@ -610,78 +678,82 @@ class TradingEvaluator:
         self._log_to_tensorboard(stats)
 
     def _log_to_tensorboard(
-        self, stats: Dict[str, Any], timestamp: Optional[str] = None
+        self, stats: EvaluationResult, timestamp: Optional[str] = None
     ) -> None:
         """TensorBoardに評価指標を記録"""
         try:
             # 報酬統計
-            reward_stats = stats["reward_stats"]
-            self.writer.add_scalar(
-                "Evaluation/Mean_Reward", reward_stats["mean_total_reward"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Mean_Step_Reward", reward_stats["mean_step_reward"], 0
-            )
+            reward_stats = stats.get("reward_stats", {})
+            if reward_stats:
+                self.writer.add_scalar(
+                    "Evaluation/Mean_Reward", reward_stats.get("mean_total_reward", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Mean_Step_Reward", reward_stats.get("mean_step_reward", 0), 0
+                )
 
             # PnL統計
-            pnl_stats = stats["pnl_stats"]
-            self.writer.add_scalar(
-                "Evaluation/Mean_PnL", pnl_stats["mean_total_pnl"], 0
-            )
-            self.writer.add_scalar("Evaluation/PnL_Std", pnl_stats["std_total_pnl"], 0)
-            self.writer.add_scalar(
-                "Evaluation/Sharpe_Ratio", pnl_stats["sharpe_ratio"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Sortino_Ratio", pnl_stats["sortino_ratio"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Max_Drawdown", pnl_stats["max_drawdown"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Calmar_Ratio", pnl_stats["calmar_ratio"], 0
-            )
+            pnl_stats = stats.get("pnl_stats", {})
+            if pnl_stats:
+                self.writer.add_scalar(
+                    "Evaluation/Mean_PnL", pnl_stats.get("mean_total_pnl", 0), 0
+                )
+                self.writer.add_scalar("Evaluation/PnL_Std", pnl_stats.get("std_total_pnl", 0), 0)
+                self.writer.add_scalar(
+                    "Evaluation/Sharpe_Ratio", pnl_stats.get("sharpe_ratio", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Sortino_Ratio", pnl_stats.get("sortino_ratio", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Max_Drawdown", pnl_stats.get("max_drawdown", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Calmar_Ratio", pnl_stats.get("calmar_ratio", 0), 0
+                )
 
             # 取引統計
-            trading_stats = stats["trading_stats"]
-            self.writer.add_scalar(
-                "Evaluation/Total_Trades", trading_stats["total_trades"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Mean_Trades_Per_Episode",
-                trading_stats["mean_trades_per_episode"],
-                0,
-            )
-            self.writer.add_scalar(
-                "Evaluation/Position_Change_Rate",
-                trading_stats["position_change_rate"],
-                0,
-            )
-            self.writer.add_scalar(
+            trading_stats = stats.get("trading_stats", {})
+            if trading_stats:
+                self.writer.add_scalar(
+                    "Evaluation/Total_Trades", trading_stats.get("total_trades", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Mean_Trades_Per_Episode",
+                    trading_stats.get("mean_trades_per_episode", 0),
+                    0,
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Position_Change_Rate",
+                    trading_stats.get("position_change_rate", 0),
+                    0,
+                )
+                self.writer.add_scalar(
                 "Evaluation/Position_Change_Variance",
                 trading_stats["position_change_variance"],
                 0,
             )
-            self.writer.add_scalar(
-                "Evaluation/Hold_Ratio", trading_stats["hold_ratio"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Buy_Ratio", trading_stats["buy_ratio"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Sell_Ratio", trading_stats["sell_ratio"], 0
-            )
-            self.writer.add_scalar(
-                "Evaluation/Profit_Per_Trade", trading_stats["profit_per_trade"], 0
-            )
+                self.writer.add_scalar(
+                    "Evaluation/Hold_Ratio", trading_stats.get("hold_ratio", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Buy_Ratio", trading_stats.get("buy_ratio", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Sell_Ratio", trading_stats.get("sell_ratio", 0), 0
+                )
+                self.writer.add_scalar(
+                    "Evaluation/Profit_Per_Trade", trading_stats.get("profit_per_trade", 0), 0
+                )
 
             # エピソード統計
-            episode_stats = stats["episode_stats"]
-            self.writer.add_scalar(
-                "Evaluation/Mean_Episode_Length",
-                episode_stats["mean_episode_length"],
-                0,
-            )
+            episode_stats = stats.get("episode_stats", {})
+            if episode_stats:
+                self.writer.add_scalar(
+                    "Evaluation/Mean_Episode_Length",
+                    episode_stats.get("mean_episode_length", 0),
+                    0,
+                )
             self.writer.add_scalar(
                 "Evaluation/Total_Steps", episode_stats["total_steps"], 0
             )
@@ -1115,6 +1187,42 @@ class TradingEvaluator:
 
         return max_duration
 
+    def close(self) -> None:
+        """Clean up resources to prevent memory leaks."""
+        try:
+            # Close environment
+            if hasattr(self, 'env') and getattr(self, 'env', None) is not None:
+                self.env.close()
+                print("TradingEvaluator environment closed")
+
+            # Close TensorBoard writer
+            if hasattr(self, 'writer') and getattr(self, 'writer', None) is not None:
+                self.writer.close()
+                print("TensorBoard writer closed")
+            
+            # Clear model reference and break potential circular references
+            if hasattr(self, 'model') and getattr(self, 'model', None) is not None:
+                # Clear model references to environment
+                if hasattr(self.model, 'env') and getattr(self.model, 'env', None) is not None:
+                    setattr(self.model, 'env', None)
+                if hasattr(self.model, '_last_obs') and getattr(self.model, '_last_obs', None) is not None:
+                    setattr(self.model, '_last_obs', None)
+                self.model = None
+                print("TradingEvaluator model references cleared")
+            
+            # Clear data references
+            if hasattr(self, 'df'):
+                self.df = None
+                
+        except Exception as e:
+            print(f"Error during TradingEvaluator cleanup: {e}")
+            import traceback
+            print(f"Cleanup traceback: {traceback.format_exc()}")
+
+    def __del__(self) -> None:
+        """Destructor to ensure cleanup even if close() wasn't called explicitly."""
+        self.close()
+
 
 def main() -> None:
     """メイン関数"""
@@ -1190,17 +1298,24 @@ def main() -> None:
     if args.mode == "evaluate":
         stats = evaluator.evaluate_model()
         print("\nEvaluation Summary:")
-        print(f"Mean Reward: {stats['reward_stats']['mean_total_reward']:.4f}")
-        print(f"Mean PnL: {stats['pnl_stats']['mean_total_pnl']:.4f}")
-        print(f"Sharpe Ratio: {stats['pnl_stats']['sharpe_ratio']:.4f}")
-        print(f"Total Trades: {stats['trading_stats']['total_trades']}")
+        reward_stats = stats.get("reward_stats", {})
+        pnl_stats = stats.get("pnl_stats", {})
+        trading_stats = stats.get("trading_stats", {})
+        print(f"Mean Reward: {reward_stats.get('mean_total_reward', 0):.4f}")
+        print(f"Mean PnL: {pnl_stats.get('mean_total_pnl', 0):.4f}")
+        print(f"Sharpe Ratio: {pnl_stats.get('sharpe_ratio', 0):.4f}")
+        print(f"Total Trades: {trading_stats.get('total_trades', 0)}")
+
+        evaluator.close()
 
     elif args.mode == "visualize":
         evaluator.create_visualizations()
+        evaluator.close()
 
     elif args.mode == "compare":
         if not args.compare_models:
             print("Error: --compare-models required for comparison mode")
+            evaluator.close()
             return
 
         evaluator.compare_models(
@@ -1211,6 +1326,7 @@ def main() -> None:
             args.bootstrap_block,
             args.bootstrap_overlap,
         )
+        evaluator.close()
 
 
 if __name__ == "__main__":

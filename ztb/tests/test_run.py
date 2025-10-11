@@ -12,13 +12,14 @@ from typing import List, Optional
 
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.path_utils import ensure_dir, get_project_root
+from ztb.utils.config import ZTBConfig
 
 # Add project root to path for imports
 sys.path.append(str(get_project_root()))
 
 # ローカルモジュールのインポート
-from ztb.training.ppo_config import get_ppo_config
-from ztb.training.ppo_trainer import PPOTrainer
+from ztb.training.config.ppo_config import get_ppo_config
+from ztb.training.core.ppo_trainer import PPOTrainer
 from ztb.utils import DiscordNotifier, LoggerManager
 from ztb.utils.cli_common import CLIFormatter, CLIValidator, create_standard_parser
 
@@ -87,11 +88,11 @@ def get_default_config() -> dict:
         },
         "paths": {
             "log_dir": "./logs/",
-            "model_dir": "./models/",
+            "model_dir": str(ZTBConfig().get_model_dir()),
             "results_dir": "./results/",
             "opt_dir": "./optimization/",
             "tensorboard_log": "./tensorboard/",
-            "checkpoint_dir": "./models/checkpoints/",
+            "checkpoint_dir": str(ZTBConfig().get_model_path("checkpoints")),
         },
         "experiment": {
             "name": f"heavy_trading_rl_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -339,9 +340,9 @@ def main():
 
     # テスト実行用のパス設定
     config["paths"]["log_dir"] = "../logs/test/"
-    config["paths"]["model_dir"] = "../models/test/"
+    config["paths"]["model_dir"] = str(ZTBConfig().get_model_path("test"))
     config["paths"]["results_dir"] = "../results/test/"
-    config["paths"]["checkpoint_dir"] = "../models/test/checkpoints"
+    config["paths"]["checkpoint_dir"] = str(ZTBConfig().get_model_path("test/checkpoints"))
 
     # ディレクトリのセットアップ
     setup_directories(config)

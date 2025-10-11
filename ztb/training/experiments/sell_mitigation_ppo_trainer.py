@@ -19,6 +19,7 @@ from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
 from ztb.training.models.custom_ppo import CustomPPO
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
@@ -30,6 +31,7 @@ from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer  # N
 from ztb.training.experiments.entropy_temperature import TargetEntropyController  # New: Target Entropy
 from ztb.training.optimization.stratified_sampler import StratifiedSampler  # New: Stratified Sampling
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.config import ZTBConfig
 
 logger = get_logger(__name__)
 
@@ -358,11 +360,13 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     # ★ Lagrange constraint parameters
                     enable_lagrange=self.enable_lagrange,
                     lagrange_target_action="SELL",
-                    lagrange_r_target=self.lagrange_params.get("r_target", 0.15),
-                    lagrange_tolerance=self.lagrange_params.get("tolerance", 0.05),
-                    lagrange_eta=self.lagrange_params.get("eta", 0.01),
-                    lagrange_lambda_max=self.lagrange_params.get("lambda_max", 1.0),
-                    lagrange_warmup_steps=int(self.lagrange_params.get("warmup_steps", 1000)),
+                    lagrange_r_target=self.lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"]),
+                    lagrange_tolerance=self.lagrange_params.get("tolerance", LAGRANGE_DEFAULTS["tolerance"]),
+                    lagrange_eta=self.lagrange_params.get("eta", LAGRANGE_DEFAULTS["eta"]),
+                    lagrange_lambda_max=self.lagrange_params.get("lambda_max", LAGRANGE_DEFAULTS["lambda_max"]),
+                    lagrange_warmup_steps=int(
+                        self.lagrange_params.get("warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"])
+                    ),
                     # ★ PAN/Entropy/Stratified parameters
                     pan_epsilon=1e-8,
                     target_entropy_ratio=0.7,
@@ -469,7 +473,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             logger.info("=" * 80)
             logger.info("OUTPUT PATHS:")
             logger.info("=" * 80)
-            model_path = getattr(self, 'model_save_path', self.config.get('model_save_path', 'models/ppo_balanced_mem_optimized.zip'))
+            model_path = getattr(self, 'model_save_path', self.config.get('model_save_path', ZTBConfig().get_model_path('ppo_balanced_mem_optimized.zip')))
             checkpoint_path = getattr(self, 'checkpoint_dir', self.config.get('checkpoint_dir', 'checkpoints/ppo_balanced_mem_optimized'))
             tensorboard_path = self.config.get('tensorboard_log', 'tensorboard')
             logger.info(f"  Model:        {model_path}")

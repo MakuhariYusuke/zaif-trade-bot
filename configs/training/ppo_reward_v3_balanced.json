@@ -1,0 +1,90 @@
+{
+  "session_id": "ppo_reward_v3_balanced",
+  "algorithm": "ppo",
+  "description": "Reward v3: バランス型 - リスク調整済み報酬 + drawdown_penalty",
+  
+  "comment_experiment": "Experiment 3: Balanced risk-adjusted reward structure",
+  "comment_strategy": "2x profit_weight + drawdown_penalty + moderate hold_penalty + sharpe_ratio_bonus",
+  "comment_target": "Reward >50, HOLD ~45%, Stable returns",
+  
+  "max_features": 60,
+  "enable_correlation_reduction": false,
+  
+  "data_rows_limit": 500,
+  
+  "ppo": {
+    "learning_rate": 0.0003,
+    "n_steps": 512,
+    "batch_size": 128,
+    "n_epochs": 6,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "clip_range_vf": null,
+    "ent_coef": 0.05,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+  
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.001,
+      "profit_reward_multiplier": 2.0,
+      "drawdown_penalty_weight": 0.5,
+      "sharpe_ratio_bonus": 0.1,
+      "action_diversity_bonus": 0.005
+    }
+  },
+  
+  "training": {
+    "total_timesteps": 5000,
+    "checkpoint_interval": 5000,
+    "enable_autohalt": true,
+    "eval_freq": 2000,
+    "n_eval_episodes": 5,
+    "reward_scaling": 1.0
+  },
+  
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+  
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+  
+  "comment_changes": "Key changes from v371:",
+  "changes": [
+    "hold_penalty_weight: 0.002 → 0.001 (-50%)",
+    "profit_reward_multiplier: 1.5 → 2.0 (+33%)",
+    "drawdown_penalty_weight: NEW 0.5 (risk management)",
+    "sharpe_ratio_bonus: NEW 0.1 (reward risk-adjusted returns)",
+    "action_diversity_bonus: 0.01 → 0.005 (-50%)"
+  ],
+  
+  "expected_behavior": {
+    "hold_rate_target": "~45%",
+    "buy_sell_rate_target": "~55%",
+    "reward_target": ">50 (moderate, stable)",
+    "exploration_level": "very high (ent_coef=0.05)",
+    "trade_pattern": "Balanced, risk-aware trading"
+  }
+}

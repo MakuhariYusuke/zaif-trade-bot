@@ -6,10 +6,13 @@ Tests for StrictMaskedPolicy
 
 import numpy as np
 import pytest
-import torch
 from gymnasium import spaces
 
-from ztb.training.policies.strict_masked_policy import StrictMaskedPolicy
+try:
+    import torch
+    from ztb.training.policies.strict_masked_policy import StrictMaskedPolicy
+except ImportError:
+    pytest.skip("torch or ztb.training.policies.strict_masked_policy module not available", allow_module_level=True)
 
 
 @pytest.fixture

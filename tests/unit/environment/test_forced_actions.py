@@ -45,6 +45,7 @@ class TestForcedActions:
             "initial_portfolio_value": 10000.0,
             "curriculum_stage": "full",
             "reward_scaling": 1.0,
+            "min_holding_period": 0,  # Bug #37 fix: Allow immediate reversal for testing
         }
         return HeavyTradingEnv(df=simple_price_data, config=config)
 
@@ -57,6 +58,7 @@ class TestForcedActions:
             "initial_portfolio_value": 10000.0,
             "curriculum_stage": "full",
             "reward_scaling": 1.0,
+            "min_holding_period": 0,  # Bug #37 fix: Allow immediate reversal for testing
         }
         return HeavyTradingEnv(df=simple_price_data, config=config)
 

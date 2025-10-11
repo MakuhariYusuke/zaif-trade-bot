@@ -30,7 +30,7 @@ class MaxPositionSizeOptimizer(HyperparameterOptimizer):
 
     def update_ppo_params(self, value: Union[int, float]) -> None:
         """Update environment config with max_position_size value."""
-        self.env_config["max_position_size"] = float(value)
+        self.env_config.max_position_size = float(value)
 
 
 def main() -> None:
@@ -45,6 +45,7 @@ def main() -> None:
 
     # Create optimizer
     optimizer = MaxPositionSizeOptimizer()
+    optimizer.configure_from_args(args)
 
     if args.mode == "single":
         # Run single test

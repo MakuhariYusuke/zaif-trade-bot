@@ -19,6 +19,7 @@ from ztb.training.callbacks_lib import SELLBiasMitigationCallback
 from ztb.training.models.custom_ppo import CustomPPO
 from ztb.training.utils.grad_probes import SELLGradientProbe, create_failsafe_dump
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
 from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.utils.weights import ActionWeightCalculator
@@ -85,7 +86,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
         if params.enable_lagrange:
             # Lagrange is created by CustomPPO, just log here
-            r_target = self.lagrange_params.get("r_target", 0.15)
+            r_target = self.lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"])
             logger.info(f"Lagrange constraint will be enabled in CustomPPO (r_target={r_target:.1%})")
 
         if params.enable_probes:
@@ -238,11 +239,11 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     # Lagrange constraint parameters
                     enable_lagrange=self.enable_lagrange,
                     lagrange_target_action="SELL",
-                    lagrange_r_target=self.lagrange_params.get("r_target", 0.15),
-                    lagrange_tolerance=self.lagrange_params.get("tolerance", 0.05),
-                    lagrange_eta=self.lagrange_params.get("eta", 0.01),
-                    lagrange_lambda_max=self.lagrange_params.get("lambda_max", 1.0),
-                    lagrange_warmup_steps=int(self.lagrange_params.get("warmup_steps", 1000)),
+                    lagrange_r_target=self.lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"]),
+                    lagrange_tolerance=self.lagrange_params.get("tolerance", LAGRANGE_DEFAULTS["tolerance"]),
+                    lagrange_eta=self.lagrange_params.get("eta", LAGRANGE_DEFAULTS["eta"]),
+                    lagrange_lambda_max=self.lagrange_params.get("lambda_max", LAGRANGE_DEFAULTS["lambda_max"]),
+                    lagrange_warmup_steps=int(self.lagrange_params.get("warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"])),
                     # PAN/Entropy/Stratified parameters
                     pan_epsilon=1e-8,
                     target_entropy_ratio=0.7,

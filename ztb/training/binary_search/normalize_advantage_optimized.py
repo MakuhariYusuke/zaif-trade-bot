@@ -84,6 +84,7 @@ def main() -> None:
 
     # Create optimizer
     optimizer = NormalizeAdvantageOptimizer()
+    optimizer.configure_from_args(args)
 
     if args.mode == "single":
         # Run single test
