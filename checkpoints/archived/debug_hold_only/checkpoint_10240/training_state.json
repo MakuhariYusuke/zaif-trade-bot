@@ -1,0 +1,17 @@
+{
+  "current_step": 10240,
+  "rewards_history": [
+    -45.75950355068227
+  ],
+  "steps_history": [
+    10240
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "debug_hold_only",
+  "timestamp": "2025-10-02T22:06:12.571079"
+}

@@ -5,7 +5,10 @@ Tests for advantage-aware tiebreaker and cost-aware decode gate.
 import numpy as np
 import pytest
 
-from ztb.inference.decode import decode_action, InferenceConfig
+try:
+    from ztb.inference.decode import decode_action, InferenceConfig
+except ImportError:
+    pytest.skip("ztb.inference.decode module not available (torch dependency)", allow_module_level=True)
 
 
 def test_advantage_tiebreaker_activates():

@@ -9,6 +9,7 @@ from ztb.training.experiments.curriculum_learning import (
     evaluate_stage_performance,
     run_curriculum_stage,
 )
+from ztb.utils.config import ZTBConfig
 
 
 class TestRunCurriculumStage:
@@ -144,14 +145,15 @@ class TestEvaluateStagePerformance:
     """Test cases for evaluate_stage_performance function."""
 
     @patch("os.path.exists")
-    def test_evaluate_stage_performance_no_model_file(self, mock_exists):
+    def test_evaluate_stage_performance_file_not_found(self, mock_exists):
         """Test evaluate_stage_performance when model file doesn't exist."""
         mock_exists.return_value = False
+        config = ZTBConfig()
 
         # Should not raise exception, just return
         evaluate_stage_performance("test_stage")
 
-        mock_exists.assert_called_once_with("models/curriculum_test_stage.zip")
+        mock_exists.assert_called_once_with(config.get_model_path("curriculum_test_stage.zip"))
 
     @patch("os.path.exists")
     @patch("subprocess.run")
@@ -160,6 +162,7 @@ class TestEvaluateStagePerformance:
     ):
         """Test evaluate_stage_performance with successful subprocess call."""
         mock_exists.return_value = True
+        config = ZTBConfig()
 
         # Mock subprocess success
         mock_result = Mock()
@@ -176,7 +179,7 @@ class TestEvaluateStagePerformance:
                 "python",
                 "regime_evaluation.py",
                 "--models",
-                "test_stage:models/curriculum_test_stage.zip",
+                f"test_stage:{config.get_model_path('curriculum_test_stage.zip')}",
                 "--price-data",
                 "ml-dataset-enhanced.csv",
             ],

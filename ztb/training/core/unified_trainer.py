@@ -81,10 +81,8 @@ import numpy as np
 
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.path_utils import get_project_root
-
-# Add project root to path
-project_root = get_project_root()
-sys.path.insert(0, str(project_root))
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
+from ztb.training.core.feature_schema_manager import FeatureSchemaManager
 
 # Add project root to path
 project_root = get_project_root()
@@ -248,16 +246,69 @@ class UnifiedTrainer:
         
         Returns:
             Dict containing environment settings like max_position_size,
-            initial_balance, transaction_cost, etc.
+            initial_balance, transaction_cost, feature filtering, etc.
         """
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
         
-        return {
-            "max_position_size": self.config.get("max_position_size", DEFAULT_PPO_CONFIG.get("max_position_size", 1.0)),
-            "initial_balance": self.config.get("initial_balance", 1000000),
-            "transaction_cost": self.config.get("transaction_cost", DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001)),
-            "reward_scaling": self.config.get("reward_scaling", DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0)),
+        # Extract environment section if exists (nested config support)
+        env_section = self.config.get("environment", {})
+        
+        # Build environment config with support for both top-level and nested settings
+        # Priority: environment section > top-level > defaults
+        env_config = {
+            "max_position_size": (
+                env_section.get("max_position_size") or
+                self.config.get("max_position_size") or
+                DEFAULT_PPO_CONFIG.get("max_position_size", 1.0)
+            ),
+            "initial_balance": (
+                env_section.get("initial_balance") or
+                self.config.get("initial_balance") or
+                1000000
+            ),
+            "transaction_cost": (
+                env_section.get("transaction_cost") or
+                self.config.get("transaction_cost") or
+                DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001)
+            ),
+            "reward_scaling": (
+                env_section.get("reward_scaling") or
+                self.config.get("reward_scaling") or
+                DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0)
+            ),
+            # Feature filtering settings (UNIFIED FIX)
+            "curated_features_list": (
+                env_section.get("curated_features_list") or
+                self.config.get("curated_features_list")
+            ),
+            "enable_feature_filtering": (
+                env_section.get("enable_feature_filtering") if "enable_feature_filtering" in env_section
+                else self.config.get("enable_feature_filtering", False)
+            ),
+            "feature_filter_mode": (
+                env_section.get("feature_filter_mode") or
+                self.config.get("feature_filter_mode", "whitelist")
+            ),
+            "enable_correlation_reduction": (
+                env_section.get("enable_correlation_reduction") if "enable_correlation_reduction" in env_section
+                else self.config.get("enable_correlation_reduction", False)
+            ),
+            "correlation_threshold": (
+                env_section.get("correlation_threshold") or
+                self.config.get("correlation_threshold", 0.95)
+            ),
+            # Curriculum and feature set
+            "curriculum_stage": (
+                env_section.get("curriculum_stage") or
+                self.config.get("curriculum_stage", "forced_balance")
+            ),
+            "feature_set": (
+                env_section.get("feature_set") or
+                self.config.get("feature_set", "full")
+            ),
         }
+        
+        return env_config
     
     def get_ppo_core_config(self) -> PPOCoreConfig:
         """
@@ -268,23 +319,101 @@ class UnifiedTrainer:
         """
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
         
+        # Extract ppo section if exists (nested config support)
+        ppo_section = self.config.get("ppo", {})
+        
         return {
-            "learning_rate": self.config.get("learning_rate", DEFAULT_PPO_CONFIG.get("learning_rate", 3e-4)),
-            "n_steps": self.config.get("n_steps", DEFAULT_PPO_CONFIG.get("n_steps", 1024)),
-            "batch_size": self.config.get("batch_size", DEFAULT_PPO_CONFIG.get("batch_size", 32)),
-            "n_epochs": self.config.get("n_epochs", DEFAULT_PPO_CONFIG.get("n_epochs", 10)),
-            "gamma": self.config.get("gamma", DEFAULT_PPO_CONFIG.get("gamma", 0.99)),
-            "gae_lambda": self.config.get("gae_lambda", DEFAULT_PPO_CONFIG.get("gae_lambda", 0.95)),
-            "clip_range": self.config.get("clip_range", DEFAULT_PPO_CONFIG.get("clip_range", 0.2)),
-            "clip_range_vf": self.config.get("clip_range_vf", DEFAULT_PPO_CONFIG.get("clip_range_vf")),
-            "normalize_advantage": self.config.get("normalize_advantage", DEFAULT_PPO_CONFIG.get("normalize_advantage", True)),
-            "ent_coef": self.config.get("ent_coef", DEFAULT_PPO_CONFIG.get("ent_coef", 0.0)),
-            "vf_coef": self.config.get("vf_coef", DEFAULT_PPO_CONFIG.get("vf_coef", 0.5)),
-            "max_grad_norm": self.config.get("max_grad_norm", DEFAULT_PPO_CONFIG.get("max_grad_norm", 0.5)),
-            "use_sde": self.config.get("use_sde", DEFAULT_PPO_CONFIG.get("use_sde", False)),
-            "sde_sample_freq": self.config.get("sde_sample_freq", DEFAULT_PPO_CONFIG.get("sde_sample_freq", -1)),
-            "target_kl": self.config.get("target_kl", DEFAULT_PPO_CONFIG.get("target_kl")),
-            "verbose": self.config.get("verbose", DEFAULT_PPO_CONFIG.get("verbose", 1)),
+            "learning_rate": (
+                ppo_section.get("learning_rate") or
+                self.config.get("learning_rate") or
+                DEFAULT_PPO_CONFIG.get("learning_rate", 3e-4)
+            ),
+            "n_steps": (
+                ppo_section.get("n_steps") or
+                self.config.get("n_steps") or
+                DEFAULT_PPO_CONFIG.get("n_steps", 1024)
+            ),
+            "batch_size": (
+                ppo_section.get("batch_size") or
+                self.config.get("batch_size") or
+                DEFAULT_PPO_CONFIG.get("batch_size", 32)
+            ),
+            "n_epochs": (
+                ppo_section.get("n_epochs") or
+                self.config.get("n_epochs") or
+                DEFAULT_PPO_CONFIG.get("n_epochs", 10)
+            ),
+            "gamma": (
+                ppo_section.get("gamma") or
+                self.config.get("gamma") or
+                DEFAULT_PPO_CONFIG.get("gamma", 0.99)
+            ),
+            "gae_lambda": (
+                ppo_section.get("gae_lambda") or
+                self.config.get("gae_lambda") or
+                DEFAULT_PPO_CONFIG.get("gae_lambda", 0.95)
+            ),
+            "clip_range": (
+                ppo_section.get("clip_range") or
+                self.config.get("clip_range") or
+                DEFAULT_PPO_CONFIG.get("clip_range", 0.2)
+            ),
+            "clip_range_vf": (
+                ppo_section.get("clip_range_vf") if "clip_range_vf" in ppo_section
+                else self.config.get("clip_range_vf") or
+                DEFAULT_PPO_CONFIG.get("clip_range_vf")
+            ),
+            "normalize_advantage": (
+                ppo_section.get("normalize_advantage") if "normalize_advantage" in ppo_section
+                else self.config.get("normalize_advantage", DEFAULT_PPO_CONFIG.get("normalize_advantage", True))
+            ),
+            "ent_coef": (
+                ppo_section.get("ent_coef") or
+                self.config.get("ent_coef") or
+                DEFAULT_PPO_CONFIG.get("ent_coef", 0.0)
+            ),
+            "vf_coef": (
+                ppo_section.get("vf_coef") or
+                self.config.get("vf_coef") or
+                DEFAULT_PPO_CONFIG.get("vf_coef", 0.5)
+            ),
+            "max_grad_norm": (
+                ppo_section.get("max_grad_norm") or
+                self.config.get("max_grad_norm") or
+                DEFAULT_PPO_CONFIG.get("max_grad_norm", 0.5)
+            ),
+            "use_sde": (
+                ppo_section.get("use_sde") if "use_sde" in ppo_section
+                else self.config.get("use_sde", DEFAULT_PPO_CONFIG.get("use_sde", False))
+            ),
+            "sde_sample_freq": (
+                ppo_section.get("sde_sample_freq") or
+                self.config.get("sde_sample_freq") or
+                DEFAULT_PPO_CONFIG.get("sde_sample_freq", -1)
+            ),
+            "target_kl": (
+                ppo_section.get("target_kl") if "target_kl" in ppo_section
+                else self.config.get("target_kl") or
+                DEFAULT_PPO_CONFIG.get("target_kl")
+            ),
+            "verbose": (
+                ppo_section.get("verbose") or
+                self.config.get("verbose") or
+                DEFAULT_PPO_CONFIG.get("verbose", 1)
+            ),
+            # PAN (Policy Action Normalization) settings (UNIFIED FIX)
+            "pan_enabled": (
+                ppo_section.get("pan_enabled") if "pan_enabled" in ppo_section
+                else self.config.get("pan_enabled", True)
+            ),
+            "pan_alpha_lr": (
+                ppo_section.get("pan_alpha_lr") or
+                self.config.get("pan_alpha_lr", 0.01)
+            ),
+            "pan_target_entropy_ratio": (
+                ppo_section.get("pan_target_entropy_ratio") or
+                self.config.get("pan_target_entropy_ratio", 0.7)
+            ),
         }
     
     def build_unified_config(self) -> Dict[str, Any]:
@@ -324,6 +453,12 @@ class UnifiedTrainer:
         memory_opt = self.get_memory_optimization_config()
         environment = self.get_environment_config()
         
+        # Extract reward settings (UNIFIED FIX)
+        reward_section = self.config.get("reward", {})
+        
+        # Extract Lagrange constraint settings (UNIFIED FIX)
+        lagrange_section = self.config.get("lagrange_constraints", {})
+        
         # Extract total_timesteps from multiple possible locations
         # Priority: top-level (after CLI override) > training section > ppo section > default
         total_timesteps = (
@@ -343,6 +478,8 @@ class UnifiedTrainer:
             },
             "memory_optimization": memory_opt,
             "environment": environment,
+            "reward": reward_section,  # Include reward settings
+            "lagrange_constraints": lagrange_section,  # Include Lagrange settings
         }
         
         # Merge with original config (for backward compatibility)
@@ -364,6 +501,71 @@ class UnifiedTrainer:
             self._unified_config_cache = unified
         
         return unified
+
+    def _save_model_schema(
+        self,
+        session_id: str,
+        model_dir: Path,
+        df: Optional[Any] = None
+    ):
+        """
+        モデルの特徴量スキーマを保存
+        
+        Args:
+            session_id: セッションID（モデル名）
+            model_dir: モデルディレクトリ
+            df: データフレーム（Noneの場合はdata_pathから読み込み）
+        """
+        try:
+            import pandas as pd
+            from pathlib import Path
+            
+            # DataFrameの準備
+            if df is None:
+                data_path = self.config.get("data_path")
+                if not data_path:
+                    self.logger.warning("No data_path specified, skipping schema save")
+                    return
+                df = load_csv_data_optimized(data_path)
+            
+            # 特徴量カラムの自動検出
+            exclude_cols = {
+                "ts", "timestamp", "exchange", "pair",
+                "episode_id", "side", "source"
+            }
+            feature_columns = [
+                col for col in df.columns
+                if col not in exclude_cols and pd.api.types.is_numeric_dtype(df[col])
+            ]
+            
+            # スケーラーデータの準備
+            feature_data = df[feature_columns].values
+            scaler_data = {
+                "mean": np.mean(feature_data, axis=0),
+                "std": np.std(feature_data, axis=0),
+            }
+            
+            # FeatureSchemaManagerで保存
+            schema_manager = FeatureSchemaManager(
+                model_name=session_id,
+                models_dir=Path(model_dir).parent if model_dir.name == session_id else Path(model_dir)
+            )
+            
+            schema_hash = schema_manager.save_schema(
+                features=feature_columns,
+                config=self.config,
+                scaler_data=scaler_data
+            )
+            
+            self.logger.info(f"✅ Feature schema saved for {session_id}")
+            self.logger.info(f"   Features: {len(feature_columns)}")
+            self.logger.info(f"   Hash: {schema_hash}")
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to save feature schema: {e}")
+            # スキーマ保存の失敗は訓練全体を止めない
+            import traceback
+            self.logger.debug(traceback.format_exc())
 
     def train(self) -> TrainingResult:
         """Execute training based on algorithm."""
@@ -449,11 +651,11 @@ class UnifiedTrainer:
             lagrange_params = {}
             if self.config.get("enable_lagrange", True):
                 lagrange_params = {
-                    "r_target": self.config.get("lagrange_r_target", 0.15),
-                    "tolerance": self.config.get("lagrange_tolerance", 0.05),
-                    "eta": self.config.get("lagrange_eta", 0.01),
-                    "lambda_max": self.config.get("lagrange_lambda_max", 1.0),
-                    "warmup_steps": self.config.get("lagrange_warmup_steps", 0),
+                    "r_target": self.config.get("lagrange_r_target", LAGRANGE_DEFAULTS["r_target"]),
+                    "tolerance": self.config.get("lagrange_tolerance", LAGRANGE_DEFAULTS["tolerance"]),
+                    "eta": self.config.get("lagrange_eta", LAGRANGE_DEFAULTS["eta"]),
+                    "lambda_max": self.config.get("lagrange_lambda_max", LAGRANGE_DEFAULTS["lambda_max"]),
+                    "warmup_steps": self.config.get("lagrange_warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"]),
                 }
                 self.logger.info(f"Lagrange parameters: {lagrange_params}")
             
@@ -516,6 +718,11 @@ class UnifiedTrainer:
                 self.logger.info(f"Saving model to {model_path}...")
                 model.save(str(model_path))
                 self.logger.info(f"✅ Final model saved to {model_path}")
+                
+                # Save feature schema using FeatureSchemaManager
+                session_id = self.config.get('session_id', 'ppo_session')
+                self._save_model_schema(session_id, model_dir, df=None)
+                
             except Exception as e:
                 self.logger.error(f"Failed to save model: {e}")
                 raise

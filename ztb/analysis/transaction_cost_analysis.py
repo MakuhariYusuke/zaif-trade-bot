@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -18,17 +18,28 @@ import sys
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from typing import cast
-
 from ztb.evaluation.evaluate import TradingEvaluator  # noqa: E402
 from ztb.utils.errors import safe_operation
 
 LOGGER = logging.getLogger(__name__)
 
 
+class TransactionCostResult(TypedDict, total=False):
+    """Result of transaction cost simulation for a single cost level."""
+    cost: float
+    total_return: float
+    sharpe_ratio: float
+    max_drawdown: float
+    win_rate: float
+    total_trades: int
+    final_portfolio_value: float
+    evaluation_timestamp: str
+    model_config: Dict[str, Any]
+
+
 def simulate_transaction_costs(
     model_path: Path, cost_range: List[float], data_path: Path, output_dir: Path
-) -> Dict[float, Dict[str, float]]:
+) -> Dict[float, TransactionCostResult]:
     """
     Simulate trading performance with different transaction costs.
 
@@ -42,7 +53,7 @@ def simulate_transaction_costs(
         Dictionary mapping cost to performance metrics
     """
     return cast(
-        Dict[float, Dict[str, float]],
+        Dict[float, TransactionCostResult],
         safe_operation(
             logger=LOGGER,
             operation=lambda: _simulate_transaction_costs_impl(
@@ -56,7 +67,7 @@ def simulate_transaction_costs(
 
 def _simulate_transaction_costs_impl(
     model_path: Path, cost_range: List[float], data_path: Path, output_dir: Path
-) -> Dict[float, Dict[str, float]]:
+) -> Dict[float, Dict[str, Any]]:
     """Implementation of transaction cost simulation."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -199,9 +210,11 @@ def main() -> int:
     LOGGER.info("Analysis completed!")
     for cost, metrics in results.items():
         if "error" not in metrics:
+            total_return = metrics.get('total_return', 0.0)
+            total_trades = metrics.get('total_trades', 0)
             LOGGER.info(
-                f"Cost {cost}: Return={metrics['total_return']:.4f}, "
-                f"Trades={metrics['total_trades']}"
+                f"Cost {cost}: Return={total_return:.4f}, "
+                f"Trades={total_trades}"
             )
 
     return 0

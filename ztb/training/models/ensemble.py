@@ -6,7 +6,10 @@ Combines multiple trained models for improved prediction accuracy and risk manag
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast, Union
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
+
+from ztb.utils.config import config
+from ztb.utils.logging_utils import get_logger
 
 
 # Type definitions for ensemble configuration
@@ -38,11 +41,12 @@ class RiskConfigDict(TypedDict, total=False):
 
 import numpy as np
 from numpy.typing import NDArray
+from numpy.typing import NDArray
 from stable_baselines3 import PPO
 from sb3_contrib import MaskablePPO
 from typing import Protocol, Any, Dict, Callable
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Protocol definitions for ensemble components
@@ -223,7 +227,7 @@ class EnsemblePredictor(PredictorProtocol):
                 action_counts[action_val] = action_counts.get(action_val, 0) + weight
 
             # Select action with highest weighted vote
-            ensemble_action = np.array(
+            ensemble_action: NDArray[np.int64] = np.array(
                 [max(action_counts, key=lambda k: action_counts.get(k, 0))]
             )
 
@@ -276,7 +280,7 @@ class EnsemblePredictor(PredictorProtocol):
             raise ValueError("Could not get probabilities from any model")
 
         # Convert confidences to weights (normalize)
-        confidence_array = np.array(confidences)
+        confidence_array: NDArray[np.float32] = np.array(confidences)
         weights = confidence_array / np.sum(confidence_array)
 
         # Weighted average of probabilities
@@ -619,7 +623,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
                 action_counts[action_val] = action_counts.get(action_val, 0) + weight
 
             # Select action with highest weighted vote
-            ensemble_action = np.array(
+            ensemble_action: NDArray[np.int64] = np.array(
                 [max(action_counts, key=lambda k: action_counts[k])]
             )
 
@@ -868,30 +872,16 @@ class EnsembleTradingSystemLegacy:
 
 def create_default_ensemble() -> EnsembleTradingSystem:
     """Create default ensemble with available models."""
-    model_configs: List[ModelConfig] = [
-        {
-            "path": "models/trading_optimized_reward_v2_final.zip",
-            "weight": 1.0,
-            "feature_set": "full",
-        },
-        # Add more models as they become available
-    ]
+    model_configs: List[ModelConfig] = config.get_models()  # type: ignore[assignment]
 
     return EnsembleTradingSystem(model_configs)
 
 
 def create_default_ensemble_legacy() -> EnsembleTradingSystemLegacy:
     """Create default legacy ensemble with available models."""
-    model_configs: List[ModelConfig] = [
-        {
-            "path": "models/trading_optimized_reward_v2_final.zip",
-            "weight": 1.0,
-            "feature_set": "full",
-        },
-        # Add more models as they become available
-    ]
+    model_configs: List[ModelConfig] = config.get_models()  # type: ignore[assignment]
 
-    return EnsembleTradingSystemLegacy(cast(List[Dict[str, Any]], model_configs))
+    return EnsembleTradingSystemLegacy(model_configs)
 
 
 if __name__ == "__main__":

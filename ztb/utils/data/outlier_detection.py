@@ -33,10 +33,10 @@ def detect_outliers_iqr(
     return cast(
         Tuple[pd.DataFrame, float, float],
         safe_operation(
-            logger,
-            lambda: _detect_outliers_iqr_impl(data, column),
-            f"detect_outliers_iqr({column})",
-            (pd.DataFrame(), 0.0, 0.0),
+            operation=lambda: _detect_outliers_iqr_impl(data, column),
+            logger=logger,
+            context=f"detect_outliers_iqr({column})",
+            default_result=(pd.DataFrame(), 0.0, 0.0),
         ),
     )
 
@@ -72,10 +72,10 @@ def detect_outliers_zscore(
     return cast(
         pd.DataFrame,
         safe_operation(
-            logger,
-            lambda: _detect_outliers_zscore_impl(data, column, threshold),
-            f"detect_outliers_zscore({column})",
-            pd.DataFrame(),
+            operation=lambda: _detect_outliers_zscore_impl(data, column, threshold),
+            logger=logger,
+            context=f"detect_outliers_zscore({column})",
+            default_result=pd.DataFrame(),
         ),
     )
 

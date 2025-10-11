@@ -4,11 +4,14 @@ config.py
 Central configuration management for ZTB system
 """
 
+import json
 import logging
 import os
-from typing import Any, Optional, TypeVar, Dict
+from typing import Any, Optional, TypeVar, Dict, List
 
-logger = logging.getLogger(__name__)
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 T = TypeVar('T')
 
@@ -69,6 +72,14 @@ class ZTBConfig:
             value = os.getenv(var)
             if value is not None:
                 logger.info(f"  {var}={value}")
+
+    def get_model_dir(self) -> str:
+        """Get the base directory for model files."""
+        return self.get("ZTB_MODEL_DIR", "models")
+
+    def get_model_path(self, model_name: str) -> str:
+        """Get full path for a specific model file."""
+        return f"{self.get_model_dir()}/{model_name}"
 
 
 def get_config_value(
@@ -249,3 +260,104 @@ def get_config_bool(
 
 # Global instance
 config = ZTBConfig()
+
+
+class TypedConfig:
+    """型安全な設定管理クラス"""
+
+    def __init__(self, **kwargs: Any):
+        """型安全な設定の初期化"""
+        super().__init__()
+        for key, value in kwargs.items():
+            if hasattr(self, f'_validate_{key}'):
+                validator = getattr(self, f'_validate_{key}')
+                if not validator(value):
+                    raise ValueError(f"Invalid value for {key}: {value}")
+            setattr(self, key, value)
+
+    def _validate_learning_rate(self, value: float) -> bool:
+        """学習率のバリデーション"""
+        return 0 < value < 1
+
+    def _validate_batch_size(self, value: int) -> bool:
+        """バッチサイズのバリデーション"""
+        return value > 0
+
+    def _validate_gamma(self, value: float) -> bool:
+        """割引率のバリデーション"""
+        return 0 <= value <= 1
+
+    def _validate_total_timesteps(self, value: int) -> bool:
+        """総タイムステップ数のバリデーション"""
+        return value > 0
+
+    def get_models(self) -> List[Dict[str, Any]]:
+        """Get ensemble model configurations."""
+        # Default model configurations - can be overridden by config files
+        return [
+            {
+                "path": self.__dict__.get("default_model_path", "models/trading_optimized_reward_v2_final.zip"),
+                "weight": self.__dict__.get("default_model_weight", 1.0),
+                "feature_set": self.__dict__.get("default_feature_set", "full"),
+            }
+        ]
+
+    def get_model_dir(self) -> str:
+        """Get the base directory for model files."""
+        return self.__dict__.get("model_dir", "models")
+
+    def get_model_path(self, model_name: str) -> str:
+        """Get full path for a specific model file."""
+        return f"{self.get_model_dir()}/{model_name}"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """設定を辞書形式に変換"""
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TypedConfig":
+        """辞書から設定を復元"""
+        return cls(**data)
+
+
+class ValidatedConfig(TypedConfig):
+    """JSON Schemaベースの設定検証クラス"""
+
+    SCHEMA = {
+        "type": "object",
+        "properties": {
+            "learning_rate": {"type": "number", "minimum": 0, "maximum": 1},
+            "batch_size": {"type": "integer", "minimum": 1},
+            "gamma": {"type": "number", "minimum": 0, "maximum": 1},
+            "total_timesteps": {"type": "integer", "minimum": 1},
+            "default_model_path": {"type": "string"},
+            "default_model_weight": {"type": "number", "minimum": 0},
+            "default_feature_set": {"type": "string"}
+        },
+        "additionalProperties": True
+    }
+
+    def __init__(self, **kwargs: Any):
+        """JSON Schema検証付き初期化"""
+        super().__init__(**kwargs)
+        self._validate_schema()
+
+    def _validate_schema(self) -> None:
+        """JSON Schemaを使って設定を検証"""
+        try:
+            import jsonschema
+            config_dict = self.to_dict()
+            jsonschema.validate(config_dict, self.SCHEMA)
+        except ImportError:
+            # jsonschema not available, skip validation
+            logger.warning("jsonschema not available, skipping config validation")
+        except Exception as e:
+            raise ValueError(f"Configuration validation failed: {e}")
+
+    @classmethod
+    def from_json_file(cls, file_path: str) -> "ValidatedConfig":
+        """JSONファイルから設定を読み込み検証"""
+        import json
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return cls(**data)

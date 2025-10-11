@@ -103,10 +103,16 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         logits = self.action_net(latent_pi)
         
         # CRITICAL: Apply mask BEFORE distribution creation
-        # 違法アクションのlogitsを -1e9 に設定（事実上の確率ゼロ）
+        # 違法アクションのlogitsを -1e9 に設定(事実上の確率ゼロ)
         if action_masks is not None:
+            # action_masksがnumpy配列かTensorかを判定
+            if isinstance(action_masks, torch.Tensor):
+                mask_tensor = action_masks.bool()
+            else:
+                mask_tensor = torch.from_numpy(action_masks).bool()
+            
             logits = torch.where(
-                torch.from_numpy(action_masks).bool(),
+                mask_tensor,
                 logits,
                 torch.tensor(-1e9, dtype=logits.dtype, device=logits.device),
             )

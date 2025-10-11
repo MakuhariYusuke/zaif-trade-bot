@@ -94,7 +94,14 @@ class EnvironmentConfig:
     reward_sharpe_bonus_scale: float = DEFAULT_REWARD_SHARPE_BONUS_SCALE
     reward_clip_value: float = DEFAULT_REWARD_CLIP_VALUE
     enable_forced_diversity: bool = False
-    initial_portfolio_value: float = 1_000_000.0
+    
+    # 🔧 CRITICAL FIX: 現実的な資金設定
+    # Bitcoin価格 ≈ 18,000,000円 を考慮した設定
+    # - 訓練用: 200,000円 (0.01 BTC程度購入可能、実口座の10-20倍で学習)
+    # - 実取引用: 少額対応可能 (1 mBTC = 0.001 BTC ≈ 18,000円)
+    # - 旧デフォルト: 1,000,000円では max_position_size=1.0 (1800万円) で取引不可能だった
+    initial_portfolio_value: float = 200_000.0
+    
     reward_profit_bonus_multipliers: List[float] = dataclasses.field(
         default_factory=lambda: [1.0, 1.0, 0.8]
     )
@@ -106,9 +113,17 @@ class EnvironmentConfig:
     memory_logging_enabled: bool = False
     memory_log_interval_steps: Optional[int] = None
     max_action_history: int = 512
+    
+    # Observation normalization
+    use_standardized_observations: bool = True  # Use StandardScaler for feature normalization
+    
+    # Action space configuration
+    use_continuous_actions: bool = False  # True for SAC, False for PPO
+    enable_action_masking: bool = False   # Only for discrete actions (PPO)
 
     # Trading behavior settings
     allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
+    enforce_reverse_cooldown: bool = False  # If True, min_holding_period also applies to reversal entries
     random_start: bool = False  # If True, episodes start at random positions in the data
 
     @classmethod
@@ -128,7 +143,15 @@ class EnvironmentConfig:
             if field.name in config_dict:
                 value = config_dict[field.name]
                 # Basic type conversion for common cases
-                if field.name in ["enable_forced_diversity", "allow_reverse", "random_start"] and not isinstance(
+                if field.name in [
+                    "enable_forced_diversity",
+                    "allow_reverse",
+                    "enforce_reverse_cooldown",
+                    "random_start",
+                    "use_continuous_actions",
+                    "enable_action_masking",
+                    "use_standardized_observations",
+                ] and not isinstance(
                     value, bool
                 ):
                     value = cls._as_bool(value)  # type: ignore[arg-type]

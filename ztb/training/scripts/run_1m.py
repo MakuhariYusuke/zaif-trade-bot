@@ -7,10 +7,13 @@ periodic evaluation, and proper artifact management.
 """
 
 import argparse
+import copy
+import json
 import logging
+import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -19,6 +22,22 @@ sys.path.insert(0, str(project_root))
 from ztb.training.core.ppo_trainer import PPOTrainer
 from ztb.training.config.ppo_config import get_ppo_config
 from ztb.utils import DiscordNotifier
+def _create_streaming_pipeline(
+    enable_streaming: bool, stream_batch_size: int, logger: logging.Logger
+):
+    """Instantiate streaming pipeline when requested."""
+    if not enable_streaming:
+        return None
+
+    logger.info("Enabling streaming pipeline")
+    from ztb.data.streaming_pipeline import create_streaming_pipeline as _factory
+
+    pipeline = _factory(buffer_capacity=max(stream_batch_size * 2000, 1_000_000))
+    logger.debug(
+        "Streaming buffer capacity=%s rows", getattr(pipeline.buffer, "capacity", "unknown")
+    )
+    return pipeline
+
 
 
 def setup_logging(verbose: bool) -> logging.Logger:
@@ -50,31 +69,116 @@ def validate_training_setup(data_path: str, checkpoint_dir: str, correlation_id:
     return True
 
 
-def build_training_config(args: argparse.Namespace) -> Dict[str, Any]:
-    """Build training configuration from command line arguments."""
-    return {
-        "total_timesteps": args.total_timesteps,
-        "log_dir": args.log_dir,
-        "model_dir": args.model_dir,
-        "tensorboard_log": args.log_dir,
-        "verbose": 1 if args.verbose else 0,
+def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge two dictionaries without mutating inputs."""
+
+    def _merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+        result: Dict[str, Any] = copy.deepcopy(a)
+        for key, value in b.items():
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
+                result[key] = _merge(result[key], value)
+            else:
+                result[key] = copy.deepcopy(value)
+        return result
+
+    return _merge(base, overrides)
+
+
+def _load_unified_overrides() -> Dict[str, Any]:
+    """Load serialized unified configuration overrides from the environment."""
+    raw = os.environ.get("ZTB_UNIFIED_ITERATIVE_CONFIG")
+    if not raw:
+        return {}
+
+    try:
+        overrides = json.loads(raw)
+        return overrides if isinstance(overrides, dict) else {}
+    except json.JSONDecodeError:
+        logging.getLogger(__name__).warning(
+            "Failed to decode unified config overrides; falling back to CLI defaults",
+            exc_info=True,
+        )
+        return {}
+
+
+def _apply_cli_overrides(config: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
+    """Apply CLI-sourced overrides on top of the merged configuration."""
+    cfg = copy.deepcopy(config)
+
+    ppo_cfg = cfg.setdefault("ppo", {})
+    memory_cfg = cfg.setdefault("memory_optimization", {})
+    env_cfg = cfg.setdefault("environment", {})
+    feature_cfg = cfg.setdefault("features", {})
+
+    # Core bookkeeping
+    cfg["total_timesteps"] = args.total_timesteps
+    ppo_cfg["total_timesteps"] = args.total_timesteps
+    cfg["log_dir"] = args.log_dir
+    cfg["model_dir"] = args.model_dir
+    cfg["tensorboard_log"] = args.log_dir
+    cfg["checkpoint_dir"] = args.checkpoint_dir
+    cfg["checkpoint_interval"] = args.checkpoint_interval
+    cfg["data_path"] = args.data_path
+    cfg["enable_streaming"] = bool(args.enable_streaming)
+    cfg["stream_batch_size"] = args.stream_batch_size
+    cfg["offline_mode"] = bool(args.offline_mode)
+    cfg["verbose"] = 1 if args.verbose else 0
+    ppo_cfg["verbose"] = cfg["verbose"]
+
+    # Trading environment settings
+    cfg["transaction_cost"] = args.transaction_cost
+    ppo_cfg["transaction_cost"] = args.transaction_cost
+    env_cfg.setdefault("transaction_cost", args.transaction_cost)
+
+    cfg["max_position_size"] = args.max_position_size
+    ppo_cfg["max_position_size"] = args.max_position_size
+    env_cfg.setdefault("max_position_size", args.max_position_size)
+
+    cfg["timeframe"] = args.timeframe
+    feature_cfg.setdefault("feature_set", args.feature_set)
+    cfg["feature_set"] = feature_cfg["feature_set"]
+
+    if args.data_rows_limit is not None:
+        cfg["data_rows_limit"] = args.data_rows_limit
+        memory_cfg["data_rows_limit"] = args.data_rows_limit
+
+    if args.max_features is not None:
+        cfg["max_features"] = args.max_features
+        memory_cfg["max_features"] = args.max_features
+
+    # Reward shaping parameters
+    cfg["reward_trade_frequency_penalty"] = args.reward_trade_frequency_penalty
+    cfg["reward_trade_frequency_halflife"] = args.reward_trade_frequency_halflife
+    cfg["reward_trade_cooldown_steps"] = args.reward_trade_cooldown_steps
+    cfg["reward_trade_cooldown_penalty"] = args.reward_trade_cooldown_penalty
+    cfg["reward_max_consecutive_trades"] = args.reward_max_consecutive_trades
+    cfg["reward_consecutive_trade_penalty"] = args.reward_consecutive_trade_penalty
+
+    # Evaluation defaults (can be overridden via unified config)
+    cfg.setdefault("eval_freq", 10000)
+    cfg.setdefault("n_eval_episodes", 5)
+
+    return cfg
+
+
+def build_training_config(
+    args: argparse.Namespace, config_overrides: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Build training configuration from command line arguments and overrides."""
+
+    # Baseline PPO configuration (keeps legacy defaults for standalone usage)
+    base_config: Dict[str, Any] = {
+        "ppo": dict(get_ppo_config()),
+        "memory_optimization": {},
+        "features": {
+            "feature_set": args.feature_set,
+        },
+        "environment": {},
         "seed": 42,
-        # Trading environment settings
-        "transaction_cost": getattr(args, "transaction_cost", 0.001),
-        "max_position_size": getattr(args, "max_position_size", 1.0),
-        "reward_trade_frequency_penalty": args.reward_trade_frequency_penalty,
-        "reward_trade_frequency_halflife": args.reward_trade_frequency_halflife,
-        "reward_trade_cooldown_steps": args.reward_trade_cooldown_steps,
-        "reward_trade_cooldown_penalty": args.reward_trade_cooldown_penalty,
-        "reward_max_consecutive_trades": args.reward_max_consecutive_trades,
-        "reward_consecutive_trade_penalty": args.reward_consecutive_trade_penalty,
-        "features": args.feature_set,  # PPOTrainer expects 'features' key
-        # PPO hyperparameters from common config
-        **get_ppo_config(),
-        # Evaluation settings
-        "eval_freq": 10000,
-        "n_eval_episodes": 5,
-        # Checkpoint settings
         "checkpoint": {
             "keep_last": 5,
             "compress": "zstd",
@@ -84,6 +188,9 @@ def build_training_config(args: argparse.Namespace) -> Dict[str, Any]:
             "include_rng_state": True,
         },
     }
+
+    merged = _deep_merge(base_config, config_overrides or {})
+    return _apply_cli_overrides(merged, args)
 
 
 def main() -> int:
@@ -146,8 +253,12 @@ def main() -> int:
     parser.add_argument(
         "--feature-set",
         default="full",
-        choices=["basic", "scalping", "trend", "momentum", "full"],
-        help="Feature set to use (default: full)",
+        help="Feature set name or preset (default: full)",
+    )
+    parser.add_argument(
+        "--timeframe",
+        default="1m",
+        help="Timeframe label for training dataset (default: 1m)",
     )
     parser.add_argument(
         "--reward-trade-frequency-penalty",
@@ -197,6 +308,18 @@ def main() -> int:
         default=1.0,
         help="Maximum position size (default: 1.0)",
     )
+    parser.add_argument(
+        "--data-rows-limit",
+        type=int,
+        default=None,
+        help="Optional cap on number of data rows loaded into memory",
+    )
+    parser.add_argument(
+        "--max-features",
+        type=int,
+        default=None,
+        help="Optional cap on number of features to retain",
+    )
 
     args = parser.parse_args()
 
@@ -205,11 +328,16 @@ def main() -> int:
 
     logger = logging.getLogger(__name__)
 
+    # Load any unified configuration overrides and consume the env var early
+    config_overrides = _load_unified_overrides()
+    os.environ.pop("ZTB_UNIFIED_ITERATIVE_CONFIG", None)
+
     # Initialize Discord notifier (disabled in offline mode)
     if args.offline_mode:
         logger.info("Offline mode enabled - Discord notifications disabled")
+        DiscordNotifier(webhook_url=None)
     else:
-        notifier = DiscordNotifier()
+        DiscordNotifier()
 
     # Validate training setup
     if not validate_training_setup(args.data_path, args.checkpoint_dir, args.correlation_id):
@@ -224,20 +352,21 @@ def main() -> int:
 
     try:
         # Build training configuration
-        config = build_training_config(args)
+        config = build_training_config(args, config_overrides=config_overrides)
+
+        if config_overrides:
+            logger.info("Applying unified configuration overrides for iterative training")
 
         logger.info(f"Starting 1M training session: {args.correlation_id}")
         logger.info(f"Data: {args.data_path}")
         logger.info(f"Timesteps: {args.total_timesteps}")
 
         # Create streaming pipeline if enabled
-        streaming_pipeline = None
-        if args.enable_streaming:
-            logger.info("Enabling streaming pipeline")
-            from ztb.data.streaming_pipeline import StreamingPipeline
-            streaming_pipeline = StreamingPipeline(
-                batch_size=args.stream_batch_size,
-            )
+        streaming_pipeline = _create_streaming_pipeline(
+            args.enable_streaming, args.stream_batch_size, logger
+        )
+        if streaming_pipeline is not None:
+            config.setdefault("streaming", {})["enabled"] = True
 
         # Create trainer
         trainer = PPOTrainer(
@@ -248,7 +377,7 @@ def main() -> int:
         )
 
         # Run training
-        model = trainer.train(session_id=args.correlation_id)
+        trainer.train(session_id=args.correlation_id)
 
         logger.info(f"Training completed successfully: {args.correlation_id}")
         return 0

@@ -18,10 +18,25 @@ try:
     TALIB_AVAILABLE = True
 except ImportError:
     TALIB_AVAILABLE = False
-    warnings.warn(
-        "Ta-Lib not available. Using custom implementations. "
-        "Install Ta-Lib for better performance: pip install TA-Lib"
-    )
+
+# Try to import ta library as additional fallback
+try:
+    import ta
+    TA_AVAILABLE = True
+except ImportError:
+    TA_AVAILABLE = False
+
+if not TALIB_AVAILABLE:
+    if TA_AVAILABLE:
+        warnings.warn(
+            "Ta-Lib not available. Using ta library for technical analysis. "
+            "Install Ta-Lib for better performance: pip install TA-Lib"
+        )
+    else:
+        warnings.warn(
+            "Ta-Lib not available. Using custom implementations. "
+            "Install Ta-Lib for better performance: pip install TA-Lib"
+        )
 
 
 class TaLibError(Exception):
@@ -117,6 +132,11 @@ class TaLibWrapper:
                 result = talib.SMA(data, timeperiod=period)
                 # Handle NaN values at the beginning
                 return np.nan_to_num(result, nan=np.nan)
+            elif TA_AVAILABLE:
+                # Use ta library
+                sma_indicator = ta.trend.SMAIndicator(pd.Series(data), window=period)
+                result = sma_indicator.sma_indicator().values
+                return result
             else:
                 return TaLibWrapper._sma_custom(data, period)
         except Exception as e:
@@ -147,6 +167,11 @@ class TaLibWrapper:
             if TALIB_AVAILABLE:
                 result = talib.EMA(data, timeperiod=period)
                 return np.nan_to_num(result, nan=np.nan)
+            elif TA_AVAILABLE:
+                # Use ta library
+                ema_indicator = ta.trend.EMAIndicator(pd.Series(data), window=period)
+                result = ema_indicator.ema_indicator().values
+                return result
             else:
                 return TaLibWrapper._ema_custom(data, period)
         except Exception as e:

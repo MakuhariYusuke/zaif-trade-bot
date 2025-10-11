@@ -1,0 +1,75 @@
+{
+  "algorithm": "ppo",
+  "session_id": "ppo_v367_mem_optimized",
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+  "checkpoint_dir": "checkpoints/ppo_v367_mem_optimized",
+  
+  "comment": "===== MEMORY OPTIMIZATION PARAMETERS =====",
+  "comment_memory_1": "These parameters reduce memory footprint by ~60% while maintaining learning quality",
+  "data_rows_limit": 500,
+  "max_features": 40,
+  
+  "comment_ppo": "===== PPO HYPERPARAMETERS =====",
+  "comment_ppo_1": "Balanced configuration for 30k timesteps with memory constraints",
+  "total_timesteps": 30000,
+  "learning_rate": 0.0003,
+  "n_steps": 512,
+  "batch_size": 128,
+  "n_epochs": 6,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "clip_range": 0.2,
+  "clip_range_vf": null,
+  "normalize_advantage": true,
+  "ent_coef": 0.01,
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "use_sde": false,
+  "sde_sample_freq": -1,
+  "target_kl": null,
+  "verbose": 1,
+  
+  "comment_reward": "===== REWARD PARAMETERS =====",
+  "reward_scaling": 1.0,
+  "transaction_cost": 0.001,
+  
+  "comment_env": "===== ENVIRONMENT PARAMETERS =====",
+  "max_position_size": 1.0,
+  "initial_balance": 1000000,
+  
+  "comment_policy": "===== POLICY NETWORK =====",
+  "comment_policy_1": "Smaller network for memory efficiency",
+  "policy_kwargs": {
+    "net_arch": {
+      "pi": [128, 128],
+      "vf": [128, 128]
+    },
+    "activation_fn": "tanh"
+  },
+  
+  "comment_features": "===== CUSTOM FEATURES =====",
+  "custom_ppo_enabled": true,
+  "policy_action_network_enabled": true,
+  "target_entropy_controller_enabled": true,
+  "gradient_probe_guard_enabled": false,
+  
+  "comment_evaluation": "===== EVALUATION =====",
+  "comment_eval_1": "Reduced frequency for memory efficiency",
+  "eval_freq": 2048,
+  "n_eval_episodes": 3,
+  "eval_log_path": "checkpoints/ppo_v367_mem_optimized/eval",
+  
+  "comment_checkpoint": "===== CHECKPOINTING =====",
+  "save_freq": 5000,
+  "save_replay_buffer": false,
+  
+  "comment_sell_mitigation": "===== SELL BIAS MITIGATION =====",
+  "sell_bias_mitigation_enabled": false,
+  "sell_mitigation_weight": 2.0,
+  "target_sell_rate": 0.15,
+  
+  "comment_misc": "===== MISCELLANEOUS =====",
+  "seed": 42,
+  "device": "auto",
+  "tensorboard_log": "checkpoints/ppo_v367_mem_optimized"
+}

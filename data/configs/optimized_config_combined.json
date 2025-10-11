@@ -1,0 +1,52 @@
+{
+  "description": "Combined optimized parameters: PPO hyperparameters + Lagrange constraints",
+  "training": {
+    "total_timesteps": 100000,
+    "save_interval": 10000,
+    "eval_episodes": 10,
+    "curriculum_stage": "full"
+  },
+  "ppo": {
+    "learning_rate": 0.009375625,
+    "gamma": 0.895,
+    "n_steps": 1408,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gae_lambda": 0.95,
+    "clip_range": 0.3,
+    "clip_range_vf": null,
+    "normalize_advantage": true,
+    "ent_coef": 0.02575,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "target_kl": 0.1,
+    "verbose": 1
+  },
+  "lagrange": {
+    "enable_lagrange": true,
+    "warmup_steps": 3874,
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "lambda_max": 3.875
+  },
+  "environment": {
+    "initial_portfolio_value": 1000000.0,
+    "max_position_size": 1.0,
+    "transaction_cost": 0.001,
+    "reward_scaling": 6.0,
+    "position_penalty_scale": 0.01,
+    "inventory_penalty_scale": 0.001,
+    "trade_frequency_penalty": 0.0001,
+    "fee_model": "percentage",
+    "fee_rate": 0.001
+  },
+  "data": {
+    "dataset_path": "ml-dataset-enhanced.csv",
+    "train_test_split": 0.8,
+    "features": [
+      "close", "volume", "returns", "sma_20", "sma_50", "rsi_14",
+      "macd", "bb_upper", "bb_lower", "atr_14", "stoch_k", "stoch_d"
+    ]
+  }
+}

@@ -15,9 +15,11 @@ The optimizer uses binary search to find optimal values that balance:
 3. Good episode rewards
 """
 
+import inspect
 import sys
+import time
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple, Union
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -31,6 +33,7 @@ from ztb.training.binary_search.base_optimizer import (
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
 )
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 
 
 class LagrangeOptimizerBase(HyperparameterOptimizer):
@@ -40,7 +43,7 @@ class LagrangeOptimizerBase(HyperparameterOptimizer):
         """Initialize optimizer with full curriculum stage for realistic rewards."""
         super().__init__(project_root)
         # Override curriculum_stage to use full environment (not simple_portfolio)
-        self.env_config["curriculum_stage"] = "full"
+        self.env_config.curriculum_stage = "full"
 
     def create_model(self, env: Any) -> Any:
         """Create CustomPPO model with Lagrange parameters."""
@@ -53,12 +56,39 @@ class LagrangeOptimizerBase(HyperparameterOptimizer):
         enable_lagrange = self.ppo_params.pop("enable_lagrange", False)
 
         # Remove parameters not supported by CustomPPO
-        ppo_kwargs = {k: v for k, v in self.ppo_params.items() 
-                      if k not in ["use_sde", "sde_sample_freq", "reward_scaling", 
-                                   "transaction_cost", "position_penalty_scale",
-                                   "inventory_penalty_scale", "trade_frequency_penalty",
-                                   "total_timesteps", "max_position_size", "fee_model",
-                                   "fee_rate", "features"]}
+        signature = inspect.signature(CustomPPO.__init__)
+        valid_params = {
+            name
+            for name, param in signature.parameters.items()
+            if name not in {"self", "policy", "env"}
+            and param.kind != inspect.Parameter.VAR_KEYWORD
+        }
+
+        accepts_kwargs = any(
+            param.kind == inspect.Parameter.VAR_KEYWORD
+            for param in signature.parameters.values()
+        )
+
+        ppo_kwargs = {}
+        for key, value in self.ppo_params.items():
+            if key in {
+                "use_sde",
+                "sde_sample_freq",
+                "reward_scaling",
+                "transaction_cost",
+                "position_penalty_scale",
+                "inventory_penalty_scale",
+                "trade_frequency_penalty",
+                "total_timesteps",
+                "max_position_size",
+                "fee_model",
+                "fee_rate",
+                "features",
+            }:
+                continue
+
+            if accepts_kwargs or key in valid_params:
+                ppo_kwargs[key] = value
 
         # Create model with CustomPPO (supports Lagrange)
         return CustomPPO(
@@ -66,31 +96,32 @@ class LagrangeOptimizerBase(HyperparameterOptimizer):
             env,
             enable_lagrange=enable_lagrange,
             lagrange_target_action="SELL",
-            lagrange_r_target=lagrange_params.get("r_target", 0.15),
-            lagrange_tolerance=lagrange_params.get("tolerance", 0.05),
-            lagrange_eta=lagrange_params.get("eta", 0.01),
-            lagrange_lambda_max=lagrange_params.get("lambda_max", 1.0),
-            lagrange_warmup_steps=int(lagrange_params.get("warmup_steps", 0)),  # 0 = activate immediately
+            lagrange_r_target=lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"]),
+            lagrange_tolerance=lagrange_params.get("tolerance", LAGRANGE_DEFAULTS["tolerance"]),
+            lagrange_eta=lagrange_params.get("eta", LAGRANGE_DEFAULTS["eta"]),
+            lagrange_lambda_max=lagrange_params.get("lambda_max", LAGRANGE_DEFAULTS["lambda_max"]),
+            lagrange_warmup_steps=int(lagrange_params.get("warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"])),
             **ppo_kwargs,
         )
 
-    def train_model(self, total_timesteps: int = 100000) -> Tuple[Any, Any]:
-        """Train model and return model and callback."""
+    def train_model(self, total_timesteps: int = 100000) -> Tuple[Any, Any, float]:
+        """Train model and return model, callback, and elapsed time."""
         from ztb.training.binary_search.base_optimizer import TrainingCallback
-        
+
         env = self.create_environment()
         model = self.create_model(env)
-        callback = TrainingCallback()
+        callback = TrainingCallback(verbose=int(self.ppo_params.get("verbose", 0)))
 
-        # For CustomPPO (MaskablePPO), disable action masking since DummyVecEnv doesn't preserve it
+        start = time.perf_counter()
         model.learn(
-            total_timesteps=total_timesteps, 
-            callback=callback, 
+            total_timesteps=total_timesteps,
+            callback=callback,
             progress_bar=True,
-            use_masking=False  # Disable action masking for compatibility
+            use_masking=False,
         )
+        elapsed = time.perf_counter() - start
 
-        return model, callback
+        return model, callback, elapsed
 
 
 class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
@@ -111,7 +142,9 @@ class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
         self.ppo_params["lagrange_params"]["r_target"] = float(value)
         self.ppo_params["enable_lagrange"] = True
 
-    def evaluate_result(self, callback: Any) -> float:
+    def evaluate_result(
+        self, callback: Any
+    ) -> Tuple[float, Dict[str, Union[int, float]], Dict[str, Union[int, float]]]:
         """
         Evaluate training result.
         
@@ -131,10 +164,12 @@ class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
         
         # Note: Using print() here instead of logger because this is user-facing output
         # during optimization runs and should always be visible
-        print(f"  Action distribution: HOLD {hold_pct:.1f}%, BUY {buy_pct:.1f}%, SELL {sell_pct:.1f}%")
-        
+        print(
+            f"  Action distribution: HOLD {hold_pct:.1f}%, BUY {buy_pct:.1f}%, SELL {sell_pct:.1f}%"
+        )
+
         # Score = reward only (no deviation penalty)
-        return float(avg_reward)
+        return avg_reward, stats, action_dist
 
 
 class LagrangeToleranceOptimizer(LagrangeOptimizerBase):
@@ -256,6 +291,7 @@ def main() -> None:
 
     optimizer_class = optimizer_map[args.parameter]
     optimizer = optimizer_class()  # type: ignore[abstract]
+    optimizer.configure_from_args(args)
 
     if args.mode == "single":
         # Get parameter-specific argument or use --value

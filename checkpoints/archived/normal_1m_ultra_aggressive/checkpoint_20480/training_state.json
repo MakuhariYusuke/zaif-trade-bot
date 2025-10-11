@@ -1,0 +1,19 @@
+{
+  "current_step": 20480,
+  "rewards_history": [
+    -72.77740988271375,
+    743.0468737653537
+  ],
+  "steps_history": [
+    10240,
+    20480
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "normal_1m_ultra_aggressive",
+  "timestamp": "2025-10-03T16:23:19.493458"
+}

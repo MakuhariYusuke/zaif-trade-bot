@@ -1,0 +1,198 @@
+[
+  {
+    "parameter_value": 0.1,
+    "score": -274.8828250581679,
+    "stats": {
+      "avg_reward": -276.2724609375,
+      "reward_std": 25.83814239501953,
+      "best_reward": -249.03932189941406,
+      "worst_reward": -356.81439208984375,
+      "episode_count": 51
+    },
+    "action_distribution": {
+      "hold_count": 4560,
+      "buy_count": 23198,
+      "sell_count": 23191,
+      "total_actions": 50949,
+      "hold_pct": 8.95012659718542,
+      "buy_pct": 45.53180631612005,
+      "sell_pct": 45.518067086694536,
+      "entropy": 0.932492033588308,
+      "normalized_entropy": 0.8487908274891083
+    },
+    "total_timesteps": 50000,
+    "model_path": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\models\\binary_search\\iter00_vf_coef_0.1_lower.zip",
+    "elapsed_seconds": 127.98683090000122,
+    "iteration": 0,
+    "timestamp": "2025-10-09T12:41:06.872460+00:00",
+    "note": "lower"
+  },
+  {
+    "parameter_value": 1.0,
+    "score": -276.25179127480214,
+    "stats": {
+      "avg_reward": -277.645263671875,
+      "reward_std": 25.29817008972168,
+      "best_reward": -249.96363830566406,
+      "worst_reward": -356.81439208984375,
+      "episode_count": 51
+    },
+    "action_distribution": {
+      "hold_count": 4609,
+      "buy_count": 23174,
+      "sell_count": 23166,
+      "total_actions": 50949,
+      "hold_pct": 9.046301203163948,
+      "buy_pct": 45.48470038666117,
+      "sell_pct": 45.46899841017488,
+      "entropy": 0.9340507424001775,
+      "normalized_entropy": 0.8502096253925608
+    },
+    "total_timesteps": 50000,
+    "model_path": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\models\\binary_search\\iter00_vf_coef_1_upper.zip",
+    "elapsed_seconds": 141.66461999999592,
+    "iteration": 0,
+    "timestamp": "2025-10-09T12:43:29.094481+00:00",
+    "note": "upper"
+  },
+  {
+    "parameter_value": 0.325,
+    "score": -276.19804051545583,
+    "stats": {
+      "avg_reward": -277.5904846191406,
+      "reward_std": 25.08881187438965,
+      "best_reward": -251.69097900390625,
+      "worst_reward": -356.81439208984375,
+      "episode_count": 51
+    },
+    "action_distribution": {
+      "hold_count": 4583,
+      "buy_count": 23186,
+      "sell_count": 23180,
+      "total_actions": 50949,
+      "hold_pct": 8.995269779583506,
+      "buy_pct": 45.50825335139061,
+      "sell_pct": 45.496476869025884,
+      "entropy": 0.9332250834799287,
+      "normalized_entropy": 0.849458078255536
+    },
+    "total_timesteps": 50000,
+    "model_path": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\models\\binary_search\\iter03_vf_coef_0.325_warmup_1.zip",
+    "elapsed_seconds": 136.66484240000136,
+    "iteration": 3,
+    "timestamp": "2025-10-09T12:45:46.310265+00:00",
+    "note": "warmup_1"
+  },
+  {
+    "parameter_value": 0.775,
+    "score": -278.71641674769364,
+    "stats": {
+      "avg_reward": -280.1286315917969,
+      "reward_std": 23.577272415161133,
+      "best_reward": -258.3041687011719,
+      "worst_reward": -356.81439208984375,
+      "episode_count": 51
+    },
+    "action_distribution": {
+      "hold_count": 4895,
+      "buy_count": 23028,
+      "sell_count": 23026,
+      "total_actions": 50949,
+      "hold_pct": 9.607646862548822,
+      "buy_pct": 45.19813931578637,
+      "sell_pct": 45.1942138216648,
+      "entropy": 0.9429276029363429,
+      "normalized_entropy": 0.8582896920618743
+    },
+    "total_timesteps": 50000,
+    "model_path": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\models\\binary_search\\iter04_vf_coef_0.775_warmup_2.zip",
+    "elapsed_seconds": 125.97483060001105,
+    "iteration": 4,
+    "timestamp": "2025-10-09T12:47:52.832877+00:00",
+    "note": "warmup_2"
+  },
+  {
+    "parameter_value": 0.55,
+    "score": -276.1764689922124,
+    "stats": {
+      "avg_reward": -277.57159423828125,
+      "reward_std": 25.326892852783203,
+      "best_reward": -249.03932189941406,
+      "worst_reward": -356.81439208984375,
+      "episode_count": 51
+    },
+    "action_distribution": {
+      "hold_count": 4641,
+      "buy_count": 23156,
+      "sell_count": 23152,
+      "total_actions": 50949,
+      "hold_pct": 9.10910910910911,
+      "buy_pct": 45.44937093956702,
+      "sell_pct": 45.44151995132387,
+      "entropy": 0.9350626121771288,
+      "normalized_entropy": 0.85113066895578
+    },
+    "total_timesteps": 50000,
+    "model_path": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\models\\binary_search\\iter05_vf_coef_0.55_mid_1.zip",
+    "elapsed_seconds": 129.44564170000376,
+    "iteration": 5,
+    "timestamp": "2025-10-09T12:50:02.801672+00:00",
+    "note": "mid_1"
+  },
+  {
+    "parameter_value": 0.6625000000000001,
+    "score": -276.31211088640663,
+    "stats": {
+      "avg_reward": -277.7127380371094,
+      "reward_std": 25.107460021972656,
+      "best_reward": -251.09707641601562,
+      "worst_reward": -356.81439208984375,
+      "episode_count": 51
+    },
+    "action_distribution": {
+      "hold_count": 4736,
+      "buy_count": 23112,
+      "sell_count": 23101,
+      "total_actions": 50949,
+      "hold_pct": 9.295570079883806,
+      "buy_pct": 45.36301006889242,
+      "sell_pct": 45.341419851223776,
+      "entropy": 0.9380385918325791,
+      "normalized_entropy": 0.8538395223758143
+    },
+    "total_timesteps": 50000,
+    "model_path": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\models\\binary_search\\iter07_vf_coef_0.6625_probe_2_1.zip",
+    "elapsed_seconds": 146.0158061000111,
+    "iteration": 7,
+    "timestamp": "2025-10-09T12:52:29.410622+00:00",
+    "note": "probe_2_1"
+  },
+  {
+    "parameter_value": 0.8875,
+    "score": -275.551244062739,
+    "stats": {
+      "avg_reward": -276.9446105957031,
+      "reward_std": 25.73882484436035,
+      "best_reward": -246.91624450683594,
+      "worst_reward": -356.81439208984375,
+      "episode_count": 51
+    },
+    "action_distribution": {
+      "hold_count": 4624,
+      "buy_count": 23167,
+      "sell_count": 23158,
+      "total_actions": 50949,
+      "hold_pct": 9.075742409075742,
+      "buy_pct": 45.47096115723567,
+      "sell_pct": 45.45329643368859,
+      "entropy": 0.9345256431315268,
+      "normalized_entropy": 0.8506418986669887
+    },
+    "total_timesteps": 50000,
+    "model_path": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\models\\binary_search\\iter08_vf_coef_0.8875_probe_2_2.zip",
+    "elapsed_seconds": 148.09288060000108,
+    "iteration": 8,
+    "timestamp": "2025-10-09T12:54:58.161885+00:00",
+    "note": "probe_2_2"
+  }
+]

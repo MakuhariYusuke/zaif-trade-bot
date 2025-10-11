@@ -6,8 +6,12 @@ from typing import TYPE_CHECKING, Any, List, Optional
 
 import pandas as pd
 
+from ztb.utils.logging_utils import get_logger
+
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import StreamingPipeline
+
+logger = get_logger(__name__)
 
 
 class StreamingHandler:

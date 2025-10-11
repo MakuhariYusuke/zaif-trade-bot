@@ -8,6 +8,8 @@ for training callbacks to reduce code duplication across training scripts.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
+import numpy as np
+
 from stable_baselines3.common.callbacks import BaseCallback
 
 if TYPE_CHECKING:
@@ -293,6 +295,8 @@ class CompositeTrainingCallback(BaseCallback):
         final_ent_coef: Optional[float] = None,
         enable_grad_probe_guard: bool = False,
         grad_probe_config: Optional[Dict[str, Any]] = None,
+        enable_tensorboard_metrics: bool = True,
+        action_labels: Optional[Dict[int, str]] = None,
         verbose: int = 0,
     ) -> None:
         super().__init__(verbose)
@@ -300,6 +304,7 @@ class CompositeTrainingCallback(BaseCallback):
         self.enable_progress_bar = enable_progress_bar
         self.enable_entropy_schedule = enable_entropy_schedule
         self.enable_grad_probe_guard = enable_grad_probe_guard
+        self.enable_tensorboard_metrics = enable_tensorboard_metrics
         
         # Progress tracking
         self.progress: Optional["Progress"] = None
@@ -343,6 +348,79 @@ class CompositeTrainingCallback(BaseCallback):
                 logger = get_logger(__name__)
                 logger.warning(f"GradProbeGuard disabled: {e}")
                 self.enable_grad_probe_guard = False
+
+        # TensorBoard metric configuration
+        default_action_labels = {
+            0: "hold",
+            1: "buy",
+            2: "sell",
+        }
+        self.action_labels = default_action_labels if action_labels is None else action_labels
+
+    def _log_tensorboard_metrics(self) -> None:
+        """Record rollout statistics and action distribution to TensorBoard."""
+        if not self.enable_tensorboard_metrics:
+            return
+
+        model = getattr(self, "model", None)
+        if model is None:
+            return
+
+        rollout_buffer = getattr(model, "rollout_buffer", None)
+        if rollout_buffer is None:
+            return
+
+        actions = getattr(rollout_buffer, "actions", None)
+        if actions is not None:
+            actions_np = np.asarray(actions).astype(np.int64).reshape(-1)
+            if actions_np.size > 0:
+                max_action_index = max(self.action_labels.keys(), default=2)
+                counts = np.bincount(actions_np, minlength=max_action_index + 1)
+                total = int(np.sum(counts))
+
+                for action_idx, label in self.action_labels.items():
+                    count = int(counts[action_idx]) if action_idx < len(counts) else 0
+                    ratio = (count / total) if total > 0 else 0.0
+                    self.logger.record(
+                        f"pan_action_counts/{label}",
+                        count,
+                        exclude=("stdout",),
+                    )
+                    self.logger.record(
+                        f"pan_action_pct/{label}",
+                        ratio,
+                        exclude=("stdout",),
+                    )
+
+        rewards = getattr(rollout_buffer, "rewards", None)
+        if rewards is not None:
+            rewards_np = np.asarray(rewards, dtype=np.float32).reshape(-1)
+            if rewards_np.size > 0:
+                self.logger.record(
+                    "rollout/reward_mean",
+                    float(np.mean(rewards_np)),
+                    exclude=("stdout",),
+                )
+                self.logger.record(
+                    "rollout/reward_std",
+                    float(np.std(rewards_np)),
+                    exclude=("stdout",),
+                )
+
+        advantages = getattr(rollout_buffer, "advantages", None)
+        if advantages is not None:
+            advantages_np = np.asarray(advantages, dtype=np.float32).reshape(-1)
+            if advantages_np.size > 0:
+                self.logger.record(
+                    "rollout/adv_mean",
+                    float(np.mean(advantages_np)),
+                    exclude=("stdout",),
+                )
+                self.logger.record(
+                    "rollout/adv_std",
+                    float(np.std(advantages_np)),
+                    exclude=("stdout",),
+                )
 
     def _on_training_start(self) -> None:
         """Initialize progress bar and entropy schedule."""
@@ -418,6 +496,16 @@ class CompositeTrainingCallback(BaseCallback):
                 return False  # Halt training
 
         return True
+
+    def _on_rollout_end(self) -> None:
+        """Record additional statistics at the end of each rollout."""
+        if self.enable_tensorboard_metrics:
+            self._log_tensorboard_metrics()
+
+        if self.enable_grad_probe_guard and self.grad_probe_guard:
+            # Expose rollout end event to guard when available
+            if hasattr(self.grad_probe_guard, "_on_rollout_end"):
+                self.grad_probe_guard._on_rollout_end()
 
     def _on_training_end(self) -> None:
         """Clean up progress bar when training ends."""

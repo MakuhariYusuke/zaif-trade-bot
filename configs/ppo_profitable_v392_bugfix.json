@@ -1,0 +1,67 @@
+{
+  "model_name": "ppo_profitable_v392_bugfix",
+  "model_type": "ppo",
+  "total_timesteps": 100000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "ppo_hyperparameters": {
+    "learning_rate": 0.007503,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 16,
+    "gamma": 0.8475,
+    "gae_lambda": 0.8,
+    "clip_range": 0.1,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 5.05
+  },
+  "lagrange_constraint": {
+    "enabled": true,
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "eta_min": 0.001,
+    "eta_max": 100.0,
+    "eta_lr": 0.001
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.02,
+      "consecutive_hold_penalty": 0.01,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.15,
+      "profit_reward_multiplier": 5.0,
+      "action_diversity_bonus": 0.05,
+      "successful_trade_bonus": 1.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 10000,
+  "notes": "🔧 BUG FIX VERSION - random_start修正後の初回訓練",
+  "changes_from_v391": [
+    "✅ schema_env_factory.py修正: random_startを位置引数として明示的に渡す",
+    "✅ HeavyTradingEnv.reset()修正: データ長が短くてもrandom_startが機能",
+    "✅ バッファを動的計算: データ長の10%（最小10、最大100）",
+    "🎯 v391と同じハイパーパラメータ（二分探索最適化値）",
+    "🎯 v378/v379の報酬設定を継承"
+  ],
+  "expected_improvements": [
+    "✅ 全エピソードで異なる開始位置（random_start機能）",
+    "✅ バックテスト評価が有意義（標準偏差 > 0）",
+    "🎯 訓練中のExploration向上（毎回異なるデータ範囲）",
+    "🎯 過学習リスク低減（固定開始位置での暗記防止）"
+  ]
+}

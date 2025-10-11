@@ -1,0 +1,16 @@
+{
+  "current_step": 10240,
+  "rewards_history": [
+    23.341717678935918
+  ],
+  "steps_history": [
+    10240
+  ],
+  "reward_stats": {
+    "mean": 0.0,
+    "variance": 0.0,
+    "std": 0.0,
+    "count": 0
+  },
+  "session_id": "test-10feat-071001-024050"
+}

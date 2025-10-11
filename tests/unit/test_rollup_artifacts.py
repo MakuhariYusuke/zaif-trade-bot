@@ -2,8 +2,9 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Generator
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import jsonschema
 import pytest
 
 from ztb.ops.rollup.rollup_artifacts import (
@@ -119,11 +120,13 @@ def test_validate_summary_valid() -> None:
 
 
 def test_validate_summary_invalid() -> None:
+    """無効なサマリーでValidationErrorが発生した場合、Falseを返す"""
     summary = {}
 
+    # ValidationErrorをモックしてFalseを返すことを確認
     with patch(
         "ztb.ops.rollup.rollup_artifacts.jsonschema.validate",
-        side_effect=Exception("invalid"),
+        side_effect=MagicMock(side_effect=jsonschema.ValidationError("invalid")),
     ):
         valid = validate_summary(summary)
         assert not valid

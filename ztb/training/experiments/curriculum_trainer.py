@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from ztb.training.core.unified_trainer import UnifiedTrainer
+from ztb.utils.config import ZTBConfig
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +63,11 @@ class CurriculumTrainer:
     def __init__(
         self,
         base_config_path: str,
-        output_dir: str = "models/curriculum",
+        output_dir: Optional[str] = None,
         experiment_name: str = "curriculum_v1"
     ):
+        if output_dir is None:
+            output_dir = ZTBConfig().get_model_path("curriculum")
         self.base_config_path = Path(base_config_path)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)

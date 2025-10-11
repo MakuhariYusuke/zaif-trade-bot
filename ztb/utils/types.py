@@ -5,20 +5,30 @@ Type definitions and protocols for ZTB system.
 This module provides type hints and protocols used across the codebase.
 """
 
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Dict, List, Optional, Protocol, Tuple, Union, TypeVar
 from typing_extensions import TypedDict
 import numpy as np
 import os
 import pandas as pd
 
 
+# Type variables for generic types
+T = TypeVar('T', bound=np.floating)
+U = TypeVar('U', bound=np.integer)
+
+# Generic array types
+NDArrayFloat = np.ndarray[Any, np.dtype[np.floating[T]]]
+NDArrayInt = np.ndarray[Any, np.dtype[np.integer[U]]]
+NDArrayBool = np.ndarray[Any, np.dtype[np.bool_]]
+
+
 # Basic data types
 NumericType = Union[int, float, np.number[Any]]
-ArrayLike = Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series, List[NumericType]]
+ArrayLike = Union[NDArrayFloat, pd.Series, List[NumericType]]
 
 # Trading action types
 ActionType = int  # 0: HOLD, 1: BUY, 2: SELL
-ActionMask = np.ndarray[Any, np.dtype[np.bool_]]  # Boolean array for valid actions
+ActionMask = NDArrayBool  # Boolean array for valid actions
 
 # Market data types
 PriceData = TypedDict('PriceData', {

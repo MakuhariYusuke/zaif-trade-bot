@@ -15,8 +15,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict, Union, cast
 
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
-import yaml
+from ztb.utils.config_loader import ConfigLoader
 
 
 class EvaluationResult(TypedDict, total=False):
@@ -160,7 +161,8 @@ def evaluate_feature_class(
             }
 
         # Baseline metrics
-        baseline_metrics = calculate_all_metrics(np.array(aligned_data["returns"]))
+        returns_array: NDArray[np.float64] = np.array(aligned_data["returns"])
+        baseline_metrics = calculate_all_metrics(returns_array)
 
         # Cross-validation evaluation
         cv_results = evaluate_with_cv(
@@ -193,7 +195,8 @@ def evaluate_feature_class(
 
                     if len(signal_periods) > 10:
                         signal_returns = signal_periods["returns"]
-                        signal_metrics = calculate_all_metrics(np.array(signal_returns))
+                        signal_returns_array: NDArray[np.float64] = np.array(signal_returns)
+                        signal_metrics = calculate_all_metrics(signal_returns_array)
                         delta_sharpe = (
                             signal_metrics["sharpe_ratio"]
                             - baseline_metrics["sharpe_ratio"]
@@ -217,12 +220,10 @@ def evaluate_feature_class(
                         bottom_periods = aligned_data[feature_data <= q25]
 
                         if len(top_periods) > 5 and len(bottom_periods) > 5:
-                            top_metrics = calculate_all_metrics(
-                                np.array(top_periods["returns"])
-                            )
-                            bottom_metrics = calculate_all_metrics(
-                                np.array(bottom_periods["returns"])
-                            )
+                            top_returns_array: NDArray[np.float64] = np.array(top_periods["returns"])
+                            top_metrics = calculate_all_metrics(top_returns_array)
+                            bottom_returns_array: NDArray[np.float64] = np.array(bottom_periods["returns"])
+                            bottom_metrics = calculate_all_metrics(bottom_returns_array)
 
                             feature_performances[col] = {
                                 "type": "quantile",
@@ -371,8 +372,7 @@ class ComprehensiveFeatureReEvaluator:
     def load_config(self) -> Dict[str, Any]:
         """Load features configuration"""
         if os.path.exists(self.config_path):
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                return cast(Dict[str, Any], yaml.safe_load(f))
+            return ConfigLoader.load(self.config_path)
         else:
             print(f"Config file not found: {self.config_path}")
             return {}
@@ -721,7 +721,8 @@ class ComprehensiveFeatureReEvaluator:
 
             # Feature-by-feature evaluation
             feature_results = {}
-            baseline_metrics = calculate_all_metrics(np.array(aligned_data["returns"]))
+            returns_array: NDArray[np.float64] = np.array(aligned_data["returns"])
+            baseline_metrics = calculate_all_metrics(returns_array)
 
             for feature_col in extended_features.columns:
                 if feature_col not in aligned_data.columns:
@@ -744,7 +745,8 @@ class ComprehensiveFeatureReEvaluator:
                     signal_periods = aligned_data[feature_data > feature_data.median()]
                     if len(signal_periods) > 10:
                         signal_returns = signal_periods["returns"]
-                        signal_metrics = calculate_all_metrics(np.array(signal_returns))
+                        signal_returns_array: NDArray[np.float64] = np.array(signal_returns)
+                        signal_metrics = calculate_all_metrics(signal_returns_array)
 
                         delta_sharpe = (
                             signal_metrics["sharpe_ratio"]
@@ -772,10 +774,10 @@ class ComprehensiveFeatureReEvaluator:
                     bottom_quantile = aligned_data[feature_data <= q25]["returns"]
 
                     if len(top_quantile) > 10 and len(bottom_quantile) > 10:
-                        top_metrics = calculate_all_metrics(np.array(top_quantile))
-                        bottom_metrics = calculate_all_metrics(
-                            np.array(bottom_quantile)
-                        )
+                        top_quantile_array: NDArray[np.float64] = np.array(top_quantile)
+                        top_metrics = calculate_all_metrics(top_quantile_array)
+                        bottom_quantile_array: NDArray[np.float64] = np.array(bottom_quantile)
+                        bottom_metrics = calculate_all_metrics(bottom_quantile_array)
 
                         feature_results[feature_col] = {
                             "type": "quantile",
@@ -823,9 +825,8 @@ class ComprehensiveFeatureReEvaluator:
 
                     if len(composite_periods) > 20:
                         composite_returns = composite_periods["returns"]
-                        composite_metrics = calculate_all_metrics(
-                            np.array(composite_returns)
-                        )
+                        composite_returns_array: NDArray[np.float64] = np.array(composite_returns)
+                        composite_metrics = calculate_all_metrics(composite_returns_array)
 
                         composite_result = {
                             "features_used": best_features,

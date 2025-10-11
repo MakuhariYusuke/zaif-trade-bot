@@ -1,0 +1,98 @@
+{
+  "session_id": "ppo_curriculum_v375",
+  "algorithm": "ppo",
+  "description": "Curriculum Learning v1: 2000-row dataset with progressive training",
+  
+  "comment_experiment": "Curriculum + Expanded Data + Forced Diversity",
+  "comment_strategy": "2000 rows, high LR + high entropy, forced diversity tracking",
+  "comment_target": "HOLD <40%, Reward >100, Progressive learning",
+  
+  "max_features": 60,
+  "enable_correlation_reduction": false,
+  
+  "data_rows_limit": 2000,
+  "data_path": "ml-dataset-enhanced-balanced-2000.csv",
+  
+  "ppo": {
+    "learning_rate": 0.0005,
+    "n_steps": 512,
+    "batch_size": 128,
+    "n_epochs": 6,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "clip_range_vf": null,
+    "ent_coef": 0.1,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+  
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.003,
+      "consecutive_hold_penalty": 0.002,
+      "consecutive_action_penalty": 0.001,
+      "trading_frequency_bonus": 0.05,
+      "profit_reward_multiplier": 2.0,
+      "loss_penalty_multiplier": 1.5,
+      "action_diversity_bonus": 0.02,
+      "min_diversity_threshold": 0.3
+    }
+  },
+  
+  "training": {
+    "total_timesteps": 15000,
+    "checkpoint_interval": 5000,
+    "enable_autohalt": true,
+    "eval_freq": 3000,
+    "n_eval_episodes": 5,
+    "reward_scaling": 1.0
+  },
+  
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+  
+  "comment_changes": "Improvements from experiments:",
+  "changes": [
+    "data_rows_limit: 500 → 2000 (4x expansion, 7.3x volatility)",
+    "learning_rate: 0.0003 → 0.0005 (from Exp5 - best HOLD reduction)",
+    "ent_coef: 0.05 → 0.1 (from Exp4 - strong exploration)",
+    "total_timesteps: 5000 → 15000 (3x longer training)",
+    "consecutive_action_penalty: NEW 0.001 (discourage repetition)",
+    "min_diversity_threshold: NEW 0.3 (require 30% each action)",
+    "profit_reward_multiplier: 1.5 → 2.0 (stronger profit incentive)",
+    "loss_penalty_multiplier: NEW 1.5 (penalize bad trades)"
+  ],
+  
+  "expected_behavior": {
+    "hold_rate_target": "<40%",
+    "buy_sell_rate_target": ">60%",
+    "reward_target": ">100 (positive and substantial)",
+    "exploration_level": "MAXIMUM (lr=0.0005, ent=0.1)",
+    "trade_pattern": "Diverse, active, profitable",
+    "data_advantage": "7.3x more volatility = more trading opportunities"
+  },
+  
+  "hypothesis": "Expanded data (2000 rows, 7.3x volatility) + best learning params (lr=0.0005, ent=0.1) + forced diversity will break the HOLD barrier and achieve <40% HOLD with positive reward"
+}

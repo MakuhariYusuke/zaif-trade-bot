@@ -1,0 +1,19 @@
+{"event": "evaluation", "timestamp": "2025-10-09T19:21:50.002001+00:00", "stage": "lower", "iteration": 0, "parameter_value": 16, "score": -303.0244084001855, "total_timesteps": 20000, "elapsed_seconds": 45.54797809999991}
+{"event": "evaluation", "timestamp": "2025-10-09T19:22:30.315471+00:00", "stage": "upper", "iteration": 0, "parameter_value": 256, "score": -298.2399596894412, "total_timesteps": 20000, "elapsed_seconds": 39.74783260000004}
+{"event": "evaluation", "timestamp": "2025-10-09T19:23:20.100686+00:00", "stage": "warmup_1", "iteration": 3, "parameter_value": 17, "score": -301.5666925929839, "total_timesteps": 20000, "elapsed_seconds": 49.233931900000016}
+{"event": "evaluation", "timestamp": "2025-10-09T19:24:12.868654+00:00", "stage": "warmup_2", "iteration": 4, "parameter_value": 255, "score": -299.0433240525143, "total_timesteps": 20000, "elapsed_seconds": 51.87133410000001}
+{"event": "evaluation", "timestamp": "2025-10-09T19:25:04.401724+00:00", "stage": "warmup_3", "iteration": 5, "parameter_value": 76, "score": -298.91885358757634, "total_timesteps": 20000, "elapsed_seconds": 50.960869600000024}
+{"event": "evaluation", "timestamp": "2025-10-09T19:25:49.671549+00:00", "stage": "warmup_4", "iteration": 6, "parameter_value": 196, "score": -298.32851384167645, "total_timesteps": 20000, "elapsed_seconds": 44.53240640000001}
+{"event": "evaluation", "timestamp": "2025-10-09T19:26:36.063569+00:00", "stage": "mid_1", "iteration": 7, "parameter_value": 136, "score": -298.8296047698822, "total_timesteps": 20000, "elapsed_seconds": 45.774772100000064}
+{"event": "bounds_update", "timestamp": "2025-10-09T19:26:36.064006+00:00", "side": "upper", "iteration": 7, "parameter_value": 136, "score": -298.8296047698822}
+{"event": "evaluation", "timestamp": "2025-10-09T19:26:36.064655+00:00", "stage": "mid_2", "iteration": 8, "parameter_value": 76, "score": -298.91885358757634, "total_timesteps": 20000, "elapsed_seconds": 50.960869600000024}
+{"event": "bounds_update", "timestamp": "2025-10-09T19:26:36.064949+00:00", "side": "upper", "iteration": 8, "parameter_value": 76, "score": -298.91885358757634}
+{"event": "evaluation", "timestamp": "2025-10-09T19:27:14.206628+00:00", "stage": "mid_3", "iteration": 9, "parameter_value": 46, "score": -299.35554732866655, "total_timesteps": 20000, "elapsed_seconds": 37.56825059999994}
+{"event": "bounds_update", "timestamp": "2025-10-09T19:27:14.206985+00:00", "side": "upper", "iteration": 9, "parameter_value": 46, "score": -299.35554732866655}
+{"event": "complete", "timestamp": "2025-10-09T19:27:14.207507+00:00", "iteration": 9, "parameter_value": 256, "score": -298.2399596894412}
+{"event": "evaluation", "timestamp": "2025-10-09T19:43:13.881869+00:00", "stage": "custom_1", "iteration": 1, "parameter_value": 64, "score": -275.34055920256196, "total_timesteps": 50000, "elapsed_seconds": 115.88080869999999}
+{"event": "best_update", "timestamp": "2025-10-09T19:43:13.882341+00:00", "stage": "custom_1", "iteration": 1, "parameter_value": 64, "score": -275.34055920256196}
+{"event": "evaluation", "timestamp": "2025-10-09T19:45:04.385829+00:00", "stage": "custom_2", "iteration": 2, "parameter_value": 128, "score": -276.281828331993, "total_timesteps": 50000, "elapsed_seconds": 109.92010119999986}
+{"event": "evaluation", "timestamp": "2025-10-09T19:46:52.400062+00:00", "stage": "custom_3", "iteration": 3, "parameter_value": 256, "score": -275.3099153630496, "total_timesteps": 50000, "elapsed_seconds": 107.43449329999999}
+{"event": "best_update", "timestamp": "2025-10-09T19:46:52.400515+00:00", "stage": "custom_3", "iteration": 3, "parameter_value": 256, "score": -275.3099153630496}
+{"event": "complete", "timestamp": "2025-10-09T19:46:52.401098+00:00", "iteration": 3, "parameter_value": 256, "score": -275.3099153630496}

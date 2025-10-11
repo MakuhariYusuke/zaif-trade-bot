@@ -14,7 +14,9 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
-from ztb.utils.errors import safe_operation
+from ztb.utils.errors import safe_operation, ZTBError
+from ztb.utils.cache_utils import cached_with_ttl
+from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.path_utils import ensure_dir
 
 logger = logging.getLogger(__name__)
@@ -101,7 +103,7 @@ def generate_synthetic_market_data(
     return df
 
 
-def load_sample_data(
+def load_dataset(
     dataset: str = "synthetic",
     cache_dir: Optional[str] = None,
     force_reload: bool = False,
@@ -117,6 +119,23 @@ def load_sample_data(
     Returns:
         DataFrame with market data
     """
+    return safe_operation(
+        _load_dataset_impl,
+        logger=logger,
+        context=f"Loading dataset {dataset}",
+        fallback=pd.DataFrame(),
+        dataset=dataset,
+        cache_dir=cache_dir,
+        force_reload=force_reload,
+    )
+
+
+def _load_dataset_impl(
+    dataset: str = "synthetic",
+    cache_dir: Optional[str] = None,
+    force_reload: bool = False,
+) -> pd.DataFrame:
+    """Implementation of dataset loading"""
     # Create cache key
     cache_key = f"{dataset}_{'forced' if force_reload else 'cached'}"
 
@@ -275,6 +294,7 @@ def save_parquet_chunked(
     return saved_files
 
 
+@cached_with_ttl(ttl_seconds=1800)  # Cache for 30 minutes
 def load_parquet_pattern(
     pattern: str,
     columns: Optional[List[str]] = None,
@@ -291,6 +311,23 @@ def load_parquet_pattern(
     Returns:
         Combined DataFrame
     """
+    return safe_operation(
+        _load_parquet_pattern_impl,
+        logger=logger,
+        context="Loading parquet pattern",
+        fallback=pd.DataFrame(),
+        pattern=pattern,
+        columns=columns,
+        filters=filters,
+    )
+
+
+def _load_parquet_pattern_impl(
+    pattern: str,
+    columns: Optional[List[str]] = None,
+    filters: Optional[List[Any]] = None,
+) -> pd.DataFrame:
+    """Implementation of parquet pattern loading"""
     import pyarrow.parquet as pq
 
     dfs = []
@@ -307,7 +344,7 @@ def load_parquet_pattern(
 
     combined_df = pd.concat(dfs, ignore_index=True)
     logger.info(f"Loaded {len(combined_df)} rows from {len(dfs)} Parquet files")
-    return cast(pd.DataFrame, combined_df)
+    return combined_df
 
 
 def save_parquet_monthly_chunked(

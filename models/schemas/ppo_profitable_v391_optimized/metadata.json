@@ -1,0 +1,236 @@
+{
+  "model_name": "ppo_profitable_v391_optimized",
+  "num_features": 68,
+  "feature_names": [
+    "rsi",
+    "sma_short",
+    "sma_long",
+    "price",
+    "qty",
+    "pnl",
+    "win",
+    "ADX",
+    "ATR",
+    "ATR_simplified",
+    "BB_Lower",
+    "BB_Middle",
+    "BB_Position",
+    "BB_Upper",
+    "BB_Width",
+    "CCI",
+    "DOW",
+    "Donchian_Pos_20",
+    "Donchian_Slope_20",
+    "Donchian_Width_Rel_20",
+    "EMACross_Diff",
+    "EMACross_Signal",
+    "HV",
+    "HeikinAshi_Close",
+    "HeikinAshi_High",
+    "HeikinAshi_Low",
+    "HeikinAshi_Open",
+    "HourOfDay",
+    "Ichimoku_Chikou",
+    "Ichimoku_Cloud_Thickness",
+    "Ichimoku_Composite_Signal",
+    "Ichimoku_Cross",
+    "Ichimoku_Diff_Norm",
+    "Ichimoku_Kijun",
+    "Ichimoku_Price_Cloud_Distance",
+    "Ichimoku_Senkou_A",
+    "Ichimoku_Senkou_B",
+    "Ichimoku_Tenkan",
+    "Ichimoku_Trend",
+    "KAMA",
+    "Kalman_Estimate",
+    "Kalman_Residual",
+    "Kalman_Residual_Norm",
+    "MACD",
+    "MFI",
+    "MinusDI",
+    "OBV",
+    "PlusDI",
+    "PriceVolumeCorr",
+    "ROC",
+    "RSI",
+    "ReturnMA_Medium",
+    "ReturnMA_Short",
+    "ReturnStdDev",
+    "Stochastic",
+    "Supertrend",
+    "Supertrend_Direction",
+    "TEMA",
+    "VWAP",
+    "ZScore",
+    "atr_10",
+    "close",
+    "ema_5",
+    "high",
+    "low",
+    "open",
+    "rolling_mean_20",
+    "volume"
+  ],
+  "schema_hash": "c7a296f3d7c6ece4",
+  "created_at": "2025-10-10T23:56:15.314503",
+  "training_config": {
+    "session_id": "ppo_profitable_v391_optimized",
+    "algorithm": "ppo",
+    "description": "Profitable Model Hunt v2: \u4e8c\u5206\u63a2\u7d22\u6700\u9069\u5316\u5024 + v378/v379\u77e5\u898b + Bitcoin 18M\u5186\u5bfe\u5fdc",
+    "_comment_strategy": "ppo_100k_optimized.json\u306e\u5168\u6700\u9069\u5316\u5024\u3092\u30d9\u30fc\u30b9\u306b\u3001v378/v379\u306e\u5831\u916c\u8a2d\u5b9a\u3092\u7d71\u5408",
+    "_comment_improvements": [
+      "\u2705 \u4e8c\u5206\u63a2\u7d22\u6700\u9069\u5316: learning_rate 0.007503 (v390\u306e25\u500d), max_grad_norm 5.05 (10\u500d)",
+      "\u2705 \u4e8c\u5206\u63a2\u7d22\u6700\u9069\u5316: batch_size 256, n_steps 1024, reward_multipliers 5.0",
+      "\u2705 v378/v379\u5831\u916c\u8a2d\u5b9a: volatility/trend-adjusted, consecutive_hold_penalty\u7b49",
+      "\u2705 Bitcoin 18M\u5186\u5bfe\u5fdc: initial_balance 200k, max_position_size 0.01 BTC",
+      "\u2705 \u7d2f\u7a4d\u6539\u5584\u671f\u5f85: +117pt (ppo_100k_optimized.json\u306e\u5b9f\u7e3e)"
+    ],
+    "curated_features_list": "curated_features.py::CURATED_FEATURES",
+    "enable_feature_filtering": true,
+    "feature_filter_mode": "whitelist",
+    "max_features": null,
+    "enable_correlation_reduction": false,
+    "data_rows_limit": null,
+    "_comment_ppo": "ppo_100k_optimized.json\u306e\u6700\u9069\u5316\u5024\u3092\u5168\u3066\u9069\u7528",
+    "ppo": {
+      "learning_rate": 0.007503,
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 16,
+      "gamma": 0.8475,
+      "gae_lambda": 0.8,
+      "clip_range": 0.1,
+      "clip_range_vf": null,
+      "ent_coef": 0.001,
+      "vf_coef": 0.1,
+      "max_grad_norm": 5.05,
+      "use_sde": false,
+      "sde_sample_freq": -1,
+      "target_kl": 0.001,
+      "normalize_advantage": true,
+      "policy_kwargs": {
+        "net_arch": [
+          {
+            "pi": [
+              128,
+              128
+            ],
+            "vf": [
+              128,
+              128
+            ]
+          }
+        ]
+      },
+      "total_timesteps": 100000
+    },
+    "_comment_environment": "v378/v379\u5831\u916c\u8a2d\u5b9a + Bitcoin 18M\u5186\u5bfe\u5fdc + \u4e8c\u5206\u63a2\u7d22\u6700\u9069\u5316",
+    "environment": {
+      "initial_balance": 200000,
+      "transaction_cost": 0.0001,
+      "max_position_size": 0.01,
+      "enable_action_masking": true,
+      "random_start": true,
+      "reward_settings": {
+        "_comment_from_v378_v379": "v378/v379\u306e\u6210\u529f\u3057\u305f\u5831\u916c\u8a2d\u5b9a",
+        "hold_penalty_weight": 0.02,
+        "consecutive_hold_penalty": 0.01,
+        "consecutive_hold_exponential": true,
+        "consecutive_hold_threshold": 5,
+        "trading_frequency_bonus": 0.15,
+        "profit_reward_multiplier": 5.0,
+        "action_diversity_bonus": 0.05,
+        "successful_trade_bonus": 1.0,
+        "volatility_adjusted_penalty": true,
+        "trend_adjusted_bonus": true,
+        "range_market_hold_tolerance": 0.5
+      }
+    },
+    "_comment_training": "100k timesteps, \u4e8c\u5206\u63a2\u7d22\u6700\u9069\u5316\u5024\u9069\u7528",
+    "training": {
+      "total_timesteps": 100000,
+      "checkpoint_interval": 10000,
+      "enable_autohalt": true,
+      "eval_freq": 5000,
+      "n_eval_episodes": 10,
+      "reward_scaling": 0.1,
+      "risk_free_rate": 0.0
+    },
+    "_comment_custom_ppo": "PAN, Target Entropy, Lagrange\u5236\u7d04\u3092\u7d71\u5408",
+    "custom_ppo": {
+      "enabled": true,
+      "use_pan": true,
+      "use_target_entropy": true,
+      "target_entropy": -0.8,
+      "use_gradient_probe_guard": false,
+      "pan_epsilon": 1e-08,
+      "enable_evaluation_gates": true,
+      "gate_thresholds": {
+        "variance_threshold": 0.01,
+        "distribution_check_enabled": true
+      },
+      "_comment_lagrange": "ppo_100k_optimized.json\u306eLagrange\u6700\u9069\u5316\u5024",
+      "use_lagrange_constraint": true,
+      "lagrange_r_target": 0.175,
+      "lagrange_tolerance": 0.042625,
+      "lagrange_eta": 0.062875,
+      "lagrange_lambda_max": 3.875,
+      "lagrange_warmup_steps": 3874
+    },
+    "data_path": "ml-dataset-enhanced.csv",
+    "_comment_optimization_summary": {
+      "source": "ppo_100k_optimized.json (2025-10-10)",
+      "cumulative_improvement": "+117pt (\u63a8\u5b9a)",
+      "high_confidence_params": [
+        "batch_size (256)",
+        "learning_rate (0.007503)",
+        "max_grad_norm (5.05)",
+        "n_steps (1024)",
+        "vf_coef (0.1)",
+        "reward_multipliers (5.0)",
+        "risk_free_rate (0.0)",
+        "lagrange_* (\u5168\u30d1\u30e9\u30e1\u30fc\u30bf)"
+      ],
+      "medium_confidence_params": [
+        "gamma (0.8475)",
+        "n_epochs (16)",
+        "ent_coef (0.001)",
+        "clip_range (0.1)",
+        "gae_lambda (0.8)",
+        "target_kl (0.001)"
+      ],
+      "reference_docs": [
+        "docs/binary_search_optimization/VALIDATION_RESULTS_2025-10-10.md",
+        "docs/binary_search_optimization/MAX_GRAD_NORM_DETAILED_ANALYSIS.md",
+        "docs/LAGRANGE_OPTIMIZATION_RESULTS.md"
+      ]
+    },
+    "_comment_comparison": "v390 vs v391\u306e\u4e3b\u8981\u306a\u9055\u3044",
+    "comparison": {
+      "v390_hybrid": {
+        "learning_rate": 0.0003,
+        "batch_size": 128,
+        "n_steps": 512,
+        "max_grad_norm": 0.5,
+        "result": "HOLD 99.6%, Return 0.00%"
+      },
+      "v391_optimized": {
+        "learning_rate": 0.007503,
+        "batch_size": 256,
+        "n_steps": 1024,
+        "max_grad_norm": 5.05,
+        "expected": "HOLD < 60%, Return > 0.5% (\u671f\u5f85)"
+      },
+      "key_differences": {
+        "learning_rate_ratio": "25\u500d\u9ad8\u901f",
+        "batch_size_ratio": "2\u500d\u5927\u304d\u3044",
+        "n_steps_ratio": "2\u500d\u591a\u3044",
+        "max_grad_norm_ratio": "10\u500d\u5927\u304d\u3044",
+        "optimization_source": "\u4e8c\u5206\u63a2\u7d22 +117pt\u6539\u5584\u5b9f\u7e3e"
+      }
+    }
+  },
+  "curated_features_spec": "curated_features.py::CURATED_FEATURES",
+  "feature_filtering_enabled": true,
+  "feature_filter_mode": "whitelist"
+}
