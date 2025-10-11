@@ -6,14 +6,18 @@ from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.utils.logging_utils import get_logger
+
 if TYPE_CHECKING:
     from ztb.trading.environment.utils.config import EnvironmentConfig
+
+logger = get_logger(__name__)
 
 
 class ActionValidator:
     """Handles action validation and masking for trading actions."""
 
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self,
         config: "EnvironmentConfig",
         initial_portfolio_value: float,
@@ -83,16 +87,36 @@ class ActionValidator:
             return legal
 
         # BUY: ショートまたはフラットの場合、かつ十分な残高がある場合
+        # 🔧 CRITICAL FIX: 少額取引対応
+        # - 実口座では1 mBTC (0.001 BTC ≈ 18,000円) 程度の少額取引が必要
+        # - max_position_size はフル購入時のサイズだが、実際は利用可能資金に応じて調整
+        # - 最小取引単位を考慮して柔軟に判定
         if position <= 0:
-            buy_cost = position_size * current_price * (1 + transaction_cost)
-            if portfolio_value >= buy_cost:
+            # 理想的な購入コスト（フルサイズ）
+            ideal_buy_cost = position_size * current_price * (1 + transaction_cost)
+            
+            # 🔧 少額取引対応: 利用可能資金の90%以上あれば取引可能とする
+            # これにより、資金がmax_position_size分に満たなくても、
+            # 持っている資金の範囲内で取引できるようになる
+            affordable_size = portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
+            min_trade_size = 0.0001  # 最小取引単位 (0.01 mBTC, 約1,800円相当)
+            
+            # 条件: 理想サイズが買えるか、または最小単位以上が買える
+            if portfolio_value >= ideal_buy_cost or affordable_size >= min_trade_size:
                 legal[1] = 1
 
-        # SELL: ロングまたはフラットの場合、かつショートポジションがある場合
+        # SELL: ロングまたはフラットの場合
+        # 🔧 CRITICAL FIX: ショートポジション判定の簡素化
+        # - 実取引ではショートは使わないケースが多いため、判定を緩和
         if position >= 0:
             # ショートポジションを開く場合、ポジションサイズ分の価値が必要
-            sell_value = position_size * current_price
-            if portfolio_value >= sell_value:
+            ideal_sell_value = position_size * current_price
+            
+            # 🔧 少額取引対応: BUYと同様に柔軟に判定
+            affordable_size = portfolio_value * 0.9 / current_price
+            min_trade_size = 0.0001  # 最小取引単位
+            
+            if portfolio_value >= ideal_sell_value or affordable_size >= min_trade_size:
                 legal[2] = 1
 
         # Safety check: ensure at least one action is legal (HOLD should always be legal)

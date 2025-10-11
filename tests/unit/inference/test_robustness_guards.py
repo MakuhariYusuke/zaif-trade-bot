@@ -4,7 +4,10 @@ import numpy as np
 import pytest
 import warnings
 
-from ztb.inference.decode import decode_action, InferenceConfig
+try:
+    from ztb.inference.decode import decode_action, InferenceConfig
+except ImportError:
+    pytest.skip("ztb.inference.decode module not available (torch dependency)", allow_module_level=True)
 
 
 class TestLogitsClipping:

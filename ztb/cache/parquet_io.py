@@ -5,6 +5,7 @@ Parquet I/O abstraction with configuration-driven compression, chunking, and col
 """
 
 import os
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, cast
 
@@ -12,7 +13,9 @@ import pandas as pd
 import psutil
 import pyarrow as pa
 import pyarrow.parquet as pq
-import yaml
+
+from ztb.utils.config_loader import ConfigLoader
+from ztb.utils.cache_utils import cached_with_ttl
 
 
 def load_config(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
@@ -20,8 +23,15 @@ def load_config(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
-    with open(config_path, "r", encoding="utf-8") as f:
-        return cast(Dict[str, Any], yaml.safe_load(f))
+    return ConfigLoader.load(config_path)
+
+
+async def load_config_async(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
+    """Asynchronously load I/O configuration"""
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    return await ConfigLoader.load_async(config_path)
 
 
 def load_features_config(features_config_path: Optional[Path] = None) -> Dict[str, Any]:
@@ -32,8 +42,18 @@ def load_features_config(features_config_path: Optional[Path] = None) -> Dict[st
         print(f"Features config not found: {features_config_path}")
         return {}
 
-    with open(features_config_path, "r", encoding="utf-8") as f:
-        return cast(Dict[str, Any], yaml.safe_load(f))
+    return ConfigLoader.load(features_config_path)
+
+
+async def load_features_config_async(features_config_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Asynchronously load features configuration for dependency analysis"""
+    if features_config_path is None:
+        features_config_path = Path("configs/features.yaml")
+    if not features_config_path.exists():
+        print(f"Features config not found: {features_config_path}")
+        return {}
+
+    return await ConfigLoader.load_async(features_config_path)
 
 
 def analyze_column_dependencies(
@@ -172,6 +192,7 @@ def write_parquet(
     )
 
 
+@cached_with_ttl(ttl_seconds=1800)  # Cache for 30 minutes
 def read_parquet(
     path: Path,
     config: Optional[Dict[str, Any]] = None,
@@ -216,6 +237,7 @@ def read_parquet(
     return df
 
 
+@cached_with_ttl(ttl_seconds=1800)  # Cache for 30 minutes
 def read_parquet_with_features(
     path: Path,
     config: Optional[Dict[str, Any]] = None,

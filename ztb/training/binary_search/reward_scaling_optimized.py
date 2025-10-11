@@ -31,7 +31,7 @@ class RewardScalingOptimizer(HyperparameterOptimizer):
 
     def update_ppo_params(self, value: Union[int, float]) -> None:
         """Update environment config with reward_scaling value."""
-        self.env_config["reward_scaling"] = float(value)
+        self.env_config.reward_scaling = float(value)
 
 
 def main() -> None:
@@ -46,6 +46,7 @@ def main() -> None:
 
     # Create optimizer
     optimizer = RewardScalingOptimizer()
+    optimizer.configure_from_args(args)
 
     if args.mode == "single":
         # Run single test

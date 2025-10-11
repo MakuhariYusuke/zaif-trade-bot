@@ -12,10 +12,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
+from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO
 
 from ztb.utils.file_utils import safe_json_dump
+from ztb.utils.performance_utils import timed
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -24,6 +27,7 @@ sys.path.insert(0, str(project_root))
 from ztb.trading.environment.environment import HeavyTradingEnv
 
 
+@timed
 def calculate_metrics(
     trades: List[Dict[str, Any]], initial_capital: float = 10000.0
 ) -> Dict[str, Any]:
@@ -63,9 +67,9 @@ def calculate_metrics(
         sharpe_ratio = 0.0
 
     # Max drawdown
-    capital_history = np.array(capital_history)
-    peak = np.maximum.accumulate(capital_history)
-    drawdown = (capital_history - peak) / peak
+    capital_history_array: NDArray[np.float64] = np.array(capital_history)
+    peak = np.maximum.accumulate(capital_history_array)
+    drawdown = (capital_history_array - peak) / peak
     max_drawdown = np.min(drawdown)
 
     # Win rate
@@ -97,6 +101,7 @@ def run_backtest(
     model_path: str,
     data_path: str,
     initial_capital: float = 10000.0,
+    curriculum_stage: str = "forced_balance",
     transaction_cost: float = 0.0005,
     max_steps: Optional[int] = None,
     verbose: bool = True,
@@ -107,7 +112,17 @@ def run_backtest(
 
     # Load model
     logger.info(f"Loading model from {model_path}")
-    model = PPO.load(model_path)
+    model_type = None
+    try:
+        # Try loading as MaskablePPO first (for models with action masking)
+        model = MaskablePPO.load(model_path)
+        model_type = "MaskablePPO"
+        logger.info("Loaded model as MaskablePPO")
+    except Exception as e:
+        logger.info(f"Failed to load as MaskablePPO: {e}, trying regular PPO")
+        model = PPO.load(model_path)
+        model_type = "PPO"
+        logger.info("Loaded model as PPO")
 
     # Load data
     logger.info(f"Loading data from {data_path}")
@@ -125,6 +140,7 @@ def run_backtest(
         "enable_correlation_reduction": True,
         "correlation_threshold": 0.95,
         "max_position_size": 0.5,
+        "curriculum_stage": curriculum_stage,  # Match training configuration
         "reward_trade_frequency_penalty": 0.01,
         "reward_trade_frequency_halflife": 1.0,
         "reward_trade_cooldown_steps": 0,
@@ -156,7 +172,13 @@ def run_backtest(
     actions_taken = []
 
     while not done:
-        action, _ = model.predict(obs, deterministic=True)
+        # Get action with proper masking for MaskablePPO
+        if model_type == "MaskablePPO":
+            action_masks = env.get_action_masks()
+            action, _ = model.predict(obs, action_masks=action_masks, deterministic=False)
+        else:
+            action, _ = model.predict(obs, deterministic=False)
+        
         action = cast(int, action.item() if hasattr(action, "item") else action)
         actions_taken.append(action)
 
@@ -169,13 +191,15 @@ def run_backtest(
         if step % 100 == 0:  # Debug output every 100 steps
             logger.info(f"Step {step}: action={action}, position={current_position}")
 
-        if abs(current_position) > 0 and abs(last_position) == 0:  # Opening a position
+        # Detect position changes (considering allow_reverse=True)
+        # 1. Opening new position from flat
+        if abs(current_position) > 0 and abs(last_position) == 0:
             entry_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
             entry_time = env.current_step
             logger.info(f"Opened position at step {step}: {current_position}")
-        elif (
-            abs(last_position) > 0 and abs(current_position) == 0
-        ):  # Closing a position
+        
+        # 2. Closing position to flat
+        elif abs(last_position) > 0 and abs(current_position) == 0:
             exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
             pnl = (
                 (exit_price - entry_price) * last_position * (1 - transaction_cost * 2)
@@ -190,6 +214,28 @@ def run_backtest(
             }
             trades.append(trade)
             logger.info(f"Closed position at step {step}: pnl={pnl}")
+        
+        # 3. Position reversal (Long→Short or Short→Long)
+        elif (last_position > 0 and current_position < 0) or (last_position < 0 and current_position > 0):
+            # Close previous position
+            exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
+            pnl = (
+                (exit_price - entry_price) * last_position * (1 - transaction_cost * 2)
+            )
+            trade = {
+                "entry_time": entry_time,
+                "exit_time": env.current_step,
+                "entry_price": entry_price,
+                "exit_price": exit_price,
+                "pnl": pnl,
+                "position": last_position,
+            }
+            trades.append(trade)
+            logger.info(f"Reversed position at step {step}: {last_position}→{current_position}, pnl={pnl}")
+            
+            # Open new reversed position
+            entry_price = exit_price
+            entry_time = env.current_step
 
         last_position = current_position
 

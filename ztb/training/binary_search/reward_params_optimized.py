@@ -6,7 +6,7 @@ Uses the base optimizer class for common functionality.
 
 import sys
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -40,19 +40,18 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
         # For simplicity, we'll optimize one multiplier at a time
         # In practice, you might want to optimize combinations
         self.reward_multipliers = [float(value), float(value), float(value)]
-        self.env_config["reward_settings"]["profit_bonus_multipliers"] = self.reward_multipliers  # type: ignore[index]
-
-    def evaluate_result(self, callback) -> float:  # type: ignore[no-untyped-def]
+        self.env_config.reward_profit_bonus_multipliers = list(self.reward_multipliers)
+    def evaluate_result(
+        self, callback: Any
+    ) -> Tuple[float, Dict[str, Union[int, float]], Dict[str, Union[int, float]]]:
         """Evaluate training result with focus on action balance."""
         stats = callback.get_training_stats()
         action_dist = callback.get_action_distribution()
 
-        # Calculate action balance score (lower is more balanced)
-        hold_pct = action_dist["hold_pct"]
-        buy_pct = action_dist["buy_pct"]
-        sell_pct = action_dist["sell_pct"]
+        hold_pct = float(action_dist.get("hold_pct", 0.0))
+        buy_pct = float(action_dist.get("buy_pct", 0.0))
+        sell_pct = float(action_dist.get("sell_pct", 0.0))
 
-        # Ideal balance would be around 33% each
         ideal_pct = 33.3
         balance_score = (
             abs(hold_pct - ideal_pct)
@@ -60,11 +59,10 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
             + abs(sell_pct - ideal_pct)
         )
 
-        # Combine reward and balance (higher reward is better, lower balance score is better)
-        reward_score = float(stats["avg_reward"])
-        combined_score = reward_score - balance_score * 0.01  # Weight balance penalty
+        reward_score = float(stats.get("avg_reward", 0.0))
+        combined_score = reward_score - balance_score * 0.01
 
-        return float(combined_score)
+        return combined_score, stats, action_dist
 
 
 def main() -> None:
@@ -82,6 +80,7 @@ def main() -> None:
 
     # Create optimizer
     optimizer = RewardParamsOptimizer()
+    optimizer.configure_from_args(args)
 
     if args.mode == "single":
         # Run single test

@@ -1,0 +1,61 @@
+{
+  "model_name": "sac_v395b_stable",
+  "algorithm": "sac",
+  "total_timesteps": 5000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0001,
+    "buffer_size": 20000,
+    "learning_starts": 500,
+    "batch_size": 128,
+    "tau": 0.005,
+    "gamma": 0.95,
+    "train_freq": 4,
+    "gradient_steps": 4,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "target_entropy": -0.5,
+    "policy_kwargs": {
+      "net_arch": [64, 64]
+    }
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.1,
+      "consecutive_hold_penalty": 0.05,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.3,
+      "profit_reward_multiplier": 10.0,
+      "action_diversity_bonus": 0.1,
+      "successful_trade_bonus": 5.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 1000,
+  "notes": "SAC v395b: Stabilized parameters to prevent critic loss explosion",
+  "changes_from_v395a": [
+    "learning_rate: 0.0003 → 0.0001 (critic loss stabilization)",
+    "batch_size: 64 → 128 (reduce gradient variance)",
+    "gamma: 0.99 → 0.95 (reduce Q-value explosion)",
+    "train_freq: 1 → 4 (better data/update ratio)",
+    "gradient_steps: 1 → 4 (match train_freq)",
+    "target_entropy: auto → -0.5 (reduce excessive exploration)",
+    "buffer_size: 10000 → 20000 (more diverse experiences)",
+    "learning_starts: 100 → 500 (more random samples before learning)",
+    "net_arch: [256,256] → [64,64] (prevent overfitting)"
+  ]
+}

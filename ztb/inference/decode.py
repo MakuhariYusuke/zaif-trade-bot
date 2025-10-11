@@ -18,6 +18,8 @@ Critical Requirements:
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple, cast, Union, Dict
 
+from ztb.trading.constants import ACTION_HOLD
+
 import numpy as np
 import torch
 from numpy.typing import NDArray
@@ -50,12 +52,12 @@ class InferenceConfig:
 
 
 def decode_action(
-    logits: NDArray[Any] | torch.Tensor,
-    legal_mask: NDArray[Any] | torch.Tensor,
+    logits: NDArray[np.float32] | torch.Tensor,
+    legal_mask: NDArray[np.bool_] | torch.Tensor,
     config: Optional[InferenceConfig] = None,
-    advantages: Optional[NDArray[Any] | torch.Tensor] = None,
+    advantages: Optional[NDArray[np.float32] | torch.Tensor] = None,
     current_position: Optional[int] = None,
-) -> Tuple[int | NDArray[Any], Dict[str, Any]]:
+) -> Tuple[int | NDArray[np.integer[Any]], Dict[str, Any]]:
     """
     Decode action from logits with strict mask enforcement.
 
@@ -237,7 +239,7 @@ def decode_action(
             not tiebreaker_activated[i]
             and config.enable_tiebreaker
             and config.deterministic
-            and top1_action == 0  # HOLD
+            and top1_action == ACTION_HOLD
             and margins[i] < config.tiebreaker_tau
             and mask[top2_action] == 1  # top2 is legal
         ):
@@ -295,7 +297,7 @@ def decode_action(
 
     # Remove batch dimension if single observation
     if single_obs:
-        action: Union[int, np.ndarray[Any, Any]] = int(actions[0])
+        action: Union[int, NDArray[np.integer[Any]]] = int(actions[0])
         info["probabilities"] = probabilities[0]
         info["top2_actions"] = top2_actions[0]
         info["top2_probs"] = top2_probs[0]
@@ -311,7 +313,7 @@ def decode_action(
 
 
 def compute_legal_sell_rate(
-    actions: NDArray[Any], legal_masks: NDArray[Any]
+    actions: NDArray[np.int64], legal_masks: NDArray[np.bool_]
 ) -> Dict[str, float]:
     """
     Compute legal SELL rate statistics.

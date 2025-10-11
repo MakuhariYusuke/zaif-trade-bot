@@ -18,6 +18,7 @@ from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
 from ztb.training.utils.training_utils import setup_project_path
+from ztb.utils.config import ZTBConfig
 
 # Ensure project root is on sys.path
 setup_project_path()
@@ -59,7 +60,7 @@ def objective_function(
             "total_timesteps": 25000,  # Short training for optimization
             "ent_coef": 0.5,  # Override for optimization
             "tensorboard_log": "logs/bayes_opt",
-            "model_dir": "models/bayes_opt",
+            "model_dir": ZTBConfig().get_model_path("bayes_opt"),
             "checkpoint_dir": "checkpoints/bayes_opt",
             "log_dir": "logs/bayes_opt",
             "offline_mode": True,

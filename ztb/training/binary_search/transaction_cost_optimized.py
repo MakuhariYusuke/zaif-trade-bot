@@ -30,7 +30,7 @@ class TransactionCostOptimizer(HyperparameterOptimizer):
 
     def update_ppo_params(self, value: Union[int, float]) -> None:
         """Update environment config with transaction_cost value."""
-        self.env_config["transaction_cost"] = float(value)
+        self.env_config.transaction_cost = float(value)
 
 
 def main() -> None:
@@ -45,6 +45,7 @@ def main() -> None:
 
     # Create optimizer
     optimizer = TransactionCostOptimizer()
+    optimizer.configure_from_args(args)
 
     if args.mode == "single":
         # Run single test

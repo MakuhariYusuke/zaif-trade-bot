@@ -24,6 +24,8 @@ import numpy as np
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.training.policy_utils import predict_with_masks
+
 
 @dataclass
 class ModelPrediction:
@@ -151,8 +153,8 @@ class EnsembleAggregator:
                 masked_step_count = 0
                 
                 while not done:
-                    # 予測と信頼度取得
-                    action, _ = model.predict(obs, deterministic=True)
+                    # 予測と信頼度取得 (using predict_with_masks for MaskablePPO support)
+                    action, _ = predict_with_masks(model, obs, eval_env, deterministic=True)
                     
                     # 行動確率を取得して信頼度計算
                     obs_tensor = model.policy.obs_to_tensor(obs)[0]

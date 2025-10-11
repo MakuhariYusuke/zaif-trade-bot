@@ -1,0 +1,67 @@
+{
+  "model_name": "ppo_v394b_trade_reward",
+  "model_type": "ppo",
+  "total_timesteps": 100000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "ppo_hyperparameters": {
+    "learning_rate": 0.007503,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 16,
+    "gamma": 0.8475,
+    "gae_lambda": 0.8,
+    "clip_range": 0.1,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 5.05
+  },
+  "lagrange_constraint": {
+    "enabled": true,
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "eta_min": 0.001,
+    "eta_max": 100.0,
+    "eta_lr": 0.001
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.02,
+      "consecutive_hold_penalty": 0.01,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.3,
+      "profit_reward_multiplier": 10.0,
+      "action_diversity_bonus": 0.05,
+      "successful_trade_bonus": 5.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 10000,
+  "notes": "v394b: 取引報酬強化版",
+  "changes_from_v393": [
+    "🎁 successful_trade_bonus: 1.0 → 5.0 (5倍強化)",
+    "🎁 profit_reward_multiplier: 5.0 → 10.0 (2倍強化)",
+    "🎁 trading_frequency_bonus: 0.15 → 0.3 (2倍強化)",
+    "🎯 成功した取引に大きな報酬",
+    "🎯 利益が出た際の報酬を倍増"
+  ],
+  "expected_improvements": [
+    "✅ 成功取引への強いインセンティブ",
+    "✅ 利益を出す取引の学習促進",
+    "🎯 Quality over Quantity（良い取引を選択）",
+    "⚠️ リスクテイキング増加の可能性"
+  ]
+}
