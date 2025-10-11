@@ -1,16 +1,34 @@
-# Dockerfile for zaif-trade-bot live trading
-#
-# Production-ready container for live BTC/JPY trading with monitoring,
-# health checks, and security features.
+# Multi-stage Dockerfile for zaif-trade-bot
+# Stage 1: Builder
+FROM python:3.11-slim as builder
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy dependency files
+COPY requirements.txt constraints.txt ./
+
+# Install Python dependencies
+RUN pip install --user --constraint constraints.txt -r requirements.txt
+
+# Stage 2: Runtime
 FROM python:3.11-slim
 
 # Set environment variables for production
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONHASHSEED=random \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     DEBIAN_FRONTEND=noninteractive \
     PYTHONPATH=/app \
     # Default production settings
@@ -20,28 +38,24 @@ ENV PYTHONUNBUFFERED=1 \
     ZTB_ENABLE_HEALTH_CHECK=true \
     ZTB_HEALTH_PORT=8080
 
-# Install system dependencies
+# Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    curl \
-    # Required for some Python packages
     libgomp1 \
     libatlas-base-dev \
-    # Monitoring and networking tools
     netcat-openbsd \
     procps \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Create app directory
 WORKDIR /app
 
-# Copy dependency files first for better caching
-COPY requirements.txt constraints.txt ./
+# Copy Python packages from builder
+COPY --from=builder /root/.local /root/.local
 
-# Install Python dependencies with security constraints
-RUN pip install --no-cache-dir --constraint constraints.txt -r requirements.txt
+# Add Python packages to PATH
+ENV PATH=/root/.local/bin:$PATH
 
 # Copy source code
 COPY . .

@@ -1,0 +1,263 @@
+{
+  "optimizer_name": "BinarySearchOptimizer",
+  "best_parameters": {
+    "learning_rate": 0.0002997145659319624
+  },
+  "best_objective_value": 0.10149922813475432,
+  "best_metrics": {
+    "critic_loss": 0.001014992281347543,
+    "actor_loss": -0.010149922813475432,
+    "ent_coef": 0.6367149736006743
+  },
+  "total_duration_seconds": 1.526524543762207,
+  "n_trials": 15,
+  "success_rate": 1.0,
+  "statistics": {
+    "objective_mean": 24.75629282781894,
+    "objective_std": 38.0641532950165,
+    "objective_min": 0.10149922813475432,
+    "objective_max": 138.23324289499985
+  },
+  "all_trials": [
+    {
+      "trial_id": 1,
+      "parameters": {
+        "learning_rate": 0.0001399258757683091
+      },
+      "metrics": {
+        "critic_loss": 0.533539209692137,
+        "actor_loss": -5.33539209692137,
+        "ent_coef": 0.6296076766199311
+      },
+      "objective_value": 53.353920969213696,
+      "duration_seconds": 0.10025906562805176,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 2,
+      "parameters": {
+        "learning_rate": 0.0007146640994806504
+      },
+      "metrics": {
+        "critic_loss": 1.3823324289499985,
+        "actor_loss": -13.823324289499986,
+        "ent_coef": 0.33316974864509563
+      },
+      "objective_value": 138.23324289499985,
+      "duration_seconds": 0.10027432441711426,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 3,
+      "parameters": {
+        "learning_rate": 5.1074477508648906e-05
+      },
+      "metrics": {
+        "critic_loss": 0.8297805947564346,
+        "actor_loss": -8.297805947564347,
+        "ent_coef": 0.32537624109504504
+      },
+      "objective_value": 82.97805947564346,
+      "duration_seconds": 0.10058784484863281,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 4,
+      "parameters": {
+        "learning_rate": 0.000260860225278148
+      },
+      "metrics": {
+        "critic_loss": 0.13052547411237625,
+        "actor_loss": -1.3052547411237625,
+        "ent_coef": 0.33542271949504054
+      },
+      "objective_value": 13.052547411237624,
+      "duration_seconds": 0.10026693344116211,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 5,
+      "parameters": {
+        "learning_rate": 0.00038334705834656426
+      },
+      "metrics": {
+        "critic_loss": 0.27777252121902674,
+        "actor_loss": -2.7777252121902674,
+        "ent_coef": 0.4047425678983868
+      },
+      "objective_value": 27.777252121902674,
+      "duration_seconds": 0.1005854606628418,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 6,
+      "parameters": {
+        "learning_rate": 0.00020562802475982328
+      },
+      "metrics": {
+        "critic_loss": 0.3145724900612434,
+        "actor_loss": -3.145724900612434,
+        "ent_coef": 0.5340074801578687
+      },
+      "objective_value": 31.457249006124336,
+      "duration_seconds": 0.10046648979187012,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 7,
+      "parameters": {
+        "learning_rate": 0.0003021805962225242
+      },
+      "metrics": {
+        "critic_loss": 0.007330498203671666,
+        "actor_loss": -0.07330498203671666,
+        "ent_coef": 0.5434667912315869
+      },
+      "objective_value": 0.7330498203671666,
+      "duration_seconds": 0.10034894943237305,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 8,
+      "parameters": {
+        "learning_rate": 0.0003309279326669954
+      },
+      "metrics": {
+        "critic_loss": 0.10298809308530839,
+        "actor_loss": -1.0298809308530839,
+        "ent_coef": 0.46489392532193197
+      },
+      "objective_value": 10.298809308530839,
+      "duration_seconds": 0.10033297538757324,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 9,
+      "parameters": {
+        "learning_rate": 0.00028567663227050544
+      },
+      "metrics": {
+        "critic_loss": 0.04772184751013432,
+        "actor_loss": -0.47721847510134324,
+        "ent_coef": 0.540248459263824
+      },
+      "objective_value": 4.772184751013432,
+      "duration_seconds": 0.10062336921691895,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 10,
+      "parameters": {
+        "learning_rate": 0.00031285389767028677
+      },
+      "metrics": {
+        "critic_loss": 0.042758128062468787,
+        "actor_loss": -0.42758128062468787,
+        "ent_coef": 0.6254999102575731
+      },
+      "objective_value": 4.275812806246878,
+      "duration_seconds": 0.10024642944335938,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 11,
+      "parameters": {
+        "learning_rate": 0.00029576699826660457
+      },
+      "metrics": {
+        "critic_loss": 0.01414679563815885,
+        "actor_loss": -0.14146795638158852,
+        "ent_coef": 0.45123892518975045
+      },
+      "objective_value": 1.414679563815885,
+      "duration_seconds": 0.10072970390319824,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 12,
+      "parameters": {
+        "learning_rate": 0.00030621376543253664
+      },
+      "metrics": {
+        "critic_loss": 0.020688830635757195,
+        "actor_loss": -0.20688830635757194,
+        "ent_coef": 0.6744625401354758
+      },
+      "objective_value": 2.0688830635757194,
+      "duration_seconds": 0.10078287124633789,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 13,
+      "parameters": {
+        "learning_rate": 0.0002997145659319624
+      },
+      "metrics": {
+        "critic_loss": 0.001014992281347543,
+        "actor_loss": -0.010149922813475432,
+        "ent_coef": 0.6367149736006743
+      },
+      "objective_value": 0.10149922813475432,
+      "duration_seconds": 0.10073041915893555,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 14,
+      "parameters": {
+        "learning_rate": 0.00029820054824908874
+      },
+      "metrics": {
+        "critic_loss": 0.0061596220992821814,
+        "actor_loss": -0.06159622099282182,
+        "ent_coef": 0.5957848288821446
+      },
+      "objective_value": 0.6159622099282182,
+      "duration_seconds": 0.10065960884094238,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "trial_id": 15,
+      "parameters": {
+        "learning_rate": 0.00030065412130903576
+      },
+      "metrics": {
+        "critic_loss": 0.0021123978654958723,
+        "actor_loss": -0.021123978654958724,
+        "ent_coef": 0.36099897727860414
+      },
+      "objective_value": 0.21123978654958722,
+      "duration_seconds": 0.10326933860778809,
+      "success": true,
+      "error_message": null,
+      "metadata": {}
+    }
+  ]
+}

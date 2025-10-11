@@ -1,0 +1,583 @@
+{
+  "dry_run": true,
+  "migration_plan": {
+    "configs": {
+      "file_count": 11,
+      "files": [
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\.eslintrc.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\.markdownlint.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\observation_comparison.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\package-lock.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\package.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\pyrightconfig.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\sac_session_comparison.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\sac_v395i_improvement_analysis.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\statistical_test_results.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\tsconfig.json",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\vitest-report-unit.json"
+      ]
+    },
+    "docs": {
+      "file_count": 40,
+      "files": [
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\action_distribution_summary.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CHANGELOG.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CHECKPOINT_INTERVAL_EXTENSION.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CHECKPOINT_INTERVAL_INTEGRATION_SUMMARY.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\constraints.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CUSTOM_PPO_ROLLOUT_REPORT.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CUSTOM_PPO_SUCCESS_REPORT.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\integration_failure_diagnosis.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_current.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_current_errors.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_errors.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_errors_new.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_latest.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output2.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output3.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_current.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_current2.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_final.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_final2.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_final3.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_formatted.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_latest.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_latest2.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_latest3.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_new.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_strict_report.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\P_MEAN_METHOD_README.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\README.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\requirements-dev.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\requirements.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\SAC_ROOT_CAUSE_ANALYSIS.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\SAC_V395I_SUCCESS_REPORT.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\smoke_test_analysis.md",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\smoke_test_output.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\test_content.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\ts-prune.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\type_ignore_usage.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\unused_ignores.txt",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\unused_ignores_new.txt"
+      ]
+    },
+    "scripts": {
+      "file_count": 19,
+      "files": [
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_features_quality.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_feature_selection.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_file_sizes.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_reward_function.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_reward_improvements.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_risk_metrics.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v364_console.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v365_result.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v366_bugs.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v393_policy.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v394d_results.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v394_final_comparison.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v394_training.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\compare_v378_v381.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\debug_action_distribution.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\debug_action_masking.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\live_trade.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\noxfile.py",
+        "C:\\Users\\Admin\\dev\\zaif-trade-bot\\setup.py"
+      ]
+    }
+  },
+  "results": [
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\.markdownlint.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\linting\\.markdownlint.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\constraints.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\constraints.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\package.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\package.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output2.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output2.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\action_distribution_summary.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\action_distribution_summary.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_errors.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_errors.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_current_errors.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_current_errors.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\observation_comparison.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\results\\observation_comparison.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CHECKPOINT_INTERVAL_INTEGRATION_SUMMARY.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\CHECKPOINT_INTERVAL_INTEGRATION_SUMMARY.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\statistical_test_results.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\results\\statistical_test_results.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_latest.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_latest.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CHECKPOINT_INTERVAL_EXTENSION.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\CHECKPOINT_INTERVAL_EXTENSION.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\integration_failure_diagnosis.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\integration_failure_diagnosis.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\sac_v395i_improvement_analysis.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\sac_v395i_improvement_analysis.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\pyrightconfig.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\pyrightconfig.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\vitest-report-unit.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\vitest-report-unit.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\package-lock.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\package-lock.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\sac_session_comparison.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\results\\sac_session_comparison.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_errors_new.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_errors_new.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CUSTOM_PPO_SUCCESS_REPORT.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\CUSTOM_PPO_SUCCESS_REPORT.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\.eslintrc.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\linting\\.eslintrc.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CHANGELOG.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\development\\CHANGELOG.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\tsconfig.json",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\configs\\tsconfig.json",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\CUSTOM_PPO_ROLLOUT_REPORT.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\CUSTOM_PPO_ROLLOUT_REPORT.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output3.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output3.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_current.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_current.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_final3.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_final3.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_latest.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_latest.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_formatted.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_formatted.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_current.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_current.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_final.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_final.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_new.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_new.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\requirements-dev.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\requirements-dev.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_latest3.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_latest3.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\requirements.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\requirements.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_final2.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_final2.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\P_MEAN_METHOD_README.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\P_MEAN_METHOD_README.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_strict_report.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\mypy_strict_report.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_current2.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_current2.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\smoke_test_analysis.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\smoke_test_analysis.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\SAC_ROOT_CAUSE_ANALYSIS.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\SAC_ROOT_CAUSE_ANALYSIS.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\test_content.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\test_content.txt",
+      "dry_run": true
+    },
+    {
+      "status": "skipped",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\README.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\README.md",
+      "reason": "destination exists"
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\unused_ignores_new.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\unused_ignores_new.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\smoke_test_output.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\smoke_test_output.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\mypy_output_latest2.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\mypy_output_latest2.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\SAC_V395I_SUCCESS_REPORT.md",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\reports\\SAC_V395I_SUCCESS_REPORT.md",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\unused_ignores.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\unused_ignores.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_features_quality.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_features_quality.py",
+      "dry_run": true
+    },
+    {
+      "status": "skipped",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_file_sizes.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_file_sizes.py",
+      "reason": "destination exists"
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\ts-prune.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\ts-prune.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_feature_selection.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_feature_selection.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_reward_function.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_reward_function.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_risk_metrics.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_risk_metrics.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\type_ignore_usage.txt",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\docs\\type_ignore_usage.txt",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v365_result.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_v365_result.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_reward_improvements.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_reward_improvements.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v394d_results.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_v394d_results.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v364_console.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_v364_console.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v393_policy.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_v393_policy.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\noxfile.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\utilities\\noxfile.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\compare_v378_v381.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\comparison\\compare_v378_v381.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v394_final_comparison.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_v394_final_comparison.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v366_bugs.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_v366_bugs.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\debug_action_masking.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\debugging\\debug_action_masking.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\analyze_v394_training.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\analysis\\analyze_v394_training.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\live_trade.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\training\\live_trade.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\debug_action_distribution.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\debugging\\debug_action_distribution.py",
+      "dry_run": true
+    },
+    {
+      "status": "success",
+      "operation": "move",
+      "source": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\setup.py",
+      "destination": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\scripts\\utilities\\setup.py",
+      "dry_run": true
+    }
+  ],
+  "summary": "総数: 70, 成功: 68, スキップ: 2, 失敗: 0"
+}
