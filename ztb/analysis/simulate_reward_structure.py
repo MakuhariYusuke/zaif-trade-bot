@@ -5,7 +5,7 @@
 実際の報酬計算をシミュレートして、なぜep_rew_mean=-495なのかを調査
 """
 
-def simulate_rewards():
+def simulate_rewards() -> None:
     """Simulate rewards for different scenarios."""
     
     print("=" * 80)

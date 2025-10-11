@@ -94,7 +94,7 @@ def evaluate_policy(
             # Predict action (using predict_with_masks for MaskablePPO support)
             # Note: VecEnv doesn't provide direct access to underlying env for masks
             # This is a limitation of the permutation importance test setup
-            action, _ = predict_with_masks(model, cast(NDArray[np.float32], obs), env=None, deterministic=True)
+            action, _ = predict_with_masks(model, obs.astype(np.float32), env=None, deterministic=True)
             obs, reward, done, info = env.step(action)
 
             episode_reward += reward[0]

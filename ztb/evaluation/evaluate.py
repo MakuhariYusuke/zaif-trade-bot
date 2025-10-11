@@ -333,7 +333,7 @@ class TradingEvaluator:
             action_value, _ = predict_with_masks(
                 self.model, obs, self.env, deterministic=self.config["deterministic"]
             )
-            action = action_value.item() if hasattr(action_value, 'item') else int(action_value)
+            action = action_value.item() if hasattr(action_value, 'item') else action_value
 
             # 環境ステップ
             next_obs, reward, done, _, info = self.env.step(action)
