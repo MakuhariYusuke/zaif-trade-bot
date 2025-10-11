@@ -1,0 +1,76 @@
+{
+  "model_name": "ppo_profitable_v393_hyperfix",
+  "model_type": "ppo",
+  "total_timesteps": 100000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "ppo_hyperparameters": {
+    "learning_rate": 0.007503,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 16,
+    "gamma": 0.8475,
+    "gae_lambda": 0.8,
+    "clip_range": 0.1,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 5.05
+  },
+  "lagrange_constraint": {
+    "enabled": true,
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "eta_min": 0.001,
+    "eta_max": 100.0,
+    "eta_lr": 0.001
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.02,
+      "consecutive_hold_penalty": 0.01,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.15,
+      "profit_reward_multiplier": 5.0,
+      "action_diversity_bonus": 0.05,
+      "successful_trade_bonus": 1.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 10000,
+  "notes": "🔧 HYPERPARAMETER FIX VERSION - unified_trainer.py修正後の初回訓練",
+  "changes_from_v392": [
+    "✅ unified_trainer.py修正: ppo_hyperparametersキーを正しく読み込む",
+    "✅ get_ppo_core_config()修正: 階層検索ロジック追加（16パラメータ）",
+    "✅ get_environment_config()修正: 階層検索ロジック追加（4パラメータ）",
+    "✅ Lagrange制約設定修正: lagrange_constraintキーを正しく読み込む",
+    "🎯 v392と同じ設定だが、今回は正しく適用される",
+    "🎯 learning_rate 0.007503（デフォルトの25倍）が実際に使用される",
+    "🎯 batch_size 256、max_grad_norm 5.05等も正しく適用"
+  ],
+  "expected_improvements": [
+    "✅ ハイパーパラメータが正しく適用される（v392では無視されていた）",
+    "🎯 Learning rate 25倍で学習効率大幅向上",
+    "🎯 Batch size 4倍でより安定した学習",
+    "🎯 Max grad norm 10倍でより強力な最適化",
+    "🎯 二分探索で得た+117pt改善が実際に適用される",
+    "🎯 random_start機能も正常動作（v392で修正済み）"
+  ],
+  "critical_verification": [
+    "⚠️ 訓練開始時にログでlearning_rate: 0.007503を確認すること",
+    "⚠️ batch_size: 256、max_grad_norm: 5.05も確認",
+    "⚠️ デフォルト値（0.0003, 64, 0.5）が使われていないことを確認"
+  ]
+}

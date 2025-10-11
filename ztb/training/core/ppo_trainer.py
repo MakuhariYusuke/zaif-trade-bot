@@ -10,7 +10,8 @@ PPO Trainer implementations:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Protocol
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -28,6 +29,7 @@ from ztb.training.policies.policy_utils import neutralize_policy_bias
 from ztb.training.config.ppo_config import DEFAULT_REWARD_SCALING, DEFAULT_TOTAL_TIMESTEPS, DEFAULT_INITIAL_PORTFOLIO_VALUE, PPOConfig
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.features.curated_features import FeatureSet, get_feature_set, get_features_to_remove
 
 logger = get_logger(__name__)
 
@@ -65,14 +67,6 @@ class Algorithm(Enum):
     """Supported training algorithms."""
 
     PPO = "ppo"
-
-
-class FeatureSet(Enum):
-    """Supported feature sets for training."""
-
-    BASIC = "basic"
-    ENHANCED = "enhanced"
-    FULL = "full"
 
 
 class Timeframe(Enum):
@@ -127,39 +121,69 @@ class TrainingConfig:
     enable_grad_probe_guard: bool = False
     grad_probe_config: Optional[Dict[str, Any]] = None
 
+    # Feature configuration
+    feature_set: FeatureSet = FeatureSet.CURATED
+    custom_features: Optional[List[str]] = None
+    feature_config_path: Optional[str] = None
+
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "TrainingConfig":
         """Create TrainingConfig from dictionary."""
         config = cls()
-        common_config = config_dict.get("ppo", {})
+        
+        # 🔧 FIX: ppo_hyperparametersキーもチェック（v392/v393等で使用）
+        # トップレベルの"ppo"、次に"ppo_hyperparameters"、最後にトップレベルキーを確認
+        ppo_config = config_dict.get("ppo", {})
+        ppo_hyperparams = config_dict.get("ppo_hyperparameters", {})
+        
+        def get_param(key: str, default: Any) -> Any:
+            """3段階で設定を検索: ppo > ppo_hyperparameters > トップレベル"""
+            # 1. ppo キー内
+            if key in ppo_config:
+                return ppo_config[key]
+            # 2. ppo_hyperparameters キー内
+            if key in ppo_hyperparams:
+                return ppo_hyperparams[key]
+            # 3. トップレベル
+            return config_dict.get(key, default)
 
         # Core PPO parameters
-        config.learning_rate = float(common_config.get("learning_rate", 3e-4))
-        config.n_steps = int(common_config.get("n_steps", 1024))  # Updated default for memory optimization
-        config.batch_size = int(common_config.get("batch_size", 32))  # Reduced for memory optimization
-        config.n_epochs = int(common_config.get("n_epochs", 10))
-        config.gamma = float(common_config.get("gamma", 0.99))
-        config.gae_lambda = float(common_config.get("gae_lambda", 0.95))
-        config.clip_range = float(common_config.get("clip_range", 0.2))
-        config.clip_range_vf = common_config.get("clip_range_vf")
-        config.normalize_advantage = bool(common_config.get("normalize_advantage", True))
-        config.ent_coef = float(common_config.get("ent_coef", 0.0))
-        config.vf_coef = float(common_config.get("vf_coef", 0.5))
-        config.max_grad_norm = float(common_config.get("max_grad_norm", 0.5))
-        config.use_sde = bool(common_config.get("use_sde", False))
-        config.sde_sample_freq = int(common_config.get("sde_sample_freq", -1))
-        config.target_kl = common_config.get("target_kl")
+        config.learning_rate = float(get_param("learning_rate", 3e-4))
+        config.n_steps = int(get_param("n_steps", 1024))  # Updated default for memory optimization
+        config.batch_size = int(get_param("batch_size", 32))  # Reduced for memory optimization
+        config.n_epochs = int(get_param("n_epochs", 10))
+        config.gamma = float(get_param("gamma", 0.99))
+        config.gae_lambda = float(get_param("gae_lambda", 0.95))
+        config.clip_range = float(get_param("clip_range", 0.2))
+        config.clip_range_vf = get_param("clip_range_vf", None)
+        config.normalize_advantage = bool(get_param("normalize_advantage", True))
+        config.ent_coef = float(get_param("ent_coef", 0.0))
+        config.vf_coef = float(get_param("vf_coef", 0.5))
+        config.max_grad_norm = float(get_param("max_grad_norm", 0.5))
+        config.use_sde = bool(get_param("use_sde", False))
+        config.sde_sample_freq = int(get_param("sde_sample_freq", -1))
+        config.target_kl = get_param("target_kl", None)
 
         # Environment and data parameters
-        config.total_timesteps = int(common_config.get("total_timesteps", DEFAULT_TOTAL_TIMESTEPS))
-        config.reward_scaling = float(common_config.get("reward_scaling", 1.0))
-        config.transaction_cost = float(common_config.get("transaction_cost", 0.0))
-        config.max_position_size = float(common_config.get("max_position_size", 1.0))
-        config.learning_rate = float(common_config.get("learning_rate", 3e-4))
-        config.batch_size = int(common_config.get("batch_size", 32))  # Reduced for memory optimization
-        config.clip_range = float(common_config.get("clip_range", 0.2))
-        config.gae_lambda = float(common_config.get("gae_lambda", 0.95))
-        config.use_custom_ppo = bool(common_config.get("use_custom_ppo", True))
+        # 🔧 FIX: get_param()を使用（重複していたcommon_config参照を削除）
+        config.total_timesteps = int(get_param("total_timesteps", DEFAULT_TOTAL_TIMESTEPS))
+        config.reward_scaling = float(get_param("reward_scaling", 1.0))
+        config.transaction_cost = float(get_param("transaction_cost", 0.0))
+        config.max_position_size = float(get_param("max_position_size", 1.0))
+        config.use_custom_ppo = bool(get_param("use_custom_ppo", True))
+
+        # Feature configuration
+        features_config = config_dict.get("features", {})
+        feature_set_str = features_config.get("feature_set", "curated")
+        try:
+            config.feature_set = FeatureSet(feature_set_str)
+        except ValueError:
+            logger.warning(
+                "Unknown feature_set '%s' provided; defaulting to CURATED set", feature_set_str
+            )
+            config.feature_set = FeatureSet.CURATED
+        config.custom_features = features_config.get("custom_features")
+        config.feature_config_path = features_config.get("feature_config_path")
 
         return config
 
@@ -253,6 +277,85 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             gc.collect()
         else:
             df = df_full
+
+        # Determine feature inclusion list from configuration
+        feature_columns: Optional[List[str]] = None
+        feature_set_enum = getattr(self.training_config, "feature_set", FeatureSet.CURATED)
+        feature_set_name = feature_set_enum.value if isinstance(feature_set_enum, FeatureSet) else str(feature_set_enum)
+        config_path_raw = getattr(self.training_config, "feature_config_path", None)
+        config_path = Path(config_path_raw) if config_path_raw else None
+
+        custom_feature_list = getattr(self.training_config, "custom_features", None)
+        if custom_feature_list:
+            if isinstance(custom_feature_list, list):
+                feature_columns = [str(col) for col in custom_feature_list]
+                logger.info(
+                    "Using custom feature list from configuration (%d columns)",
+                    len(feature_columns),
+                )
+            else:
+                logger.warning(
+                    "custom_features provided but not a list; ignoring value of type %s",
+                    type(custom_feature_list),
+                )
+        else:
+            try:
+                feature_columns = get_feature_set(feature_set_name, config_path)
+                logger.info(
+                    "Loaded feature set '%s' with %d features",
+                    feature_set_name,
+                    len(feature_columns),
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to load feature set '%s' (%s); falling back to curated defaults",
+                    feature_set_name,
+                    exc,
+                )
+                feature_columns = get_feature_set("curated", config_path)
+                feature_set_name = "curated"
+
+        if feature_columns:
+            # Remove explicitly excluded features for curated sets
+            try:
+                excluded_features = set(get_features_to_remove(feature_set_name))
+            except Exception:
+                excluded_features = set()
+
+            if excluded_features:
+                before_count = len(feature_columns)
+                feature_columns = [f for f in feature_columns if f not in excluded_features]
+                removed_count = before_count - len(feature_columns)
+                if removed_count > 0:
+                    logger.info(
+                        "Removed %d excluded features from feature set '%s'",
+                        removed_count,
+                        feature_set_name,
+                    )
+
+            present_columns = [col for col in feature_columns if col in df.columns]
+            missing_columns = sorted(set(feature_columns) - set(present_columns))
+
+            if missing_columns:
+                logger.warning(
+                    "%d features requested but missing from dataset: %s",
+                    len(missing_columns),
+                    ", ".join(list(missing_columns)[:5]) + ("..." if len(missing_columns) > 5 else ""),
+                )
+
+            if present_columns:
+                # Store feature whitelist in config for HeavyTradingEnv to consume
+                self.config["feature_names"] = present_columns
+                self.config.setdefault("enable_feature_filtering", True)
+                self.config["feature_set"] = feature_set_name
+                logger.info(
+                    "Configured environment feature whitelist (%d columns)",
+                    len(present_columns),
+                )
+            else:
+                logger.error(
+                    "No requested features are present in dataset; continuing without feature filter"
+                )
         
         # Extract max_features from unified config structure
         # Priority: 1) Top-level config, 2) memory_optimization section, 3) ppo section
@@ -345,7 +448,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         
         return CompositeTrainingCallback(
             trainer=self,
-            enable_progress_bar=True,
+            enable_progress_bar=self.progress_bar_enabled,
             enable_entropy_schedule=True,
             entropy_schedule_type="cosine_decay",
             initial_ent_coef=self.training_config.ent_coef,
@@ -387,6 +490,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
                 total_timesteps=self.training_config.total_timesteps,
                 callback=self._create_callback(),
                 tb_log_name=session_id,
+                progress_bar=self.progress_bar_enabled,
             )
 
             logger.info("Training loop completed, evaluating final results...")

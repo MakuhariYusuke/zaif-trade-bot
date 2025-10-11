@@ -10,6 +10,8 @@ from typing import Dict, Any
 
 import pytest
 
+from ztb.utils.config import ZTBConfig
+
 
 @pytest.fixture
 def temp_results_dir(tmp_path):
@@ -51,9 +53,10 @@ def create_results_file(
     temperature: float = 0.7,
 ) -> None:
     """Create mock diagnostics results JSON file."""
+    config = ZTBConfig()
     data = {
         "config": {
-            "model_path": "models/test_model",
+            "model_path": config.get_model_path("test_model"),
             "temperature": temperature,
             "tiebreaker_tau": 0.05,
             "enable_tiebreaker": True,

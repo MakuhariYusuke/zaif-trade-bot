@@ -8,17 +8,23 @@ from typing import Optional
 import pandas as pd
 import psutil
 
+from ztb.utils.logging_utils import get_logger
+from ztb.utils.path_utils import ensure_dir
+
+logger = get_logger(__name__)
+
 
 class MemoryManager:
     """Handles memory management and logging for the trading environment."""
 
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self,
         memory_log_path: Optional[str] = None,
         memory_logging_enabled: bool = False,
         memory_log_interval_steps: int = 2000,
         gc_step_interval: int = 0,
     ):
+        super().__init__()
         self._process = psutil.Process()
         self._memory_log_path = Path(memory_log_path) if memory_log_path else None
         self._memory_logging_enabled = memory_logging_enabled
@@ -28,7 +34,7 @@ class MemoryManager:
 
         # Initialize memory log file if needed
         if self._memory_log_path and not self._memory_log_path.exists():
-            self._memory_log_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(self._memory_log_path.parent)
             self._memory_log_path.write_text(
                 "timestamp,context,df_mb,rss_mb\n", encoding="utf-8"
             )
@@ -48,11 +54,17 @@ class MemoryManager:
             else 0.0
         )
 
-        message = f"[Memory][HeavyTradingEnv][{context}] df={df_mem_mb:.2f} MB RSS={rss_mb:.2f} MB"
-        print(message)
+        log_payload = {
+            "event": "memory_usage",
+            "context": context,
+            "df_mb": round(df_mem_mb, 4),
+            "rss_mb": round(rss_mb, 4),
+        }
+
+        logger.debug("memory_usage", extra=log_payload)
 
         if self._memory_log_path is not None:
-            self._memory_log_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(self._memory_log_path.parent)
             with self._memory_log_path.open("a", encoding="utf-8") as handle:
                 handle.write(
                     f"{pd.Timestamp.now().isoformat()},{context},{df_mem_mb:.4f},{rss_mb:.4f}\n"
@@ -70,7 +82,7 @@ class MemoryManager:
             return True
         return False
 
-    def should_collect_garbage(self, current_step: int) -> bool:
+    def should_collect_garbage_at_step(self, current_step: int) -> bool:
         """Check if garbage collection should run at current step."""
         if not self._gc_step_interval:
             return False
@@ -88,7 +100,10 @@ class MemoryManager:
             collected = gc.collect(generation=i)
             collected_count += collected
         if collected_count > 0:
-            print(f"Garbage collected {collected_count} objects")
+            logger.debug(
+                "garbage_collection",
+                extra={"event": "garbage_collection", "collected": collected_count}
+            )
 
     @property
     def should_collect_garbage(self) -> bool:

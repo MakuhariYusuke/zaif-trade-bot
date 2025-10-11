@@ -1,0 +1,72 @@
+{
+  "model_name": "sac_v395a_auto_entropy",
+  "algorithm": "sac",
+  "total_timesteps": 100000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 50000,
+    "learning_starts": 1000,
+    "batch_size": 256,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "target_entropy": "auto"
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.1,
+      "consecutive_hold_penalty": 0.05,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.3,
+      "profit_reward_multiplier": 10.0,
+      "action_diversity_bonus": 0.1,
+      "successful_trade_bonus": 5.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 10000,
+  "notes": "v395a: SAC初回実験（Auto Entropy Tuning）",
+  "key_features": [
+    "🚀 SAC (Soft Actor-Critic) アルゴリズム初導入",
+    "🎯 ent_coef='auto' でエントロピー係数を自動調整",
+    "🎯 target_entropy='auto' で最適なエントロピー目標を自動設定",
+    "🔧 action_masking無効（SACは連続的探索を使用）",
+    "💰 v394dと同じ報酬設定（最も効果的な設定を継承）"
+  ],
+  "expected_improvements": [
+    "✅ 自動エントロピー調整でPPOのent_coef固定問題を解決",
+    "✅ Off-policy学習でサンプル効率向上",
+    "✅ Maximum Entropy frameworkで探索と活用のバランス改善",
+    "✅ 金融取引に適した連続的な方策改善",
+    "⚠️ Replay bufferのメモリ使用量増加"
+  ],
+  "hypothesis": [
+    "PPOの問題: ent_coef固定で訓練後期に探索不足（HOLD 89%）",
+    "SACの利点: ent_coefを動的調整、訓練全期間で適切な探索維持",
+    "期待結果: HOLD比率が訓練全期間で40-60%を維持",
+    "成功条件: 最終HOLD比率 < 70% かつ BUY/SELL比率 > 10%"
+  ],
+  "comparison_to_ppo_v394f": {
+    "ppo_v394f": "ent_coef=0.2固定、探索過多で学習不安定リスク",
+    "sac_v395a": "ent_coef='auto'、訓練進捗に応じて最適化",
+    "advantage": "SACは訓練初期は高探索、後期は適度な探索に自動調整"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "algorithm": "ppo",
+  "session_id": "ppo_active_trading_v370",
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+  "checkpoint_dir": "checkpoints/ppo_active_trading_v370",
+  
+  "comment_objective": "===== ACTIVE TRADING OBJECTIVE =====",
+  "comment_objective_1": "Goal: Reduce HOLD rate from 68% to <50% by encouraging active trading",
+  "comment_objective_2": "Strategy: Lower transaction costs, add HOLD penalty, increase entropy",
+  
+  "comment_memory": "===== MEMORY OPTIMIZATION =====",
+  "data_rows_limit": 500,
+  "max_features": null,
+  "comment_max_features": "null = use intelligent feature selection (60 features)",
+  
+  "comment_ppo": "===== PPO HYPERPARAMETERS =====",
+  "total_timesteps": 30000,
+  "learning_rate": 0.0003,
+  "n_steps": 512,
+  "batch_size": 128,
+  "n_epochs": 6,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "clip_range": 0.2,
+  "normalize_advantage": true,
+  "ent_coef": 0.02,
+  "comment_ent_coef": "Increased from 0.01 to 0.02 to encourage exploration",
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "use_sde": false,
+  "sde_sample_freq": -1,
+  "verbose": 1,
+  
+  "comment_env": "===== ENVIRONMENT PARAMETERS =====",
+  "max_position_size": 1.0,
+  "initial_balance": 1000000,
+  "transaction_cost": 0.0005,
+  "comment_transaction_cost": "Reduced from 0.001 to 0.0005 to encourage trading",
+  "reward_scaling": 1.0,
+  
+  "comment_reward": "===== REWARD SHAPING (ACTIVE TRADING) =====",
+  "reward_settings": {
+    "hold_penalty_enabled": true,
+    "hold_penalty_weight": 0.0001,
+    "comment_hold_penalty": "Small penalty for consecutive HOLD actions",
+    
+    "profit_reward_multiplier": 1.2,
+    "comment_profit_multiplier": "Amplify profitable trades",
+    
+    "action_diversity_bonus": 0.0005,
+    "comment_diversity_bonus": "Reward for using different actions"
+  },
+  
+  "comment_policy": "===== POLICY NETWORK =====",
+  "policy_kwargs": {
+    "net_arch": {
+      "pi": [128, 128],
+      "vf": [128, 128]
+    },
+    "activation_fn": "tanh"
+  },
+  
+  "comment_features": "===== CUSTOM FEATURES =====",
+  "custom_ppo_enabled": true,
+  "policy_action_network_enabled": true,
+  "target_entropy_controller_enabled": true,
+  "gradient_probe_guard_enabled": false,
+  
+  "comment_evaluation": "===== EVALUATION =====",
+  "eval_freq": 2048,
+  "n_eval_episodes": 3,
+  "eval_log_path": "checkpoints/ppo_active_trading_v370/eval",
+  
+  "comment_checkpoint": "===== CHECKPOINTING =====",
+  "save_freq": 5000,
+  "save_replay_buffer": false,
+  
+  "comment_misc": "===== MISCELLANEOUS =====",
+  "seed": 42,
+  "device": "auto",
+  "tensorboard_log": "checkpoints/ppo_active_trading_v370"
+}

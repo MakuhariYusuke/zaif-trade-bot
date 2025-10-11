@@ -28,6 +28,9 @@ from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer
 from ztb.training.experiments.entropy_temperature import TargetEntropyController
 from ztb.training.optimization.stratified_sampler import StratifiedSampler
 from ztb.training.optimization.lagrange_constraint import LagrangeConstraint
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
+
+LAGRANGE_DEFAULT_WARMUP_STEPS = int(LAGRANGE_DEFAULTS["warmup_steps"])
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -83,12 +86,12 @@ class CustomPPO(MaskablePPO):
         lr_temperature: float = 3e-4,
         initial_temperature: float = 0.01,
         # Lagrange constraint parameters
-        lagrange_target_action: str = "SELL",
-        lagrange_r_target: float = 0.15,
-        lagrange_tolerance: float = 0.05,
-        lagrange_eta: float = 1e-3,
-        lagrange_lambda_max: float = 1.0,
-        lagrange_warmup_steps: int = 5000,
+    lagrange_target_action: str = "SELL",
+    lagrange_r_target: float = LAGRANGE_DEFAULTS["r_target"],
+    lagrange_tolerance: float = LAGRANGE_DEFAULTS["tolerance"],
+    lagrange_eta: float = LAGRANGE_DEFAULTS["eta"],
+    lagrange_lambda_max: float = LAGRANGE_DEFAULTS["lambda_max"],
+    lagrange_warmup_steps: int = LAGRANGE_DEFAULT_WARMUP_STEPS,
     ):
         # Initialize parent (note: MaskablePPO doesn't support use_sde and sde_sample_freq)
         super().__init__(

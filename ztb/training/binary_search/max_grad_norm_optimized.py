@@ -46,6 +46,7 @@ def main() -> None:
 
     # Create optimizer
     optimizer = MaxGradNormOptimizer()
+    optimizer.configure_from_args(args)
 
     if args.mode == "single":
         # Run single test

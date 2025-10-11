@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
-import yaml
+from ztb.utils.config_loader import ConfigLoader
 
 from ztb.risk.circuit_breakers import (
     KillSwitchActivatedError,
@@ -40,10 +40,7 @@ def load_venue_config(venue_name: str, config_dir: str = "venues") -> Dict[str, 
     if not config_path.exists():
         raise FileNotFoundError(f"Venue config not found: {config_path}")
 
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-
-    return cast(Dict[str, Any], config)
+    return ConfigLoader.load(config_path)
 
 
 class SymbolMeta:

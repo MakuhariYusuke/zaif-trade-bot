@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
-import yaml
+from ztb.utils.config_loader import ConfigLoader
 
 from ztb.utils.data_utils import load_csv_data
 
@@ -51,8 +51,7 @@ from ztb.utils.metrics.trading_metrics import (
 
 def load_config(config_path: Path) -> dict[str, Any]:
     """設定ファイルを読み込み"""
-    with open(config_path, "r", encoding="utf-8") as f:
-        return cast(dict[str, Any], yaml.safe_load(f))
+    return ConfigLoader.load(config_path)
 
 
 def load_evaluation_config() -> dict[str, Any]:
@@ -65,14 +64,12 @@ def load_evaluation_config() -> dict[str, Any]:
             "min_samples": 10000,
         }
 
-    with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)  # type: ignore
+    return ConfigLoader.load(config_path)
 
 
 def load_feature_sets(sets_path: Path) -> dict[str, Any]:
     """特徴量セットを読み込み"""
-    with open(sets_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)  # type: ignore
+    return ConfigLoader.load(sets_path)
 
 
 def run_ablation_analysis(

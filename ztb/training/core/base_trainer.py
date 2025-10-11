@@ -68,6 +68,7 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
         self.eval_gates = params.eval_gates or EvalGates()
         self.halt_callback = params.halt_callback
         self.checkpoint_interval = params.checkpoint_interval
+        self.progress_bar_enabled = params.progress_bar
 
         # Statistics tracking
         self.stats_tracker = StatisticsTracker[Dict[str, float]]()

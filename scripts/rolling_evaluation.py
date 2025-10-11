@@ -29,6 +29,7 @@ from ztb.training.ppo_config import (
     SHARPE_PATIENCE_EVALS,
     ROLLING_OOS_STEPS,
 )
+from ztb.training.policy_utils import predict_with_masks
 
 
 @dataclass
@@ -88,7 +89,8 @@ def evaluate_checkpoint(
         episode_length = 0
         
         while not done:
-            action, _ = model.predict(obs, deterministic=deterministic)
+            # Predict action (using predict_with_masks for MaskablePPO support)
+            action, _ = predict_with_masks(model, obs, env, deterministic=deterministic)
             obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
             episode_reward += reward

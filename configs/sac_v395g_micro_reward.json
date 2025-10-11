@@ -1,0 +1,65 @@
+{
+  "model_name": "sac_v395g_micro_reward",
+  "algorithm": "sac",
+  "total_timesteps": 5000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 20000,
+    "learning_starts": 500,
+    "batch_size": 128,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "target_entropy": "auto"
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "random_start": true,
+    "reward_settings": {
+      "use_simple_reward": true,
+      "reward_scale": 100.0,
+      "reward_clip_min": -1.0,
+      "reward_clip_max": 1.0,
+      "enable_inactivity_penalty": false
+    }
+  },
+  "checkpoint_interval": 1000,
+  "notes": "SAC v395g: Micro-scale reward (1/10 of v395f) for stable Q-values",
+  "improvement_from_v395f": {
+    "problem_identified": "v395f had Actor Loss = -4e4 (negative!), indicating Q-values were too large",
+    "root_cause": "Reward range [-10, 10] was too large. With gamma=0.99, Q-values exploded",
+    "solution": "Reduce reward scale by 10x: [-10, 10] → [-1, 1]",
+    "changes": {
+      "reward_scale": "1000.0 → 100.0 (10x smaller)",
+      "reward_clip_min": "-10.0 → -1.0 (10x smaller)",
+      "reward_clip_max": "10.0 → 1.0 (10x smaller)"
+    },
+    "new_reward_interpretation": {
+      "0.1% profit": "reward = 0.1",
+      "0.5% profit": "reward = 0.5",
+      "1.0% profit": "reward = 1.0 (clipped)",
+      "0.1% loss": "reward = -0.1",
+      "1.0% loss": "reward = -1.0 (clipped)"
+    },
+    "expected_metrics": {
+      "reward_range": "-1.0 to +1.0",
+      "Q_value_range": "-10 to +10 (with gamma=0.99, ~10 steps)",
+      "critic_loss": "< 100 (was 1e6-1e8)",
+      "actor_loss": "0.1 to 10.0 (was -4e4, negative!)",
+      "ent_coef": "0.5 to 1.5 (was 3.58)"
+    }
+  }
+}

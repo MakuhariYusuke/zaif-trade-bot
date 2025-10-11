@@ -1,21 +1,16 @@
 """
-Position Manager - Handles position management for trading environment.
+Position Manager - Handles position management for the trading environment.
 
-This module separates position-related logic from the main environme        self.logger.info(
-            "Opened %s position: size=%.4f, price=%.2f, cost=%.2f",
-            "Long" if direction > 0 else "Short",
-            position_size,
-            current_price,
-            entry_cost,
-        )
-        
-        return float(entry_cost)
+This module separates position-related logic from the main environment class,
+including execution of trades, trade accounting, and position state tracking.
 """
 
-import logging
 from typing import Any, Callable, Optional
 
 from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class PositionManager:
@@ -43,7 +38,6 @@ class PositionManager:
         """
         self.config = config
         self._get_price = get_price_callback
-        self.logger = logging.getLogger(__name__)
         
         # Position state
         self.position: float = 0.0
@@ -88,6 +82,7 @@ class PositionManager:
             self._last_trade_step >= 0
             and current_step - self._last_trade_step < min_holding_period
         )
+        enforce_reverse_cooldown = getattr(self.config, "enforce_reverse_cooldown", False)
         
         trade_pnl = 0.0  # Track PnL from this action (closes + entries)
             
@@ -98,7 +93,9 @@ class PositionManager:
                 self._consecutive_trade_steps += 1
                 
                 # Only open Long immediately if allow_reverse=True AND not within min_holding_period
-                if self.config.allow_reverse and not within_min_holding:
+                if self.config.allow_reverse and (
+                    not enforce_reverse_cooldown or not within_min_holding
+                ):
                     entry_cost = self.open_position(1, current_step)
                     trade_pnl -= entry_cost  # Entry fee is negative PnL
                     
@@ -115,7 +112,9 @@ class PositionManager:
                 self._consecutive_trade_steps += 1
                 
                 # Only open Short immediately if allow_reverse=True AND not within min_holding_period
-                if self.config.allow_reverse and not within_min_holding:
+                if self.config.allow_reverse and (
+                    not enforce_reverse_cooldown or not within_min_holding
+                ):
                     entry_cost = self.open_position(-1, current_step)
                     trade_pnl -= entry_cost  # Entry fee is negative PnL
                     
@@ -131,6 +130,11 @@ class PositionManager:
         """
         Open position (entry cost immediately reflected).
         
+        🔧 CRITICAL FIX: 少額取引対応
+        - 実口座では1 mBTC (0.001 BTC ≈ 18,000円) 程度の少額取引が必要
+        - max_position_size は理想的なサイズだが、資金不足の場合は利用可能資金で調整
+        - これにより、資金がmax_position_size分に満たなくても取引可能になる
+        
         Args:
             direction: Position direction (+1 for Long, -1 for Short)
             current_step: Current step number
@@ -139,27 +143,56 @@ class PositionManager:
             Entry cost (fee paid to open position)
         """
         current_price = self._get_price()
-        position_size = getattr(self.config, "max_position_size", 1.0)
+        max_position_size = getattr(self.config, "max_position_size", 1.0)
         
-        # Calculate entry cost
-        entry_cost = abs(float(position_size)) * current_price * float(self.config.transaction_cost)
+        # 🔧 少額取引対応: 利用可能資金に基づいてポジションサイズを調整
+        initial_portfolio = getattr(self.config, "initial_portfolio_value", 200000.0)
+        available_funds = initial_portfolio + self.realized_pnl
+        transaction_cost = float(self.config.transaction_cost)
+        
+        # 理想的なコスト（max_position_size フル購入）
+        ideal_cost = max_position_size * current_price * (1 + transaction_cost)
+        
+        # 実際に購入可能なサイズ（利用可能資金の90%まで）
+        affordable_funds = available_funds * 0.9
+        affordable_size = affordable_funds / (current_price * (1 + transaction_cost))
+        
+        # 実際のポジションサイズ: 小さい方を採用（資金制約と設定値の両方を満たす）
+        actual_position_size = min(max_position_size, affordable_size)
+        
+        # 最小取引単位チェック (0.0001 BTC = 0.1 mBTC ≈ 1,800円)
+        min_trade_size = 0.0001
+        if actual_position_size < min_trade_size:
+            logger.warning(
+                "Insufficient funds for minimum trade size: available=%.2f, required=%.2f (min_size=%.4f BTC)",
+                available_funds,
+                min_trade_size * current_price * (1 + transaction_cost),
+                min_trade_size,
+            )
+            actual_position_size = min_trade_size  # 最小単位で取引試行
+        
+        # Calculate entry cost based on actual size
+        entry_cost = abs(float(actual_position_size)) * current_price * transaction_cost
         
         # Deduct entry cost from realized PnL
         self.realized_pnl -= entry_cost
         self.total_pnl = self.realized_pnl
         
-        # Open position
-        self.position = direction * position_size
+        # Open position with actual size
+        self.position = direction * actual_position_size
         self.entry_price = current_price
         self.trades_count += 1
         self._last_trade_step = current_step
         
-        self.logger.debug(
-            "Opened %s position: size=%.4f, price=%.2f, cost=%.2f",
+        logger.debug(
+            "Opened %s position: size=%.4f (max=%.4f, affordable=%.4f), price=%.2f, cost=%.2f, funds=%.2f",
             "Long" if direction > 0 else "Short",
-            position_size,
+            actual_position_size,
+            max_position_size,
+            affordable_size,
             current_price,
             entry_cost,
+            available_funds,
         )
         
         return entry_cost
@@ -195,7 +228,7 @@ class PositionManager:
             self._last_trade_step = current_step
             self._consecutive_trade_steps += 1
         
-        self.logger.debug(
+        logger.debug(
             "Closed %s position: price=%.2f, entry=%.2f, pnl=%.2f, cost=%.2f",
             "Long" if self.position > 0 else "Short",
             current_price,

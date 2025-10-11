@@ -1,99 +1,146 @@
 """
 Unit tests for logging_utils.py module.
+Tests for RotatingFileHandler and logging setup.
 """
 
 import logging
-from unittest.mock import patch
+import logging.handlers
+import tempfile
+from pathlib import Path
 
 from ztb.utils.logging_utils import get_logger, setup_logging
 
 
 class TestSetupLogging:
-    """Test cases for setup_logging function."""
+    """Test cases for setup_logging function with RotatingFileHandler."""
 
-    @patch("logging.basicConfig")
-    def test_setup_logging_default_parameters(self, mock_basic_config):
-        """Test setup_logging with default parameters."""
-        setup_logging()
+    def test_setup_logging_console_only(self):
+        """Test setup_logging with console handler only (no file)."""
+        # Clear existing handlers
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
 
-        mock_basic_config.assert_called_once_with(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
+        setup_logging(level=logging.INFO)
 
-    @patch("logging.basicConfig")
-    def test_setup_logging_custom_level(self, mock_basic_config):
-        """Test setup_logging with custom logging level."""
-        setup_logging(level=logging.DEBUG)
+        # Should have exactly 1 handler (console)
+        assert len(root_logger.handlers) == 1
+        assert isinstance(root_logger.handlers[0], logging.StreamHandler)
+        assert root_logger.level == logging.INFO
 
-        mock_basic_config.assert_called_once_with(
-            level=logging.DEBUG,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
+    def test_setup_logging_with_file_rotation(self):
+        """Test setup_logging with RotatingFileHandler."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_file = Path(tmpdir) / "test.log"
 
-    @patch("logging.basicConfig")
-    def test_setup_logging_custom_format(self, mock_basic_config):
+            # Clear existing handlers
+            root_logger = logging.getLogger()
+            root_logger.handlers.clear()
+
+            setup_logging(
+                level=logging.DEBUG,
+                log_file=str(log_file),
+                max_bytes=1024,
+                backup_count=3,
+            )
+
+            # Should have 2 handlers (console + file)
+            assert len(root_logger.handlers) == 2
+
+            # Find the RotatingFileHandler
+            file_handler = None
+            for handler in root_logger.handlers:
+                if isinstance(handler, logging.handlers.RotatingFileHandler):
+                    file_handler = handler
+                    break
+
+            assert file_handler is not None, "RotatingFileHandler not found"
+            assert file_handler.maxBytes == 1024
+            assert file_handler.backupCount == 3
+            assert log_file.exists()
+
+            # Close handlers to release file locks (Windows)
+            for handler in root_logger.handlers[:]:
+                handler.close()
+                root_logger.removeHandler(handler)
+
+    def test_setup_logging_custom_format(self):
         """Test setup_logging with custom format string."""
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
+
         custom_format = "%(levelname)s: %(message)s"
         setup_logging(format_string=custom_format)
 
-        mock_basic_config.assert_called_once_with(
-            level=logging.INFO, format=custom_format
-        )
+        # Check formatter
+        handler = root_logger.handlers[0]
+        assert handler.formatter._fmt == custom_format
 
-    @patch("logging.basicConfig")
-    def test_setup_logging_custom_level_and_format(self, mock_basic_config):
-        """Test setup_logging with both custom level and format."""
-        custom_format = "%(levelname)s: %(message)s"
-        setup_logging(level=logging.WARNING, format_string=custom_format)
+    def test_setup_logging_creates_log_directory(self):
+        """Test that setup_logging creates log directory if missing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_file = Path(tmpdir) / "nested" / "dir" / "test.log"
+            assert not log_file.parent.exists()
 
-        mock_basic_config.assert_called_once_with(
-            level=logging.WARNING, format=custom_format
-        )
+            root_logger = logging.getLogger()
+            root_logger.handlers.clear()
+
+            setup_logging(log_file=str(log_file))
+
+            assert log_file.parent.exists()
+            assert log_file.exists()
+
+            # Close handlers to release file locks (Windows)
+            for handler in root_logger.handlers[:]:
+                handler.close()
+                root_logger.removeHandler(handler)
+
+    def test_setup_logging_clears_existing_handlers(self):
+        """Test that setup_logging clears existing handlers."""
+        root_logger = logging.getLogger()
+
+        # Add dummy handler
+        dummy_handler = logging.StreamHandler()
+        root_logger.addHandler(dummy_handler)
+        assert len(root_logger.handlers) > 0
+
+        # Setup logging should clear and recreate
+        setup_logging()
+
+        # Old handler should be removed
+        assert dummy_handler not in root_logger.handlers
 
 
 class TestGetLogger:
     """Test cases for get_logger function."""
 
-    @patch("logging.getLogger")
-    def test_get_logger_basic(self, mock_get_logger):
-        """Test get_logger returns logger from logging.getLogger."""
-        mock_logger = logging.Logger("test_logger")
-        mock_get_logger.return_value = mock_logger
+    def test_get_logger_returns_logger_instance(self):
+        """Test get_logger returns Logger instance."""
+        logger = get_logger("test.module")
 
-        result = get_logger("test_logger")
+        assert isinstance(logger, logging.Logger)
+        assert logger.name == "test.module"
 
-        assert result == mock_logger
-        mock_get_logger.assert_called_once_with("test_logger")
-
-    @patch("logging.getLogger")
-    def test_get_logger_different_names(self, mock_get_logger):
+    def test_get_logger_different_names(self):
         """Test get_logger with different logger names."""
         test_names = ["module.logger", "another.logger", "root"]
 
         for name in test_names:
-            mock_logger = logging.Logger(name)
-            mock_get_logger.return_value = mock_logger
+            logger = get_logger(name)
 
-            result = get_logger(name)
+            assert isinstance(logger, logging.Logger)
+            assert logger.name == name
 
-            assert result == mock_logger
-            mock_get_logger.assert_called_with(name)
-
-    @patch("logging.getLogger")
-    def test_get_logger_empty_name(self, mock_get_logger):
-        """Test get_logger with empty name."""
-        mock_logger = logging.Logger("")
-        mock_get_logger.return_value = mock_logger
-
-        result = get_logger("")
-
-        assert result == mock_logger
-        mock_get_logger.assert_called_once_with("")
-
-    def test_get_logger_integration(self):
-        """Integration test to verify get_logger returns actual Logger instance."""
-        logger = get_logger("test.integration")
+    def test_get_logger_empty_name(self):
+        """Test get_logger with empty name (returns root logger)."""
+        logger = get_logger("")
 
         assert isinstance(logger, logging.Logger)
-        assert logger.name == "test.integration"
+        # Empty name returns root logger
+        assert logger.name == "root"
+
+    def test_get_logger_returns_same_instance(self):
+        """Test get_logger returns the same instance for the same name."""
+        logger1 = get_logger("test.same")
+        logger2 = get_logger("test.same")
+
+        assert logger1 is logger2

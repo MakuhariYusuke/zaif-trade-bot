@@ -12,9 +12,11 @@ from typing import Dict, List, cast
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
+from ztb.training.policies.policy_utils import predict_with_masks
 
 # プロジェクトルートをパスに追加
 project_root = str(Path(__file__).parent.parent.parent)
@@ -89,7 +91,10 @@ def evaluate_policy(
         pnl = 0
 
         while not done[0]:
-            action, _ = model.predict(obs, deterministic=True)  # type: ignore[arg-type]
+            # Predict action (using predict_with_masks for MaskablePPO support)
+            # Note: VecEnv doesn't provide direct access to underlying env for masks
+            # This is a limitation of the permutation importance test setup
+            action, _ = predict_with_masks(model, cast(NDArray[np.float32], obs), env=None, deterministic=True)
             obs, reward, done, info = env.step(action)
 
             episode_reward += reward[0]

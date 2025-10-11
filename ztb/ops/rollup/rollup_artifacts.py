@@ -48,7 +48,7 @@ except ImportError:
 
 # Add ztb to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from ztb.training.eval_gates import EvalGates, GateResult, GateStatus
+from ztb.training.evaluation.eval_gates import EvalGates, GateResult, GateStatus
 
 
 def load_json_file(path: Path) -> Dict[str, Any]:

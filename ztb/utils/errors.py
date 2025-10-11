@@ -11,8 +11,8 @@ forward arbitrary args/kwargs to the wrapped operation.
 from typing import Any, Callable, Dict, Optional
 
 
-class TradingBotError(Exception):
-    """Base exception for all trading bot errors."""
+class ZTBError(Exception):
+    """Base exception for all Zaif Trade Bot errors."""
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(message)
@@ -20,15 +20,28 @@ class TradingBotError(Exception):
         self.details = details or {}
 
 
-class ConfigurationError(TradingBotError):
+class TradingBotError(ZTBError):
+    """Base exception for all trading bot errors (legacy compatibility)."""
+    pass
+
+
+class ConfigurationError(ZTBError):
     """Configuration-related errors."""
 
 
-class ValidationError(TradingBotError):
+class ValidationError(ZTBError):
     """Data validation errors."""
 
 
-class NetworkError(TradingBotError):
+class SchemaError(ZTBError):
+    """Schema-related errors."""
+
+
+class ModelError(ZTBError):
+    """Model loading and inference errors."""
+
+
+class NetworkError(ZTBError):
     """Network and API communication errors with retry information."""
 
     def __init__(
@@ -47,11 +60,11 @@ class NetworkError(TradingBotError):
         self.max_retries = max_retries
 
 
-class DatabaseError(TradingBotError):
+class DatabaseError(ZTBError):
     """Database operation errors."""
 
 
-class TradingError(TradingBotError):
+class TradingError(ZTBError):
     """Trading operation errors with position and order context."""
 
     def __init__(

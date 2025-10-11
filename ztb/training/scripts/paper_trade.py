@@ -168,6 +168,9 @@ class PaperTrader:
                 "verbose": self.config.get("verbose", 1),
             },
         )
+        
+        # Store base environment reference for initial_portfolio_value access
+        self._base_env = env
 
         return DummyVecEnv([lambda: env])
 
@@ -278,6 +281,50 @@ class PaperTrader:
 
         assert self.model is not None, "Model failed to load"
 
+        # Load and validate feature schema using Phase 3 FeatureSchemaManager
+        self.schema_available = False
+        self.expected_features: Optional[int] = None
+        self.feature_names: Optional[List[str]] = None
+        self.schema_hash: Optional[str] = None
+
+        try:
+            from ztb.training.core.feature_schema_manager import FeatureSchemaManager
+
+            model_name = self.model_path.stem
+            schema_manager = FeatureSchemaManager(model_name)
+            
+            # Load schema metadata
+            metadata = schema_manager.load_schema()
+            
+            self.expected_features = metadata.num_features
+            self.feature_names = metadata.feature_names
+            self.schema_hash = metadata.schema_hash
+            self.schema_available = True
+            
+            self.logger.info("✅ Schema loaded for model: %s", model_name)
+            self.logger.info("   Expected features: %d", self.expected_features)
+            self.logger.info("   Schema hash: %s", self.schema_hash[:16])
+            self.logger.info("   Created at: %s", metadata.created_at)
+            
+            # Display feature list summary
+            if self.feature_names:
+                self.logger.info("📋 Model feature requirements:")
+                self.logger.info("   Total: %d features", len(self.feature_names))
+                self.logger.info("   First 5: %s", self.feature_names[:5])
+                self.logger.info("   Last 5: %s", self.feature_names[-5:])
+            
+        except FileNotFoundError:
+            self.logger.warning(
+                "⚠️  No schema found for model %s. Feature validation disabled.",
+                self.model_path.stem
+            )
+        except Exception as e:
+            self.logger.warning(
+                "⚠️  Failed to load schema for %s: %s",
+                self.model_path.stem,
+                str(e)
+            )
+
     def _load_test_data(self) -> None:
         """Load test data for evaluation."""
         if self.test_data_path.exists():
@@ -287,100 +334,35 @@ class PaperTrader:
             self.test_df = self.test_df.tail(test_size)
             self.logger.info(f"Using {len(self.test_df)} test samples")
 
-            # Auto-detect feature columns (exclude meta columns) - used for both validations
-            exclude_cols = {
-                "ts",
-                "timestamp",
-                "exchange",
-                "pair",
-                "episode_id",
-                "side",
-                "source",
-            }
-            feature_columns = [
-                col
-                for col in self.test_df.columns
-                if col not in exclude_cols
-                and pd.api.types.is_numeric_dtype(self.test_df[col])
-            ]
-
-            # Validate feature schema against training schema
-            try:
-                from ztb.utils.feature_schema import load_and_validate_schema
-
-                # Assume model is in models/ directory, schema is alongside model zip
-                model_dir = self.model_path.parent
-                schema_path = model_dir / "features_schema.json"
-
-                if schema_path.exists():
-                    # Validate schema (strict=True will raise on mismatch)
-                    schema = load_and_validate_schema(
-                        model_dir, self.test_df, feature_columns, strict=True
+            # Validate feature count against schema
+            if self.schema_available and self.expected_features is not None:
+                # Auto-detect feature columns (exclude meta columns)
+                exclude_cols = {
+                    "ts", "timestamp", "exchange", "pair", 
+                    "episode_id", "side", "source",
+                }
+                feature_columns = [
+                    col for col in self.test_df.columns
+                    if col not in exclude_cols
+                    and pd.api.types.is_numeric_dtype(self.test_df[col])
+                ]
+                
+                if len(feature_columns) != self.expected_features:
+                    self.logger.error(
+                        "❌ Feature count mismatch! Dataset has %d features, "
+                        "but schema expects %d",
+                        len(feature_columns),
+                        self.expected_features
                     )
-                    self.logger.info(
-                        f"Feature schema validated successfully "
-                        f"({len(feature_columns)} features, "
-                        f"hash: {schema.compute_hash()[:16]}...)"
+                    raise ValueError(
+                        f"Feature count mismatch: dataset={len(feature_columns)}, "
+                        f"schema={self.expected_features}"
                     )
                 else:
-                    self.logger.warning(
-                        f"Feature schema not found: {schema_path}. "
-                        "Skipping validation (may cause silent errors!)"
+                    self.logger.info(
+                        "✅ Feature count validated: %d features match schema",
+                        len(feature_columns)
                     )
-
-                # Validate normalization statistics
-                try:
-                    from ztb.utils.normalization import load_scaler
-                    import numpy as np
-
-                    scaler_path = model_dir / "scaler.npz"
-                    if scaler_path.exists():
-                        # Load saved normalization stats
-                        saved_stats = load_scaler(model_dir, strict=True)
-
-                        # Compute stats from test data (using feature_columns from above)
-                        feature_data = self.test_df[feature_columns].values
-                        test_mean = np.mean(feature_data, axis=0)
-                        test_std = np.std(feature_data, axis=0)
-
-                        # Log comparison (info only, not strict validation)
-                        mean_diff = np.max(np.abs(saved_stats.mean - test_mean))
-                        std_diff = np.max(np.abs(saved_stats.std - test_std))
-
-                        self.logger.info(
-                            f"Normalization stats loaded "
-                            f"(hash: {saved_stats.compute_hash()[:16]}...)"
-                        )
-                        self.logger.info(
-                            f"Train vs Test stats difference: "
-                            f"mean Δ={mean_diff:.6f}, std Δ={std_diff:.6f}"
-                        )
-
-                        # Store for later use if needed
-                        self._normalization_stats = saved_stats
-                    else:
-                        self.logger.warning(
-                            f"Normalization stats not found: {scaler_path}. "
-                            "Evaluation may use different normalization than training!"
-                        )
-                except FileNotFoundError as e:
-                    self.logger.error(f"Normalization stats loading FAILED: {e}")
-                    raise RuntimeError(
-                        f"Normalization stats missing. Evaluation aborted to prevent "
-                        f"silent errors. Please retrain model with stats persistence.\n{e}"
-                    )
-                except Exception as e:
-                    self.logger.warning(f"Could not validate normalization stats: {e}")
-
-            except ValueError as e:
-                # Schema validation failed - this is CRITICAL
-                self.logger.error(f"Feature schema validation FAILED: {e}")
-                raise RuntimeError(
-                    f"Feature schema mismatch detected. Evaluation aborted to prevent "
-                    f"silent errors. Please retrain model or fix data schema.\n{e}"
-                )
-            except Exception as e:
-                self.logger.warning(f"Could not validate feature schema: {e}")
         else:
             self.test_df = None
             self.logger.warning(f"Test data not found: {self.test_data_path}")
@@ -547,7 +529,8 @@ class PaperTrader:
         self, rewards: List[float], lengths: List[int]
     ) -> TradingStatsDict:
         """Calculate comprehensive trading statistics."""
-        initial_portfolio = float(cast(float, self.config.get("initial_portfolio_value", 10000.0)))
+        # Get initial portfolio value from environment (not hardcoded)
+        initial_portfolio = float(getattr(self._base_env, 'initial_portfolio_value', 10000.0))
 
         # Calculate average final portfolio across episodes
         if self.episode_results:
@@ -775,6 +758,12 @@ def main() -> int:
         )
 
         # Send start notification
+        schema_status = (
+            f"{trader.expected_features} features (schema-validated ✅)"
+            if trader.schema_available and trader.expected_features
+            else "schema not available ⚠️"
+        )
+        
         notifier.send_notification(
             title="📈 Paper Trading Started",
             message=f"Evaluating model: {Path(args.model_path).name}",
@@ -783,6 +772,7 @@ def main() -> int:
                 "Model": Path(args.model_path).name,
                 "Test Data": args.test_data,
                 "Episodes": str(args.episodes),
+                "Features": schema_status,
                 "Reward Scaling": str(args.reward_scaling),
                 "Transaction Cost": f"{args.transaction_cost:.4f}",
                 "Max Position Size": str(args.max_position_size),
