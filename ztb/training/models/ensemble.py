@@ -227,7 +227,7 @@ class EnsemblePredictor(PredictorProtocol):
                 action_counts[action_val] = action_counts.get(action_val, 0) + weight
 
             # Select action with highest weighted vote
-            ensemble_action: NDArray[np.int64] = np.array(
+            ensemble_action = np.array(
                 [max(action_counts, key=lambda k: action_counts.get(k, 0))]
             )
 
@@ -623,7 +623,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
                 action_counts[action_val] = action_counts.get(action_val, 0) + weight
 
             # Select action with highest weighted vote
-            ensemble_action: NDArray[np.int64] = np.array(
+            ensemble_action = np.array(
                 [max(action_counts, key=lambda k: action_counts[k])]
             )
 
@@ -872,14 +872,14 @@ class EnsembleTradingSystemLegacy:
 
 def create_default_ensemble() -> EnsembleTradingSystem:
     """Create default ensemble with available models."""
-    model_configs: List[ModelConfig] = config.get_models()  # type: ignore[assignment]
+    model_configs: List[ModelConfig] = config.get_model_dir()  # type: ignore[assignment]
 
     return EnsembleTradingSystem(model_configs)
 
 
 def create_default_ensemble_legacy() -> EnsembleTradingSystemLegacy:
     """Create default legacy ensemble with available models."""
-    model_configs: List[ModelConfig] = config.get_models()  # type: ignore[assignment]
+    model_configs: List[Dict[str, Any]] = config.get_model_dir()  # type: ignore[assignment]
 
     return EnsembleTradingSystemLegacy(model_configs)
 

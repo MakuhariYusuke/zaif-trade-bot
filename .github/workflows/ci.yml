@@ -47,6 +47,28 @@ jobs:
           echo "No security vulnerabilities found"
         fi
 
+    - name: Run bandit security scan
+      run: |
+        bandit -r ztb/ -f json -o bandit-results.json || true
+        if [ -f bandit-results.json ] && [ "$(jq '.results | length' bandit-results.json)" -gt 0 ]; then
+          echo "Security issues found by bandit:"
+          jq '.results[] | {filename: .filename, issue_text: .issue_text, issue_severity: .issue_severity}' bandit-results.json
+          exit 1
+        else
+          echo "No security issues found by bandit"
+        fi
+
+    - name: Run safety check
+      run: |
+        safety check --output json | jq '.issues' > safety-results.json || true
+        if [ -f safety-results.json ] && [ "$(jq 'length' safety-results.json)" -gt 0 ]; then
+          echo "Safety vulnerabilities found:"
+          jq '.[] | {package: .package, vulnerability: .vulnerability}' safety-results.json
+          exit 1
+        else
+          echo "No safety vulnerabilities found"
+        fi
+
     - name: Run pre-commit hooks
       run: |
         pre-commit run --all-files --show-diff-on-failure
@@ -102,6 +124,13 @@ jobs:
     - name: Run unit tests
       run: |
         npm run test:unit
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/coverage-final.json
+        flags: unit-tests
+        name: codecov-umbrella
 
   leakage-tests:
     runs-on: ubuntu-latest

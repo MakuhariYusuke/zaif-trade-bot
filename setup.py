@@ -1,8 +1,14 @@
 from setuptools import setup, find_packages
 
+# Read version from package
+def get_version():
+    with open("ztb/__version__.py", "r") as f:
+        exec(f.read())
+        return locals()["__version__"]
+
 setup(
     name="zaif-trade-bot",
-    version="1.0.0",
+    version=get_version(),
     packages=find_packages(),
     install_requires=[
         "rich>=13.0.0",
