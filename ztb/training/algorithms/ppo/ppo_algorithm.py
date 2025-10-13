@@ -19,7 +19,7 @@ from stable_baselines3.common.vec_env import VecEnv
 from sb3_contrib import MaskablePPO
 
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
-from ztb.training.core.ppo_trainer import PPOTrainer, PPOTrainerAutoHalt
+from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt
 from ztb.training.models.custom_ppo import CustomPPO
 from ztb.utils.logging_utils import get_logger
 
@@ -46,7 +46,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
             use_auto_halt: PPOTrainerAutoHaltを使用するか（デフォルト: False）
         """
         self._use_auto_halt = use_auto_halt
-        self._trainer: Optional[PPOTrainer] = None
+        self._trainer: Optional[PPOTrainerAutoHalt] = None
         self._model: Optional[MaskablePPO] = None
         self._config: Optional[Dict[str, Any]] = None
     
@@ -91,24 +91,20 @@ class PPOAlgorithm(BaseRLAlgorithm):
         
         self._config = config
         
-        # 既存のPPOTrainerを使用
-        # unified_trainer.pyとの互換性を維持するため、
-        # 既存の初期化ロジックを尊重する
-        trainer_class = PPOTrainerAutoHalt if self._use_auto_halt else PPOTrainer
-        
-        # ここでは既存のPPOTrainerの初期化ロジックを使用
-        # 詳細な初期化は unified_trainer.py で行われる想定
-        self._trainer = trainer_class
+        # Use PPOTrainerAutoHalt for all cases
+        self._trainer = None  # Will be initialized when needed
         
         logger.info(f"✅ PPO model created successfully")
-        return self._model or CustomPPO  # プレースホルダー
+        # Create a placeholder model for now - actual model creation is handled by trainer
+        self._model = MaskablePPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_log)
+        return self._model
     
     def train(
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
-        callback: Optional[Callable] = None,
-        **kwargs
+        callback: Optional[Callable[..., Any]] = None,
+        **kwargs: Any
     ) -> BaseAlgorithm:
         """
         PPOモデルを訓練。
@@ -143,8 +139,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
         logger.info(f"✅ PPO training completed")
         return model
     
-    @staticmethod
-    def get_default_config() -> Dict[str, Any]:
+    def get_default_config(self) -> Dict[str, Any]:
         """
         PPOのデフォルト設定を取得。
         
@@ -174,8 +169,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
             "verbose": 1,
         }
     
-    @staticmethod
-    def validate_config(config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: Dict[str, Any]) -> bool:
         """
         PPO設定の妥当性を検証。
         

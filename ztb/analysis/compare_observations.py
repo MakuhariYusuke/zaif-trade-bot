@@ -5,6 +5,7 @@ v395g（正規化なし）とv395i（正規化あり）で、実際の観測値�
 import json
 import numpy as np
 from pathlib import Path
+from typing import Dict, Any, cast
 
 from ztb.utils.data_utils import load_csv_data_optimized
 from ztb.training.core.config_builder import ConfigBuilder
@@ -12,7 +13,7 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 
-def analyze_observations(config_path, config_name, num_samples=10):
+def analyze_observations(config_path: str, config_name: str, num_samples: int = 10) -> Dict[str, Any]:
     """観測値を解析"""
     print(f"\n{'='*80}")
     print(f"観測値分析: {config_name}")
@@ -51,7 +52,7 @@ def analyze_observations(config_path, config_name, num_samples=10):
     
     # スケーラー情報を確認
     if hasattr(env.observation_builder, 'scaler_mean'):
-        if env.observation_builder.scaler_mean is not None:
+        if env.observation_builder.scaler_mean is not None and env.observation_builder.scaler_std is not None:
             print(f"\n✅ スケーラー設定あり")
             print(f"  - scaler_mean: min={env.observation_builder.scaler_mean.min():.6f}, max={env.observation_builder.scaler_mean.max():.6f}")
             print(f"  - scaler_std: min={env.observation_builder.scaler_std.min():.6f}, max={env.observation_builder.scaler_std.max():.6f}")
@@ -61,18 +62,18 @@ def analyze_observations(config_path, config_name, num_samples=10):
         print(f"\n❌ スケーラー属性なし")
     
     # 観測値サンプリング
-    observations = []
+    observations_list = []
     env.reset()
     
     for i in range(num_samples):
         action = env.action_space.sample()
         obs, reward, done, truncated, info = env.step(action)
-        observations.append(obs)
+        observations_list.append(obs)
         
         if done or truncated:
             env.reset()
     
-    observations = np.array(observations)
+    observations: np.ndarray = np.array(observations_list)
     
     # 統計情報
     print(f"\n【観測値統計】（{num_samples}サンプル）")
@@ -121,7 +122,7 @@ def analyze_observations(config_path, config_name, num_samples=10):
     }
 
 
-def main():
+def main() -> None:
     print("\n" + "="*80)
     print("観測値実データ比較分析")
     print("="*80)

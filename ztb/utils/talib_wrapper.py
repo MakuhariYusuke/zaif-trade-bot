@@ -6,7 +6,7 @@ supporting both Ta-Lib and custom implementations with fallback logic.
 """
 
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -131,12 +131,12 @@ class TaLibWrapper:
             if TALIB_AVAILABLE:
                 result = talib.SMA(data, timeperiod=period)
                 # Handle NaN values at the beginning
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             elif TA_AVAILABLE:
                 # Use ta library
                 sma_indicator = ta.trend.SMAIndicator(pd.Series(data), window=period)
                 result = sma_indicator.sma_indicator().values
-                return result
+                return cast(NDArray[np.float64], result)
             else:
                 return TaLibWrapper._sma_custom(data, period)
         except Exception as e:
@@ -166,12 +166,12 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.EMA(data, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             elif TA_AVAILABLE:
                 # Use ta library
                 ema_indicator = ta.trend.EMAIndicator(pd.Series(data), window=period)
                 result = ema_indicator.ema_indicator().values
-                return result
+                return cast(NDArray[np.float64], result)
             else:
                 return TaLibWrapper._ema_custom(data, period)
         except Exception as e:
@@ -201,7 +201,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.RSI(data, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._rsi_custom(data, period)
         except Exception as e:
@@ -357,7 +357,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.ADX(high, low, close, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._adx_custom(high, low, close, period)
         except Exception as e:
@@ -399,7 +399,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.PLUS_DI(high, low, close, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._plus_di_custom(high, low, close, period)
         except Exception as e:
@@ -441,7 +441,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.MINUS_DI(high, low, close, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._minus_di_custom(high, low, close, period)
         except Exception as e:
@@ -541,7 +541,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.WILLR(high, low, close, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._williams_r_custom(high, low, close, period)
         except Exception as e:
@@ -583,7 +583,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.CCI(high, low, close, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._cci_custom(high, low, close, period)
         except Exception as e:
@@ -613,7 +613,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.TEMA(data, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._tema_custom(data, period)
         except Exception as e:
@@ -643,7 +643,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.KAMA(data, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._kama_custom(data, period)
         except Exception as e:
@@ -673,7 +673,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.ROC(data, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._roc_custom(data, period)
         except Exception as e:
@@ -703,7 +703,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.WMA(data, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._wma_custom(data, period)
         except Exception as e:
@@ -748,7 +748,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.MFI(high, low, close, volume, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 raise TaLibError("MFI calculation requires Ta-Lib library")
         except Exception as e:
@@ -781,7 +781,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.OBV(close, volume)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._obv_custom(close, volume)
         except Exception as e:
@@ -818,7 +818,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.SAR(high, low, acceleration=acceleration, maximum=maximum)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._sar_custom(high, low, acceleration, maximum)
         except Exception as e:
@@ -860,7 +860,7 @@ class TaLibWrapper:
         try:
             if TALIB_AVAILABLE:
                 result = talib.ATR(high, low, close, timeperiod=period)
-                return np.nan_to_num(result, nan=np.nan)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             else:
                 return TaLibWrapper._atr_custom(high, low, close, period)
         except Exception as e:
@@ -1016,12 +1016,12 @@ class TaLibWrapper:
     def _ema_custom(data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """Custom EMA implementation."""
         data = np.asarray(data, dtype=np.float64)
-        return pd.Series(data).ewm(span=period, adjust=False).mean().values.astype(np.float64)
+        return cast(NDArray[np.float64], pd.Series(data).ewm(span=period, adjust=False).mean().values.astype(np.float64))
 
     @staticmethod
     def _rolling_sum_custom(data: NDArray[np.float64], period: int) -> NDArray[np.float64]:
         """Custom rolling sum implementation."""
-        return pd.Series(data).rolling(window=period).sum().values.astype(np.float64)
+        return cast(NDArray[np.float64], pd.Series(data).rolling(window=period).sum().values.astype(np.float64))
 
     @staticmethod
     def _rsi_custom(data: Union[NDArray[np.float64], pd.Series], period: int = 14) -> NDArray[np.float64]:

@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-def analyze_success_timeline():
+def analyze_success_timeline() -> None:
     """成功までのタイムラインを追跡"""
     print("\n" + "="*80)
     print("SAC v395i 成功の根本原因追跡")

@@ -12,6 +12,7 @@ import gc
 import psutil
 import os
 from pathlib import Path
+from typing import Any, cast
 
 # Setup logging
 logging.basicConfig(
@@ -24,21 +25,21 @@ logger = logging.getLogger(__name__)
 sys.path.insert(0, str(Path(__file__).parent))
 
 
-def get_memory_usage():
+def get_memory_usage() -> float:
     """Get current process memory usage in MB."""
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss / 1024 / 1024  # Convert to MB
-    return mem
+    return cast(float, mem)
 
 
-def log_memory(step_name: str):
+def log_memory(step_name: str) -> float:
     """Log current memory usage."""
     mem = get_memory_usage()
     logger.info(f"  💾 Memory: {mem:.1f} MB - {step_name}")
     return mem
 
 
-def main():
+def main() -> None:
     logger.info("=" * 80)
     logger.info("Bug #52 Memory Profiling")
     logger.info("=" * 80)
@@ -73,7 +74,7 @@ def main():
         mem_after_env = log_memory("After environment creation")
         logger.info(f"  Memory increase: {mem_after_env - mem_after_data:.1f} MB")
         
-        def mask_fn(env):
+        def mask_fn(env: Any) -> Any:
             return env.get_legal_actions().astype(bool)
         
         env = ActionMasker(env, mask_fn)

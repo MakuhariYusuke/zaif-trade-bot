@@ -59,20 +59,7 @@ def setup_logging(
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
-
-
-def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger with the specified name.
-
-    Args:
-        name: Logger name
-
-    Returns:
-        Configured logger
-    """
-    return logging.getLogger(name)
-
+        
 
 def setup_logging_from_config(config: Dict[str, Any]) -> None:
     """
@@ -112,3 +99,16 @@ def configure_log_levels(config: Dict[str, Any]) -> None:
     for module, level_str in module_levels.items():
         level = getattr(logging, level_str.upper(), logging.INFO)
         logging.getLogger(module).setLevel(level)
+
+
+def get_logger(name: str) -> logging.Logger:
+    """
+    Get a logger instance for the given name.
+    
+    Args:
+        name: Logger name
+        
+    Returns:
+        Logger instance
+    """
+    return logging.getLogger(name)

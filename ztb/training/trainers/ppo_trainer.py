@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ztb.training.config_manager import ConfigManager
+
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -23,7 +25,7 @@ class PPOAlgorithmTrainer:
     Handles PPO algorithm training with various configurations.
     """
 
-    def __init__(self, config_manager, progress_bar_enabled: bool = False):
+    def __init__(self, config_manager: ConfigManager, progress_bar_enabled: bool = False) -> None:
         """
         Initialize PPO trainer.
 
@@ -87,7 +89,7 @@ class PPOAlgorithmTrainer:
             "warmup_steps": get_lagrange_param("warmup_steps"),
         }
 
-    def _create_ppo_trainer(self, unified_config: Dict[str, Any], enable_sell_mitigation: bool = False):
+    def _create_ppo_trainer(self, unified_config: Dict[str, Any], enable_sell_mitigation: bool = False) -> Any:
         """
         Create appropriate PPO trainer instance.
 
@@ -141,7 +143,7 @@ class PPOAlgorithmTrainer:
             from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
             return PPOTrainer(params=trainer_params)
 
-    def _save_model_and_schema(self, model, unified_config: Dict[str, Any]) -> None:
+    def _save_model_and_schema(self, model: Any, unified_config: Dict[str, Any]) -> None:
         """
         Save trained model and schema.
 
@@ -176,7 +178,7 @@ class PPOAlgorithmTrainer:
         # Save model schema
         self._save_model_schema(session_id, model_dir)
 
-    def _save_model_schema(self, session_id: str, model_dir: Path, df=None) -> None:
+    def _save_model_schema(self, session_id: str, model_dir: Path, df: Optional[Any] = None) -> None:
         """
         Save model schema using FeatureSchemaManager.
 

@@ -87,7 +87,7 @@ class MemoryTracker:
         self._initial_memory = 0
         self._peak_memory = 0
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         import psutil
         process = psutil.Process()
         self._initial_memory = process.memory_info().rss

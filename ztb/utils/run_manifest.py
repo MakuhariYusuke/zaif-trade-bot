@@ -279,7 +279,7 @@ def load_manifest(manifest_path: Path) -> Dict[str, Any]:
         json.JSONDecodeError: If manifest file is invalid JSON
     """
     with open(manifest_path, "r") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def validate_manifest(manifest: Dict[str, Any]) -> tuple[bool, List[str]]:

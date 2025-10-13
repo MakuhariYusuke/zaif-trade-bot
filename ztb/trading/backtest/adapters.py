@@ -37,9 +37,9 @@ class RLPolicyAdapter:
         self.model_path = model_path
         self.model = None
         if model_path:
-            from stable_baselines3 import PPO
+            from stable_baselines3 import SAC
 
-            self.model = PPO.load(model_path)
+            self.model = SAC.load(model_path)
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
@@ -75,7 +75,7 @@ class RLPolicyAdapter:
         action, _ = predict_with_masks(self.model, obs, env=None, deterministic=True)
 
         # Map action to signal
-        action_map = {0: "hold", 1: "buy", 2: "sell"}
+        action_map = {-1: "sell", 0: "hold", 1: "buy", 2: "sell"}
         return {"action": action_map[int(action)], "confidence": 0.5}
 
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:

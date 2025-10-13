@@ -7,6 +7,7 @@ Memory monitoring utilities for development and testing
 
 
 import psutil
+from typing import cast
 
 from ztb.utils.config import ZTBConfig
 
@@ -36,7 +37,7 @@ def get_memory_usage() -> float:
         Memory usage in MB
     """
     process = psutil.Process()
-    return process.memory_info().rss / 1024 / 1024
+    return cast(float, process.memory_info().rss / 1024 / 1024)
 
 
 def log_memory_usage(label: str = "") -> None:

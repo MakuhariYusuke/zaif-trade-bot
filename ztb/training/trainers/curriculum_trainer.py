@@ -8,6 +8,7 @@ Handles curriculum learning with staged training.
 import os
 from typing import Any, Dict, Optional
 
+from ztb.training.core.config_manager import ConfigManager
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
 
@@ -19,7 +20,7 @@ class CurriculumAlgorithmTrainer:
     Handles curriculum algorithm training.
     """
 
-    def __init__(self, config_manager):
+    def __init__(self, config_manager: ConfigManager) -> None:
         """
         Initialize curriculum trainer.
 

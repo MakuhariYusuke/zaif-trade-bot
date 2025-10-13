@@ -145,7 +145,7 @@ def create_sac_objective_function(
     total_timesteps: int = 5000,
     metric: str = 'critic_loss',
     lower_is_better: bool = True
-) -> Callable[[Dict[str, Any]], TrialResult]:
+) -> Callable[[dict[str, Any]], TrialResult]:
     """
     SAC訓練用の目的関数を作成
     
@@ -181,11 +181,14 @@ def create_sac_objective_function(
         config['total_timesteps'] = total_timesteps
         
         # SACハイパーパラメータを更新
-        if 'sac_hyperparameters' not in config:
-            config['sac_hyperparameters'] = {}
+        sac_key = 'sac_hyperparameters'
+        if sac_key not in config and 'sac_params' in config:
+            sac_key = 'sac_params'
+        if sac_key not in config:
+            config[sac_key] = {}
         
         for param_name, param_value in parameters.items():
-            config['sac_hyperparameters'][param_name] = param_value
+            config[sac_key][param_name] = param_value
         
         # 一時的な設定ファイルを作成
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', 
@@ -272,7 +275,7 @@ def create_sac_objective_function(
 
 def create_mock_objective_function(
     noise_level: float = 0.1
-) -> Callable[[Dict[str, Any]], TrialResult]:
+) -> Callable[[dict[str, Any]], TrialResult]:
     """
     テスト用のモック目的関数
     

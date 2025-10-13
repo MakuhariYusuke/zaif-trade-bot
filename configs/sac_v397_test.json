@@ -1,0 +1,56 @@
+{
+  "model_name": "sac_v397_test",
+  "session_id": "sac_session",
+  "algorithm": "sac",
+  "total_timesteps": 3000,
+  "metrics_log_interval": 100,
+  "checkpoint_interval": 1000,
+  
+  "data_path": "btc_jpy_real_dataset.csv",
+  
+  "environment": {
+    "initial_balance": 1000000,
+    "commission_rate": 0.001,
+    "price_column": "close",
+    "use_continuous_actions": true,
+    "enable_action_masking": false
+  },
+  
+  "sac_hyperparameters": {
+    "learning_rate": 0.000574,
+    "batch_size": 128,
+    "gamma": 0.9948,
+    "tau": 0.005,
+    "ent_coef": "auto",
+    "target_update_interval": 3,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "learning_starts": 100,
+    "buffer_size": 5000,
+    "policy_kwargs": {
+      "net_arch": [256, 256]
+    }
+  },
+  
+  "enable_early_stopping": true,
+  "early_stopping": {
+    "metric": "critic_loss",
+    "min_delta": 0.001,
+    "patience": 1000,
+    "check_interval": 200,
+    "window_size": 500,
+    "cv_threshold": 0.10
+  },
+  
+  "enable_best_model_saving": true,
+  "best_model": {
+    "metric": "critic_loss",
+    "mode": "min",
+    "check_interval": 200
+  },
+  
+  "notes": {
+    "purpose": "Test enhanced features: Early Stopping, Best Model, Extended Metrics",
+    "expected_duration": "~3-5 minutes"
+  }
+}

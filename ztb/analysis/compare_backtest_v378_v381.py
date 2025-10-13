@@ -147,7 +147,7 @@ def run_backtest_for_model(
     return results
 
 
-def compare_models(results1: Dict[str, Any], results2: Dict[str, Any]):
+def compare_models(results1: Dict[str, Any], results2: Dict[str, Any]) -> None:
     """Compare two model results"""
     
     print(f"\n{'='*60}")
@@ -238,7 +238,7 @@ def compare_models(results1: Dict[str, Any], results2: Dict[str, Any]):
         print(f"\n  🤝 Tie!")
 
 
-def main():
+def main() -> None:
     """Main comparison function"""
     
     models = [

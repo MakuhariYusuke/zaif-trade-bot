@@ -2,7 +2,7 @@
 """Inspect full TensorBoard tag categories for reward improvement runs."""
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, cast
 
 from tensorboard.backend.event_processing import event_accumulator
 
@@ -26,7 +26,7 @@ def inspect_tags(run_dir: Path) -> Dict[str, Any]:
         },
     )
     ea.Reload()
-    return ea.Tags()
+    return cast(Dict[str, Any], ea.Tags())
 
 
 def main() -> None:

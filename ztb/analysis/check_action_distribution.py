@@ -15,7 +15,7 @@ from ztb.trading.environment.schema_env_factory import create_env_from_model_pat
 from ztb.utils.data_utils import load_csv_data_optimized
 
 
-def check_action_distribution(model_path: str, data_path: str, steps: int = 1000):
+def check_action_distribution(model_path: str, data_path: str, steps: int = 1000) -> None:
     """
     モデルのアクション分布を短時間でチェック
     

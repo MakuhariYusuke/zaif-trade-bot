@@ -49,6 +49,9 @@ format:  ## Format code with black and isort
 	black ztb/ tests/ scripts/
 	isort --profile black ztb/ tests/ scripts/
 
+health:  ## Run system health check
+	python scripts/health_check.py
+
 audit:  ## Run security audit (pip-audit)
 	pip-audit
 
@@ -67,17 +70,10 @@ setup:  ## Set up development environment
 
 # Cleanup
 clean:  ## Clean up temporary files and caches
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type d -name "*.pyc" -delete
-	find . -type d -name ".pytest_cache" -exec rm -rf {} +
-	find . -type d -name ".mypy_cache" -exec rm -rf {} +
-	find . -type d -name "node_modules" -exec rm -rf {} +
-	find . -name "*.pyc" -delete
-	find . -name "*.pyo" -delete
-	find . -name "*.pyd" -delete
+	python scripts/clean.py
 
 # Development workflow shortcuts
-check: lint typecheck audit test  ## Run full code quality check (lint + typecheck + audit + test)
+check: lint typecheck audit health test  ## Run full code quality check (lint + typecheck + audit + health + test)
 
 ci: check smoke  ## Run CI-equivalent checks locally
 
@@ -89,7 +85,7 @@ info:  ## Show Python environment information
 	@echo "NPM version: $$(npm --version)"
 
 # Quick development cycle
-dev: format lint typecheck audit unit  ## Quick development cycle (format + lint + typecheck + audit + unit tests)
+dev: format lint typecheck audit health unit  ## Quick development cycle (format + lint + typecheck + audit + health + unit tests)
 
 # 1M Training orchestration targets
 1m-start:  ## Start 1M training session (requires CORR variable)

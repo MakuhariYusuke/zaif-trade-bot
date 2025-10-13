@@ -2,6 +2,7 @@ logs/
 dist/
 .env
 .nonce_store
+/mypy_output*.txt
 
 # Dependencies
 node_modules/

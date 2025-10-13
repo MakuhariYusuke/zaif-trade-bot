@@ -9,13 +9,13 @@ from pathlib import Path
 from datetime import datetime
 
 
-def parse_tensorboard_logs(session_dir: Path):
+def parse_tensorboard_logs(session_dir: Path) -> dict[str, str]:
     """TensorBoardログから最新のメトリクスを取得（簡易版）"""
     # 実装は複雑なので、ここでは手動確認を推奨
     return {}
 
 
-def monitor_training_progress():
+def monitor_training_progress() -> None:
     """訓練進捗を表示"""
     checkpoints_dir = Path("checkpoints")
     

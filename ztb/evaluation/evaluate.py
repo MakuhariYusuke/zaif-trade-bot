@@ -1,21 +1,38 @@
-# Evaluation and Visualization Script for Trading RL Models
-# 取引RLモデルの評価と可視化スクリプト
+# Evaluation and Visualization Script for Trading RL Models# Evaluation and Visualization Script for Trading RL Models
 
-import argparse
+# 取引RLモデルの評価と可視化スクリプト# 取引RLモデルの評価と可視化スクリプト
+
+
+
+import warningsimport argparse
+
 import json
-import math
-import sys
-import warnings
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, cast
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import seaborn as sns
-from stable_baselines3 import PPO
-from torch.utils.tensorboard import SummaryWriter
+warnings.warn(import math
+
+    "ztb.evaluation.evaluate is deprecated. Use the modularized ztb.evaluation.evaluator instead.",import sys
+
+    DeprecationWarning,import warnings
+
+    stacklevel=2,from datetime import datetime
+
+)from pathlib import Path
+
+from typing import Any, Dict, List, Optional, TypedDict, cast, Generator
+
+# Re-export from new modular structure for backward compatibility
+
+from ztb.evaluation.evaluator import (import matplotlib.pyplot as plt
+
+    TradingEvaluator,import numpy as np
+
+    EvaluationResult,import pandas as pd
+
+    ModelConfigDict,import seaborn as sns
+
+    SingleEpisodeResultDict,from stable_baselines3 import PPO
+
+)from torch.utils.tensorboard import SummaryWriter
 
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
@@ -206,7 +223,7 @@ class TradingEvaluator:
         all_positions = []
         all_pnls = []
         all_actions = []
-        all_states = [] if self.config.get("save_states", False) else None
+        all_states: Optional[List[Any]] = [] if self.config.get("save_states", False) else None
 
         for episode in range(self.config["n_eval_episodes"]):
             print(f"Evaluating episode {episode + 1}/{self.config['n_eval_episodes']}")
@@ -324,7 +341,7 @@ class TradingEvaluator:
         positions = []
         pnls = []
         actions = []
-        states = [] if self.config.get("save_states", False) else None
+        states: Optional[List[Any]] = [] if self.config.get("save_states", False) else None
 
         step_count = 0
         while not done and step_count < self.config["max_steps_per_episode"]:
@@ -380,7 +397,7 @@ class TradingEvaluator:
             all_position_changes.extend(changes)
 
         # 行動統計（メモリ最適化: ジェネレータ使用）
-        def get_all_actions():
+        def get_all_actions() -> Generator[Any, None, None]:
             for episode_actions in all_actions:
                 for action in episode_actions:
                     yield action

@@ -19,7 +19,7 @@ Bayesian Optimization: ベイズ最適化による効率的探索
 実装: scikit-optimizeを使用
 """
 
-from typing import List, Optional
+from typing import Any, Callable, Dict, List, Optional
 import time
 
 from ztb.optimization.base import (
@@ -56,7 +56,7 @@ class BayesianOptimizer(OptimizerBase):
     def __init__(
         self,
         parameter_spaces: List[ParameterSpace],
-        objective_function,
+        objective_function: Callable[[dict[str, Any]], TrialResult],
         n_trials: int = 30,
         n_initial_points: int = 10,
         acquisition_function: str = 'EI',  # 'EI', 'PI', 'LCB'
@@ -86,7 +86,7 @@ class BayesianOptimizer(OptimizerBase):
         # skoptが利用可能かチェック
         self._check_skopt()
     
-    def _check_skopt(self):
+    def _check_skopt(self) -> None:
         """scikit-optimizeのインストール確認"""
         try:
             import skopt
@@ -97,7 +97,7 @@ class BayesianOptimizer(OptimizerBase):
                 "インストール: pip install scikit-optimize"
             )
     
-    def _convert_to_skopt_space(self) -> List:
+    def _convert_to_skopt_space(self) -> List[Any]:
         """ParameterSpaceをskoptのスペースに変換"""
         from skopt.space import Real, Integer, Categorical
         
@@ -108,24 +108,28 @@ class BayesianOptimizer(OptimizerBase):
             self.param_names.append(param_name)
             
             if param_space.param_type == ParameterType.CONTINUOUS:
+                assert param_space.low is not None and param_space.high is not None
                 skopt_space.append(Real(param_space.low, param_space.high, 
                                        name=param_name))
             
             elif param_space.param_type == ParameterType.LOG_UNIFORM:
+                assert param_space.low is not None and param_space.high is not None
                 skopt_space.append(Real(param_space.low, param_space.high, 
                                        prior='log-uniform', name=param_name))
             
             elif param_space.param_type == ParameterType.INTEGER:
+                assert param_space.low is not None and param_space.high is not None
                 skopt_space.append(Integer(int(param_space.low), int(param_space.high),
                                           name=param_name))
             
             elif param_space.param_type == ParameterType.CATEGORICAL:
+                assert param_space.choices is not None
                 skopt_space.append(Categorical(param_space.choices, 
                                               name=param_name))
         
         return skopt_space
     
-    def _objective_wrapper(self, params: List) -> float:
+    def _objective_wrapper(self, params: List[Any]) -> float:
         """skopt用の目的関数ラッパー"""
         # リストを辞書に変換
         parameters = dict(zip(self.param_names, params))

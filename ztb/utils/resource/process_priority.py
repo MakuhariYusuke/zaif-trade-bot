@@ -13,7 +13,7 @@ and other resource management features for parallel training.
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 import psutil
 
@@ -50,7 +50,7 @@ class ProcessPriorityManager:
         """Load configuration"""
         if self.config_path.exists():
             config = safe_json_load(self.config_path)
-            return config
+            return cast(Dict[str, Any], config)
         return {}
 
     def set_process_priority(self, model_type: str) -> Tuple[str, int]:
@@ -154,7 +154,7 @@ class ProcessPriorityManager:
         """Get current process nice value"""
         try:
             if hasattr(os, "nice"):
-                return os.nice(0)
+                return cast(int, os.nice(0))
             else:
                 logger.info("Getting nice value: not supported on this platform")
                 return None

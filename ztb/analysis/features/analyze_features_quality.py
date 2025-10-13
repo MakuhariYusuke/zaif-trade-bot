@@ -4,6 +4,7 @@
 """
 import pandas as pd
 from pathlib import Path
+from typing import Dict, List
 
 def main() -> None:
     # Load dataset
@@ -23,7 +24,7 @@ def main() -> None:
     print("=" * 100)
     
     # Categorize features
-    categories = {
+    categories: Dict[str, List[str]] = {
         '価格基本': [],
         '平均足(HeikinAshi)': [],
         '一目均衡表(Ichimoku)': [],

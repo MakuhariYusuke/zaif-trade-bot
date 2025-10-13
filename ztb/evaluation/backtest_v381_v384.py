@@ -10,6 +10,7 @@ Tests both models on historical BTC/JPY market data to compare:
 
 import sys
 from pathlib import Path
+from typing import Any, Tuple
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -30,7 +31,7 @@ from ztb.utils.config import TypedConfig
 logger = get_logger(__name__)
 
 
-def load_model(model_path: str):
+def load_model(model_path: str) -> Tuple[Any, str]:
     """Load PPO model (try MaskablePPO first, fallback to standard PPO)."""
     try:
         from sb3_contrib import MaskablePPO
@@ -211,7 +212,7 @@ def run_backtest(
     return results
 
 
-def print_comparison(results_v381: Dict, results_v384: Dict):
+def print_comparison(results_v381: Dict[str, Any], results_v384: Dict[str, Any]) -> None:
     """Print side-by-side comparison of results."""
     
     print("\n" + "="*100)
@@ -315,7 +316,7 @@ def print_comparison(results_v381: Dict, results_v384: Dict):
     print("="*100)
 
 
-def main():
+def main() -> int:
     """Main backtest comparison."""
     
     # Configuration - use config-based model paths

@@ -1,0 +1,62 @@
+{
+  "model_name": "sac_v396_50k",
+  "algorithm": "sac",
+  "total_timesteps": 50000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0005738618672652317,
+    "buffer_size": 20000,
+    "learning_starts": 500,
+    "batch_size": 128,
+    "tau": 0.005,
+    "gamma": 0.9947739515298352,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "target_update_interval": 3,
+    "target_entropy": "auto"
+  },
+  "environment": {
+    "initial_balance": 200000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "reward_settings": {
+      "use_simple_reward": true,
+      "reward_scale": 100.0,
+      "reward_clip_min": -1.0,
+      "reward_clip_max": 1.0,
+      "enable_inactivity_penalty": true,
+      "inactivity_penalty_rate": 0.001,
+      "enable_opportunity_cost": true,
+      "opportunity_cost_rate": 0.0005
+    }
+  },
+  "checkpoint_interval": 1000,
+  "notes": "SAC v396: 50,000 steps long-term training for statistical convergence validation",
+  "training_plan": {
+    "purpose": "Complete convergence with statistical guarantees",
+    "expected_convergence": "25,000-35,000 steps",
+    "checkpoints": "Every 1,000 steps (50 checkpoints total)",
+    "convergence_criteria": {
+      "critic_loss_cv": "< 0.05 (5% coefficient of variation)",
+      "improvement_threshold": "< 1% over 3,000 steps",
+      "absolute_threshold": "< 0.0008",
+      "stationarity_test": "KPSS p > 0.05 (last 10,000 steps)"
+    }
+  },
+  "expected_metrics": {
+    "critic_loss_10k": 0.001427,
+    "critic_loss_25k": "~0.0010 (estimated)",
+    "critic_loss_50k": "~0.0008 (estimated)",
+    "training_time": "~30-40 minutes"
+  }
+}

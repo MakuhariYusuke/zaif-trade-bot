@@ -4,10 +4,11 @@ v394シリーズ4バージョンの訓練結果を比較
 
 import json
 from pathlib import Path
+from typing import Any
 import pandas as pd
 
 
-def analyze_training_logs(version: str) -> dict:
+def analyze_training_logs(version: str) -> dict[str, Any]:
     """訓練ログから主要メトリクスを抽出"""
     model_dir = Path(f"models/{version}")
     if not model_dir.exists():
@@ -21,7 +22,7 @@ def analyze_training_logs(version: str) -> dict:
     }
 
 
-def compare_versions():
+def compare_versions() -> None:
     """v394a, b, c, dの訓練結果を比較"""
     versions = [
         "ppo_v394a_hold_penalty",

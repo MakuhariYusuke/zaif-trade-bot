@@ -17,7 +17,7 @@ Compares:
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 import re
 
 # Checkpoint directories
@@ -35,13 +35,13 @@ CONFIGS = {
 }
 
 
-def load_config(config_path: str) -> Dict:
+def load_config(config_path: str) -> Dict[str, Any]:
     """Load configuration file."""
     with open(config_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
-def analyze_tensorboard_events(checkpoint_dir: str) -> Optional[Dict]:
+def analyze_tensorboard_events(checkpoint_dir: str) -> Optional[Dict[str, Any]]:
     """Extract metrics from tensorboard events file."""
     try:
         from tensorboard.backend.event_processing import event_accumulator
@@ -79,7 +79,7 @@ def analyze_tensorboard_events(checkpoint_dir: str) -> Optional[Dict]:
         return None
 
 
-def analyze_checkpoint_dir(name: str, checkpoint_dir: str, config_path: str) -> Dict:
+def analyze_checkpoint_dir(name: str, checkpoint_dir: str, config_path: str) -> Dict[str, Any]:
     """Analyze a single checkpoint directory."""
     print(f"\n{'─'*80}")
     print(f"Analyzing: {name}")
@@ -129,7 +129,7 @@ def analyze_checkpoint_dir(name: str, checkpoint_dir: str, config_path: str) -> 
     return result
 
 
-def compare_results(results: Dict[str, Dict]) -> None:
+def compare_results(results: Dict[str, Dict[str, Any]]) -> None:
     """Compare results across all configurations."""
     print(f"\n{'='*80}")
     print("COMPARISON SUMMARY")
