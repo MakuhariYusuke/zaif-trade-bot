@@ -1,39 +1,30 @@
-# Evaluation and Visualization Script for Trading RL Models# Evaluation and Visualization Script for Trading RL Models
+# Evaluation and Visualization Script for Trading RL Models
+# 取引RLモデルの評価と可視化スクリプト
 
-# 取引RLモデルの評価と可視化スクリプト# 取引RLモデルの評価と可視化スクリプト
-
-
-
-import warningsimport argparse
-
+import warnings
+import argparse
 import json
-
-warnings.warn(import math
-
-    "ztb.evaluation.evaluate is deprecated. Use the modularized ztb.evaluation.evaluator instead.",import sys
-
-    DeprecationWarning,import warnings
-
-    stacklevel=2,from datetime import datetime
-
-)from pathlib import Path
-
+import math
+import sys
+import warnings
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, TypedDict, cast, Generator
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from stable_baselines3 import PPO
+from torch.utils.tensorboard import SummaryWriter
+
 # Re-export from new modular structure for backward compatibility
-
-from ztb.evaluation.evaluator import (import matplotlib.pyplot as plt
-
-    TradingEvaluator,import numpy as np
-
-    EvaluationResult,import pandas as pd
-
-    ModelConfigDict,import seaborn as sns
-
-    SingleEpisodeResultDict,from stable_baselines3 import PPO
-
-)from torch.utils.tensorboard import SummaryWriter
-
+from ztb.evaluation.evaluator import (
+    TradingEvaluator,
+    EvaluationResult,
+    ModelConfigDict,
+    SingleEpisodeResultDict,
+)
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
 
@@ -46,61 +37,11 @@ if parent_path not in sys.path:
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.policies.policy_utils import predict_with_masks
 
-
-class ModelConfigDict(TypedDict, total=False):
-    """Model configuration dictionary."""
-    pass  # For now, keep as Dict[str, Any] equivalent
-
-
-class SingleEpisodeResultDict(TypedDict):
-    """Single episode evaluation result."""
-    rewards: List[float]
-    positions: List[float]
-    pnls: List[float]
-    actions: List[int]
-    states: List[Any]
-
-
-class EvaluationResult(TypedDict, total=False):
-    """Type definition for comprehensive evaluation results.
-    
-    Contains all metrics and statistics from model evaluation including
-    risk metrics, trading performance, and data quality assessments.
-    """
-    # Core performance metrics
-    total_return: float
-    sharpe_ratio: float
-    sortino_ratio: float
-    calmar_ratio: float
-    max_drawdown: float
-    win_rate: float
-    total_trades: int
-    
-    # Risk and volatility metrics
-    volatility: float
-    value_at_risk: float
-    expected_shortfall: float
-    
-    # Data quality assessment
-    data_quality_score: float  # Composite score based on NaN rate, correlation, etc.
-    
-    # Metadata
-    evaluation_timestamp: str
-    feature_count: int
-    model_config: ModelConfigDict
-    
-    # Detailed statistics
-    reward_stats: Dict[str, Any]
-    pnl_stats: Dict[str, Any]
-    trading_stats: Dict[str, Any]
-    episode_stats: Dict[str, Any]  # Episode-level aggregated statistics
-    
-    # Action distribution analysis
-    action_distribution: Dict[str, int]
-    
-    # Performance stability metrics
-    consistency_score: float
-    robustness_score: float
+warnings.warn(
+    "ztb.evaluation.evaluate is deprecated. Use the modularized ztb.evaluation.evaluator instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class TradingEvaluator:

@@ -14,10 +14,7 @@ python compare_sac_sessions.py --sessions 5 6 --metrics train/ent_coef train/cri
 python compare_sac_sessions.py --sessions 10 11 12 --log-dir checkpoints/sac_session --alpha 0.01
 """
 
-import os
-import sys
 import argparse
-from pathlib import Path
 from tensorboard.backend.event_processing import event_accumulator
 import json
 from typing import Dict, List, Any, Tuple, Optional
