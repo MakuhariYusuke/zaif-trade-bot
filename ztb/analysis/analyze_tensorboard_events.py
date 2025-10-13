@@ -8,7 +8,7 @@ from typing import Any
 from tensorboard.backend.event_processing import event_accumulator
 import json
 
-def analyze_tensorboard_events(event_file_path: str, session_name: str) -> None:
+def analyze_tensorboard_events(event_file_path: str, session_name: str) -> dict[str, Any]:
     """TensorBoardイベントを解析"""
     print(f"\n{'='*80}")
     print(f"分析中: {session_name}")
@@ -57,7 +57,7 @@ def analyze_tensorboard_events(event_file_path: str, session_name: str) -> None:
                     print(f"  最後の5点:")
                     for step, val in values[-5:]:
                         print(f"    Step {step}: {val:.6f}")
-    
+
     return metrics
 
 def compare_sessions(metrics1: dict[str, Any], metrics2: dict[str, Any], name1: str, name2: str) -> None:
@@ -104,8 +104,8 @@ def main() -> None:
     print("TensorBoard イベント解析")
     print("="*80)
     
-    metrics_v395g = analyze_tensorboard_events(sac11_event, "v395g (SAC_11) - 観測値正規化なし")
-    metrics_v395i = analyze_tensorboard_events(sac13_event, "v395i (SAC_13) - 観測値正規化あり")
+    metrics_v395g = analyze_tensorboard_events(str(sac11_event), "v395g (SAC_11) - 観測値正規化なし")
+    metrics_v395i = analyze_tensorboard_events(str(sac13_event), "v395i (SAC_13) - 観測値正規化あり")
     
     # 比較
     compare_sessions(metrics_v395g, metrics_v395i, "v395g", "v395i")

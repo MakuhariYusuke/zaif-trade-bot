@@ -39,7 +39,7 @@ def extract_model_info(model_path: str) -> bool:
                         # バイナリデータの最初の1KB を表示（デバッグ用）
                         data = f.read(1024)
                         print(f"  First 200 bytes (hex): {data[:200].hex()}")
-                        print(f"  First 200 bytes (ascii): {data[:200]}")
+                        print(f"  First 200 bytes (ascii): {data[:200].decode('ascii', errors='replace')}")
                 except Exception as e:
                     print(f"  ❌ Error reading data: {e}")
             

@@ -14,7 +14,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import SAC
-from ztb.trading.environment.heavy_trading_env import HeavyTradingEnv
+from ztb.trading.environment import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.utils.logging_utils import get_logger
 
@@ -41,8 +41,13 @@ def analyze_sac_action_distribution(model_path: str, num_samples: int = 10000):
     config = EnvironmentConfig()
     reward_settings = RewardSettings()
 
+    # Load data for environment
+    import pandas as pd
+    data_path = project_root / "btc_jpy_real_dataset.csv"
+    df = pd.read_csv(data_path)
+
     # Use default config for testing
-    env = HeavyTradingEnv(config=config, reward_settings=reward_settings)
+    env = HeavyTradingEnv(df=df, config=config)
 
     # Collect actions
     actions_continuous = []

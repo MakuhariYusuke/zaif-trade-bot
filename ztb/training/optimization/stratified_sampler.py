@@ -252,9 +252,9 @@ def test_stratified_sampler() -> None:
     prev_actions = np.zeros(n_samples, dtype=int)  # Mostly HOLD
     
     # Add some minority actions
-    prev_actions[100:120] = 1  # Some BUY
-    prev_actions[200:210] = 2  # Fewer SELL (minority)
-    
+    prev_actions[200:210] = ACTION_BUY  # Some BUY
+    prev_actions[200:210] = ACTION_SELL  # Fewer SELL (minority)
+
     # Create sampler
     sampler = StratifiedSampler(n_actions=3, regime_window=20, regime_threshold=0.001)
     

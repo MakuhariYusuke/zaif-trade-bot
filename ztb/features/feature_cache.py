@@ -27,7 +27,7 @@ class FeatureCache:
         for col in columns:
             if col in df.columns:
                 col_values = df[col].astype(float).values
-                values.append(col_values.tobytes())  # type: ignore
+                values.append(col_values.tobytes())
             else:
                 values.append(b"")  # Empty for missing columns
 

@@ -57,6 +57,9 @@ class RewardCalculator:
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
         self._consecutive_idle_steps = 0
         self._consecutive_position_hold_steps = 0
+        self._win_count = 0
+        self._loss_count = 0
+        self._recent_actions: List[int] = []  # Track recent actions for frequency penalty
 
     def get_setting_int(self, key: str, default: int) -> int:
         """Get integer reward setting with fallback."""
@@ -130,6 +133,17 @@ class RewardCalculator:
             f"old_position={old_position:.4f}, step={step}"
         )
         
+        # Update win/loss counts
+        if pnl > 0:
+            self._win_count += 1
+        elif pnl < 0:
+            self._loss_count += 1
+            
+        # Track recent actions for frequency penalty
+        self._recent_actions.append(action)
+        if len(self._recent_actions) > 10:  # Keep last 10 actions
+            self._recent_actions.pop(0)
+        
         # Check if simple reward is enabled
         use_simple_reward = self.get_setting_bool("use_simple_reward", False)
         
@@ -197,7 +211,7 @@ class RewardCalculator:
         elif curriculum_stage == "profit_optimized":
             reward = self._calculate_profit_optimized_reward(
                 action, atr_normalised, portfolio_return, position,
-                effective_max_position, current_price, atr, pnl, reward_scaling
+                effective_max_position, current_price, atr, pnl, reward_scaling, observation
             )
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
@@ -239,40 +253,38 @@ class RewardCalculator:
             return reward
 
     def _calculate_forced_balance_reward(self, action: int) -> float:
-        """Stage 0: Force balanced action distribution (33% each action)."""
+        """Stage: Forced balance reward that strictly enforces 33/33/33 action distribution."""
         self._action_counts[action] += 1
         total_actions = sum(self._action_counts)
-
-        if total_actions >= 3:
+        
+        if total_actions >= 30:  # Wait for some actions to accumulate
             action_ratios = [count / total_actions for count in self._action_counts]
-            target_ratio = 1.0 / 3.0
-
-            # Calculate balance score (lower is better balance)
-            balance_penalty = sum(abs(ratio - target_ratio) for ratio in action_ratios)
-
+            target_ratio = 1.0 / 3.0  # 33.33% for each action
+            
+            # Calculate balance penalty as max deviation from target
+            balance_penalty = max(abs(ratio - target_ratio) for ratio in action_ratios)
+            
             # Reward based on balance quality
-            # Perfect balance (penalty < 0.05): +20
-            # Good balance (penalty < 0.15): +10
-            # Poor balance (penalty < 0.3): +1
-            # Very poor balance: -5
-            if balance_penalty < 0.05:
+            if balance_penalty < 0.05:  # Very balanced (within 5%)
+                base_reward = 50.0
+            elif balance_penalty < 0.1:  # Good balance (within 10%)
                 base_reward = 20.0
-            elif balance_penalty < 0.15:
-                base_reward = 10.0
-            elif balance_penalty < 0.3:
+            elif balance_penalty < 0.15:  # Moderate balance
+                base_reward = 5.0
+            elif balance_penalty < 0.2:  # Poor balance
                 base_reward = 1.0
-            else:
-                base_reward = -5.0
-
+            else:  # Very poor balance
+                base_reward = -10.0
+            
             # Add small bonus for taking actions to encourage exploration
-            exploration_bonus = 0.1
+            exploration_bonus = 0.5
             base_reward += exploration_bonus
-
+            
             self.logger.debug(f"Forced balance: ratios={action_ratios}, penalty={balance_penalty:.3f}, reward={base_reward:.3f}")
             return base_reward
         else:
             # Early exploration phase - encourage all actions equally
-            return 1.0
+            return 2.0
 
     def _calculate_balanced_transition_reward(
         self,
@@ -389,6 +401,7 @@ class RewardCalculator:
         atr: float,
         pnl: float,
         reward_scaling: float,
+        observation: np.ndarray = None,
     ) -> float:
         """Stage: Profit-optimized reward that maximizes profitable trading while minimizing losses."""
         self._action_counts[action] += 1
@@ -412,7 +425,7 @@ class RewardCalculator:
         # Calculate base reward
         base_reward = self._calculate_base_reward(
             action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
+            effective_max_position, current_price, atr, pnl, observation
         )
 
         # Profit/loss based reward adjustment
@@ -445,6 +458,8 @@ class RewardCalculator:
             self.logger.debug(f"Trading bonus applied: {trading_bonus:.3f}")
 
         final_reward = base_reward - balance_penalty
+
+        final_reward = base_reward - balance_penalty
         self.logger.info(f"Profit optimized: base_reward={base_reward:.3f}, balance_penalty={balance_penalty:.3f}, pnl={pnl:.3f}, final_reward={final_reward:.3f}")
         return final_reward * reward_scaling
 
@@ -460,90 +475,72 @@ class RewardCalculator:
         pnl: float,
         reward_scaling: float,
     ) -> float:
-        """Stage: Ultra-profit reward that maximizes profitability with minimal constraints."""
+        """Stage: Ultra-profit reward that maximizes profitability with balanced trading.
+        
+        Modified to allow necessary HOLD actions and ensure balanced BUY/SELL rewards.
+        """
         self._action_counts[action] += 1
         total_actions = sum(self._action_counts)
 
-        # Ultra-profit balance: HOLD 5%, BUY 47.5%, SELL 47.5% (maximize trading)
-        target_ratios = [0.05, 0.475, 0.475]  # [HOLD, BUY, SELL]
-        tolerance = self.get_setting_float("balance_penalty_tolerance", 0.1)  # More lenient
-        penalty = self.get_setting_float("balance_penalty", 2.0)  # Lower penalty
+        # Balanced target: HOLD 10%, BUY 45%, SELL 45% (allow necessary HOLD)
+        target_ratios = [0.10, 0.45, 0.45]  # [HOLD, BUY, SELL]
+        tolerance = self.get_setting_float("balance_penalty_tolerance", 0.15)  # More lenient
+        penalty = self.get_setting_float("balance_penalty", 1.0)  # Lower penalty
         balance_penalty = 0.0
 
         if total_actions >= 10:
             action_ratios = [count / total_actions for count in self._action_counts]
 
-            for i, ratio in enumerate(action_ratios):
-                deviation = abs(ratio - target_ratios[i])
-                if deviation > tolerance:
-                    excess_deviation = deviation - tolerance
-                    balance_penalty += penalty * excess_deviation
+            deviation = abs(action_ratios[action] - target_ratios[action])
+            if deviation > tolerance:
+                excess_deviation = deviation - tolerance
+                balance_penalty = penalty * excess_deviation
+
+        # Adjust pnl based on action for balanced BUY/SELL rewards
+        # BUY action: pnl remains as is (predicting price up)
+        # SELL action: pnl remains as is (predicting price down)
+        adjusted_pnl = pnl
 
         # Calculate base reward
         base_reward = self._calculate_base_reward(
             action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
+            effective_max_position, current_price, atr, adjusted_pnl
         )
 
-        # Ultra profit/loss adjustments
-        profit_multiplier = self.get_setting_float("profit_multiplier", 5.0)
-        loss_penalty_multiplier = self.get_setting_float("loss_penalty_multiplier", 0.5)
+        # Balanced profit/loss adjustments (equal treatment for BUY/SELL)
+        profit_multiplier = self.get_setting_float("profit_multiplier", 3.0)
+        loss_penalty_multiplier = self.get_setting_float("loss_penalty_multiplier", 3.0)  # Equal penalty
 
-        if pnl > 0:
-            # Massive boost for profitable trades
-            profit_bonus = pnl * profit_multiplier
+        if adjusted_pnl > 0:
+            # Equal boost for profitable trades regardless of BUY/SELL
+            profit_bonus = adjusted_pnl * profit_multiplier
             base_reward += profit_bonus
-            self.logger.debug(f"Ultra profit bonus applied: {profit_bonus:.3f} for pnl={pnl:.3f}")
-        elif pnl < 0:
-            # Minimal penalty for losing trades (encourage experimentation)
-            loss_penalty = abs(pnl) * loss_penalty_multiplier
+            self.logger.debug(f"Balanced profit bonus applied: {profit_bonus:.3f} for adjusted_pnl={adjusted_pnl:.3f}")
+        elif adjusted_pnl < 0:
+            # Equal penalty for losing trades regardless of BUY/SELL
+            loss_penalty = abs(adjusted_pnl) * loss_penalty_multiplier
             base_reward -= loss_penalty
-            self.logger.debug(f"Ultra loss penalty applied: {loss_penalty:.3f} for pnl={pnl:.3f}")
+            self.logger.debug(f"Balanced loss penalty applied: {loss_penalty:.3f} for adjusted_pnl={adjusted_pnl:.3f}")
 
-        # Extreme HOLD penalty
-        hold_penalty_rate = self.get_setting_float("hold_penalty_rate", 0.05)
+        # Moderate HOLD penalty (allow necessary HOLD for risk management)
+        hold_penalty_rate = self.get_setting_float("hold_penalty_rate", 0.01)  # Reduced penalty
         if action == ACTION_HOLD:
-            hold_penalty = hold_penalty_rate * abs(position) / max(effective_max_position, 0.01)
+            # Reduce penalty if position is large (risk management HOLD)
+            position_size_factor = min(1.0, abs(position) / max(effective_max_position, 0.01))
+            hold_penalty = hold_penalty_rate * position_size_factor
             base_reward -= hold_penalty
-            self.logger.debug(f"Ultra HOLD penalty applied: {hold_penalty:.3f}")
+            self.logger.debug(f"Moderate HOLD penalty applied: {hold_penalty:.3f} (position_factor: {position_size_factor:.3f})")
 
-        # Massive trading bonuses
-        trading_bonus_multiplier = self.get_setting_float("trading_bonus_multiplier", 5.0)
+        # Equal trading bonuses for BUY and SELL
+        trading_bonus_multiplier = self.get_setting_float("trading_bonus_multiplier", 2.0)
         if action in [ACTION_BUY, ACTION_SELL]:
             trading_bonus = self.get_setting_float("trading_bonus", 0.01) * trading_bonus_multiplier
             base_reward += trading_bonus
-            self.logger.debug(f"Ultra trading bonus applied: {trading_bonus:.3f}")
+            self.logger.debug(f"Equal trading bonus applied: {trading_bonus:.3f} for action {action}")
 
         final_reward = base_reward - balance_penalty
-        self.logger.info(f"Ultra profit: base_reward={base_reward:.3f}, balance_penalty={balance_penalty:.3f}, pnl={pnl:.3f}, final_reward={final_reward:.3f}")
+        self.logger.info(f"Balanced ultra profit: base_reward={base_reward:.3f}, balance_penalty={balance_penalty:.3f}, adjusted_pnl={adjusted_pnl:.3f}, final_reward={final_reward:.3f}")
         return final_reward * reward_scaling
-
-    def _calculate_base_reward(
-        self,
-        action: int,
-        atr_normalised: float,
-        portfolio_return: float,
-        position: float,
-        effective_max_position: float,
-        current_price: float,
-        atr: float,
-        pnl: float,
-    ) -> float:
-        """Calculate base reward for balanced transition stage."""
-        # Simple PnL-based reward
-        positive_scale = self.get_setting_float("base_reward_positive_scale", 100.0)
-        negative_scale = self.get_setting_float("base_reward_negative_scale", 50.0)
-        if pnl > 0:
-            reward = pnl * positive_scale  # Scale up positive PnL
-        else:
-            reward = pnl * negative_scale   # Scale down negative PnL less aggressively
-
-        # Add small bonus for trading actions
-        trading_bonus = self.get_setting_float("trading_bonus", 0.01)
-        if action in [ACTION_BUY, ACTION_SELL]:
-            reward += trading_bonus
-
-        return reward
 
     def _calculate_pnl_focused_reward(
         self,
@@ -645,6 +642,7 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
+        observation: np.ndarray = None,
     ) -> float:
         """Default reward calculation."""
         base_profit_bonus = max(0.0, self.get_setting_float("base_profit_bonus_atr_coeff", 1.5) * atr_normalised + self.get_setting_float("base_profit_bonus_portfolio_coeff", 1.2) * portfolio_return) if pnl > 0 else 0.0
@@ -675,11 +673,54 @@ class RewardCalculator:
         diversity_bonus = 0.0
         if self.get_setting_bool("enable_forced_diversity", False):
             diversity_bonus = self._calculate_diversity_bonus(action)
+        
+        # Win rate bonus
+        total_trades = self._win_count + self._loss_count
+        win_rate = self._win_count / max(total_trades, 1)
+        win_rate_bonus = self.get_setting_float("win_rate_bonus", 0.0) * win_rate
+        
+        # Momentum bonus (based on RSI and MACD from observation)
+        momentum_bonus = 0.0
+        if observation is not None and len(observation) >= 2:
+            try:
+                rsi_idx = -2 if len(observation) > 2 else None
+                macd_idx = -1 if len(observation) > 1 else None
+                if rsi_idx is not None and macd_idx is not None:
+                    rsi = float(observation[rsi_idx])
+                    macd_hist = float(observation[macd_idx])
+                    momentum_multiplier = self.get_setting_float("momentum_bonus", 0.0)
+                    if action == ACTION_BUY and rsi > 50 and macd_hist > 0:
+                        momentum_bonus = momentum_multiplier
+                    elif action == ACTION_SELL and rsi < 50 and macd_hist < 0:
+                        momentum_bonus = momentum_multiplier
+            except (IndexError, TypeError, ValueError):
+                pass
+        
+        # Volatility penalty
+        volatility_penalty = self.get_setting_float("volatility_penalty", 0.0) * (atr / current_price)
+        
+        # Action frequency penalty
+        action_frequency_penalty = 0.0
+        if len(self._recent_actions) >= 5:
+            recent_action_count = sum(1 for a in self._recent_actions[-5:] if a != ACTION_HOLD)
+            frequency_penalty_rate = self.get_setting_float("action_frequency_penalty", 0.0)
+            action_frequency_penalty = frequency_penalty_rate * (recent_action_count / 5.0)
+        
+        # Diversity bonus
+        diversity_bonus_value = self.get_setting_float("diversity_bonus", 0.0)
+        unique_actions = len(set(self._recent_actions))
+        diversity_bonus = diversity_bonus_value * (unique_actions / 3.0)  # Normalize by total action types
+        
+        # Trading bonus
+        trading_bonus = 0.0
+        if action in [ACTION_BUY, ACTION_SELL]:
+            trading_bonus = self.get_setting_float("trading_bonus", 0.01)
 
         position_penalty = self._calculate_position_penalty(position, effective_max_position)
 
-        reward = profit_bonus - action_penalty + loss_penalty + diversity_bonus - position_penalty
-        self.logger.debug(f"Default reward components: profit_bonus={profit_bonus:.4f}, action_penalty={action_penalty:.4f}, loss_penalty={loss_penalty:.4f}, diversity_bonus={diversity_bonus:.4f}, position_penalty={position_penalty:.4f}, final={reward:.4f}")
+        reward = (profit_bonus - action_penalty + loss_penalty + diversity_bonus + win_rate_bonus + 
+                 momentum_bonus - volatility_penalty - action_frequency_penalty + trading_bonus - position_penalty)
+        self.logger.debug(f"Comprehensive reward components: profit_bonus={profit_bonus:.4f}, action_penalty={action_penalty:.4f}, loss_penalty={loss_penalty:.4f}, diversity_bonus={diversity_bonus:.4f}, win_rate_bonus={win_rate_bonus:.4f}, momentum_bonus={momentum_bonus:.4f}, volatility_penalty={volatility_penalty:.4f}, action_frequency_penalty={action_frequency_penalty:.4f}, trading_bonus={trading_bonus:.4f}, position_penalty={position_penalty:.4f}, final={reward:.4f}")
         return reward
 
     def _calculate_base_reward(
@@ -692,11 +733,12 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
+        observation: np.ndarray = None,
     ) -> float:
         """Calculate base reward components."""
         return self._calculate_default_reward(
             action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
+            effective_max_position, current_price, atr, pnl, observation
         )
 
     def _calculate_position_penalty(self, position: float, effective_max_position: float) -> float:
@@ -711,6 +753,20 @@ class RewardCalculator:
             return scale * (math.exp(exponent * overuse) - 1.0)
         
         return 0.0
+
+    def _calculate_diversity_bonus(self, action: int) -> float:
+        """Calculate bonus for action diversity."""
+        if len(self._recent_actions) < 3:
+            return 0.1  # Small bonus for early exploration
+        
+        unique_recent = len(set(self._recent_actions[-10:]))  # Last 10 actions
+        diversity_score = unique_recent / 3.0  # Normalize by action types
+        
+        # Bonus for maintaining diversity
+        base_bonus = 0.05
+        diversity_multiplier = diversity_score ** 2  # Quadratic scaling
+        
+        return base_bonus * diversity_multiplier
 
     def _calculate_diversity_bonus(self, action: int) -> float:
         """Calculate bonus for action diversity."""
@@ -851,41 +907,52 @@ class RewardCalculator:
         """
         Calculate win rate bonus based on recent trading performance.
         
+        Uses continuous scaling instead of discrete thresholds for smoother learning.
+        
         Args:
             discrete_action: Discrete action (0=HOLD, 1=BUY, 2=SELL)
             pnl: Profit/Loss from the action
             
         Returns:
-            Win rate bonus value
+            Win rate bonus value (continuous scaling)
         """
         win_rate_bonus = 0.0
         if discrete_action in [ACTION_BUY, ACTION_SELL] and pnl != 0:
             # Track trade outcomes for win rate calculation
-            if not hasattr(self, '_trade_outcomes'):
+            if not hasattr(self, "_trade_outcomes"):
                 self._trade_outcomes = []
-            
+
             # Record trade outcome (1 for win, 0 for loss)
             trade_outcome = 1 if pnl > 0 else 0
             self._trade_outcomes.append(trade_outcome)
-            
-            # Keep only recent trades (last 50 trades)
-            if len(self._trade_outcomes) > 50:
-                self._trade_outcomes = self._trade_outcomes[-50:]
-            
-            # Calculate current win rate
-            if len(self._trade_outcomes) >= 5:
+
+            # Keep only recent trades (rolling window)
+            max_window = self.get_setting_int("win_rate_window", 50)
+            if len(self._trade_outcomes) > max_window:
+                self._trade_outcomes = self._trade_outcomes[-max_window:]
+
+            # Calculate current win rate when we have enough data
+            min_trades = self.get_setting_int("win_rate_min_trades", 5)
+            if len(self._trade_outcomes) >= min_trades:
                 current_win_rate = sum(self._trade_outcomes) / len(self._trade_outcomes)
-                
-                # Aggressive bonus for win rate above 80%
-                if current_win_rate >= 0.9:
-                    win_rate_bonus = 50.0  # Massive bonus for 90%+ win rate
-                elif current_win_rate >= 0.8:
-                    win_rate_bonus = 30.0  # Huge bonus for 80%+ win rate
-                elif current_win_rate >= 0.7:
-                    win_rate_bonus = 15.0  # Strong bonus for 70%+ win rate
-                elif current_win_rate >= 0.6:
-                    win_rate_bonus = 8.0   # Moderate bonus for 60%+ win rate
-        
+
+                baseline = self.get_setting_float("win_rate_baseline", 0.5)
+                scaling = self.get_setting_float("win_rate_bonus_scale", 100.0)
+                win_rate_bonus = (current_win_rate - baseline) * scaling
+
+                # Optional clipping to keep reward bounded
+                clip_min = self.get_setting_float("win_rate_bonus_min", -50.0)
+                clip_max = self.get_setting_float("win_rate_bonus_max", 50.0)
+                win_rate_bonus = float(np.clip(win_rate_bonus, clip_min, clip_max))
+
+                self.logger.debug(
+                    "Continuous win rate bonus: %.2f (win_rate=%.3f, baseline=%.3f, scale=%.1f)",
+                    win_rate_bonus,
+                    current_win_rate,
+                    baseline,
+                    scaling,
+                )
+
         return win_rate_bonus
 
     def _calculate_action_balance_bonus(self, discrete_action: int) -> float:
@@ -1125,91 +1192,6 @@ class RewardCalculator:
             )
             print(f"Test {i+1}: {case['description']} -> Reward: {reward:.4f}")
             print(f"  Components: pnl={case['pnl']:.2f}, position={case['position']:.4f}, atr={case['atr']:.2f}")
-
-
-    def _calculate_ultra_profit_reward(
-        self,
-        action: int,
-        atr_normalised: float,
-        portfolio_return: float,
-        position: float,
-        effective_max_position: float,
-        current_price: float,
-        atr: float,
-        pnl: float,
-        reward_scaling: float,
-    ) -> float:
-        """Stage: Ultra-profit reward that maximizes profitability with minimal constraints."""
-        self._action_counts[action] += 1
-        total_actions = sum(self._action_counts)
-
-        # Ultra profit balance: HOLD 5%, BUY 47.5%, SELL 47.5% (maximize trading)
-        target_ratios = [0.05, 0.475, 0.475]  # [HOLD, BUY, SELL]
-        tolerance = self.get_setting_float("balance_penalty_tolerance", 0.05)  # Stricter tolerance
-        penalty = self.get_setting_float("balance_penalty", 5.0)  # Higher penalty for imbalance
-        balance_penalty = 0.0
-
-        if total_actions >= 10:
-            action_ratios = [count / total_actions for count in self._action_counts]
-
-            for i, ratio in enumerate(action_ratios):
-                deviation = abs(ratio - target_ratios[i])
-                if deviation > tolerance:
-                    excess_deviation = deviation - tolerance
-                    balance_penalty += penalty * excess_deviation
-
-        # Calculate base reward
-        base_reward = self._calculate_base_reward(
-            action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
-        )
-
-        # Ultra profit/loss adjustments
-        profit_multiplier = self.get_setting_float("profit_multiplier", 5.0)
-        loss_penalty_multiplier = self.get_setting_float("loss_penalty_multiplier", 0.5)
-
-        if pnl > 0:
-            # Massive boost for profitable trades
-            profit_bonus = pnl * profit_multiplier
-            base_reward += profit_bonus
-            self.logger.debug(f"Ultra profit bonus applied: {profit_bonus:.3f} for pnl={pnl:.3f}")
-        elif pnl < 0:
-            # Minimal penalty for losing trades (encourage experimentation)
-            loss_penalty = abs(pnl) * loss_penalty_multiplier
-            base_reward -= loss_penalty
-            self.logger.debug(f"Ultra loss penalty applied: {loss_penalty:.3f} for pnl={pnl:.3f}")
-
-        # Extreme HOLD penalty
-        hold_penalty_rate = self.get_setting_float("hold_penalty_rate", 0.05)
-        if action == ACTION_HOLD:
-            hold_penalty = hold_penalty_rate * abs(position) / max(effective_max_position, 0.01)
-            base_reward -= hold_penalty
-            self.logger.debug(f"Ultra HOLD penalty applied: {hold_penalty:.3f}")
-
-        # Massive trading bonuses
-        trading_bonus_multiplier = self.get_setting_float("trading_bonus_multiplier", 5.0)
-        if action in [ACTION_BUY, ACTION_SELL]:
-            trading_bonus = self.get_setting_float("trading_bonus", 0.01) * trading_bonus_multiplier
-            base_reward += trading_bonus
-            self.logger.debug(f"Ultra trading bonus applied: {trading_bonus:.3f}")
-
-        # SELL bias penalty to prevent excessive selling
-        if action == ACTION_SELL:
-            sell_penalty_rate = self.get_setting_float("sell_penalty_rate", 0.02)
-            sell_penalty = sell_penalty_rate * abs(position) / max(effective_max_position, 0.01)
-            base_reward -= sell_penalty
-            self.logger.debug(f"Ultra SELL penalty applied: {sell_penalty:.3f}")
-
-        # BUY bonus to encourage more buying
-        if action == ACTION_BUY:
-            buy_bonus_rate = self.get_setting_float("buy_bonus_rate", 0.02)
-            buy_bonus = buy_bonus_rate * (1.0 - abs(position) / max(effective_max_position, 0.01))
-            base_reward += buy_bonus
-            self.logger.debug(f"Ultra BUY bonus applied: {buy_bonus:.3f}")
-
-        final_reward = base_reward - balance_penalty
-        self.logger.info(f"Ultra profit: base_reward={base_reward:.3f}, balance_penalty={balance_penalty:.3f}, pnl={pnl:.3f}, final_reward={final_reward:.3f}")
-        return final_reward * reward_scaling
 
 
 __all__ = ["RewardCalculator"]
