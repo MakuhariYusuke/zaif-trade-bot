@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
 from numpy.typing import NDArray
 from dataclasses import dataclass
 from pathlib import Path
@@ -136,7 +136,7 @@ class RegimeEvaluator:
         env = HeavyTradingEnv(df=price_data, config={})
 
         # Wrap with ActionMasker
-        def mask_fn(env):
+        def mask_fn(env: Any) -> Any:
             return env.get_legal_actions().astype(bool)
         env = ActionMasker(env, mask_fn)
 
@@ -289,7 +289,7 @@ class RegimeEvaluator:
 
         return transition_matrix
 
-    def plot_regime_analysis(self, result: RegimeAnalysisResult, save_path: Optional[str] = None):
+    def plot_regime_analysis(self, result: RegimeAnalysisResult, save_path: Optional[str] = None) -> None:
         """レジーム分析結果を可視化"""
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
         fig.suptitle('Market Regime Analysis', fontsize=16)
@@ -341,7 +341,7 @@ class RegimeEvaluator:
 
         # plt.show()  # Suppress popup for better usability
 
-def main():
+def main() -> None:
     """メイン実行関数"""
     parser = argparse.ArgumentParser(description='Market Regime Evaluation')
     parser.add_argument('--models', nargs='+', required=True,

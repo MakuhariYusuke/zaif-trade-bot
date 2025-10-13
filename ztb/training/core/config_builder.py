@@ -121,6 +121,7 @@ class ConfigBuilder:
             - initial_balance: 初期残高
             - transaction_cost: 取引コスト
             - reward_scaling: 報酬スケーリング
+            - continuous_to_discrete_threshold: SAC用アクション変換閾値
         """
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
         
@@ -144,6 +145,11 @@ class ConfigBuilder:
                 "reward_scaling",
                 sections=["environment"],
                 default=DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0)
+            ),
+            "continuous_to_discrete_threshold": self.get_config_value(
+                "continuous_to_discrete_threshold",
+                sections=["environment"],
+                default=0.33
             ),
         }
     
@@ -269,7 +275,7 @@ class ConfigBuilder:
         Returns:
             SACハイパーパラメータの辞書
         """
-        sections = ["sac_hyperparameters", "sac"]
+        sections = ["sac_hyperparameters", "sac_params", "sac"]
         
         # SACデフォルト値（Stable-Baselines3準拠）
         return {
@@ -297,6 +303,9 @@ class ConfigBuilder:
             "gradient_steps": self.get_config_value(
                 "gradient_steps", sections, 1
             ),
+            "target_update_interval": self.get_config_value(
+                "target_update_interval", sections, 1
+            ),
             "ent_coef": self.get_config_value(
                 "ent_coef", sections, "auto"
             ),
@@ -306,8 +315,23 @@ class ConfigBuilder:
             "use_sde": self.get_config_value(
                 "use_sde", sections, False
             ),
+            "sde_sample_freq": self.get_config_value(
+                "sde_sample_freq", sections, -1
+            ),
+            "use_sde_at_warmup": self.get_config_value(
+                "use_sde_at_warmup", sections, False
+            ),
+            "policy_kwargs": self.get_config_value(
+                "policy_kwargs", sections, None
+            ),
+            "device": self.get_config_value(
+                "device", sections, "auto"
+            ),
+            "verbose": self.get_config_value(
+                "verbose", sections, 1
+            ),
         }
-    
+
     def __repr__(self) -> str:
         """ConfigBuilderの文字列表現"""
         algorithm = self.config.get("algorithm", "unknown")

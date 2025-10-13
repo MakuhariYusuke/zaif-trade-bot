@@ -11,6 +11,7 @@ import-linter>=1.0.0
 pytest-benchmark>=4.0.0
 bandit>=1.7.0
 safety>=2.3.0
+pip-audit>=2.7.0
 statsmodels>=0.14.0
 pandas-stubs>=2.0.0
 numpy-stubs>=0.1.0

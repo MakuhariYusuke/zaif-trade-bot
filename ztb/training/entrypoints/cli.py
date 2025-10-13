@@ -7,7 +7,7 @@ Handles command-line argument parsing and main entry point.
 
 import argparse
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.config_loader import ConfigLoader
@@ -74,7 +74,7 @@ def load_config(config_path: str) -> Optional[Dict[str, Any]]:
     """
     try:
         loader = ConfigLoader()
-        return loader.load_config(config_path)
+        return cast(Dict[str, Any] | None, loader.load_config(config_path))
     except Exception as e:
         logger.error(f"Failed to load config from {config_path}: {e}")
         return None
@@ -163,12 +163,12 @@ def main() -> int:
     """
     Main entry point for unified training.
     """
-    return safe_operation(
+    return cast(int, safe_operation(
         _main_impl,
         logger=logger,
         context="Unified training execution",
         fallback=1,
-    )
+    ))
 
 
 def _main_impl() -> int:

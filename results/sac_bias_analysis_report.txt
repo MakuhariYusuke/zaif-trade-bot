@@ -1,0 +1,70 @@
+================================================================================
+SAC SELL BIAS ROOT CAUSE ANALYSIS REPORT
+================================================================================
+
+1. ACTION DISTRIBUTION ANALYSIS
+----------------------------------------
+Total samples analyzed: 5000
+HOLD: 1310 (26.2%)
+BUY: 365 (7.3%)
+SELL: 3325 (66.5%)
+⚠️  SEVERE SELL BIAS DETECTED
+
+Continuous Action Statistics:
+  Mean: -0.5130
+  Std: 0.3604
+  Min: -0.9948
+  Max: 0.2628
+  Median: -0.6517
+
+2. CURRICULUM STAGE ANALYSIS
+----------------------------------------
+
+Stage: forced_balance
+  HOLD: 1310 (26.2%)
+  BUY: 365 (7.3%)
+  SELL: 3325 (66.5%)
+
+3. REWARD PATTERN ANALYSIS
+----------------------------------------
+
+HOLD Action Rewards:
+  Mean: -1.9695
+  Std: 0.2452
+  Min: -2.0000
+  Max: 0.0000
+  Samples: 1310
+
+BUY Action Rewards:
+  Mean: -0.9699
+  Std: 0.4144
+  Min: -2.0000
+  Max: 2.0000
+  Samples: 365
+
+SELL Action Rewards:
+  Mean: -0.3723
+  Std: 1.2200
+  Min: -1.0000
+  Max: 2.0000
+  Samples: 3325
+
+4. REWARD BIAS ANALYSIS
+----------------------------------------
+
+Stage: forced_balance
+  HOLD: 9.1499 (n=32350)
+  BUY: -0.2226 (n=17500)
+  SELL: 80.0000 (n=150)
+
+5. ROOT CAUSE HYPOTHESES
+----------------------------------------
+⚠️  SAC outputs predominantly negative actions (SELL-biased)
+⚠️  SELL actions receive significantly higher rewards
+
+Threshold Analysis:
+  BUY threshold: 0.05 (coverage: 7.3%)
+  SELL threshold: -0.3 (coverage: 66.5%)
+⚠️  SELL threshold allows much more coverage than BUY threshold
+
+================================================================================

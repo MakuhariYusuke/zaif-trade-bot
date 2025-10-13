@@ -1,0 +1,8 @@
+{
+  "ent_coef": -3.5887343883514404,
+  "actor_loss": -13490.32421875,
+  "critic_loss": 2353478.5,
+  "timestamp": "2025-10-13T00:39:22.584056",
+  "algorithm": "SAC",
+  "model_name": "sac_model"
+}

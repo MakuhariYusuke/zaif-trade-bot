@@ -8,7 +8,7 @@ Grid Search, Random Search, Bayesian Optimization, Binary Searchを
 from pathlib import Path
 import json
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple, Any, Optional, cast
 
 from ztb.optimization.base import OptimizationResult
 from ztb.optimization.methods.grid_search import GridSearchOptimizer
@@ -25,7 +25,7 @@ def compare_optimization_methods(
     preset: str = 'essential',
     n_trials_per_method: int = 20,
     output_dir: Path = Path('ztb/optimization/results')
-):
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """
     複数の最適化手法を比較
     
@@ -55,7 +55,7 @@ def compare_optimization_methods(
     # モック目的関数を作成（テスト用）
     objective_func = create_mock_objective_function(noise_level=0.1)
     
-    results = {}
+    results: Dict[str, Optional[OptimizationResult]] = {}
     
     # 1. Random Search
     print("\n" + "=" * 80)
@@ -82,15 +82,18 @@ def compare_optimization_methods(
     grid_resolution = {}
     for param_name, param_space in param_spaces_dict.items():
         if param_space.param_type.value == 'categorical':
+            assert param_space.choices is not None
             grid_resolution[param_name] = param_space.choices[:3]  # 最大3つ
         elif param_space.param_type.value in ['continuous', 'log_uniform']:
             # 3点のみ
             import numpy as np
             if param_space.param_type.value == 'log_uniform':
+                assert param_space.low is not None and param_space.high is not None
                 log_values = np.linspace(np.log10(param_space.low), 
                                         np.log10(param_space.high), 3)
                 grid_resolution[param_name] = [10 ** x for x in log_values]
             else:
+                assert param_space.low is not None and param_space.high is not None
                 grid_resolution[param_name] = list(
                     np.linspace(param_space.low, param_space.high, 3)
                 )
@@ -155,7 +158,7 @@ def compare_optimization_methods(
     print("  📊 結果の比較")
     print("=" * 80 + "\n")
     
-    comparison = []
+    comparison: List[Dict[str, Any]] = []
     
     for method_name, result in results.items():
         if result is None:
@@ -193,7 +196,7 @@ def compare_optimization_methods(
     print("-" * 80)
     for item in comparison:
         print(f"\n【{item['method']}】")
-        for param, value in item['best_params'].items():
+        for param, value in cast(Dict[str, Any], item['best_params']).items():
             print(f"  {param}: {value}")
     
     # 比較結果を保存
@@ -206,7 +209,7 @@ def compare_optimization_methods(
     return results, comparison
 
 
-def main():
+def main() -> None:
     """メイン実行"""
     import argparse
     

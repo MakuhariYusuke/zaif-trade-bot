@@ -23,7 +23,7 @@ from ztb.utils.config import TypedConfig
 from ztb.trading.environment.environment import HeavyTradingEnv
 
 
-def validate_model(model_path: str, data_path: str, num_episodes: int = 3):
+def validate_model(model_path: str, data_path: str, num_episodes: int = 3) -> None:
     """Validate model behavior on sample data."""
     print(f"Loading model from {model_path}")
     
@@ -137,7 +137,7 @@ def validate_model(model_path: str, data_path: str, num_episodes: int = 3):
         print("   - Different reward structure")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Validate model behavior")
     
     config = TypedConfig()

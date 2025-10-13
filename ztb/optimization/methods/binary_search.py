@@ -19,7 +19,7 @@ Binary Search: 二分探索法（単一パラメータ向け）
 - 目的関数が単峰性であることが分かっている場合
 """
 
-from typing import Optional
+from typing import Optional, Callable, Any
 import time
 
 from ztb.optimization.base import (
@@ -51,7 +51,7 @@ class BinarySearchOptimizer(OptimizerBase):
     def __init__(
         self,
         parameter_space: ParameterSpace,
-        objective_function,
+        objective_function: Callable[[dict[str, Any]], TrialResult],
         tolerance: float = 1e-5,
         max_iterations: int = 20,
         random_state: int = 42
@@ -88,14 +88,15 @@ class BinarySearchOptimizer(OptimizerBase):
     def _to_search_space(self, value: float) -> float:
         """元の空間から探索空間への変換"""
         if self.use_log_scale:
-            import numpy as np
-            return np.log10(value)
+            import math
+            return math.log10(value)
         return value
     
     def _from_search_space(self, value: float) -> float:
         """探索空間から元の空間への変換"""
         if self.use_log_scale:
-            return 10 ** value
+            import math
+            return math.pow(10.0, value)
         return value
     
     def _golden_section_search(self) -> OptimizationResult:
@@ -111,6 +112,8 @@ class BinarySearchOptimizer(OptimizerBase):
         resphi = 2 - phi
         
         # 探索空間での境界
+        assert self.param_space.low is not None
+        assert self.param_space.high is not None
         a = self._to_search_space(self.param_space.low)
         b = self._to_search_space(self.param_space.high)
         

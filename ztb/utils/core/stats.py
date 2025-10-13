@@ -26,7 +26,7 @@ def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
         if len(numeric_cols) == 0:
             return 0.0
         skews = data[numeric_cols].skew()
-        return skews.mean()
+        return cast(float, skews.mean())
     else:
         # For Series
         return cast(float, data.skew())
@@ -40,7 +40,7 @@ def calculate_kurtosis(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int
         if len(numeric_cols) == 0:
             return 0.0
         kurts = data[numeric_cols].kurtosis()
-        return kurts.mean()
+        return cast(float, kurts.mean())
     else:
         # For Series
         return cast(float, data.kurtosis())
@@ -61,7 +61,7 @@ def nan_ratio(data: Union[pd.Series, pd.DataFrame]) -> float:
 
 def correlation(a: pd.Series, b: pd.Series) -> float:
     """Calculate Pearson correlation between two series"""
-    return a.corr(b)
+    return cast(float, a.corr(b))
 
 
 def count_features_by_category(feature_names: List[str]) -> Dict[str, int]:

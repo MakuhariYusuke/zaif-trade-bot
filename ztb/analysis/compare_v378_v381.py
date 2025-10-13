@@ -7,8 +7,9 @@ import os
 from pathlib import Path
 from tensorboard.backend.event_processing import event_accumulator
 import numpy as np
+from typing import Any, Optional
 
-def extract_metrics(log_dir):
+def extract_metrics(log_dir: str) -> Optional[Any]:
     """Extract key metrics from TensorBoard logs"""
     if not Path(log_dir).exists():
         print(f"Warning: {log_dir} not found")

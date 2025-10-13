@@ -11,7 +11,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import List, Dict, Optional, Callable, Tuple
+from typing import Any, List, Dict, Optional, Callable, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 
@@ -56,8 +56,8 @@ class BatchFileOperator:
         self.max_workers = max_workers
         self.dry_run = dry_run
         self.verbose = verbose
-        self.operations: List[Dict] = []
-        self.results: List[Dict] = []
+        self.operations: List[Dict[str, Any]] = []
+        self.results: List[Dict[str, Any]] = []
     
     def add_move(self, source: Path, destination: Path) -> None:
         """移動操作を追加"""
@@ -83,7 +83,7 @@ class BatchFileOperator:
         })
     
     @timed_with_memory
-    def execute(self) -> Dict:
+    def execute(self) -> Dict[str, int]:
         """
         全操作を並列実行
         
@@ -127,7 +127,7 @@ class BatchFileOperator:
         logger.info(f"完了: 成功={stats['success']}, スキップ={stats['skipped']}, 失敗={stats['failed']}")
         return stats
     
-    def _execute_single(self, operation: Dict) -> Dict:
+    def _execute_single(self, operation: Dict[str, Any]) -> Dict[str, Any]:
         """単一操作を実行"""
         op_type = operation['type']
         
@@ -147,7 +147,7 @@ class BatchFileOperator:
                 'error': str(e)
             }
     
-    def _move_file(self, source: Path, dest: Path) -> Dict:
+    def _move_file(self, source: Path, dest: Path) -> Dict[str, Any]:
         """ファイル移動"""
         if not source.exists():
             return {
@@ -189,7 +189,7 @@ class BatchFileOperator:
             'destination': str(dest)
         }
     
-    def _copy_file(self, source: Path, dest: Path) -> Dict:
+    def _copy_file(self, source: Path, dest: Path) -> Dict[str, Any]:
         """ファイルコピー"""
         if not source.exists():
             return {
@@ -219,7 +219,7 @@ class BatchFileOperator:
             'destination': str(dest)
         }
     
-    def _delete_file(self, path: Path) -> Dict:
+    def _delete_file(self, path: Path) -> Dict[str, Any]:
         """ファイル削除"""
         if not path.exists():
             return {
@@ -248,7 +248,7 @@ class BatchFileOperator:
             'path': str(path)
         }
     
-    def _log_result(self, result: Dict) -> None:
+    def _log_result(self, result: Dict[str, Any]) -> None:
         """結果をログ出力"""
         status = result['status']
         op = result['operation']
@@ -364,7 +364,7 @@ def categorize_files(files: List[Path]) -> Dict[str, List[Path]]:
     Returns:
         カテゴリ別のファイル辞書
     """
-    categories = {
+    categories: Dict[str, List[Path]] = {
         'configs': [],
         'docs': [],
         'scripts': [],

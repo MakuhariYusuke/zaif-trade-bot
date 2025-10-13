@@ -1,0 +1,17 @@
+{
+  "avg_episode_reward": 4563.04025,
+  "std_episode_reward": 0.0,
+  "action_distribution": {
+    "HOLD": 0.045,
+    "BUY": 0.323,
+    "SELL": 0.632
+  },
+  "continuous_action_stats": {
+    "mean": -0.27093487897515295,
+    "std": 0.7156173362896342,
+    "min": -0.9969227910041809,
+    "max": 0.9738048315048218
+  },
+  "total_episodes": 5,
+  "total_actions": 10000
+}

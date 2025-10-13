@@ -9,7 +9,7 @@ and runs a comprehensive 100k step training session with detailed logging.
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import numpy as np
 import pandas as pd
@@ -47,7 +47,7 @@ class TrainingStatsCallback(BaseCallback):
 def load_config(config_path: str) -> Dict[str, Any]:
     """Load configuration from JSON file."""
     with open(config_path, "r") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def create_environment(config: Dict[str, Any]) -> HeavyTradingEnv:
@@ -83,7 +83,7 @@ def create_environment(config: Dict[str, Any]) -> HeavyTradingEnv:
     return env
 
 
-def main():
+def main() -> None:
     """Run validation training."""
     print("=" * 80)
     print("🚀 Optimized Parameters Validation Training")

@@ -11,7 +11,8 @@ import logging
 import time
 import signal
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any, Self
+from types import FrameType
 
 # Setup logging
 logging.basicConfig(
@@ -31,12 +32,12 @@ class Timer:
         self.name = name
         self.start_time: Optional[float] = None
         
-    def __enter__(self):
+    def __enter__(self) -> Self:
         self.start_time = time.time()
         logger.info(f"⏱️  {self.name} - START")
         return self
         
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         elapsed = time.time() - self.start_time  # type: ignore
         logger.info(f"✅ {self.name} - COMPLETED in {elapsed:.2f}s")
 
@@ -46,12 +47,12 @@ class TimeoutException(Exception):
     pass
 
 
-def timeout_handler(signum, frame):
+def timeout_handler(signum: int, frame: Optional[FrameType]) -> None:
     """Signal handler for timeout."""
     raise TimeoutException("Operation timed out")
 
 
-def main():
+def main() -> None:
     logger.info("=" * 80)
     logger.info("Bug #52 Profiling - Detailed Execution Time Analysis")
     logger.info("=" * 80)
@@ -71,10 +72,10 @@ def main():
             from ztb.trading.environment.environment import HeavyTradingEnv
             from sb3_contrib.common.wrappers import ActionMasker
             
-            env_config = {}  # Minimal config
+            env_config: Dict[str, Any] = {}  # Minimal config
             env = HeavyTradingEnv(df=df, config=env_config)
             
-            def mask_fn(env):
+            def mask_fn(env: Any) -> Any:
                 return env.get_legal_actions().astype(bool)
             
             env = ActionMasker(env, mask_fn)

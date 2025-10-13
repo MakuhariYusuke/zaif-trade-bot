@@ -7,7 +7,7 @@ import os
 import json
 from pathlib import Path
 
-def monitor_training():
+def monitor_training() -> None:
     """Monitor training progress."""
     checkpoint_dir = Path("./models/optimized_checkpoints")
     

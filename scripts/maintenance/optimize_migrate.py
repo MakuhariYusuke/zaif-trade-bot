@@ -220,7 +220,16 @@ class OptimizedMigrator:
                 }
                 for category, plan in self.migration_plan.items()
             },
-            'results': self.operator.results,
+            'results': [
+                {
+                    'status': r.get('status'),
+                    'operation': r.get('operation', {}).get('type') if isinstance(r.get('operation'), dict) else str(r.get('operation')),
+                    'source': str(r.get('source', '')),
+                    'destination': str(r.get('destination', '')),
+                    'error': r.get('error', '')
+                }
+                for r in self.operator.results
+            ],
             'summary': self.operator.get_summary()
         }
         

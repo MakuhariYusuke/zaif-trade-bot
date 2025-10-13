@@ -15,7 +15,7 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 
-def diagnose_environment(config_path: str, num_episodes: int = 3, num_steps: int = 100):
+def diagnose_environment(config_path: str, num_episodes: int = 3, num_steps: int = 100) -> None:
     """
     環境診断実行
     

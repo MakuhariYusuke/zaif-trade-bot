@@ -202,6 +202,15 @@ class HeavyTradingEnv(
             self.config = EnvironmentConfig.from_dict(config)
 
         self.random_start = random_start
+        
+        # Get continuous-to-discrete action conversion threshold from config
+        # Default to environment constant if not specified in config
+        from ztb.trading.environment.constants import CONTINUOUS_TO_DISCRETE_THRESHOLD
+        self.action_threshold = getattr(
+            self.config, 
+            "continuous_to_discrete_threshold", 
+            CONTINUOUS_TO_DISCRETE_THRESHOLD
+        )
 
         self._process = psutil.Process()
         self.stream_to_bars_converter = stream_to_bars_converter
@@ -369,15 +378,15 @@ class HeavyTradingEnv(
 
     def step(
         self,
-        action,  # Can be int (discrete) or np.ndarray (continuous)
+        action: Union[int, np.ndarray],  # Can be int (discrete) or np.ndarray (continuous)
     ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
         # Convert continuous action to discrete if necessary
         from ztb.trading.environment.constants import continuous_to_discrete_action
         
         if isinstance(action, np.ndarray):
-            # Continuous action from SAC: convert to discrete
+            # Continuous action from SAC: convert to discrete using configured threshold
             continuous_value = float(action[0])
-            discrete_action = continuous_to_discrete_action(continuous_value)
+            discrete_action = continuous_to_discrete_action(continuous_value, threshold=self.action_threshold)
             # Store both for reward calculation
             actual_action = discrete_action
             continuous_action_value = continuous_value
@@ -601,7 +610,7 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
 
         return flipped_obs
 
-    def step(self, action: int) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+    def step(self, action: Union[int, np.ndarray]) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
         flipped_action = action
         if action == ACTION_BUY:
             flipped_action = ACTION_SELL

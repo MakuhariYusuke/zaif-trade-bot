@@ -17,6 +17,7 @@ sys.path.insert(0, str(project_root))
 import json
 import numpy as np
 from datetime import datetime
+from typing import Any
 
 from ztb.utils.data_utils import load_csv_data_optimized
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
@@ -30,7 +31,7 @@ def run_backtest_with_schema(
     model_path: str,
     data_path: str,
     episodes: int = 10
-) -> dict:
+) -> dict[str, Any]:
     """
     スキーマを考慮したバックテスト
 

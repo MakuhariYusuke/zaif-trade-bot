@@ -1,7 +1,7 @@
 {
-    "model_name": "sac_v404_extreme_win_rate",
+    "model_name": "sac_v406_moderate_rewards",
   "algorithm": "sac",
-  "total_timesteps": 15000,
+  "total_timesteps": 20000,
   "data_source": "csv",
   "data_path": "btc_jpy_real_dataset.csv",
   "data_config": {
@@ -17,43 +17,47 @@
     "gamma": 0.99,
     "train_freq": 1,
     "gradient_steps": 1,
-    "ent_coef": "auto",
+    "ent_coef": 0.01,
     "target_update_interval": 1,
-    "target_entropy": "auto"
+    "target_entropy": -1.0
   },
   "environment": {
     "initial_balance": 200000,
     "transaction_cost": 0.0005,
-    "max_position_size": 0.01,
+    "max_position_size": 1.0,
     "enable_action_masking": false,
     "use_continuous_actions": true,
     "use_standardized_observations": true,
     "random_start": true,
-    "reward_settings": {
-      "use_simple_reward": true,
-      "reward_scale": 8000.0,
-      "reward_clip_min": -80.0,
-      "reward_clip_max": 80.0,
-      "enable_inactivity_penalty": true,
-      "inactivity_penalty_rate": 0.0005,
-      "enable_opportunity_cost": true,
-      "opportunity_cost_rate": 0.0005,
-      "enable_trade_execution_bonus": true,
-      "trade_execution_bonus_rate": 0.1,
-      "buy_action_penalty": -2.0,
-      "sell_action_penalty": -2.0,
-      "action_threshold_buy": 0.15,
-      "action_threshold_sell": -0.15
-    }
+    "curriculum_stage": "trading_focused"
+  },
+  "reward_settings": {
+    "use_simple_reward": false,
+    "reward_scale": 100.0,
+    "reward_clip_min": -50.0,
+    "reward_clip_max": 50.0,
+    "forced_balance_scaling": 1.0,
+    "enable_inactivity_penalty": true,
+    "inactivity_penalty_rate": 0.001,
+    "enable_opportunity_cost": true,
+    "opportunity_cost_rate": 0.001,
+    "enable_trade_execution_bonus": true,
+    "trade_execution_bonus_rate": 0.5,
+    "buy_action_penalty": 0.0,
+    "sell_action_penalty": 0.0,
+    "action_threshold_buy": 0.1,
+    "action_threshold_sell": -0.1,
+    "trading_focused_scaling": 1.0,
+    "hold_penalty_rate": 0.01,
+    "trading_bonus_multiplier": 2.0
   },
   "checkpoint_interval": 1000,
-  "notes": "SAC v404: Extreme reward settings for 80%+ win rate target with enhanced win rate bonus",
+  "notes": "SAC v406: Moderate reward scale with balanced curriculum for natural action distribution",
   "fixes_implemented": {
-    "fix_1": "Extreme reward scale 4000->8000 for maximum sensitivity",
-    "fix_2": "Expanded reward clip [-40,40]->[-80,80] for extreme rewards",
-    "fix_3": "Enhanced win rate bonus: 50pts for 90%+, 30pts for 80%+, 15pts for 70%+, 8pts for 60%+",
-    "fix_4": "Extended training to 15,000 steps for maximum convergence",
-    "fix_5": "Narrower action thresholds (0.15) for more trading actions",
-    "fix_6": "Increased BUY/SELL bonuses to -2.0 for more aggressive trading"
+    "fix_1": "Reduced reward scale from 8000 to 100 for subtle learning",
+    "fix_2": "Changed curriculum from forced_balance to balanced_transition",
+    "fix_3": "Reduced reward clip from [-80,80] to [-10,10]",
+    "fix_4": "Maintained entropy coef 0.01 and balanced thresholds",
+    "fix_5": "Removed BUY/SELL action penalties for neutral learning"
   }
 }

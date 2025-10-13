@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 
-def extract_model_info(model_path: str):
+def extract_model_info(model_path: str) -> bool:
     """モデルZIPファイルから情報を抽出"""
     print(f"\n{'='*80}")
     print(f"Model: {Path(model_path).name}")
@@ -103,7 +103,7 @@ def extract_model_info(model_path: str):
     
     return True
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python extract_model_info.py <model_path>")
         print("\nExamples:")

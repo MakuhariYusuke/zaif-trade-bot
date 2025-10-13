@@ -1,0 +1,8 @@
+{
+  "ent_coef": -0.4558500647544861,
+  "actor_loss": -92.97239685058594,
+  "critic_loss": 33.644798278808594,
+  "timestamp": "2025-10-13T05:19:40.008858",
+  "algorithm": "SAC",
+  "model_name": "sac_v401_imbalance_penalty"
+}

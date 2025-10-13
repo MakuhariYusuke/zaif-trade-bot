@@ -56,7 +56,7 @@ class AlgorithmFactory:
         print(f"✅ Registered algorithm: {algorithm_name}")
     
     @classmethod
-    def create(cls, algorithm_name: str, **kwargs) -> BaseRLAlgorithm:
+    def create(cls, algorithm_name: str, **kwargs: Any) -> BaseRLAlgorithm:
         """
         アルゴリズムのインスタンスを作成する。
         

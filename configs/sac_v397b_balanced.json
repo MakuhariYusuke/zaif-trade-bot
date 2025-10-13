@@ -1,0 +1,76 @@
+{
+  "algorithm": "sac",
+  "total_timesteps": 10000,
+  "model_name": "sac_v397b_balanced",
+  "seed": 42,
+  "verbose": 1,
+  "log_interval": 10,
+  "checkpoint_freq": 1000,
+  "enable_checkpoint_on_best": true,
+  "checkpoint_comparison_metric": "episode_reward_mean",
+  
+  "environment": {
+    "env_name": "HeavyTradingEnv-v0",
+    "initial_balance": 100000,
+    "maker_fee": 0.0,
+    "taker_fee": 0.001,
+    "use_real_data": true,
+    "real_data_file": "btc_jpy_real_dataset.csv",
+    "start_step": 0,
+    "end_step": 10000,
+    "price_column": "close",
+    "volume_column": "volume",
+    "normalize_obs": true,
+    "reward_normalization": false,
+    "window_size": 50,
+    "enable_tensorboard": true,
+    "tensorboard_log_dir": "checkpoints/sac_session",
+    "max_position_size": 1.0,
+    "min_order_size": 0.001,
+    "position_precision": 8,
+    "price_precision": 0,
+    "step_reward_logging": true,
+    "continuous_to_discrete_threshold": 0.15
+  },
+  
+  "reward_settings": {
+    "use_simple_reward": true,
+    "reward_scale": 200.0,
+    "reward_clip_min": -2.0,
+    "reward_clip_max": 2.0,
+    
+    "enable_inactivity_penalty": true,
+    "inactivity_penalty_rate": 0.001,
+    "inactivity_penalty_window": 3,
+    "inactivity_hold_threshold": 0.05,
+    
+    "enable_opportunity_cost": false,
+    
+    "enable_trade_execution_bonus": true,
+    "trade_execution_bonus_rate": 0.05,
+    "trade_execution_position_threshold": 0.01,
+    "trade_execution_action_multiplier": 1.5
+  },
+  
+  "sac_params": {
+    "learning_rate": 0.0003,
+    "buffer_size": 50000,
+    "learning_starts": 1000,
+    "batch_size": 256,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "target_entropy": "auto",
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "use_sde_at_warmup": false,
+    "policy_kwargs": {
+      "net_arch": [256, 256],
+      "activation_fn": "relu",
+      "log_std_init": -3
+    }
+  }
+}

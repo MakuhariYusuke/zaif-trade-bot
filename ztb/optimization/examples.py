@@ -6,8 +6,9 @@
 """
 
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
-from ztb.optimization.base import ParameterSpace, ParameterType
+from ztb.optimization.base import ParameterSpace, ParameterType, OptimizationResult
 from ztb.optimization.methods.grid_search import GridSearchOptimizer
 from ztb.optimization.methods.random_search import RandomSearchOptimizer
 from ztb.optimization.methods.binary_search import BinarySearchOptimizer
@@ -17,7 +18,7 @@ from ztb.optimization.sac_utils import (
 )
 
 
-def example_1_random_search():
+def example_1_random_search() -> 'OptimizationResult':
     """例1: Random Searchの基本的な使い方"""
     print("\n" + "=" * 80)
     print("例1: Random Search - SAC Learning Rate最適化")
@@ -60,7 +61,7 @@ def example_1_random_search():
     return result
 
 
-def example_2_grid_search():
+def example_2_grid_search() -> OptimizationResult:
     """例2: Grid Searchの使い方"""
     print("\n" + "=" * 80)
     print("例2: Grid Search - Learning RateとBatch Sizeの組み合わせ")
@@ -71,7 +72,7 @@ def example_2_grid_search():
     param_spaces = list(param_spaces_dict.values())
     
     # グリッド解像度を指定
-    grid_resolution = {
+    grid_resolution: Dict[str, List[Any]] = {
         'learning_rate': [1e-4, 3e-4, 1e-3],
         'learning_starts': [100, 500, 1000],
         'train_freq': [1, 2],
@@ -95,7 +96,7 @@ def example_2_grid_search():
     return result
 
 
-def example_3_binary_search():
+def example_3_binary_search() -> OptimizationResult:
     """例3: Binary Searchで単一パラメータを最適化"""
     print("\n" + "=" * 80)
     print("例3: Binary Search - Learning Rate の精密最適化")
@@ -128,7 +129,7 @@ def example_3_binary_search():
     return result
 
 
-def example_4_bayesian_optimization():
+def example_4_bayesian_optimization() -> Optional[OptimizationResult]:
     """例4: Bayesian Optimizationの使い方"""
     print("\n" + "=" * 80)
     print("例4: Bayesian Optimization - 効率的探索")
@@ -162,7 +163,7 @@ def example_4_bayesian_optimization():
     return result
 
 
-def example_5_staged_optimization():
+def example_5_staged_optimization() -> Dict[str, Any]:
     """例5: 段階的最適化 - 実践的なアプローチ"""
     print("\n" + "=" * 80)
     print("例5: 段階的最適化戦略")
@@ -235,7 +236,7 @@ def example_5_staged_optimization():
     return final_params
 
 
-def main():
+def main() -> None:
     """全ての例を実行"""
     import argparse
     

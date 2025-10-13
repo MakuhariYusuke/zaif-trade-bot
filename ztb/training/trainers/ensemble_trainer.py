@@ -19,7 +19,7 @@ class EnsembleAlgorithmTrainer:
     Handles ensemble algorithm training.
     """
 
-    def __init__(self, config_manager):
+    def __init__(self, config_manager: Any) -> None:
         """
         Initialize ensemble trainer.
 
