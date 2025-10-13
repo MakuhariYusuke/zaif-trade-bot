@@ -47,8 +47,8 @@ def test_reward_scenarios():
         "opportunity_cost_rate": 0.0005,
         "enable_trade_execution_bonus": True,
         "trade_execution_bonus_rate": 0.1,
-        "buy_action_penalty": -2.0,     # Increased bonus for BUY actions
-        "sell_action_penalty": -2.0,    # Increased bonus for SELL actions
+        "buy_action_penalty": 0.0,     # Neutral penalty for BUY actions
+        "sell_action_penalty": 0.0,    # Neutral penalty for SELL actions
         "action_threshold_buy": 0.05,   # Adjusted for SELL bias correction
         "action_threshold_sell": -0.3, # Adjusted for SELL bias correction
     }

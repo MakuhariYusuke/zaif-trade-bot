@@ -10,8 +10,7 @@ import sys
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List
-import numpy as np
+from typing import Dict, Any
 import pandas as pd
 
 project_root = Path(__file__).resolve().parent.parent
@@ -19,6 +18,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.trading.constants import ACTION_BUY, ACTION_SELL, ACTION_HOLD
 from ztb.utils.logging_utils import get_logger
 
 # Enable detailed logging
@@ -38,8 +38,8 @@ def create_test_environment() -> HeavyTradingEnv:
             "reward_clip_min": -80.0,
             "reward_clip_max": 80.0,
             "profit_bonus_multipliers": [1.0, 1.0, 0.8],  # BUY, SELL, HOLD
-            "buy_action_penalty": -2.0,
-            "sell_action_penalty": -2.0,
+            "buy_action_penalty": 0.0,
+            "sell_action_penalty": 0.0,
             "hold_action_penalty": 0.0,
             "base_action_penalty": 0.015,
             "loss_penalty_coeff": -0.2,
@@ -132,7 +132,7 @@ def run_comprehensive_analysis():
 
         # Test BUY action
         buy_result = analyze_reward_components(
-            env, action=1,  # BUY
+            env, action=ACTION_BUY,
             pnl=scenario["pnl"],
             position=scenario["position"],
             old_position=scenario["old_position"]
@@ -140,7 +140,7 @@ def run_comprehensive_analysis():
 
         # Test SELL action
         sell_result = analyze_reward_components(
-            env, action=2,  # SELL
+            env, action=ACTION_SELL,
             pnl=scenario["pnl"],
             position=scenario["position"],
             old_position=scenario["old_position"]
@@ -148,7 +148,7 @@ def run_comprehensive_analysis():
 
         # Test HOLD action
         hold_result = analyze_reward_components(
-            env, action=0,  # HOLD
+            env, action=ACTION_HOLD,
             pnl=scenario["pnl"],
             position=scenario["position"],
             old_position=scenario["old_position"]

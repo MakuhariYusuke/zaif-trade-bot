@@ -5,14 +5,12 @@ Compares the performance of two models using t-test to determine
 if the improvement is statistically significant.
 """
 
-import os
 import sys
 import json
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from scipy import stats
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))

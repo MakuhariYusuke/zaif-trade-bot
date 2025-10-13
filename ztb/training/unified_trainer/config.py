@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 
 class UnifiedAlgorithm(Enum):
@@ -46,7 +46,7 @@ def load_config(config_path: str) -> Optional[Dict[str, Any]]:
     """
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
+            config = cast(dict[str, Any], json.load(f))
         return config
     except FileNotFoundError:
         print(f"Configuration file not found: {config_path}")

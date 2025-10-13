@@ -1,49 +1,27 @@
-#!/usr/bin/env python3#!/usr/bin/env python3
+#!/usr/bin/env python3
 
-""""""
-
-Unified Training Runner for Zaif Trade Bot.Unified Training Runner for Zaif Trade Bot.
-
-
-
-DEPRECATED: This file has been modularized. Use ztb.training.unified_trainer instead.DEPRECATED: This file has been modularized. Use ztb.training.unified_trainer instead.
-
-""""""
-
-
-
-import warningsimport warnings
-
-
-
-warnings.warn(warnings.warn(
-
-    "ztb.training.unified_trainer is deprecated. Use the modularized ztb.training.unified_trainer/ package instead.",    "ztb.training.unified_trainer is deprecated. Use the modularized ztb.training.unified_trainer/ package instead.",
-
-    DeprecationWarning,    DeprecationWarning,
-
-    stacklevel=2,    stacklevel=2,
-
-))
-
-
-
-# Re-export from new modular structure for backward compatibility# Re-export from new modular structure for backward compatibility
-
-from ztb.training.unified_trainer import (from ztb.training.unified_trainer import (
-
-    UnifiedAlgorithm,    UnifiedAlgorithm,
-
-    UnifiedTrainer,    UnifiedTrainer,
-
-    UnifiedTrainerConfig,    UnifiedTrainerConfig,
-
-    configure_progress_bar,    configure_progress_bar,
-
-    load_config,    load_config,
-
-))
 """
+Unified Training Runner for Zaif Trade Bot.
+
+DEPRECATED: This file has been modularized. Use ztb.training.unified_trainer instead.
+"""
+
+import warnings
+
+warnings.warn(
+    "ztb.training.unified_trainer is deprecated. Use the modularized ztb.training.unified_trainer/ package instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Re-export from new modular structure for backward compatibility
+from ztb.training.unified_trainer import (
+    UnifiedAlgorithm,
+    UnifiedTrainer,
+    UnifiedTrainerConfig,
+    configure_progress_bar,
+    load_config,
+)
 
 # Set environment variables before any imports to avoid PyTorch issues
 import importlib.util
@@ -204,7 +182,6 @@ def configure_progress_bar(
 class UnifiedTrainer:
     """
     Unified training interface for different algorithms.
-
     WORK ASSIGNMENT:
     ---------------
     - PPO Algorithm: @trading-team - Standard RL training, evaluation, logging
@@ -287,9 +264,7 @@ class UnifiedTrainer:
     def _get_config_value(self, key: str, sections: Optional[List[str]] = None, default: Any = None) -> Any:
         """
         Get configuration value with priority order.
-        
         Priority: top-level > sections (in order) > default
-        
         Note: This method delegates to ConfigBuilder.get_config_value()
         """
         return self.config_builder.get_config_value(key, sections, default)
@@ -297,7 +272,6 @@ class UnifiedTrainer:
     def get_memory_optimization_config(self) -> MemoryOptimizationConfig:
         """
         Extract memory optimization parameters from config.
-        
         Note: This method delegates to ConfigBuilder.get_memory_optimization_config()
         """
         return self.config_builder.get_memory_optimization_config()
@@ -305,7 +279,6 @@ class UnifiedTrainer:
     def get_environment_config(self) -> EnvironmentConfig:
         """
         Extract environment-specific parameters from config.
-        
         Note: This method delegates to ConfigBuilder.get_environment_config()
         """
         return self.config_builder.get_environment_config()
@@ -313,7 +286,6 @@ class UnifiedTrainer:
     def get_ppo_core_config(self) -> PPOCoreConfig:
         """
         Extract PPO algorithm-specific parameters from config.
-        
         Note: This method delegates to ConfigBuilder.get_ppo_core_config()
         """
         return self.config_builder.get_ppo_core_config()
@@ -321,7 +293,6 @@ class UnifiedTrainer:
     def get_feature_config(self) -> Dict[str, Any]:
         """
         Extract feature-related parameters from config.
-        
         Note: This method delegates to ConfigBuilder.get_feature_config()
         """
         return self.config_builder.get_feature_config()
@@ -329,7 +300,6 @@ class UnifiedTrainer:
     def build_unified_config(self) -> Dict[str, Any]:
         """
         Build a unified configuration dict using ConfigManager.
-        
         Note: This method delegates to ConfigBuilder.build_unified_config()
         """
         cache_key = (self.enable_streaming, self.stream_batch_size, self.total_timesteps)
@@ -553,6 +523,7 @@ class UnifiedTrainer:
         finally:
             # Aggressive memory cleanup
             if self.config.get("aggressive_memory_management", False):
+                import gc
                 gc.collect()
 
         # Save final model to models directory

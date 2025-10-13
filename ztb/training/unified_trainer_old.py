@@ -21,7 +21,6 @@ from ztb.training.unified_trainer import (
     configure_progress_bar,
     load_config,
 )
-"""
 
 # Set environment variables before any imports to avoid PyTorch issues
 import importlib.util
@@ -440,8 +439,8 @@ class UnifiedTrainer:
             lagrange_config = self.config.get("lagrange_constraint", {})
             
             def get_lagrange_param(key: str, default: Any = None) -> Any:
-                """トップレベル（lagrange_プレフィックス）とlagrange_constraintの両方をチェック"""
-                # lagrange_プレフィックス付きキーを優先、次にlagrange_constraint内、最後にデフォルト
+                """Check both top-level (lagrange_ prefix) and lagrange_constraint"""
+                # Prioritize lagrange_ prefixed key, then lagrange_constraint, then default
                 prefixed_key = f"lagrange_{key}"
                 return self.config.get(prefixed_key, lagrange_config.get(key, LAGRANGE_DEFAULTS.get(key, default)))
             

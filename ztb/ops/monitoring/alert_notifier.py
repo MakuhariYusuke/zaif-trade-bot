@@ -20,7 +20,7 @@ try:
     HAS_REQUESTS = True
 except ImportError:
     HAS_REQUESTS = False
-    requests = None  # type: ignore
+    requests = None
 
 
 def load_alerts(
