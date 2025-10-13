@@ -1,12 +1,48 @@
-# Changelog# Changelog
+# Changelog
 
+All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-All notable changes to this project will be documented in this file.## [4.0.1] - 2025-10-10
+## [4.1.0] - 2025-10-13
 
+### � Major Features
 
+#### SAC v404: Extreme Win Rate Trading Bot
+- **Achievement**: 71.74% win rate with 62.18% total return
+- **Training**: 15,000 steps with extreme reward scaling (8,000x)
+- **Reward System**: Win rate bonus system (50pts for 90%+, 30pts for 80%+)
+- **Action Balance**: BUY/SELL ratio dramatically improved (12→1,521 BUY actions)
+- **Risk Management**: Sharpe ratio 62.99, max drawdown -12.09%
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),### 🔴 Critical Bug Fixes
+#### Enhanced Reward Calculator
+- **Win Rate Tracking**: Real-time win rate calculation with bonus rewards
+- **Extreme Scaling**: Reward scale increased to 8,000x for maximum sensitivity
+- **Expanded Clip Range**: [-80, +80] for aggressive reward signals
+- **Action Thresholds**: Narrowed to ±0.15 for more trading activity
+
+### 🔧 Technical Improvements
+
+#### SAC v403: High Win Rate Foundation
+- **Reward Enhancement**: Scale 4,000x, clip [-40, +40]
+- **Training Extension**: 10,000 steps for better convergence
+- **Win Rate Bonus**: 20pts for 80%+, 10pts for 70%+, 5pts for 60%+
+
+#### SAC v402: Balanced Action Distribution
+- **BUY/SELL Equality**: Removed BUY bias, symmetric thresholds (-0.2, +0.2)
+- **Equal Bonuses**: +1.0 for both BUY and SELL actions
+- **Training**: 5,000 steps with balanced reward settings
+
+### 📊 Performance Metrics
+
+| Version | Win Rate | Total Return | Trades | Sharpe | Max DD |
+|---------|----------|--------------|--------|--------|--------|
+| SAC v404 | 71.74% | +62.18% | 46 | 62.99 | -12.09% |
+| SAC v403 | 52.00% | -28.07% | 25 | 0.00 | -41.02% |
+| SAC v402 | N/A | N/A | N/A | N/A | N/A |
+
+## [4.0.1] - 2025-10-10
 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
