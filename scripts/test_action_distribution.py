@@ -1,54 +1,53 @@
 #!/usr/bin/env python3
 """
-Quick action distribution test for SAC v402
+Quick action distribution test for SAC models
 """
 
 import sys
 import os
 import numpy as np
 from pathlib import Path
+import pandas as pd
+import argparse
+import json
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import SAC
-from ztb.trading.environment.heavy_trading_env import HeavyTradingEnv
+from ztb.trading.environment.heavy_env import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
-def test_action_distribution():
-    """Test action distribution for SAC v402 model"""
+def test_action_distribution(config_path: str):
+    """Test action distribution for SAC model"""
+
+    # Load config
+    with open(config_path, 'r') as f:
+        config_dict = json.load(f)
+
+    model_name = 'sac_session/sac_v414_balanced_trading_final'  # Use the newly trained model
+    model_path = f"checkpoints/{model_name}.zip"
+
+    print(f"Loading model: {model_path}")
 
     # Load model
-    model_path = "checkpoints/sac_session/sac_v402_equal_actions_final.zip"
     model = SAC.load(model_path)
 
-    # Create environment config
-    config = EnvironmentConfig(
-        initial_balance=200000.0,
-        transaction_cost=0.0005,
-        max_position_size=0.01,
-        use_continuous_actions=True,
-        use_standardized_observations=True,
-        reward_settings={
-            "use_simple_reward": True,
-            "reward_scale": 2000.0,
-            "reward_clip_min": -20.0,
-            "reward_clip_max": 20.0,
-            "enable_inactivity_penalty": True,
-            "inactivity_penalty_rate": 0.0005,
-            "enable_opportunity_cost": True,
-            "opportunity_cost_rate": 0.0005,
-            "enable_trade_execution_bonus": True,
-            "trade_execution_bonus_rate": 0.1,
-            "buy_action_penalty": -1.0,
-            "sell_action_penalty": -1.0,
-            "action_threshold_buy": 0.2,
-            "action_threshold_sell": -0.2,
-        }
-    )
+    # Load data
+    data_path = config_dict.get('data_path', 'btc_jpy_real_dataset.csv')
+    df = pd.read_csv(data_path)
+
+    # Create environment config from dict
+    env_config_dict = config_dict.get('environment', {})
+    reward_settings = config_dict.get('reward_settings', {})
+
+    config = EnvironmentConfig.from_dict({
+        **env_config_dict,
+        'reward_settings': reward_settings
+    })
 
     # Create environment
-    env = HeavyTradingEnv(config=config)
+    env = HeavyTradingEnv(config=config, df=df)
 
     # Test action distribution
     actions = []
@@ -69,10 +68,10 @@ def test_action_distribution():
             action, _ = model.predict(obs, deterministic=True)
             actions.append(action[0])
 
-            # Convert to discrete for counting
-            if action[0] < -0.2:
+            # Convert to discrete for counting (using same threshold as environment: 0.1)
+            if action[0] < -0.1:
                 discrete_action = 2  # SELL
-            elif action[0] > 0.2:
+            elif action[0] > 0.1:
                 discrete_action = 1  # BUY
             else:
                 discrete_action = 0  # HOLD
@@ -120,4 +119,8 @@ def test_action_distribution():
         print(f"\n⚠️  BUY/SELL imbalance detected. Difference: {abs(buy_ratio - sell_ratio):.1f}%")
 
 if __name__ == "__main__":
-    test_action_distribution()
+    parser = argparse.ArgumentParser(description='Test action distribution for SAC model')
+    parser.add_argument('--config', type=str, required=True, help='Path to config JSON file')
+    args = parser.parse_args()
+    
+    test_action_distribution(args.config)
