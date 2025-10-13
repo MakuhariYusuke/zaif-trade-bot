@@ -10,7 +10,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -46,7 +46,7 @@ class TrainingCheckpointSnapshot:
 
     @property
     def metrics(self) -> Dict[str, Any]:
-        return self.payload.get("metrics", {})
+        return cast(Dict[str, Any], self.payload.get("metrics", {}))
 
 
 class TrainingCheckpointManager:

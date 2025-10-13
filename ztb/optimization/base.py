@@ -32,7 +32,7 @@ class ParameterSpace:
     choices: Optional[List[Any]] = None  # 選択肢（CATEGORICALで使用）
     default: Optional[Any] = None  # デフォルト値
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """バリデーション"""
         if self.param_type in [ParameterType.CONTINUOUS, ParameterType.INTEGER, ParameterType.LOG_UNIFORM]:
             if self.low is None or self.high is None:
@@ -57,7 +57,7 @@ class ParameterSpace:
         elif self.param_type == ParameterType.CATEGORICAL:
             return random.choice(self.choices)
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
             'name': self.name,
@@ -81,7 +81,7 @@ class TrialResult:
     error_message: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
             'trial_id': self.trial_id,
@@ -113,7 +113,7 @@ class OptimizationResult:
     objective_min: float = float('inf')
     objective_max: float = float('-inf')
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """統計情報を計算"""
         successful_trials = [t for t in self.all_trials if t.success]
         if successful_trials:
@@ -124,7 +124,7 @@ class OptimizationResult:
             self.objective_min = min(objectives)
             self.objective_max = max(objectives)
     
-    def save(self, output_path: Path):
+    def save(self, output_path: Path) -> None:
         """結果をJSONファイルに保存"""
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -181,7 +181,7 @@ class OptimizationResult:
             success_rate=data['success_rate']
         )
     
-    def print_summary(self):
+    def print_summary(self) -> None:
         """結果のサマリーを表示"""
         print("=" * 80)
         print(f"  {self.optimizer_name} - 最適化結果")
@@ -215,7 +215,7 @@ class OptimizerBase(ABC):
     def __init__(
         self,
         parameter_spaces: List[ParameterSpace],
-        objective_function: Callable[[Dict[str, Any]], TrialResult],
+        objective_function: Callable[[dict[str, Any]], TrialResult],
         n_trials: Optional[int] = None,
         random_state: int = 42
     ):
@@ -259,11 +259,35 @@ class OptimizerBase(ABC):
         """
         print(f"Trial {trial_id}/{self.n_trials if self.n_trials else '?'}: {parameters}")
         
+        # numpy型を標準Python型に変換
+        clean_params = {}
+        for key, value in parameters.items():
+            if hasattr(value, 'item'):  # numpy型
+                clean_params[key] = value.item()
+            else:
+                clean_params[key] = value
+        
         trial_start = time.time()
         try:
-            result = self.objective_function(parameters)
-            result.trial_id = trial_id
-            result.duration_seconds = time.time() - trial_start
+            objective_value = self.objective_function(clean_params)
+            duration = time.time() - trial_start
+            
+            # floatが返された場合、TrialResultを作成
+            if isinstance(objective_value, (int, float)):
+                result = TrialResult(
+                    trial_id=trial_id,
+                    parameters=clean_params,
+                    objective_value=float(objective_value),
+                    metrics={},
+                    duration_seconds=duration,
+                    success=True,
+                    error_message=None
+                )
+            else:
+                # 既にTrialResultの場合
+                result = objective_value
+                result.trial_id = trial_id
+                result.duration_seconds = duration
             
             # ベストトライアルの更新
             if self.best_trial is None or result.objective_value < self.best_trial.objective_value:
@@ -277,7 +301,7 @@ class OptimizerBase(ABC):
             duration = time.time() - trial_start
             error_result = TrialResult(
                 trial_id=trial_id,
-                parameters=parameters,
+                parameters=clean_params,
                 metrics={},
                 objective_value=float('inf'),
                 duration_seconds=duration,

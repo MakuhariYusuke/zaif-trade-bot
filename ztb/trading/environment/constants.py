@@ -228,7 +228,7 @@ def get_action_name(action: int) -> str:
     return f"UNKNOWN_ACTION_{action}"
 
 
-def continuous_to_discrete_action(continuous_action: float) -> int:
+def continuous_to_discrete_action(continuous_action: float, threshold: float = CONTINUOUS_TO_DISCRETE_THRESHOLD) -> int:
     """
     Convert continuous action [-1, 1] to discrete action.
     
@@ -237,13 +237,16 @@ def continuous_to_discrete_action(continuous_action: float) -> int:
             - < -threshold: SELL
             - in [-threshold, threshold]: HOLD
             - > threshold: BUY
+        threshold: Threshold for action conversion (default: CONTINUOUS_TO_DISCRETE_THRESHOLD)
+            - Lower threshold = more BUY/SELL actions, less HOLD
+            - Higher threshold = more HOLD actions, less BUY/SELL
             
     Returns:
         Discrete action (0=HOLD, 1=BUY, 2=SELL)
     """
-    if continuous_action > CONTINUOUS_TO_DISCRETE_THRESHOLD:
+    if continuous_action > threshold:
         return ACTION_BUY
-    elif continuous_action < -CONTINUOUS_TO_DISCRETE_THRESHOLD:
+    elif continuous_action < -threshold:
         return ACTION_SELL
     else:
         return ACTION_HOLD

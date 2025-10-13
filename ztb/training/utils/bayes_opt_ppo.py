@@ -25,7 +25,6 @@ setup_project_path()
 
 from ztb.training.core.ppo_trainer import PPOTrainer  # noqa: E402  # type: ignore[attr-defined]
 from ztb.features.curated_features import FeatureSet  # noqa: E402
-)
 
 LOGGER = get_logger(__name__)
 

@@ -22,7 +22,7 @@ class IterativeAlgorithmTrainer:
     Handles iterative algorithm training.
     """
 
-    def __init__(self, config_manager):
+    def __init__(self, config_manager: Any) -> None:
         """
         Initialize iterative trainer.
 
@@ -83,7 +83,7 @@ class IterativeAlgorithmTrainer:
 
         return unified_config
 
-    def _build_run_1m_args(self, unified_config: Dict[str, Any]) -> list:
+    def _build_run_1m_args(self, unified_config: Dict[str, Any]) -> list[str]:
         """
         Build command line arguments for run_1m.py.
 

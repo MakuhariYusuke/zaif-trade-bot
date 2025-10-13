@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""
+Main entry point for live trading.
+"""
+
+import argparse
+import asyncio
+import logging
+import os
+import sys
+from pathlib import Path
+
+# Add project root to path
+from ztb.utils.path_utils import get_project_root
+project_root = get_project_root()
+sys.path.insert(0, str(project_root))
+
+from ztb.trading.live_trader.config import (
+    LiveTradingOptions,
+    _build_argument_parser,
+    _start_health_server,
+    _start_metrics_server,
+    MetricsServerHandle,
+    HealthServerHandle,
+)
+from ztb.trading.live_trader.live_trader import LiveTrader
+from ztb.trading.live_trader.utils import _configure_live_logging
+from ztb.utils.errors import safe_operation
+
+
+def main() -> None:
+    """Main entry point for live trading."""
+    safe_operation(
+        _main_impl,
+        logger=None,  # Will be configured inside
+        context="Live trading execution"
+    )
+
+
+def _main_impl(logger: logging.Logger) -> None:
+    """Implementation of main function."""
+    print("Entering _main_impl")
+    parser = _build_argument_parser()
+    args = parser.parse_args()
+
+    print(f"args.dry_run: {args.dry_run}")
+    options = LiveTradingOptions.from_cli_args(args)
+    runtime_logger = _configure_live_logging(options.log_level)
+
+    # Start servers if enabled
+    metrics_handle: MetricsServerHandle | None = _start_metrics_server(options, runtime_logger)
+    health_handle: HealthServerHandle | None = _start_health_server(
+        options,
+        lambda: {"status": "initializing"},  # Placeholder
+        runtime_logger
+    )
+
+    # Initialize trader
+    trader = LiveTrader(options.model_path, dry_run=options.dry_run)
+
+    # Update health provider with trader
+    if health_handle:
+        # Could update health provider here if needed
+        pass
+
+    # Run trading loop
+    try:
+        asyncio.run(trader.run_trading_loop(options.duration_hours))
+    except KeyboardInterrupt:
+        runtime_logger.info("Trading interrupted by user")
+    except Exception as e:
+        runtime_logger.error(f"Failed to run trading loop: {e}")
+        raise
+    finally:
+        # Keep handles referenced for potential future cleanup logic
+        _ = (metrics_handle, health_handle)
+
+
+if __name__ == "__main__":
+    main()

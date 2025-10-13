@@ -6,7 +6,7 @@ configuration files in YAML, JSON, and TOML formats.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TextIO, Union
+from typing import Any, Dict, List, Optional, TextIO, Union, cast
 import asyncio
 
 import yaml
@@ -54,7 +54,7 @@ def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
     with open(file_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return cast(Dict[str, Any], yaml.safe_load(f))
 
 
 def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -75,7 +75,7 @@ def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    return safe_json_load(file_path)
+    return cast(Dict[str, Any], safe_json_load(file_path))
 
 
 def load_toml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -103,9 +103,9 @@ def load_toml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     with open(file_path, "rb") as f:
         if TOMLLIB_AVAILABLE:
             import tomllib
-            return tomllib.load(f)
+            return cast(Dict[str, Any], tomllib.load(f))
         elif TOML_AVAILABLE and tomli is not None:
-            return tomli.load(f)
+            return cast(Dict[str, Any], tomli.load(f))
         else:
             raise ImportError("TOML support requires 'tomli' library (pip install tomli)")
 

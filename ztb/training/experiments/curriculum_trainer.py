@@ -17,7 +17,7 @@ Features:
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List, cast
 
 from ztb.training.core.unified_trainer import UnifiedTrainer
 from ztb.utils.config import ZTBConfig
@@ -46,7 +46,7 @@ class CurriculumPhase:
         self.diversity_bonus_weight = diversity_bonus_weight
         self.min_diversity_threshold = min_diversity_threshold
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"Phase {self.phase_id}: {self.name}\n"
             f"  Timesteps: {self.timesteps}\n"
@@ -81,7 +81,7 @@ class CurriculumTrainer:
         self.phases = self._define_curriculum_phases()
         
         # Training history
-        self.phase_results = []
+        self.phase_results: List[Dict[str, Any]] = []
         
         logger.info(f"Curriculum Trainer initialized: {experiment_name}")
         logger.info(f"Base config: {self.base_config_path}")
@@ -159,7 +159,7 @@ class CurriculumTrainer:
         if prev_model_path:
             phase_config["warm_start_model"] = prev_model_path
         
-        return phase_config
+        return cast(Dict[str, Any], phase_config)
     
     def run_phase(self, phase: CurriculumPhase, prev_model_path: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
         """Run a single curriculum phase"""
@@ -243,7 +243,7 @@ class CurriculumTrainer:
         }
 
 
-def main():
+def main() -> None:
     """Main curriculum learning execution"""
     import argparse
     

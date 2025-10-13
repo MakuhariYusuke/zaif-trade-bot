@@ -22,6 +22,7 @@ from pathlib import Path
 from stable_baselines3 import SAC
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import VecEnv
+import torch.nn as nn
 
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
 
@@ -55,6 +56,10 @@ DEFAULT_SAC_CONFIG = {
     "verbose": 1,
     "tensorboard_log": None,
     "device": "auto",
+    "target_update_interval": 1,
+    "use_sde": False,
+    "sde_sample_freq": -1,
+    "use_sde_at_warmup": False,
 }
 
 
@@ -78,7 +83,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         >>> sac.train(model, total_timesteps=100000)
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         """SACAlgorithmを初期化。"""
         self._model: Optional[BaseAlgorithm] = None
         logger.info("SACAlgorithm initialized")
@@ -96,6 +101,39 @@ class SACAlgorithm(BaseRLAlgorithm):
     def __repr__(self) -> str:
         """文字列表現。"""
         return f"SACAlgorithm(model={'initialized' if self._model else 'not_initialized'})"
+    
+    @staticmethod
+    def _resolve_policy_kwargs(
+        raw_kwargs: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Normalize policy kwargs by converting activation names to torch classes.
+        """
+        if raw_kwargs is None:
+            return None
+
+        policy_kwargs: Dict[str, Any] = dict(raw_kwargs)
+        activation = policy_kwargs.get("activation_fn")
+        if isinstance(activation, str):
+            activation_map: Dict[str, Callable[[], nn.Module]] = {
+                "relu": nn.ReLU,
+                "leaky_relu": nn.LeakyReLU,
+                "elu": nn.ELU,
+                "selu": nn.SELU,
+                "gelu": nn.GELU,
+                "tanh": nn.Tanh,
+                "sigmoid": nn.Sigmoid,
+                "softplus": nn.Softplus,
+            }
+            key = activation.strip().lower()
+            if key not in activation_map:
+                raise ValueError(
+                    f"Unsupported activation function '{activation}' in policy_kwargs. "
+                    f"Supported values: {sorted(activation_map.keys())}"
+                )
+            policy_kwargs["activation_fn"] = activation_map[key]
+
+        return policy_kwargs
     
     @staticmethod
     def get_default_config() -> Dict[str, Any]:
@@ -182,7 +220,8 @@ class SACAlgorithm(BaseRLAlgorithm):
             >>> config = sac.get_default_config()
             >>> model = sac.create_model(vec_env, config, "./logs")
         """
-        # 設定検証
+        # デフォルト設定とマージして検証
+        config = {**self.get_default_config(), **config}
         self.validate_config(config)
         
         logger.info(f"Creating SAC model with config: {config}")
@@ -201,14 +240,19 @@ class SACAlgorithm(BaseRLAlgorithm):
             "gradient_steps": config.get("gradient_steps", DEFAULT_SAC_CONFIG["gradient_steps"]),
             "ent_coef": config.get("ent_coef", DEFAULT_SAC_CONFIG["ent_coef"]),
             "target_entropy": config.get("target_entropy", DEFAULT_SAC_CONFIG["target_entropy"]),
+            "target_update_interval": config.get("target_update_interval", DEFAULT_SAC_CONFIG["target_update_interval"]),
+            "use_sde": config.get("use_sde", DEFAULT_SAC_CONFIG["use_sde"]),
+            "sde_sample_freq": config.get("sde_sample_freq", DEFAULT_SAC_CONFIG["sde_sample_freq"]),
+            "use_sde_at_warmup": config.get("use_sde_at_warmup", DEFAULT_SAC_CONFIG["use_sde_at_warmup"]),
             "verbose": config.get("verbose", DEFAULT_SAC_CONFIG["verbose"]),
             "tensorboard_log": tensorboard_log,
             "device": config.get("device", DEFAULT_SAC_CONFIG["device"]),
         }
         
-        # policy_kwargsがあれば追加
-        if "policy_kwargs" in config and config["policy_kwargs"] is not None:
-            sac_params["policy_kwargs"] = config["policy_kwargs"]
+        # policy_kwargsがあれば追加（文字列定義の活性化関数を解決）
+        policy_kwargs = self._resolve_policy_kwargs(config.get("policy_kwargs"))
+        if policy_kwargs is not None:
+            sac_params["policy_kwargs"] = policy_kwargs
         
         # SACモデル作成
         self._model = SAC(**sac_params)
@@ -225,8 +269,8 @@ class SACAlgorithm(BaseRLAlgorithm):
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
-        callback: Optional[Callable] = None,
-        **kwargs
+        callback: Optional[Callable[..., Any]] = None,
+        **kwargs: Any
     ) -> BaseAlgorithm:
         """
         SACモデルを訓練。
