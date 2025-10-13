@@ -1,53 +1,48 @@
-#!/usr/bin/env python3
-"""
-Unified Training Runner for Zaif Trade Bot.
+#!/usr/bin/env python3#!/usr/bin/env python3
 
-Integrates multiple training approaches into a single interface:
+""""""
 
-ALGORITHMS:
------------
-1. PPO Training (algorithm: 'ppo')
-   - Uses PPOTrainer from ppo_trainer.py
-   - Standard PPO algorithm with Stable Baselines3
-   - Supports evaluation, checkpointing, tensorboard logging
-   - Best for: Standard reinforcement learning training
+Unified Training Runner for Zaif Trade Bot.Unified Training Runner for Zaif Trade Bot.
 
-2. Base ML Reinforcement (algorithm: 'base_ml')
-   - Uses MLReinforcementExperiment from base_ml_reinforcement.py
-   - Base class for ML reinforcement experiments
-   - Simple step-based training loop (currently dummy implementation)
-   - Best for: Custom reinforcement learning experiments, prototyping
 
-3. Iterative Training (algorithm: 'iterative')
-   - Uses logic from run_1m.py
-   - Multi-iteration training with resume capability
-   - Supports streaming data, validation, Discord notifications
-   - Best for: Long-running training sessions, production training
 
-4. Ensemble Training (algorithm: 'ensemble')
-   - Uses EnsembleTradingSystem from ensemble.py
-   - Combines multiple trained PPO models for improved predictions
-   - Supports weighted voting and risk management
-   - Best for: Leveraging multiple models for robust trading decisions
+DEPRECATED: This file has been modularized. Use ztb.training.unified_trainer instead.DEPRECATED: This file has been modularized. Use ztb.training.unified_trainer instead.
 
-5. Curriculum Learning (algorithm: 'curriculum')
-   - Uses curriculum_learning.py for progressive learning
-   - P0→P2 staged learning with forced balance → balanced transition → full curriculum
-   - Addresses action distribution bias through progressive difficulty
-   - Best for: Resolving persistent BUY/SELL bias in trading policies
+""""""
 
-USAGE:
-------
-python -m ztb.training.unified_trainer --config config.json --algorithm ppo
 
-TRADING MODES:
----------------
-- scalping: High-frequency scalping with 15s timeframe, smaller positions, higher transaction costs
-- normal: Standard trading with 1m timeframe, full feature set, normal position sizes
 
-Examples:
-python -m ztb.training.unified_trainer --config unified_training_config.json  # scalping mode
-python -m ztb.training.unified_trainer --config unified_training_config_normal.json  # normal mode
+import warningsimport warnings
+
+
+
+warnings.warn(warnings.warn(
+
+    "ztb.training.unified_trainer is deprecated. Use the modularized ztb.training.unified_trainer/ package instead.",    "ztb.training.unified_trainer is deprecated. Use the modularized ztb.training.unified_trainer/ package instead.",
+
+    DeprecationWarning,    DeprecationWarning,
+
+    stacklevel=2,    stacklevel=2,
+
+))
+
+
+
+# Re-export from new modular structure for backward compatibility# Re-export from new modular structure for backward compatibility
+
+from ztb.training.unified_trainer import (from ztb.training.unified_trainer import (
+
+    UnifiedAlgorithm,    UnifiedAlgorithm,
+
+    UnifiedTrainer,    UnifiedTrainer,
+
+    UnifiedTrainerConfig,    UnifiedTrainerConfig,
+
+    configure_progress_bar,    configure_progress_bar,
+
+    load_config,    load_config,
+
+))
 """
 
 # Set environment variables before any imports to avoid PyTorch issues
@@ -253,8 +248,10 @@ class UnifiedTrainer:
         # Initialize components
         self.config_manager = ConfigManager(config)
         self.config_builder = ConfigBuilder(config)  # 🆕 New config builder
-        self.algorithm = config.get("algorithm", "ppo")
+        self.algorithm = str(config.get("algorithm", "ppo")).lower()
         self.logger = get_logger(__name__)
+        self._config_cache: Optional[Dict[str, Any]] = None
+        self._config_cache_key: Optional[tuple[bool, int, Optional[int]]] = None
         
         # Configure progress bar
         self.progress_bar_enabled = configure_progress_bar(self.config, log=self.logger)
@@ -266,6 +263,22 @@ class UnifiedTrainer:
         else:
             from ztb.utils import DiscordNotifier
             self.notifier = DiscordNotifier()
+
+        # Preserve legacy config object for backward compatibility with tests/tools
+        try:
+            algorithm_enum = UnifiedAlgorithm(self.algorithm)
+        except ValueError:
+            algorithm_enum = UnifiedAlgorithm.PPO
+        self.config_obj = UnifiedTrainerConfig(
+            algorithm=algorithm_enum,
+            force=force,
+            dry_run=dry_run,
+            enable_streaming=enable_streaming,
+            stream_batch_size=stream_batch_size,
+            max_features=max_features,
+            offline_mode=config.get("offline_mode", False),
+            total_timesteps=total_timesteps,
+        )
     
     # ==================================================================================
     # CONFIGURATION MANAGEMENT HELPERS (Bug #52 fix - unified configuration interface)
@@ -319,16 +332,23 @@ class UnifiedTrainer:
         
         Note: This method delegates to ConfigBuilder.build_unified_config()
         """
-        return self.config_builder.build_unified_config(
+        cache_key = (self.enable_streaming, self.stream_batch_size, self.total_timesteps)
+        if self._config_cache is not None and self._config_cache_key == cache_key:
+            return dict(self._config_cache)
+
+        unified = self.config_builder.build_unified_config(
             enable_streaming=self.enable_streaming,
             stream_batch_size=self.stream_batch_size,
-            total_timesteps_override=self.total_timesteps
+            total_timesteps_override=self.total_timesteps,
         )
+        self._config_cache = dict(unified)
+        self._config_cache_key = cache_key
+        return dict(unified)
 
     def train(self) -> TrainingResult:
         """Execute training based on algorithm."""
         return safe_operation(
-            logger=logger,
+            logger=self.logger,
             operation=self._train_impl,
             context="training_execution",
             default_result=None,
@@ -344,11 +364,37 @@ class UnifiedTrainer:
             unified_config["total_timesteps"] = self.total_timesteps
             self.logger.info(f"Overriding total_timesteps: {self.total_timesteps:,}")
         
-        # Create algorithm trainer
-        algorithm_trainer = AlgorithmTrainer(self.config_manager, self.progress_bar_enabled)
+        # 訓練開始時のログ出力
+        model_name = unified_config.get("model_name", "model")
+        algorithm = str(unified_config.get("algorithm", self.algorithm)).lower()
+        self.algorithm = algorithm
         
-        # Execute training
-        return algorithm_trainer.train(self.algorithm, unified_config)
+        self.logger.info(f"Starting {algorithm.upper()} training: {model_name}")
+        self.logger.info(f"Configuration: {len(unified_config)} settings loaded")
+        
+        try:
+            # Create algorithm trainer
+            algorithm_trainer = AlgorithmTrainer(self.config_manager, self.progress_bar_enabled)
+            
+            # Execute training
+            result = algorithm_trainer.train(algorithm, unified_config)
+            
+            # 訓練成功時のログ
+            if result and isinstance(result, dict):
+                self.logger.info(f"✅ Training completed successfully")
+                if 'model_path' in result:
+                    self.logger.info(f"   Model saved: {result['model_path']}")
+                if 'log_path' in result:
+                    self.logger.info(f"   Logs saved: {result['log_path']}")
+            
+            return result
+            
+        except Exception as e:
+            # エラー時の詳細ログ
+            self.logger.error(f"❌ Training failed: {type(e).__name__}: {str(e)}")
+            self.logger.error(f"   Algorithm: {algorithm}")
+            self.logger.error(f"   Model: {model_name}")
+            raise
 
 
 
@@ -399,10 +445,6 @@ class UnifiedTrainer:
         # UNIFIED CONFIGURATION MANAGEMENT (Bug #52 fix)
         # ============================================================================
         # Apply total_timesteps override from command-line before building config
-        if hasattr(self.config_obj, 'total_timesteps') and self.config_obj.total_timesteps is not None:
-            self.logger.info(f"Overriding total_timesteps: {self.config_obj.total_timesteps:,}")
-            self.config["total_timesteps"] = self.config_obj.total_timesteps
-        
         # Build unified config using centralized methods
         # This ensures consistent configuration across all trainers
         unified_config = self.build_unified_config()
@@ -420,7 +462,7 @@ class UnifiedTrainer:
             lagrange_config = self.config.get("lagrange_constraint", {})
             
             def get_lagrange_param(key: str, default: Any = None) -> Any:
-                """トップレベル（lagrange_プレフィックス）とlagrange_constraintの両方をチェック"""
+                """トップレベル(lagrange_プレフィックス)とlagrange_constraintの両方をチェック"""
                 # lagrange_プレフィックス付きキーを優先、次にlagrange_constraint内、最後にデフォルト
                 prefixed_key = f"lagrange_{key}"
                 return self.config.get(prefixed_key, lagrange_config.get(key, LAGRANGE_DEFAULTS.get(key, default)))
@@ -774,13 +816,13 @@ class UnifiedTrainer:
         return ensemble_system
 
     def _train_curriculum(self) -> Optional[bool]:
-        """Train using curriculum learning approach (P0→P2 staged learning)."""
+        """Train using curriculum learning approach (P0->P2 staged learning)."""
         unified_config = self.build_unified_config()
         
         from ztb.training.experiments.curriculum_learning import main as curriculum_main
 
         # Set up environment for curriculum learning
-        self.logger.info("Starting curriculum learning (P0→P2 staged approach)")
+        self.logger.info("Starting curriculum learning (P0->P2 staged approach)")
 
         # Validate data path
         data_path = unified_config.get("data_path", "ml-dataset-enhanced.csv")

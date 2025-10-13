@@ -115,7 +115,7 @@ def load_csv_data_iter(
         raise FileNotFoundError(f"Data file not found: {file_path}")
 
     try:
-        return pd.read_csv(file_path, chunksize=chunksize, **kwargs)
+        return cast(Iterator[pd.DataFrame], pd.read_csv(file_path, chunksize=chunksize, **kwargs))
     except Exception as e:
         raise ValueError(f"Failed to load data from {file_path}: {e}") from e
 

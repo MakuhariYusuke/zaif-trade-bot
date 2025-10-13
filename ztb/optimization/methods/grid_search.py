@@ -15,7 +15,7 @@ Grid Search: 全組み合わせを網羅的に探索
 - 連続値パラメータは離散化が必要
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable, Optional
 import itertools
 import time
 
@@ -23,6 +23,7 @@ from ztb.optimization.base import (
     OptimizerBase,
     ParameterSpace,
     ParameterType,
+    TrialResult,
     OptimizationResult
 )
 
@@ -49,8 +50,8 @@ class GridSearchOptimizer(OptimizerBase):
     def __init__(
         self,
         parameter_spaces: List[ParameterSpace],
-        objective_function,
-        grid_resolution: Dict[str, List[Any]] = None,
+        objective_function: Callable[[dict[str, Any]], TrialResult],
+        grid_resolution: Optional[Dict[str, List[Any]]] = None,
         random_state: int = 42
     ):
         """
@@ -68,11 +69,14 @@ class GridSearchOptimizer(OptimizerBase):
             random_state=random_state
         )
         
+        # Ensure n_trials is int for type safety
+        self.n_trials: int = 0
+        
         # グリッド解像度の設定
         self.grid_resolution = grid_resolution or {}
         self._build_grid()
     
-    def _build_grid(self):
+    def _build_grid(self) -> None:
         """パラメータグリッドを構築"""
         self.grid = {}
         
@@ -96,24 +100,30 @@ class GridSearchOptimizer(OptimizerBase):
         import numpy as np
         
         if param_space.param_type == ParameterType.CATEGORICAL:
-            return param_space.choices
+            return param_space.choices or []
         
         elif param_space.param_type == ParameterType.INTEGER:
             # 整数: 最大5ステップ
+            if param_space.low is None or param_space.high is None:
+                return []
             n_steps = min(5, int(param_space.high - param_space.low + 1))
             return [int(x) for x in np.linspace(param_space.low, param_space.high, n_steps)]
         
         elif param_space.param_type == ParameterType.CONTINUOUS:
             # 連続値: 5ステップ
+            if param_space.low is None or param_space.high is None:
+                return []
             return list(np.linspace(param_space.low, param_space.high, 5))
         
         elif param_space.param_type == ParameterType.LOG_UNIFORM:
             # 対数スケール: 5ステップ
+            if param_space.low is None or param_space.high is None:
+                return []
             log_values = np.linspace(np.log10(param_space.low), 
                                      np.log10(param_space.high), 5)
             return [10 ** x for x in log_values]
         
-        return [param_space.default] if param_space.default is not None else []
+        return []
     
     def optimize(self) -> OptimizationResult:
         """Grid Searchで最適化を実行"""

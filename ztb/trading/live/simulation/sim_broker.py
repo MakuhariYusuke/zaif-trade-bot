@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from live.exchanges.base.broker_interfaces import Balance, IBroker, Order, Position
-from live.orders.state import OrderStateMachine
+from ztb.trading.live.exchanges.base.broker_interfaces import Balance, IBroker, Order, Position
+from ztb.trading.live.orders.state import OrderStateMachine
 
 
 class SimBroker(IBroker):  # type: ignore[misc]
@@ -151,7 +151,7 @@ class SimBroker(IBroker):  # type: ignore[misc]
         self.orders[order_id] = order
 
         # Register with state machine
-        from .order_state import OrderData
+        from ztb.trading.live.orders.state import OrderData
 
         order_data = OrderData(
             order_id=order_id,

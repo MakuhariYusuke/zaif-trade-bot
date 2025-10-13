@@ -6,9 +6,9 @@ SAC v395i成功後の改善点分析スクリプト
 
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
-def analyze_current_state() -> Dict:
+def analyze_current_state() -> Dict[str, Any]:
     """現在の状態を分析"""
     return {
         "training_status": {
@@ -26,7 +26,7 @@ def analyze_current_state() -> Dict:
         }
     }
 
-def identify_short_term_improvements() -> List[Dict]:
+def identify_short_term_improvements() -> List[Dict[str, Any]]:
     """短期的改善点（すぐに実施可能）"""
     return [
         {
@@ -107,7 +107,7 @@ def identify_short_term_improvements() -> List[Dict]:
         }
     ]
 
-def identify_medium_term_improvements() -> List[Dict]:
+def identify_medium_term_improvements() -> List[Dict[str, Any]]:
     """中期的改善点（1-2週間で実施）"""
     return [
         {
@@ -173,7 +173,7 @@ def identify_medium_term_improvements() -> List[Dict]:
         }
     ]
 
-def identify_long_term_improvements() -> List[Dict]:
+def identify_long_term_improvements() -> List[Dict[str, Any]]:
     """長期的改善点（1ヶ月以上）"""
     return [
         {
@@ -246,7 +246,7 @@ def identify_long_term_improvements() -> List[Dict]:
         }
     ]
 
-def calculate_improvement_potential() -> Dict:
+def calculate_improvement_potential() -> Dict[str, Any]:
     """各改善点の潜在的効果を評価"""
     return {
         "training_scale": {
@@ -294,7 +294,7 @@ def calculate_improvement_potential() -> Dict:
         }
     }
 
-def generate_improvement_roadmap() -> Dict:
+def generate_improvement_roadmap() -> Dict[str, Any]:
     """改善のロードマップ"""
     return {
         "phase_1_immediate": {
@@ -342,7 +342,7 @@ def generate_improvement_roadmap() -> Dict:
         }
     }
 
-def main():
+def main() -> None:
     print("=" * 80)
     print("  SAC v395i 成功後の改善点分析")
     print("=" * 80)

@@ -204,6 +204,27 @@ class TestSACConfigIntegration:
         assert sac_config["gamma"] == 0.95
         assert sac_config["ent_coef"] == 0.2
     
+    def test_sac_params_alias(self):
+        """sac_paramsエイリアスから設定を取得できる。"""
+        config = {
+            "algorithm": "sac",
+            "sac_params": {
+                "learning_rate": 2e-4,
+                "buffer_size": 64000,
+                "batch_size": 128,
+                "target_update_interval": 5,
+                "policy_kwargs": {"activation_fn": "relu"},
+            }
+        }
+        builder = ConfigBuilder(config)
+        sac_config = builder.get_sac_core_config()
+        
+        assert sac_config["learning_rate"] == 2e-4
+        assert sac_config["buffer_size"] == 64000
+        assert sac_config["batch_size"] == 128
+        assert sac_config["target_update_interval"] == 5
+        assert sac_config["policy_kwargs"]["activation_fn"] == "relu"
+    
     def test_sac_section_fallback(self):
         """sacセクションからの設定取得（後方互換性）。"""
         config = {

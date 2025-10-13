@@ -29,7 +29,7 @@ from ztb.utils.data_utils import load_csv_data_optimized
 class EnvironmentDiagnostics:
     """環境診断クラス"""
     
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str) -> None:
         """
         Args:
             config_path: 設定ファイルパス
@@ -42,7 +42,7 @@ class EnvironmentDiagnostics:
             "summary": {}
         }
     
-    def setup_environment(self):
+    def setup_environment(self) -> None:
         """環境セットアップ"""
         print(f"\n{'='*80}")
         print(f"環境診断開始: {self.config_path}")
@@ -217,7 +217,7 @@ class EnvironmentDiagnostics:
         
         return analysis
     
-    def print_analysis(self, analysis: Dict[str, Any]):
+    def print_analysis(self, analysis: Dict[str, Any]) -> None:
         """分析結果を見やすく表示"""
         print(f"\n{'='*80}")
         print(f"Episode {analysis['episode']} 分析結果")
@@ -351,7 +351,7 @@ class EnvironmentDiagnostics:
         
         return summary
     
-    def print_summary(self, summary: Dict[str, Any]):
+    def print_summary(self, summary: Dict[str, Any]) -> None:
         """サマリー表示"""
         print(f"\n{'='*80}")
         print(f"全体サマリー")
@@ -384,13 +384,13 @@ class EnvironmentDiagnostics:
         else:
             print(f"\n【✓ 重大な問題は検出されませんでした】")
     
-    def save_diagnostics(self, output_path: str = "sac_environment_diagnostics.json"):
+    def save_diagnostics(self, output_path: str = "sac_environment_diagnostics.json") -> None:
         """診断結果を保存"""
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(self.diagnostics, f, indent=2, ensure_ascii=False)
         print(f"\n診断結果を保存: {output_path}")
     
-    def run(self, num_episodes: int = 3, num_steps_per_episode: int = 100):
+    def run(self, num_episodes: int = 3, num_steps_per_episode: int = 100) -> None:
         """
         診断実行
         
@@ -434,7 +434,7 @@ class EnvironmentDiagnostics:
         print(f"{'='*80}\n")
 
 
-def main():
+def main() -> None:
     """メイン実行"""
     # v395g設定を使用（最新バージョン）
     config_path = "configs/sac_v395g_micro_reward.json"

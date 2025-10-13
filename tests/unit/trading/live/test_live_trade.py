@@ -42,7 +42,7 @@ class TestShouldTradeSellBiasLogic:
         }
         
         # Import and call the actual method
-        from live_trade import LiveTrader
+        from ztb.trading.live_trader.live_trader import LiveTrader
         ACTION_SELL = 2
         result = LiveTrader._should_trade_sell_bias(mock_trader, ACTION_SELL)
         
@@ -66,13 +66,13 @@ class TestShouldTradeSellBiasLogic:
             "sell_warmup_trades": 2
         }
         
-        from live_trade import LiveTrader
+        from ztb.trading.live_trader.live_trader import LiveTrader
         ACTION_SELL = 2
         result = LiveTrader._should_trade_sell_bias(mock_trader, ACTION_SELL)
         
         assert result is True, "Bug #33: Long closes should be allowed during warmup"
 
-    @patch('live_trade.np.random.random')
+    @patch('ztb.trading.live_trader.live_trader.np.random.random')
     def test_bug_41_buy_always_allowed_for_short_close(self, mock_random):
         """
         Bug #41 Fix Verification:
@@ -94,7 +94,7 @@ class TestShouldTradeSellBiasLogic:
         # Set random to low value (would reject if filter was applied)
         mock_random.return_value = 0.01  # Very low probability
         
-        from live_trade import LiveTrader
+        from ztb.trading.live_trader.live_trader import LiveTrader
         ACTION_BUY = 1
         result = LiveTrader._should_trade_sell_bias(mock_trader, ACTION_BUY)
         
@@ -102,7 +102,7 @@ class TestShouldTradeSellBiasLogic:
         # Verify random was NOT called (no probability filter)
         mock_random.assert_not_called()
 
-    @patch('live_trade.np.random.random')
+    @patch('ztb.trading.live_trader.live_trader.np.random.random')
     def test_bug_41_buy_probability_filter_for_new_positions(self, mock_random):
         """
         Bug #41 Fix Verification:
@@ -123,7 +123,7 @@ class TestShouldTradeSellBiasLogic:
         
         # Case 1: Random passes filter
         mock_random.return_value = 0.2  # Below 0.3 threshold
-        from live_trade import LiveTrader
+        from ztb.trading.live_trader.live_trader import LiveTrader
         ACTION_BUY = 1
         result = LiveTrader._should_trade_sell_bias(mock_trader, ACTION_BUY)
         assert result is True, "BUY should be allowed when random passes filter"
@@ -147,7 +147,7 @@ class TestBugFixDocumentation:
 
     def test_action_constants_defined(self):
         """Verify ACTION_* constants are defined in live_trade.py."""
-        from live_trade import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+        from ztb.trading.live_trader.live_trader import ACTION_HOLD, ACTION_BUY, ACTION_SELL
         assert ACTION_HOLD == 0
         assert ACTION_BUY == 1
         assert ACTION_SELL == 2

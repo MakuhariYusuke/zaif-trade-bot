@@ -17,7 +17,7 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-def diagnose_v381_features():
+def diagnose_v381_features() -> None:
     """v381の特徴量問題を診断"""
     
     print("=" * 80)

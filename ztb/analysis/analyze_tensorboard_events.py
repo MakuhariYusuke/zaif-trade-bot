@@ -4,10 +4,11 @@ v395g（失敗）とv395i（成功）の違いを徹底的に分析
 """
 import sys
 from pathlib import Path
+from typing import Any
 from tensorboard.backend.event_processing import event_accumulator
 import json
 
-def analyze_tensorboard_events(event_file_path, session_name):
+def analyze_tensorboard_events(event_file_path: str, session_name: str) -> None:
     """TensorBoardイベントを解析"""
     print(f"\n{'='*80}")
     print(f"分析中: {session_name}")
@@ -59,7 +60,7 @@ def analyze_tensorboard_events(event_file_path, session_name):
     
     return metrics
 
-def compare_sessions(metrics1, metrics2, name1, name2):
+def compare_sessions(metrics1: dict[str, Any], metrics2: dict[str, Any], name1: str, name2: str) -> None:
     """2つのセッションを比較"""
     print(f"\n{'='*80}")
     print(f"比較: {name1} vs {name2}")
@@ -89,7 +90,7 @@ def compare_sessions(metrics1, metrics2, name1, name2):
                     else:
                         print(f"  ❌ {name1}の方が良い（損失が低い）")
 
-def main():
+def main() -> None:
     # SAC_11 (v395g) - 失敗版
     sac11_path = Path("checkpoints/sac_session/SAC_11")
     sac11_event = list(sac11_path.glob("events.out.tfevents.*"))[0]

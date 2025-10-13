@@ -6,7 +6,7 @@ import os
 from tensorboard.backend.event_processing import event_accumulator
 import json
 
-def compare_three_versions(log_dir):
+def compare_three_versions(log_dir: str) -> None:
     """
     3つのSACバージョンを比較
     """

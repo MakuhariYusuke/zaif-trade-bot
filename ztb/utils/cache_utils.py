@@ -116,7 +116,7 @@ class MemoryAwareCache:
             self.current_memory = 0
 
 
-def cached_with_ttl(ttl_seconds: float):
+def cached_with_ttl(ttl_seconds: float) -> Callable[[F], F]:
     """
     Decorator that caches function results with TTL.
 
@@ -146,7 +146,7 @@ def cached_with_ttl(ttl_seconds: float):
     return decorator
 
 
-def memory_cached(max_memory_mb: float = 50.0):
+def memory_cached(max_memory_mb: float = 50.0) -> Callable[[F], F]:
     """
     Decorator that caches function results with memory limits.
 

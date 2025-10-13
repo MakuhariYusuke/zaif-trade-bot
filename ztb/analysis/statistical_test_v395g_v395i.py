@@ -5,13 +5,14 @@ Welchのt検定とCohen's d効果量を計算
 import numpy as np
 from scipy import stats
 import json
+from typing import Any, Tuple, cast
 
-def welch_t_test(data1, data2, metric_name):
+def welch_t_test(data1: Any, data2: Any, metric_name: str) -> Tuple[float, float]:
     """Welchのt検定を実施"""
     t_stat, p_value = stats.ttest_ind(data1, data2, equal_var=False)
     return t_stat, p_value
 
-def cohen_d(data1, data2):
+def cohen_d(data1: Any, data2: Any) -> float:
     """Cohen's d効果量を計算"""
     n1, n2 = len(data1), len(data2)
     var1, var2 = np.var(data1, ddof=1), np.var(data2, ddof=1)
@@ -20,9 +21,9 @@ def cohen_d(data1, data2):
     if pooled_std == 0:
         return np.inf if np.mean(data1) != np.mean(data2) else 0
     
-    return (np.mean(data1) - np.mean(data2)) / pooled_std
+    return cast(float, (np.mean(data1) - np.mean(data2)) / pooled_std)
 
-def interpret_cohen_d(d):
+def interpret_cohen_d(d: float) -> str:
     """Cohen's dの解釈"""
     abs_d = abs(d)
     if abs_d < 0.2:
@@ -34,7 +35,7 @@ def interpret_cohen_d(d):
     else:
         return "large (大)"
 
-def main():
+def main() -> None:
     print("\n" + "="*80)
     print("SAC v395g vs v395i - 統計的検定")
     print("="*80 + "\n")

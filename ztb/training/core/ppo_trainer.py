@@ -601,6 +601,8 @@ class PPOTrainer(PPOTrainerAutoHalt):
         )
         super().__init__(params)
 
+        super().__init__(params)
+
 # Exported symbols
 __all__ = [
     "PPOTrainer",
@@ -613,3 +615,16 @@ __all__ = [
     "Timeframe",
     "PPOConfig",
 ]
+
+# Alias for backward compatibility
+PPOTrainer = PPOTrainerAutoHalt
+
+
+class PPOTrainer(PPOTrainerAutoHalt):
+    """
+    Legacy PPOTrainer class for backward compatibility.
+    
+    This is an alias for PPOTrainerAutoHalt to maintain backward compatibility
+    with existing code that imports PPOTrainer.
+    """
+    pass

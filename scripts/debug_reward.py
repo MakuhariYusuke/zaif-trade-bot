@@ -49,8 +49,8 @@ def test_reward_scenarios():
         "trade_execution_bonus_rate": 0.1,
         "buy_action_penalty": -2.0,     # Increased bonus for BUY actions
         "sell_action_penalty": -2.0,    # Increased bonus for SELL actions
-        "action_threshold_buy": 0.15,   # Narrower threshold for more BUY actions
-        "action_threshold_sell": -0.15, # Narrower threshold for more SELL actions
+        "action_threshold_buy": 0.05,   # Adjusted for SELL bias correction
+        "action_threshold_sell": -0.3, # Adjusted for SELL bias correction
     }
 
     # Create environment config mock

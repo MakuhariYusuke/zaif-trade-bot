@@ -127,8 +127,8 @@ def create_environment(config_path: str) -> HeavyTradingEnv:
     if 'reward_settings' in config_data:
         env_config_dict['reward_settings'] = config_data['reward_settings']
 
-    # Override curriculum stage to forced_balance for balanced learning
-    env_config_dict['curriculum_stage'] = 'forced_balance'
+    # Override curriculum stage to ultra_profit for maximum profitability
+    env_config_dict['curriculum_stage'] = 'ultra_profit'
 
     print("DEBUG: Final env_config_dict keys:", list(env_config_dict.keys()))
     print("DEBUG: Final use_continuous_actions:", env_config_dict.get('use_continuous_actions'))
@@ -271,9 +271,9 @@ def validate_training(model: SAC, env: HeavyTradingEnv, n_episodes: int = 10) ->
 
 def main():
     # Configuration
-    config_path = "config/sac_v404_config.json"
-    model_save_path = "checkpoints/sac_continuous_zero_reward_v1.zip"
-    total_timesteps = 20000  # Longer training for forced balance learning
+    config_path = "config/sac_v413_ultra_profit_config.json"
+    model_save_path = "checkpoints/sac_v413_ultra_profit.zip"
+    total_timesteps = 50000  # Longer training for ultra profit optimization
 
     try:
         # Create environment
@@ -290,11 +290,11 @@ def main():
         validation_results = validate_training(model, env, n_episodes=5)
 
         # Save validation results
-        with open("results/sac_continuous_zero_reward_validation.json", 'w', encoding='utf-8') as f:
+        with open("results/sac_v413_ultra_profit_validation.json", 'w', encoding='utf-8') as f:
             json.dump(validation_results, f, indent=2, ensure_ascii=False)
 
         print("\n" + "="*60)
-        print("SAC CONTINUOUS ACTION TRAINING COMPLETED")
+        print("SAC ULTRA PROFIT TRAINING COMPLETED")
         print("="*60)
         print(f"Model saved: {model_save_path}")
         print(".2f")

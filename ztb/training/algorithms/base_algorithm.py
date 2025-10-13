@@ -57,8 +57,8 @@ class BaseRLAlgorithm(ABC):
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
-        callback: Optional[Callable] = None,
-        **kwargs
+        callback: Optional[Callable[..., Any]] = None,
+        **kwargs: Any
     ) -> BaseAlgorithm:
         """
         モデルを訓練する。

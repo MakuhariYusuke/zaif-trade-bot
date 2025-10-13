@@ -54,6 +54,8 @@ class RewardSettings(TypedDict, total=False):
     profit_bonus_multipliers: List[float]
     enable_forced_diversity: bool
     custom_reward_params: Dict[str, float]
+    balance_penalty: float
+    balance_penalty_tolerance: float
 
 
 @dataclasses.dataclass
@@ -120,6 +122,7 @@ class EnvironmentConfig:
     # Action space configuration
     use_continuous_actions: bool = False  # True for SAC, False for PPO
     enable_action_masking: bool = False   # Only for discrete actions (PPO)
+    continuous_to_discrete_threshold: float = 0.33  # Threshold for SAC continuous→discrete conversion
 
     # Trading behavior settings
     allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
@@ -185,6 +188,7 @@ class EnvironmentConfig:
                     "reward_sharpe_bonus_scale",
                     "reward_clip_value",
                     "initial_portfolio_value",
+                    "continuous_to_discrete_threshold",
                 ] and isinstance(value, str):
                     try:
                         value = float(value)

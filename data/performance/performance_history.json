@@ -1,0 +1,12 @@
+[
+  {
+    "timestamp": "2025-10-11T21:02:07.130063",
+    "cpu_percent": 16.1,
+    "memory_percent": 88.2,
+    "disk_usage_percent": 36.2,
+    "network_bytes_sent": 3874986614,
+    "network_bytes_recv": 329403064,
+    "gpu_memory_used_mb": null,
+    "gpu_utilization_percent": null
+  }
+]

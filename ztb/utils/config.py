@@ -7,7 +7,7 @@ Central configuration management for ZTB system
 import json
 import logging
 import os
-from typing import Any, Optional, TypeVar, Dict, List
+from typing import Any, Optional, TypeVar, Dict, List, cast
 
 from ztb.utils.logging_utils import get_logger
 
@@ -75,7 +75,7 @@ class ZTBConfig:
 
     def get_model_dir(self) -> str:
         """Get the base directory for model files."""
-        return self.get("ZTB_MODEL_DIR", "models")
+        return cast(str, self.get("ZTB_MODEL_DIR", "models"))
 
     def get_model_path(self, model_name: str) -> str:
         """Get full path for a specific model file."""
@@ -304,7 +304,7 @@ class TypedConfig:
 
     def get_model_dir(self) -> str:
         """Get the base directory for model files."""
-        return self.__dict__.get("model_dir", "models")
+        return cast(str, self.__dict__.get("model_dir", "models"))
 
     def get_model_path(self, model_name: str) -> str:
         """Get full path for a specific model file."""

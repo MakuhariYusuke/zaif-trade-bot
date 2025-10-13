@@ -20,7 +20,7 @@ Bergstra & Bengio (2012)の研究で、Grid Searchより効率的であること
 - 計算リソースが限られている
 """
 
-from typing import List
+from typing import Any, Callable, List, Dict
 import time
 import random
 import numpy as np
@@ -28,7 +28,8 @@ import numpy as np
 from ztb.optimization.base import (
     OptimizerBase,
     ParameterSpace,
-    OptimizationResult
+    OptimizationResult,
+    TrialResult
 )
 
 
@@ -56,7 +57,7 @@ class RandomSearchOptimizer(OptimizerBase):
     def __init__(
         self,
         parameter_spaces: List[ParameterSpace],
-        objective_function,
+        objective_function: Callable[[dict[str, Any]], TrialResult],
         n_trials: int = 20,
         random_state: int = 42
     ):
@@ -74,11 +75,14 @@ class RandomSearchOptimizer(OptimizerBase):
             random_state=random_state
         )
         
+        # Ensure n_trials is not None for type safety
+        self.n_trials: int = n_trials
+        
         # 乱数シードの設定
         random.seed(random_state)
         np.random.seed(random_state)
     
-    def _sample_parameters(self) -> dict:
+    def _sample_parameters(self) -> dict[str, Any]:
         """パラメータをランダムにサンプリング"""
         parameters = {}
         for param_name, param_space in self.parameter_spaces.items():

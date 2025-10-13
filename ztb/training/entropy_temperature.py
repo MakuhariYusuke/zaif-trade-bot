@@ -21,7 +21,7 @@ minority actions continue to be sampled.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 import torch
@@ -93,7 +93,7 @@ class TargetEntropyController:
     @property
     def alpha(self) -> float:
         """Get current temperature (α = exp(log_alpha))."""
-        return torch.exp(self.log_alpha).item()
+        return cast(float, torch.exp(self.log_alpha).item())
     
     def compute_entropy(
         self,

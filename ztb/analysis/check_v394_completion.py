@@ -8,7 +8,7 @@ from pathlib import Path
 import json
 
 
-def check_training_completion():
+def check_training_completion() -> None:
     """各v394バージョンの訓練完了状況を確認"""
     
     sessions = {

@@ -2,10 +2,11 @@
 """
 Backtest Script for Zaif Trade Bot.
 
-Tests a trained PPO model using historical BTC/JPY data.
+Tests a trained model (PPO/SAC) using historical BTC/JPY data.
 """
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
 from sb3_contrib import MaskablePPO
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, SAC
 
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.performance_utils import timed
@@ -104,6 +105,7 @@ def run_backtest(
     curriculum_stage: str = "forced_balance",
     transaction_cost: float = 0.0005,
     max_steps: Optional[int] = None,
+    config_path: Optional[str] = None,
     verbose: bool = True,
 ) -> Dict[str, Any]:
     """Run backtest simulation."""
@@ -120,9 +122,15 @@ def run_backtest(
         logger.info("Loaded model as MaskablePPO")
     except Exception as e:
         logger.info(f"Failed to load as MaskablePPO: {e}, trying regular PPO")
-        model = PPO.load(model_path)
-        model_type = "PPO"
-        logger.info("Loaded model as PPO")
+        try:
+            model = PPO.load(model_path)
+            model_type = "PPO"
+            logger.info("Loaded model as PPO")
+        except Exception as e2:
+            logger.info(f"Failed to load as PPO: {e2}, trying SAC")
+            model = SAC.load(model_path)
+            model_type = "SAC"
+            logger.info("Loaded model as SAC")
 
     # Load data
     logger.info(f"Loading data from {data_path}")
@@ -135,27 +143,39 @@ def run_backtest(
         logger.info(f"Limited to {max_steps} steps")
 
     # Create environment
-    config = {
-        "transaction_cost": transaction_cost,
-        "enable_correlation_reduction": True,
-        "correlation_threshold": 0.95,
-        "max_position_size": 0.5,
-        "curriculum_stage": curriculum_stage,  # Match training configuration
-        "reward_trade_frequency_penalty": 0.01,
-        "reward_trade_frequency_halflife": 1.0,
-        "reward_trade_cooldown_steps": 0,
-        "reward_trade_cooldown_penalty": 0.01,
-        "reward_max_consecutive_trades": 20,
-        "reward_consecutive_trade_penalty": 0.01,
-        "reward_position_penalty_scale": 0.1,
-        "reward_position_penalty_exponent": 2.0,
-        "reward_inventory_penalty_scale": 0.01,
-        "reward_volatility_penalty_scale": 0.01,
-    }
+    if config_path:
+        with open(config_path, 'r') as f:
+            config_data = json.load(f)
+        # Extract environment config
+        env_config = config_data.get("environment", {})
+        # Add reward_settings to env_config so reward_calculator can access them
+        if "reward_settings" in config_data.get("environment", {}):
+            env_config.update(config_data["environment"]["reward_settings"])
+        env_config["transaction_cost"] = transaction_cost
+        # Use curriculum_stage from config if available, otherwise use parameter
+        env_config["curriculum_stage"] = env_config.get("curriculum_stage", curriculum_stage)
+    else:
+        env_config = {
+            "transaction_cost": transaction_cost,
+            "enable_correlation_reduction": True,
+            "correlation_threshold": 0.95,
+            "max_position_size": 0.5,
+            "curriculum_stage": curriculum_stage,  # Match training configuration
+            "reward_trade_frequency_penalty": 0.01,
+            "reward_trade_frequency_halflife": 1.0,
+            "reward_trade_cooldown_steps": 0,
+            "reward_trade_cooldown_penalty": 0.01,
+            "reward_max_consecutive_trades": 20,
+            "reward_consecutive_trade_penalty": 0.01,
+            "reward_position_penalty_scale": 0.1,
+            "reward_position_penalty_exponent": 2.0,
+            "reward_inventory_penalty_scale": 0.01,
+            "reward_volatility_penalty_scale": 0.01,
+        }
 
     env = HeavyTradingEnv(
         df=df,
-        config=config,
+        config=env_config,
         random_start=False,
     )
 
@@ -179,7 +199,20 @@ def run_backtest(
         else:
             action, _ = model.predict(obs, deterministic=False)
         
-        action = cast(int, action.item() if hasattr(action, "item") else action)
+        # Convert continuous action to discrete for SAC models
+        if model_type == "SAC":
+            # SAC uses continuous actions, convert to discrete
+            # threshold = 0.33 as used in training
+            if action > 0.33:
+                discrete_action = 1  # BUY
+            elif action < -0.33:
+                discrete_action = 2  # SELL
+            else:
+                discrete_action = 0  # HOLD
+            action = discrete_action
+        else:
+            action = cast(int, action.item() if hasattr(action, "item") else action)
+        
         actions_taken.append(action)
 
         obs, _, terminated, truncated, _ = env.step(action)
@@ -302,8 +335,12 @@ def main() -> None:
         help="Maximum steps to simulate (default: all data)",
     )
     parser.add_argument(
+        "--config",
+        help="Path to config file (JSON format)",
+    )
+    parser.add_argument(
         "--output",
-        help="Output file for results (JSON format)",
+        help="Path to save results as JSON (optional)",
     )
 
     args = parser.parse_args()
@@ -315,6 +352,7 @@ def main() -> None:
         initial_capital=args.initial_capital,
         transaction_cost=args.transaction_cost,
         max_steps=args.max_steps,
+        config_path=args.config,
     )
 
     # Print results

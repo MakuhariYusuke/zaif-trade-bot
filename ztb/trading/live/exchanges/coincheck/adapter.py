@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 
 import requests
 
+from ztb.utils.errors import NetworkError
 from ztb.utils.rate_limiter import RateLimitConfig, RateLimiter
 
 from ..base.broker_interfaces import Balance, IBroker, Order, Position
@@ -36,6 +37,8 @@ class CoincheckAdapter(IBroker):
         rate_limiter: Optional[RateLimiter] = None,
         fixed_price: Optional[float] = None,
         random_seed: Optional[int] = None,
+        api_base_url: str = "https://coincheck.com",
+        request_timeout: float = 10.0,
     ) -> None:
         """Initialize Coincheck adapter.
 
@@ -46,10 +49,14 @@ class CoincheckAdapter(IBroker):
             rate_limiter: Rate limiter for API calls
             fixed_price: If set, always return this price in get_current_price (for testing)
             random_seed: If set, seed the random number generator for reproducibility
+            api_base_url: Base URL for Coincheck API
+            request_timeout: Timeout for API requests in seconds
         """
         self.api_key = api_key
         self.api_secret = api_secret
         self.dry_run = dry_run
+        self.api_base_url = api_base_url
+        self.request_timeout = request_timeout
         self.fixed_price = fixed_price
         if random_seed is not None:
             random.seed(random_seed)
@@ -251,18 +258,41 @@ class CoincheckAdapter(IBroker):
 
         # For dry-run, try to get real price first, then simulate if needed
         try:
-            # Try to get real price from Coincheck API
-            response = requests.get("https://coincheck.com/api/ticker", timeout=10)
+            # Try to get real price from Coincheck API with improved error handling
+            response = requests.get(
+                f"{self.api_base_url}/api/ticker",
+                timeout=self.request_timeout,
+                headers={"User-Agent": "ZaifTradeBot/1.0"}
+            )
             response.raise_for_status()
             data = response.json()
             if isinstance(data, dict) and "last" in data:
                 real_price = float(data["last"])
                 # Update our simulated price with real price
                 self._current_prices[symbol] = real_price
+                logger.debug(f"Retrieved real price from Coincheck API: {real_price}")
                 return real_price
-        except Exception as e:
+        except requests.exceptions.Timeout:
+            logger.warning("Coincheck API request timed out, using simulated price")
+            raise NetworkError(
+                "Coincheck API request timed out",
+                details={"symbol": symbol, "timeout": self.request_timeout, "url": f"{self.api_base_url}/api/ticker"}
+            )
+        except requests.exceptions.RequestException as e:
             logger.warning(
                 f"Failed to get real price from Coincheck API: {e}, using simulated price"
+            )
+            raise NetworkError(
+                f"Coincheck API request failed: {str(e)}",
+                details={"symbol": symbol, "error": str(e), "url": f"{self.api_base_url}/api/ticker"}
+            )
+        except (ValueError, KeyError) as e:
+            logger.warning(
+                f"Invalid response from Coincheck API: {e}, using simulated price"
+            )
+            raise NetworkError(
+                f"Invalid Coincheck API response: {str(e)}",
+                details={"symbol": symbol, "error": str(e), "url": f"{self.api_base_url}/api/ticker"}
             )
 
         # Fallback to simulated price

@@ -78,7 +78,7 @@ class VenueHealthChecker:
         try:
             # Venue-specific ticker endpoints
             if self.venue == "coincheck":
-                url = f"{self.rest_base}/api/exchange/ticker"
+                url = f"{self.rest_base}/api/v1/ticker"
                 rate_limit_header = "X-RateLimit-Remaining"
                 rate_reset_header = "X-RateLimit-Reset"
             elif self.venue == "bitflyer":
@@ -163,7 +163,7 @@ class VenueHealthChecker:
                 }
 
             async with websockets.connect(
-                self.ws_url, extra_headers={"User-Agent": "HealthCheck/1.0"}
+                self.ws_url
             ) as websocket:
                 connect_time = (time.time() - start_time) * 1000
 

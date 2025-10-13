@@ -17,9 +17,9 @@ T = TypeVar('T', bound=np.floating)
 U = TypeVar('U', bound=np.integer)
 
 # Generic array types
-NDArrayFloat = np.ndarray[Any, np.dtype[np.floating[T]]]
-NDArrayInt = np.ndarray[Any, np.dtype[np.integer[U]]]
-NDArrayBool = np.ndarray[Any, np.dtype[np.bool_]]
+NDArrayFloat = np.ndarray[Any, Any]
+NDArrayInt = np.ndarray[Any, Any]
+NDArrayBool = np.ndarray[Any, Any]
 
 
 # Basic data types
