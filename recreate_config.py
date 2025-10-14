@@ -1,4 +1,6 @@
-{
+import json
+
+config = {
   "model_name": "sac_v418_balanced_adjusted",
   "algorithm": "sac",
   "total_timesteps": 1000,
@@ -6,7 +8,7 @@
   "data_path": "btc_jpy_real_dataset.csv",
   "data_config": {
     "csv_path": "btc_jpy_real_dataset.csv",
-    "use_real_data": true
+    "use_real_data": True
   },
   "sac_hyperparameters": {
     "learning_rate": 0.0003,
@@ -23,12 +25,12 @@
   },
   "environment": {
     "initial_balance": 200000,
-    "transaction_cost": 1e-05,
+    "transaction_cost": 0.00001,
     "max_position_size": 1.0,
-    "enable_action_masking": false,
-    "use_continuous_actions": true,
-    "use_standardized_observations": true,
-    "random_start": true,
+    "enable_action_masking": False,
+    "use_continuous_actions": True,
+    "use_standardized_observations": True,
+    "random_start": True,
     "curriculum_stage": "profit_optimized",
     "continuous_to_discrete_threshold": 0.1
   },
@@ -40,9 +42,9 @@
       "base_profit_atr_coefficient": 1.5,
       "base_profit_portfolio_coefficient": 1.2,
       "profit_multipliers": [
-        2.0,
-        0.6,
-        0.4
+        2.0,  # BUY action profit multiplier
+        0.6,  # SELL action profit multiplier
+        0.4   # HOLD action profit multiplier
       ],
       "trading_bonus": 0.01,
       "trading_bonus_multiplier": 4.0
@@ -69,10 +71,10 @@
       "constraint_penalty": 1.0
     },
     "flags": {
-      "enable_forced_diversity": false,
-      "enable_inactivity_penalty": true,
-      "enable_opportunity_cost": true,
-      "enable_trade_execution_bonus": true
+      "enable_forced_diversity": False,
+      "enable_inactivity_penalty": True,
+      "enable_opportunity_cost": True,
+      "enable_trade_execution_bonus": True
     }
   },
   "checkpoint_interval": 1000,
@@ -85,3 +87,8 @@
     "fix_5": "Maintained all advanced reward parameters with better organization"
   }
 }
+
+with open('config/sac_v418_balanced_adjusted_config.json', 'w', encoding='utf-8') as f:
+    json.dump(config, f, indent=2, ensure_ascii=False)
+
+print('Config file updated successfully')

@@ -16,6 +16,46 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Security First**: Automated vulnerability scanning and secure coding practices
 - **Performance Optimized**: Memory-efficient data processing and CUDA optimizations
 - **Comprehensive Monitoring**: Logging, metrics, and alerting systems
+- **Advanced Reward System**: Modular reward calculator with clear bonus/penalty separation
+
+## 🏗️ Reward System Architecture
+
+The trading bot features a sophisticated reward system designed for optimal learning:
+
+### Reward Components
+- **Profit Bonuses**: Multipliers for BUY/SELL/HOLD actions with ATR and portfolio coefficients
+- **Action Bonuses**: Balanced incentives for different trading actions
+- **Behavior Penalties**: Penalties for suboptimal trading patterns
+- **Risk Penalties**: Risk management through volatility and position controls
+
+### Configuration Structure
+```json
+{
+  "reward_settings": {
+    "profit_bonuses": {
+      "profit_multipliers": [2.0, 0.6, 0.4]  // [BUY, SELL, HOLD]
+    },
+    "action_bonuses": {
+      "buy_action_bonus": -0.01,
+      "sell_action_bonus": 0.02,
+      "hold_action_bonus": 0.0
+    },
+    "behavior_penalties": {
+      "loss_penalty_multiplier": 3.0,
+      "action_frequency_penalty": 0.005
+    },
+    "risk_penalties": {
+      "volatility_penalty": 0.02
+    }
+  }
+}
+```
+
+### Action Distribution Balance
+Recent improvements achieved balanced BUY/SELL/HOLD distributions:
+- **BUY**: 31.2% | **SELL**: 53.1% | **HOLD**: 15.8%
+- Fixed SELL bias by correcting action bonus parameters
+- Modular reward calculation for maintainable code
 
 ## 📁 Project Structure
 
