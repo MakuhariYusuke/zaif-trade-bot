@@ -70,23 +70,53 @@ class RewardCalculator:
         return default
 
     def get_setting_float(self, key: str, default: float) -> float:
-        """Get float reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
+        """Get float reward setting with fallback. Supports nested keys with dot notation."""
+        if not self.reward_settings:
+            return default
+
+        # Support nested keys with dot notation (e.g., "profit_bonuses.base_profit_atr_coefficient")
+        keys = key.split('.')
+        value = self.reward_settings
+
+        try:
+            for k in keys:
+                if isinstance(value, dict) and k in value:
+                    value = value[k]
+                else:
+                    return default
+
             if isinstance(value, (int, float)):
                 return float(value)
+        except (KeyError, TypeError):
+            pass
+
         return default
 
     def get_setting_bool(self, key: str, default: bool) -> bool:
-        """Get boolean reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
+        """Get boolean reward setting with fallback. Supports nested keys with dot notation."""
+        if not self.reward_settings:
+            return default
+
+        # Support nested keys with dot notation
+        keys = key.split('.')
+        value = self.reward_settings
+
+        try:
+            for k in keys:
+                if isinstance(value, dict) and k in value:
+                    value = value[k]
+                else:
+                    return default
+
             if isinstance(value, bool):
                 return value
             if isinstance(value, (int, float)):
                 return bool(value)
             if isinstance(value, str):
                 return value.lower() in {"true", "1", "yes", "y", "on"}
+        except (KeyError, TypeError):
+            pass
+
         return default
 
     def calculate_reward(
@@ -303,8 +333,8 @@ class RewardCalculator:
         total_actions = sum(self._action_counts)
         
         # Get penalty and tolerance from settings
-        tolerance = self.get_setting_float("balance_penalty_tolerance", 0.05)
-        penalty = self.get_setting_float("balance_penalty", 4.0)
+        tolerance = self.get_setting_float("behavior_penalties.balance_penalty_tolerance", 0.05)
+        penalty = self.get_setting_float("behavior_penalties.balance_penalty", 4.0)
         self.logger.info(f"Penalty settings: penalty={penalty}, tolerance={tolerance}")
         balance_penalty = 0.0
 
@@ -349,8 +379,8 @@ class RewardCalculator:
 
         # Trading-focused balance penalty: HOLD 10%, BUY 45%, SELL 45%
         target_ratios = [0.1, 0.45, 0.45]  # [HOLD, BUY, SELL] - minimize HOLD
-        tolerance = self.get_setting_float("balance_penalty_tolerance", 0.05)
-        penalty = self.get_setting_float("balance_penalty", 8.0)  # Higher penalty for trading focus
+        tolerance = self.get_setting_float("behavior_penalties.balance_penalty_tolerance", 0.05)
+        penalty = self.get_setting_float("behavior_penalties.balance_penalty", 8.0)  # Higher penalty for trading focus
         balance_penalty = 0.0
 
         if total_actions >= 10:
@@ -644,84 +674,173 @@ class RewardCalculator:
         pnl: float,
         observation: np.ndarray = None,
     ) -> float:
-        """Default reward calculation."""
-        base_profit_bonus = max(0.0, self.get_setting_float("base_profit_bonus_atr_coeff", 1.5) * atr_normalised + self.get_setting_float("base_profit_bonus_portfolio_coeff", 1.2) * portfolio_return) if pnl > 0 else 0.0
+        """Default reward calculation with modular component breakdown."""
 
-        # profit_bonus_multipliers array order: [BUY, SELL, HOLD]
-        multipliers = self.reward_settings.get("profit_bonus_multipliers", [1.0, 1.0, 0.8])
-        
-        # Get action-specific penalties from settings (default: 0.0)
-        hold_penalty = self.get_setting_float("hold_action_penalty", 0.0)
-        buy_penalty = self.get_setting_float("buy_action_penalty", 0.0)
-        sell_penalty = self.get_setting_float("sell_action_penalty", 0.0)
-        
+        # Calculate profit-related components
+        profit_components = self._calculate_profit_components(action, atr_normalised, portfolio_return, pnl)
+
+        # Calculate action-related components
+        action_components = self._calculate_action_components(action, position, effective_max_position, current_price, atr, pnl, observation)
+
+        # Calculate behavior-related components
+        behavior_components = self._calculate_behavior_components(action)
+
+        # Calculate risk-related components
+        risk_components = self._calculate_risk_components(position, effective_max_position, current_price, atr)
+
+        # Combine all components
+        total_reward = (
+            profit_components['profit_bonus'] +
+            action_components['action_penalty'] +  # Already negative
+            action_components['loss_penalty'] +
+            action_components['diversity_bonus'] +
+            action_components['win_rate_bonus'] +
+            action_components['momentum_bonus'] +
+            behavior_components['action_frequency_penalty'] +  # Already negative
+            behavior_components['trading_bonus'] +
+            risk_components['volatility_penalty'] +  # Already negative
+            risk_components['position_penalty']  # Already negative
+        )
+
+        self.logger.debug(
+            f"Reward breakdown: profit={profit_components['profit_bonus']:.4f}, "
+            f"action_penalty={action_components['action_penalty']:.4f}, "
+            f"loss_penalty={action_components['loss_penalty']:.4f}, "
+            f"diversity={action_components['diversity_bonus']:.4f}, "
+            f"win_rate={action_components['win_rate_bonus']:.4f}, "
+            f"momentum={action_components['momentum_bonus']:.4f}, "
+            f"frequency_penalty={behavior_components['action_frequency_penalty']:.4f}, "
+            f"trading_bonus={behavior_components['trading_bonus']:.4f}, "
+            f"volatility_penalty={risk_components['volatility_penalty']:.4f}, "
+            f"position_penalty={risk_components['position_penalty']:.4f}, "
+            f"total={total_reward:.4f}"
+        )
+
+        return total_reward
+
+    def _calculate_profit_components(self, action: int, atr_normalised: float, portfolio_return: float, pnl: float) -> dict:
+        """Calculate profit-related reward components."""
+        # Base profit bonus calculation
+        base_profit_bonus = max(0.0,
+            self.get_setting_float("profit_bonuses.base_profit_atr_coefficient", 1.5) * atr_normalised +
+            self.get_setting_float("profit_bonuses.base_profit_portfolio_coefficient", 1.2) * portfolio_return
+        ) if pnl > 0 else 0.0
+
+        # Apply profit multipliers based on action type
+        multipliers = self.get_setting_float("profit_bonuses.profit_multipliers", [1.0, 1.0, 0.8])
         if action == ACTION_BUY:
             profit_bonus = base_profit_bonus * multipliers[MULTIPLIER_INDEX_BUY]
-            action_penalty = 0.015 + buy_penalty
         elif action == ACTION_SELL:
             profit_bonus = base_profit_bonus * multipliers[MULTIPLIER_INDEX_SELL]
-            action_penalty = 0.015 + sell_penalty
         else:  # HOLD
             profit_bonus = base_profit_bonus * multipliers[MULTIPLIER_INDEX_HOLD]
+
+        return {'profit_bonus': profit_bonus}
+
+    def _calculate_action_components(self, action: int, position: float, effective_max_position: float,
+                                   current_price: float, atr: float, pnl: float, observation: np.ndarray = None) -> dict:
+        """Calculate action-related reward components."""
+        # Action-specific bonuses
+        hold_bonus = self.get_setting_float("action_bonuses.hold_action_bonus", 0.0)
+        buy_bonus = self.get_setting_float("action_bonuses.buy_action_bonus", 0.0)
+        sell_bonus = self.get_setting_float("action_bonuses.sell_action_bonus", 0.0)
+
+        # Calculate base action penalty based on action type
+        if action == ACTION_BUY:
+            action_penalty = 0.015 + buy_bonus
+        elif action == ACTION_SELL:
+            action_penalty = 0.015 + sell_bonus
+        else:  # HOLD
             position_size_factor = abs(position) / effective_max_position
             volatility_factor = min(atr / (current_price * 0.01), 1.0)
-            action_penalty = 0.01 + (0.04 * position_size_factor * volatility_factor) + hold_penalty
+            action_penalty = 0.01 + (0.04 * position_size_factor * volatility_factor) + hold_bonus
 
-        loss_penalty = -0.2 * abs(atr_normalised) if pnl < 0 else 0.0
-        
-        # Forced diversity bonus
+        # Loss penalty
+        loss_penalty = -0.2 * abs(atr) if pnl < 0 else 0.0  # Using atr instead of atr_normalised for consistency
+
+        # Diversity bonus
         diversity_bonus = 0.0
-        if self.get_setting_bool("enable_forced_diversity", False):
+        if self.get_setting_bool("flags.enable_forced_diversity", False):
             diversity_bonus = self._calculate_diversity_bonus(action)
-        
+
         # Win rate bonus
         total_trades = self._win_count + self._loss_count
         win_rate = self._win_count / max(total_trades, 1)
-        win_rate_bonus = self.get_setting_float("win_rate_bonus", 0.0) * win_rate
-        
-        # Momentum bonus (based on RSI and MACD from observation)
-        momentum_bonus = 0.0
-        if observation is not None and len(observation) >= 2:
-            try:
-                rsi_idx = -2 if len(observation) > 2 else None
-                macd_idx = -1 if len(observation) > 1 else None
-                if rsi_idx is not None and macd_idx is not None:
-                    rsi = float(observation[rsi_idx])
-                    macd_hist = float(observation[macd_idx])
-                    momentum_multiplier = self.get_setting_float("momentum_bonus", 0.0)
-                    if action == ACTION_BUY and rsi > 50 and macd_hist > 0:
-                        momentum_bonus = momentum_multiplier
-                    elif action == ACTION_SELL and rsi < 50 and macd_hist < 0:
-                        momentum_bonus = momentum_multiplier
-            except (IndexError, TypeError, ValueError):
-                pass
-        
-        # Volatility penalty
-        volatility_penalty = self.get_setting_float("volatility_penalty", 0.0) * (atr / current_price)
-        
+        win_rate_bonus = self.get_setting_float("action_bonuses.win_rate_bonus", 0.0) * win_rate
+
+        # Momentum bonus
+        momentum_bonus = self._calculate_momentum_bonus(action, observation)
+
+        # Action diversity bonus
+        diversity_bonus_value = self.get_setting_float("action_bonuses.diversity_bonus", 0.0)
+        unique_actions = len(set(self._recent_actions))
+        action_diversity_bonus = diversity_bonus_value * (unique_actions / 3.0)
+
+        return {
+            'action_penalty': -action_penalty,  # Convert to negative for penalty
+            'loss_penalty': loss_penalty,
+            'diversity_bonus': diversity_bonus + action_diversity_bonus,
+            'win_rate_bonus': win_rate_bonus,
+            'momentum_bonus': momentum_bonus
+        }
+
+    def _calculate_behavior_components(self, action: int) -> dict:
+        """Calculate behavior-related reward components."""
         # Action frequency penalty
         action_frequency_penalty = 0.0
         if len(self._recent_actions) >= 5:
             recent_action_count = sum(1 for a in self._recent_actions[-5:] if a != ACTION_HOLD)
-            frequency_penalty_rate = self.get_setting_float("action_frequency_penalty", 0.0)
+            frequency_penalty_rate = self.get_setting_float("behavior_penalties.action_frequency_penalty", 0.0)
             action_frequency_penalty = frequency_penalty_rate * (recent_action_count / 5.0)
-        
-        # Diversity bonus
-        diversity_bonus_value = self.get_setting_float("diversity_bonus", 0.0)
-        unique_actions = len(set(self._recent_actions))
-        diversity_bonus = diversity_bonus_value * (unique_actions / 3.0)  # Normalize by total action types
-        
+
         # Trading bonus
         trading_bonus = 0.0
         if action in [ACTION_BUY, ACTION_SELL]:
-            trading_bonus = self.get_setting_float("trading_bonus", 0.01)
+            trading_bonus = self.get_setting_float("profit_bonuses.trading_bonus", 0.01)
 
+        return {
+            'action_frequency_penalty': -action_frequency_penalty,  # Convert to negative for penalty
+            'trading_bonus': trading_bonus
+        }
+
+    def _calculate_risk_components(self, position: float, effective_max_position: float,
+                                 current_price: float, atr: float) -> dict:
+        """Calculate risk-related reward components."""
+        # Volatility penalty
+        volatility_penalty = self.get_setting_float("risk_penalties.volatility_penalty", 0.0) * (atr / current_price)
+
+        # Position penalty
         position_penalty = self._calculate_position_penalty(position, effective_max_position)
 
-        reward = (profit_bonus - action_penalty + loss_penalty + diversity_bonus + win_rate_bonus + 
-                 momentum_bonus - volatility_penalty - action_frequency_penalty + trading_bonus - position_penalty)
-        self.logger.debug(f"Comprehensive reward components: profit_bonus={profit_bonus:.4f}, action_penalty={action_penalty:.4f}, loss_penalty={loss_penalty:.4f}, diversity_bonus={diversity_bonus:.4f}, win_rate_bonus={win_rate_bonus:.4f}, momentum_bonus={momentum_bonus:.4f}, volatility_penalty={volatility_penalty:.4f}, action_frequency_penalty={action_frequency_penalty:.4f}, trading_bonus={trading_bonus:.4f}, position_penalty={position_penalty:.4f}, final={reward:.4f}")
-        return reward
+        return {
+            'volatility_penalty': -volatility_penalty,  # Convert to negative for penalty
+            'position_penalty': -position_penalty  # Convert to negative for penalty
+        }
+
+    def _calculate_momentum_bonus(self, action: int, observation: np.ndarray = None) -> float:
+        """Calculate momentum-based bonus from technical indicators."""
+        if observation is None or len(observation) < 2:
+            return 0.0
+
+        try:
+            rsi_idx = -2 if len(observation) > 2 else None
+            macd_idx = -1 if len(observation) > 1 else None
+            if rsi_idx is None or macd_idx is None:
+                return 0.0
+
+            rsi = float(observation[rsi_idx])
+            macd_hist = float(observation[macd_idx])
+            momentum_multiplier = self.get_setting_float("action_bonuses.momentum_bonus", 0.0)
+
+            if action == ACTION_BUY and rsi > 50 and macd_hist > 0:
+                return momentum_multiplier
+            elif action == ACTION_SELL and rsi < 50 and macd_hist < 0:
+                return momentum_multiplier
+
+        except (IndexError, TypeError, ValueError):
+            pass
+
+        return 0.0
 
     def _calculate_base_reward(
         self,
@@ -744,7 +863,7 @@ class RewardCalculator:
     def _calculate_position_penalty(self, position: float, effective_max_position: float) -> float:
         """Calculate penalty for excessive position usage."""
         position_utilisation = abs(position) / effective_max_position
-        soft_cap = self.get_setting_float("position_soft_cap", 0.8)
+        soft_cap = self.get_setting_float("risk_penalties.position_penalty_soft_cap", 0.8)
         
         if position_utilisation > soft_cap:
             overuse = position_utilisation - soft_cap
@@ -753,20 +872,6 @@ class RewardCalculator:
             return scale * (math.exp(exponent * overuse) - 1.0)
         
         return 0.0
-
-    def _calculate_diversity_bonus(self, action: int) -> float:
-        """Calculate bonus for action diversity."""
-        if len(self._recent_actions) < 3:
-            return 0.1  # Small bonus for early exploration
-        
-        unique_recent = len(set(self._recent_actions[-10:]))  # Last 10 actions
-        diversity_score = unique_recent / 3.0  # Normalize by action types
-        
-        # Bonus for maintaining diversity
-        base_bonus = 0.05
-        diversity_multiplier = diversity_score ** 2  # Quadratic scaling
-        
-        return base_bonus * diversity_multiplier
 
     def _calculate_diversity_bonus(self, action: int) -> float:
         """Calculate bonus for action diversity."""

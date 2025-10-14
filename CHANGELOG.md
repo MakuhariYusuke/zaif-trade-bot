@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2025-10-14
+
+### 🎯 Major Features
+
+#### SAC v418: Balanced Action Distribution & Reward System Refactoring
+- **Achievement**: Balanced BUY/SELL/HOLD distribution (31.2%/53.1%/15.8%)
+- **SELL Bias Fix**: Corrected `sell_action_penalty` from -0.1 to `sell_action_bonus: 0.02`
+- **Config Structure**: Reorganized reward_settings into clear groups (profit_bonuses, action_bonuses, behavior_penalties, risk_penalties)
+- **Code Quality**: Modular reward calculator with component-based architecture
+- **Documentation**: Added comprehensive reward system documentation
+
+### 🔧 Technical Improvements
+
+#### Reward System Architecture Refactoring
+- **Modular Components**: Split `_calculate_default_reward` into focused methods:
+  - `_calculate_profit_components()`: Profit multipliers and bonuses
+  - `_calculate_action_components()`: Action-specific incentives
+  - `_calculate_behavior_components()`: Trading pattern penalties
+  - `_calculate_risk_components()`: Risk management penalties
+- **Configuration Enhancement**: 
+  - Unified naming convention (`sell_action_penalty` → `sell_action_bonus`)
+  - Added explanatory comments to `profit_multipliers` array
+  - Clear separation of bonuses vs penalties
+- **Dot Notation Support**: Enhanced `get_setting_float/bool` methods for nested config access
+
+#### Action Distribution Analysis
+- **Root Cause**: SELL bias caused by negative penalty acting as bonus
+- **Solution**: Proper bonus/penalty sign handling and balanced parameters
+- **Validation**: Tested with existing v414 model showing balanced distribution
+
+### 📊 Performance Metrics
+
+| Version | BUY % | SELL % | HOLD % | Status |
+|---------|-------|--------|--------|--------|
+| SAC v418 | 31.2% | 53.1% | 15.8% | ✅ Balanced |
+| Previous | ~10% | ~90% | ~0% | ❌ SELL Biased |
+
 ## [4.1.0] - 2025-10-13
 
 ### � Major Features

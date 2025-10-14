@@ -25,8 +25,8 @@ def test_action_distribution(config_path: str):
     with open(config_path, 'r') as f:
         config_dict = json.load(f)
 
-    model_name = 'sac_session/sac_v414_balanced_trading_final'  # Use the newly trained model
-    model_path = f"checkpoints/{model_name}.zip"
+    model_name = 'sac_v414_balanced_trading_final'  # Use the existing working v414 model
+    model_path = f"checkpoints/sac_session/{model_name}.zip"
 
     print(f"Loading model: {model_path}")
 
