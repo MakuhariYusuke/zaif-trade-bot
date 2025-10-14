@@ -1,224 +1,171 @@
-#!/usr/bin/env python3
-"""
-Analyze SAC action distribution to identify bias causing BUY/SELL imbalance.
-"""
-
 import sys
-from pathlib import Path
+sys.path.insert(0, r'c:\Users\Admin\dev\zaif-trade-bot')
+
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-from collections import Counter
-import logging
-
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
-
+import json
+from pathlib import Path
 from stable_baselines3 import SAC
-from ztb.trading.environment import HeavyTradingEnv
-from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
-from ztb.utils.logging_utils import get_logger
+from ztb.trading.environment.heavy_trading_env import HeavyTradingEnv
+from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.components.action_converter import ActionConverter
+from ztb.trading.environment.components.observation_builder import ObservationBuilder
+from ztb.trading.environment.components.portfolio_manager import PortfolioManager
+from ztb.trading.environment.components.data_manager import DataManager
+from ztb.trading.environment.components.position_manager import PositionManager
+from ztb.trading.environment.components.risk_manager import RiskManager
+from ztb.trading.environment.components.market_data_provider import MarketDataProvider
+from ztb.trading.environment.components.indicator_calculator import IndicatorCalculator
+from ztb.trading.environment.components.trading_rules import TradingRules
+from ztb.trading.environment.components.performance_tracker import PerformanceTracker
+from ztb.trading.environment.components.config_manager import ConfigManager
 
-def analyze_sac_action_distribution(model_path: str, num_samples: int = 10000):
-    """
-    Analyze the action distribution of a trained SAC model.
+def analyze_sac_actions():
+    """Analyze SAC model actions for balanced trading."""
 
-    Args:
-        model_path: Path to the SAC model
-        num_samples: Number of action samples to analyze
-    """
-    logger = get_logger("sac_action_analysis")
-    logger.info(f"Analyzing SAC action distribution from {model_path}")
+    # Load config
+    config_path = Path("config/sac_v414_balanced_trading_config.json")
+    with open(config_path, 'r') as f:
+        config = json.load(f)
 
-    # Load the SAC model
-    try:
-        model = SAC.load(model_path)
-        logger.info("Model loaded successfully")
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        return
+    # Initialize components
+    config_manager = ConfigManager(config)
+    data_manager = DataManager(config_manager)
+    market_data_provider = MarketDataProvider(data_manager)
+    indicator_calculator = IndicatorCalculator(market_data_provider, config_manager)
+    observation_builder = ObservationBuilder(indicator_calculator, config_manager)
+    portfolio_manager = PortfolioManager(config_manager)
+    position_manager = PositionManager(config_manager)
+    risk_manager = RiskManager(config_manager)
+    reward_calculator = RewardCalculator(config_manager)
+    action_converter = ActionConverter(config_manager)
+    trading_rules = TradingRules(config_manager)
+    performance_tracker = PerformanceTracker(config_manager)
 
-    # Create environment for testing
-    config = EnvironmentConfig()
-    reward_settings = RewardSettings()
+    # Create environment
+    env = HeavyTradingEnv(
+        config_manager=config_manager,
+        data_manager=data_manager,
+        market_data_provider=market_data_provider,
+        indicator_calculator=indicator_calculator,
+        observation_builder=observation_builder,
+        portfolio_manager=portfolio_manager,
+        position_manager=position_manager,
+        risk_manager=risk_manager,
+        reward_calculator=reward_calculator,
+        action_converter=action_converter,
+        trading_rules=trading_rules,
+        performance_tracker=performance_tracker
+    )
 
-    # Load data for environment
-    import pandas as pd
-    data_path = project_root / "btc_jpy_real_dataset.csv"
-    df = pd.read_csv(data_path)
+    # Load trained model
+    model_path = Path("models/sac_v414_balanced_trading")
+    model = SAC.load(str(model_path))
 
-    # Use default config for testing
-    env = HeavyTradingEnv(df=df, config=config)
+    # Sample actions
+    num_samples = 5000
+    continuous_actions = []
+    discrete_actions = []
 
-    # Collect actions
-    actions_continuous = []
-    actions_discrete = []
-    observations = []
+    obs = env.reset()
+    for _ in range(num_samples):
+        action, _ = model.predict(obs, deterministic=True)
+        continuous_actions.append(action[0])
 
-    logger.info(f"Collecting {num_samples} action samples...")
-
-    obs, _ = env.reset()
-    for i in range(num_samples):
-        # Get action from SAC
-        action_continuous, _ = model.predict(obs, deterministic=True)
-        actions_continuous.append(float(action_continuous[0]))
-
-        # Convert to discrete using current logic
-        if action_continuous[0] > 0.15:
+        # Convert to discrete using threshold
+        threshold = config_manager.get_setting_float("continuous_to_discrete_threshold", 0.1)
+        if action[0] > threshold:
             discrete_action = 1  # BUY
-        elif action_continuous[0] < -0.15:
+        elif action[0] < -threshold:
             discrete_action = 2  # SELL
         else:
             discrete_action = 0  # HOLD
+        discrete_actions.append(discrete_action)
 
-        actions_discrete.append(discrete_action)
-        observations.append(obs.copy())
-
-        # Take step in environment
-        obs, reward, terminated, truncated, info = env.step(action_continuous)
-
-        if terminated or truncated:
-            obs, _ = env.reset()
-
-        if (i + 1) % 1000 == 0:
-            logger.info(f"Processed {i + 1}/{num_samples} samples")
+        # Step environment
+        obs, _, done, _ = env.step(action)
+        if done:
+            obs = env.reset()
 
     # Analyze continuous actions
-    actions_continuous = np.array(actions_continuous)
-    actions_discrete = np.array(actions_discrete)
+    continuous_actions = np.array(continuous_actions)
+    print(f"Continuous Actions Statistics:")
+    print(f"Mean: {continuous_actions.mean():.4f}")
+    print(f"Std: {continuous_actions.std():.4f}")
+    print(f"Min: {continuous_actions.min():.4f}")
+    print(f"Max: {continuous_actions.max():.4f}")
 
-    print("\n" + "="*60)
-    print("SAC ACTION DISTRIBUTION ANALYSIS")
-    print("="*60)
+    # Analyze discrete actions
+    discrete_actions = np.array(discrete_actions)
+    unique, counts = np.unique(discrete_actions, return_counts=True)
+    action_dist = dict(zip(unique, counts))
+    total = sum(counts)
 
-    print("\nCONTINUOUS ACTIONS STATISTICS:")
-    print(f"  Mean: {actions_continuous.mean():.4f}")
-    print(f"  Std:  {actions_continuous.std():.4f}")
-    print(f"  Min:  {actions_continuous.min():.4f}")
-    print(f"  Max:  {actions_continuous.max():.4f}")
-    print(f"  Median: {np.median(actions_continuous):.4f}")
-
-    # Check distribution symmetry
-    positive_actions = actions_continuous[actions_continuous > 0]
-    negative_actions = actions_continuous[actions_continuous < 0]
-
-    print("\nDISTRIBUTION ANALYSIS:")
-    print(f"  Positive actions: {len(positive_actions)} ({len(positive_actions)/len(actions_continuous)*100:.1f}%)")
-    print(f"  Negative actions: {len(negative_actions)} ({len(negative_actions)/len(actions_continuous)*100:.1f}%)")
-    print(f"  Zero actions: {np.sum(actions_continuous == 0.0)} ({np.sum(actions_continuous == 0.0)/len(actions_continuous)*100:.1f}%)")
-
-    # Check threshold coverage
-    buy_threshold = 0.15
-    sell_threshold = -0.15
-
-    buy_actions = actions_continuous[actions_continuous > buy_threshold]
-    sell_actions = actions_continuous[actions_continuous < sell_threshold]
-    hold_actions = actions_continuous[(actions_continuous >= sell_threshold) & (actions_continuous <= buy_threshold)]
-
-    print("\nTHRESHOLD ANALYSIS (current: buy>0.15, sell<-0.15):")
-    print(f"  BUY actions: {len(buy_actions)} ({len(buy_actions)/len(actions_continuous)*100:.1f}%)")
-    print(f"  SELL actions: {len(sell_actions)} ({len(sell_actions)/len(actions_continuous)*100:.1f}%)")
-    print(f"  HOLD actions: {len(hold_actions)} ({len(hold_actions)/len(actions_continuous)*100:.1f}%)")
-
-    # Check for potential bias
-    print("\nPOTENTIAL BIAS ANALYSIS:")
-    if abs(actions_continuous.mean()) > 0.05:
-        print(f"  ⚠️  SIGNIFICANT MEAN BIAS: {actions_continuous.mean():.4f}")
-        if actions_continuous.mean() > 0:
-            print("     → SAC tends to output POSITIVE actions (BUY bias)")
+    print(f"\nDiscrete Actions Distribution ({total} samples):")
+    for action_code, count in action_dist.items():
+        if action_code == 0:
+            action_name = "HOLD"
+        elif action_code == 1:
+            action_name = "BUY"
+        elif action_code == 2:
+            action_name = "SELL"
         else:
-            print("     → SAC tends to output NEGATIVE actions (SELL bias)")
-    else:
-        print("  ✅ Mean is approximately zero (good balance)")
+            action_name = f"UNKNOWN_{action_code}"
+        percentage = (count / total) * 100
+        print(f"{action_name}: {count} ({percentage:.1f}%)")
 
-    # Check standard deviation
-    if actions_continuous.std() < 0.5:
-        print(f"  ⚠️  LOW VARIANCE: {actions_continuous.std():.4f} (SAC may be too conservative)")
-    elif actions_continuous.std() > 1.2:
-        print(f"  ⚠️  HIGH VARIANCE: {actions_continuous.std():.4f} (SAC may be too random)")
-    else:
-        print(f"  ✅ Good variance: {actions_continuous.std():.4f}")
+    # Save results
+    results = {
+        "continuous_stats": {
+            "mean": float(continuous_actions.mean()),
+            "std": float(continuous_actions.std()),
+            "min": float(continuous_actions.min()),
+            "max": float(continuous_actions.max())
+        },
+        "discrete_distribution": {
+            "HOLD": int(action_dist.get(0, 0)),
+            "BUY": int(action_dist.get(1, 0)),
+            "SELL": int(action_dist.get(2, 0)),
+            "total_samples": total
+        },
+        "percentages": {
+            "HOLD": (action_dist.get(0, 0) / total) * 100,
+            "BUY": (action_dist.get(1, 0) / total) * 100,
+            "SELL": (action_dist.get(2, 0) / total) * 100
+        }
+    }
 
-    # Suggest threshold adjustments
-    print("\nTHRESHOLD RECOMMENDATIONS:")
+    with open("sac_v414_analysis_results.json", "w") as f:
+        json.dump(results, f, indent=2)
 
-    # Calculate percentiles for balanced distribution
-    p33 = np.percentile(actions_continuous, 33.33)
-    p67 = np.percentile(actions_continuous, 66.67)
+    # Plot continuous action distribution
+    plt.figure(figsize=(12, 5))
 
-    print(f"  For balanced BUY/SELL/HOLD (33%/33%/33%):")
-    print(f"    BUY threshold: > {p67:.3f}")
-    print(f"    SELL threshold: < {p33:.3f}")
+    plt.subplot(1, 2, 1)
+    plt.hist(continuous_actions, bins=50, alpha=0.7, edgecolor='black')
+    plt.axvline(x=threshold, color='red', linestyle='--', label=f'BUY threshold ({threshold})')
+    plt.axvline(x=-threshold, color='blue', linestyle='--', label=f'SELL threshold ({-threshold})')
+    plt.xlabel('Continuous Action Value')
+    plt.ylabel('Frequency')
+    plt.title('Continuous Action Distribution')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
 
-    # For current distribution, suggest symmetric thresholds
-    mean_abs = abs(actions_continuous.mean())
-    suggested_buy = mean_abs + actions_continuous.std() * 0.5
-    suggested_sell = -mean_abs - actions_continuous.std() * 0.5
+    plt.subplot(1, 2, 2)
+    labels = ['HOLD', 'BUY', 'SELL']
+    sizes = [action_dist.get(0, 0), action_dist.get(1, 0), action_dist.get(2, 0)]
+    colors = ['gray', 'green', 'red']
+    plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+    plt.title('Discrete Action Distribution')
+    plt.axis('equal')
 
-    print(f"  For symmetric thresholds around mean:")
-    print(f"    BUY threshold: > {suggested_buy:.3f}")
-    print(f"    SELL threshold: < {suggested_sell:.3f}")
+    plt.tight_layout()
+    plt.savefig('sac_v414_action_analysis.png', dpi=150, bbox_inches='tight')
+    plt.show()
 
-    # Plot histogram if matplotlib available
-    try:
-        plt.figure(figsize=(12, 8))
-
-        plt.subplot(2, 2, 1)
-        plt.hist(actions_continuous, bins=50, alpha=0.7, color='blue')
-        plt.axvline(x=buy_threshold, color='red', linestyle='--', label=f'BUY threshold ({buy_threshold})')
-        plt.axvline(x=sell_threshold, color='green', linestyle='--', label=f'SELL threshold ({sell_threshold})')
-        plt.axvline(x=0, color='black', linestyle='-', alpha=0.5, label='Zero')
-        plt.title('Continuous Action Distribution')
-        plt.xlabel('Action Value')
-        plt.ylabel('Frequency')
-        plt.legend()
-
-        plt.subplot(2, 2, 2)
-        discrete_counts = Counter(actions_discrete)
-        labels = ['HOLD', 'BUY', 'SELL']
-        counts = [discrete_counts.get(0, 0), discrete_counts.get(1, 0), discrete_counts.get(2, 0)]
-        plt.bar(labels, counts, color=['gray', 'green', 'red'])
-        plt.title('Discrete Action Distribution')
-        plt.ylabel('Count')
-
-        plt.subplot(2, 2, 3)
-        plt.hist(actions_continuous, bins=50, alpha=0.7, color='blue', cumulative=True, density=True)
-        plt.axvline(x=buy_threshold, color='red', linestyle='--')
-        plt.axvline(x=sell_threshold, color='green', linestyle='--')
-        plt.title('Cumulative Distribution')
-        plt.xlabel('Action Value')
-        plt.ylabel('Cumulative Probability')
-
-        plt.subplot(2, 2, 4)
-        # Show action distribution by ranges
-        ranges = [(-1, sell_threshold), (sell_threshold, buy_threshold), (buy_threshold, 1)]
-        range_labels = ['SELL zone', 'HOLD zone', 'BUY zone']
-        range_counts = [
-            np.sum((actions_continuous >= r[0]) & (actions_continuous < r[1])) for r in ranges
-        ]
-        plt.bar(range_labels, range_counts, color=['red', 'gray', 'green'])
-        plt.title('Actions by Decision Zones')
-        plt.xticks(rotation=45)
-
-        plt.tight_layout()
-        plt.savefig('sac_action_distribution_analysis.png', dpi=150, bbox_inches='tight')
-        print("\n📊 Plot saved as 'sac_action_distribution_analysis.png'")
-    except ImportError:
-        print("\n⚠️  Matplotlib not available for plotting")
-    except Exception as e:
-        print(f"\n⚠️  Plotting failed: {e}")
-
-    env.close()
+    print(f"\nResults saved to sac_v414_analysis_results.json")
+    print(f"Plot saved to sac_v414_action_analysis.png")
 
 if __name__ == "__main__":
-    # Analyze the latest SAC model
-    model_path = "checkpoints/sac_session/sac_v406_sell_bonus_adjusted_final.zip"
-
-    if not Path(model_path).exists():
-        print(f"Model not found: {model_path}")
-        # Try the previous version
-        model_path = "checkpoints/sac_session/sac_v404_extreme_win_rate_final.zip"
-        if not Path(model_path).exists():
-            print(f"Fallback model not found: {model_path}")
-            sys.exit(1)
-
-    analyze_sac_action_distribution(model_path, num_samples=5000)
+    analyze_sac_actions()
