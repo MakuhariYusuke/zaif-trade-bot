@@ -21,11 +21,14 @@
     "target_update_interval": 1,
     "target_entropy": -0.5,
     "policy_kwargs": {
-      "net_arch": [64, 64]
+      "net_arch": [
+        64,
+        64
+      ]
     }
   },
   "environment": {
-    "initial_balance": 200000,
+    "initial_balance": 200000.0,
     "transaction_cost": 0.0005,
     "max_position_size": 0.01,
     "enable_action_masking": false,

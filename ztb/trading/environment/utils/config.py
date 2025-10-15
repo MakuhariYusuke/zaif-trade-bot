@@ -29,6 +29,7 @@ from ztb.training.config.ppo_config import (
     DEFAULT_REWARD_SHARPE_BONUS_SCALE,
     DEFAULT_REWARD_CLIP_VALUE,
 )
+from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
 
 
 class RewardSettings(TypedDict, total=False):
@@ -69,6 +70,7 @@ class EnvironmentConfig:
     risk_free_rate: float = DEFAULT_RISK_FREE_RATE
     timeframe: str = "1m"
     feature_set: str = "full"
+    correlation_reduction: bool = True
     curriculum_stage: str = "forced_balance"
     feature_storage_dtype: str = "float16"
     precision_columns: List[str] = dataclasses.field(
@@ -121,8 +123,9 @@ class EnvironmentConfig:
     
     # Action space configuration
     use_continuous_actions: bool = False  # True for SAC, False for PPO
+    target_feature_count: Optional[int] = None  # Desired observation feature count when reducing correlations
     enable_action_masking: bool = False   # Only for discrete actions (PPO)
-    continuous_to_discrete_threshold: float = 0.33  # Threshold for SAC continuous→discrete conversion
+    continuous_to_discrete_threshold: float = SAC_CONTINUOUS_THRESHOLD  # Threshold for SAC continuous→discrete conversion
 
     # Trading behavior settings
     allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
@@ -154,6 +157,7 @@ class EnvironmentConfig:
                     "use_continuous_actions",
                     "enable_action_masking",
                     "use_standardized_observations",
+                    "correlation_reduction",
                 ] and not isinstance(
                     value, bool
                 ):
@@ -165,6 +169,7 @@ class EnvironmentConfig:
                     "reward_trade_cooldown_steps",
                     "reward_max_consecutive_trades",
                     "reward_volatility_window",
+                    "target_feature_count",
                 ] and isinstance(value, (float, str)):
                     try:
                         value = int(float(value))

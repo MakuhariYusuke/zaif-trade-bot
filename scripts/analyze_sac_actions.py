@@ -20,6 +20,7 @@ from ztb.trading.environment.components.indicator_calculator import IndicatorCal
 from ztb.trading.environment.components.trading_rules import TradingRules
 from ztb.trading.environment.components.performance_tracker import PerformanceTracker
 from ztb.trading.environment.components.config_manager import ConfigManager
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
 
 def analyze_sac_actions():
     """Analyze SAC model actions for balanced trading."""
@@ -76,11 +77,11 @@ def analyze_sac_actions():
         # Convert to discrete using threshold
         threshold = config_manager.get_setting_float("continuous_to_discrete_threshold", 0.1)
         if action[0] > threshold:
-            discrete_action = 1  # BUY
+            discrete_action = ACTION_BUY  # BUY
         elif action[0] < -threshold:
-            discrete_action = 2  # SELL
+            discrete_action = ACTION_SELL  # SELL
         else:
-            discrete_action = 0  # HOLD
+            discrete_action = ACTION_HOLD  # HOLD
         discrete_actions.append(discrete_action)
 
         # Step environment

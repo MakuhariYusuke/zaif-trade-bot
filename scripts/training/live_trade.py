@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live Trading Bot for BTC/JPY using Trained PPO Model.
+Live Trading Bot for BTC/JPY using Trained PPO/SAC Model.
 
 This script performs live trading on Coincheck exchange using the trained ML model.
 Implements sell-biased strategy as requested.
@@ -48,6 +48,21 @@ load_dotenv()
 # Cross-platform path handling
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# Import our modules
+from ztb.trading.live_trader.config import TradingConfig
+from ztb.trading.live_trader.model_manager import ModelManager
+from ztb.trading.live.data.price_data_manager import PriceDataManager, PriceDataProvider
+from ztb.trading.live.core.trade_executor import TradeExecutor, TradeExecutorProtocol, PositionManagerProtocol
+from ztb.trading.live.core.health_monitor import HealthMonitor
+from ztb.trading.environment.constants import continuous_to_discrete_action
+
+# Import existing components
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.environment.components.position_manager import PositionManager
+from ztb.trading.live.action_mask_provider import ActionMaskProvider, ActionMaskConfig
+from ztb.utils.notify.discord import DiscordNotifier
+from ztb.utils.config import ZTBConfig
 
 # Debug: Print paths
 print(f"PROJECT_ROOT: {PROJECT_ROOT}")
@@ -156,7 +171,7 @@ except ImportError:
 
 class LiveTrader:
     """
-    Live trading bot for BTC/JPY using trained PPO model.
+    Live trading bot for BTC/JPY using trained PPO/SAC model.
 
     If COINCHECK_API_KEY and COINCHECK_API_SECRET are not set, the bot runs in demo mode and does not execute real trades.
     """
@@ -168,84 +183,120 @@ class LiveTrader:
         disable_risk_limits: bool = False,
         dry_run: bool = False,
     ):
+        # Initialize logger
+        self.logger = logging.getLogger(__name__)
+
         # Cross-platform path handling
         self.model_path = Path(model_path)
         self.ztb_config = ZTBConfig()
-        self.config = config or self._get_default_config()
         self.disable_risk_limits = disable_risk_limits
         self.dry_run = dry_run
-        self.notifier: Optional[DiscordNotifier] = None
 
-        # Initialize metrics if Prometheus is available
-        if prometheus_available:
-            self._setup_metrics()
-        else:
-            self.metrics: Optional[Dict[str, Any]] = None
+        # Initialize components
+        self.config_manager = TradingConfig(self.ztb_config)
+        if config:
+            self.config_manager.update(config)
+        self.config = self.config_manager.config
+
+        self.model_manager = ModelManager()
+        self.health_monitor = HealthMonitor()
+
+        # Initialize metrics
+        self.metrics = self.health_monitor.setup_metrics()
 
         # Adjust risk limits if disabled
         if self.disable_risk_limits:
-            logger.warning(
-                "RISK LIMITS DISABLED - Operating without safety restrictions"
-            )
-            self.config.update(
-                {
-                    "max_daily_loss": float("inf"),
-                    "max_daily_trades": float("inf"),
-                    "emergency_stop_loss": float("inf"),
-                }
-            )
+            self.logger.warning("RISK LIMITS DISABLED - Operating without safety restrictions")
+            self.config_manager.update({
+                "max_daily_loss": float("inf"),
+                "max_daily_trades": float("inf"),
+                "emergency_stop_loss": float("inf"),
+            })
+            self.config = self.config_manager.config
 
-        # Coincheck API settings (initialize early)
+        # Coincheck API settings
         self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
         self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
         self.base_url = "https://coincheck.com"
 
-        # Validate API credentials for live trading (check for non-empty values)
+        # Validate API credentials for live trading
         self.demo_mode = not (self.api_key and self.api_secret) or self.dry_run
         if self.demo_mode:
             if self.dry_run:
-                logger.info("DRY RUN MODE - No real trades will be executed")
+                self.logger.info("DRY RUN MODE - No real trades will be executed")
             elif not (self.api_key and self.api_secret):
-                logger.warning(
-                    "COINCHECK_API_KEY and/or COINCHECK_API_SECRET not set or empty - running in DEMO mode"
-                )
-                logger.warning(
-                    "Set environment variables or create .env file with API credentials for live trading"
-                )
+                self.logger.warning("COINCHECK_API_KEY and/or COINCHECK_API_SECRET not set or empty - running in DEMO mode")
 
-        # Initialize Discord notifier with error handling
+        # Initialize Discord notifier
+        self.notifier = self._setup_notifier()
+
+        # Initialize exchange adapter
+        self.exchange_adapter = self._setup_exchange_adapter()
+
+        # Load and validate model
+        self._load_model()
+
+        # Initialize price data manager
+        self.price_data_manager = PriceDataManager(self.config, self)
+
+        # Initialize trading state
+        self._setup_trading_state()
+
+        # Initialize trade executor
+        self.trade_executor = TradeExecutor(
+            self.config,
+            self,
+            self.position_manager,
+            self.model_manager.is_sac
+        )
+
+        # Send startup notification
+        self._send_startup_notification()
+
+        self.logger.info("LiveTrader initialization completed")
+
+    def _setup_notifier(self) -> Optional[DiscordNotifier]:
+        """Setup Discord notifier."""
         webhook_url = os.getenv("DISCORD_WEBHOOK")
         if webhook_url:
             try:
-                self.notifier = DiscordNotifier(webhook_url=webhook_url)
+                return DiscordNotifier(webhook_url=webhook_url)
             except Exception as e:
-                logger.warning(f"Failed to initialize Discord notifier: {e}")
-                self.notifier = None
+                self.logger.warning(f"Failed to initialize Discord notifier: {e}")
         else:
-            logger.info("Discord webhook not configured - notifications disabled")
-            self.notifier = None
+            self.logger.info("Discord webhook not configured - notifications disabled")
+        return None
 
-        # Initialize exchange adapter based on config
-        if broker_registry_available and broker_registry is not None:
+    def _setup_exchange_adapter(self) -> Optional[CoincheckAdapter]:
+        """Setup exchange adapter."""
+        if self.api_key and self.api_secret:
             try:
-                exchange_name = self.config.get("exchange", "coincheck")
-                self.exchange_adapter = broker_registry.get_broker(
-                    exchange_name,
+                return CoincheckAdapter(
                     api_key=self.api_key,
                     api_secret=self.api_secret,
                     dry_run=self.dry_run,
                 )
-                logger.info(f"{exchange_name.capitalize()} adapter initialized")
             except Exception as e:
-                logger.warning(f"Failed to initialize exchange adapter: {e}")
-                self.exchange_adapter = None
-        else:
-            self.exchange_adapter = None
-            logger.warning("Broker registry not available")
+                self.logger.warning(f"Failed to initialize exchange adapter: {e}")
+        return None
 
-        # Load and validate model (after coincheck adapter initialization)
-        self.model = self._load_model()
+    def _load_model(self) -> None:
+        """Load and validate model."""
+        self.model_manager.load_model(self.model_path)
+        model_name = self.model_path.stem
+        self.model_manager.load_schema_info(model_name)
+        
+        # Copy model attributes for backward compatibility
+        self.model = self.model_manager.model
+        self._is_maskable_ppo = self.model_manager.is_maskable_ppo
+        self._is_sac = self.model_manager.is_sac
+        self.schema_available = self.model_manager.schema_available
+        self.expected_features = self.model_manager.expected_features
+        self.feature_names = self.model_manager.feature_names
+        self.model_schema_hash = self.model_manager.model_schema_hash
 
+    def _setup_trading_state(self) -> None:
+        """Setup trading state variables."""
         # Initialize trading state
         self.position = 0  # -1 (short), 0 (flat), 1 (long)
         self.entry_price = 0.0
@@ -257,86 +308,112 @@ class LiveTrader:
             hour=0, minute=0, second=0, microsecond=0
         )
 
-        # Initialize PositionManager (Bug #25, #26 fix)
-        if position_manager_available:
-            # Create a simple config object for PositionManager
-            class LivePositionConfig:
-                """Configuration for PositionManager in live trading."""
-                def __init__(self, config_dict: Dict[str, Any]) -> None:
-                    self.allow_reverse = config_dict.get("allow_reverse", False)
-                    self.transaction_cost = config_dict.get("transaction_cost", 0.001)
-                    # Bug #28 fix: Pass max_position_size to prevent scale mismatch
-                    self.max_position_size = config_dict.get(
-                        "max_position_size", 
-                        config_dict.get("min_trade_amount", 0.001)
-                    )
-                    
-            position_config = LivePositionConfig(self.config)
-            
-            self.position_manager = PositionManager(  # type: ignore[name-defined]
-                config=position_config,
-                get_price_callback=lambda: self._last_valid_price if self._last_valid_price > 0 else self._get_current_price()
-            )
-            logger.info(f"PositionManager initialized for live trading (position_size={position_config.max_position_size})")
-        else:
-            self.position_manager = None
-            logger.warning("PositionManager not available, using legacy position logic")
+        # Initialize price history
+        self.price_history: List[float] = []
 
-        # Initialize price validation
-        self._last_valid_price = 0.0
-        
-        # Initialize action mask provider for MaskablePPO support (Bug #27 fix)
+        # Initialize PositionManager
+        self.position_manager = self._setup_position_manager()
+
+        # Initialize action mask provider
         mask_config = ActionMaskConfig(
             min_holding_period=self.config.get("min_holding_period", 5),
             enable_forced_close=True,
             max_position_age=self.config.get("max_position_age", 1000)
         )
         self.mask_provider = ActionMaskProvider(mask_config)
-        self._is_maskable_ppo = False  # Will be set in _load_model()
-        # self._is_sac = False  # Will be set in _load_model()  # Removed duplicate reset
-        self._current_step = 0
-        self._position_entry_step = 0
-        logger.info(
-            f"ActionMaskProvider initialized (min_holding={mask_config.min_holding_period}, "
-            f"max_age={mask_config.max_position_age})"
-        )
 
-        # Initialize advanced auto-stop system
-        if auto_stop_available:
-            try:
-                self.auto_stop = create_production_auto_stop()  # type: ignore[name-defined]
-                logger.info("Advanced auto-stop system initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize auto-stop system: {e}")
-                self.auto_stop = None
-        else:
-            self.auto_stop = None
-            logger.warning("Advanced auto-stop system not available")
+        # Initialize price validation
+        self._last_valid_price = 0.0
 
-        # Cache for historical prices to avoid repeated API calls
-        # Memory optimization: Use deque with maxlen for automatic size limiting
-        self._price_history_max_size = self.config.get("price_history_length", 30)
-        self.price_history: deque[float] = deque(maxlen=self._price_history_max_size)
-        self._update_price_history()
+        # Initialize auto stop
+        self.auto_stop = None
 
-        # Memory optimization: Periodic cleanup counter
+        # Initialize cleanup interval
+        self._cleanup_interval = 300  # 5 minutes
         self._cleanup_counter = 0
-        self._cleanup_interval = 100  # Clean up every 100 iterations
 
-        # Send startup notification (with schema info if available)
+    def _setup_position_manager(self) -> Optional[PositionManager]:
+        """Setup position manager."""
+        try:
+            # Create a simple config object for PositionManager
+            class LivePositionConfig:
+                """Configuration for PositionManager in live trading."""
+                def __init__(self, config_dict: Dict[str, Any]) -> None:
+                    self.allow_reverse = config_dict.get("allow_reverse", False)
+                    self.transaction_cost = config_dict.get("transaction_cost", 0.001)
+                    self.max_position_size = config_dict.get(
+                        "max_position_size",
+                        config_dict.get("min_trade_amount", 0.001)
+                    )
+
+            position_config = LivePositionConfig(self.config)
+            return PositionManager(
+                config=position_config,
+                get_price_callback=lambda: self._last_valid_price if self._last_valid_price > 0 else self.get_current_price()
+            )
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize PositionManager: {e}")
+            return None
+
+    def _send_startup_notification(self) -> None:
+        """Send startup notification."""
         feature_info = "68 technical indicators (default)"
-        if hasattr(self, 'schema_available') and self.schema_available and self.expected_features:
-            feature_info = f"{self.expected_features} features (schema-validated ✅)"
-        elif hasattr(self, 'expected_features') and self.expected_features:
-            feature_info = f"{self.expected_features} features (detected)"
-        
-        logger.info(f"before _send_notification: _is_sac={self._is_sac}, id={id(self)}")
+        if self.model_manager.schema_available and self.model_manager.expected_features:
+            feature_info = f"{self.model_manager.expected_features} features (schema-validated ✅)"
+        elif self.model_manager.expected_features:
+            feature_info = f"{self.model_manager.expected_features} features (detected)"
+
         self._send_notification(
             "🚀 BTC/JPY Live Trading Started",
-            f"Model: {model_path}\nStrategy: Sell-biased\nMode: {'DEMO' if self.demo_mode else 'LIVE'}\nFeatures: {feature_info}\nTrading Mode: Normal (1M timeframe)\nMemory: Optimized (history={self._price_history_max_size})",
+            f"Model: {self.model_path}\nStrategy: Sell-biased\nMode: {'DEMO' if self.demo_mode else 'LIVE'}\nFeatures: {feature_info}\nTrading Mode: Normal (1M timeframe)\nMemory: Optimized (history={self.config['price_history_length']})",
             "info",
         )
-        logger.info(f"__init__ end: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}, id={id(self)}")
+
+    # PriceDataProvider protocol implementation
+    def get_current_price(self) -> float:
+        """Get current price (PriceDataProvider protocol)."""
+        return self._get_current_price()
+
+    def get_historical_prices(self, limit: int) -> List[float]:
+        """Get historical prices (PriceDataProvider protocol)."""
+        return self._get_historical_prices(limit)
+
+    # TradeExecutorProtocol implementation
+    def execute_trade(self, side: str, amount: float) -> bool:
+        """Execute trade (TradeExecutorProtocol protocol)."""
+        return self._execute_trade(side, amount)
+
+    def _get_current_price(self) -> float:
+        """Get current price from exchange adapter or API."""
+        if self.exchange_adapter:
+            # For now, use a simple API call since CoincheckAdapter doesn't have get_current_price
+            try:
+                response = requests.get(
+                    f"{self.base_url}/api/ticker",
+                    timeout=10
+                )
+                response.raise_for_status()
+                data = response.json()
+                price = float(data.get("last", 0))
+                if price > 0:
+                    self._last_valid_price = price
+                    return price
+            except Exception as e:
+                logger.warning(f"Failed to get current price from API: {e}")
+        
+        # Fallback to last valid price or demo price
+        if self._last_valid_price > 0:
+            return self._last_valid_price
+        return 5000000.0  # Demo fallback price
+
+    def _get_historical_prices(self, limit: int) -> List[float]:
+        """Get historical prices from API or cache."""
+        if self.price_history and len(self.price_history) >= limit:
+            return list(self.price_history)[-limit:]
+        
+        # Fallback: get current price repeated
+        current_price = self._get_current_price()
+        return [current_price] * limit
 
     def _send_notification(self, title: str, message: str, level: str = "info"):
         """Send notification with error handling."""
@@ -436,138 +513,23 @@ class LiveTrader:
                 "ZTB_PRICE_CHANGE_THRESHOLD", 0.20
             ),  # 20% price change threshold
             "continuous_to_discrete_threshold": self.ztb_config.get_float(
-                "ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD", 0.1
+                "ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD", 0.33
             ),  # Threshold for converting continuous actions to discrete
         }
 
-    def _load_model(self) -> PPO | MaskablePPO | SAC:
-        """Load the trained PPO or MaskablePPO model.
-        
-        Bug #27 Fix: Now properly loads MaskablePPO models and uses
-        ActionMaskProvider for action masking in production.
-        
-        Schema Integration: Load schema information for feature validation.
-        """
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Model file not found: {self.model_path}")
+    # PriceDataProvider protocol implementation
+    def get_current_price(self) -> float:
+        """Get current price (PriceDataProvider protocol)."""
+        return self._get_current_price()
 
-        logger.info(f"Loading model from {self.model_path}")
-        
-        # Try loading as MaskablePPO first, fallback to PPO, then SAC
-        try:
-            model = MaskablePPO.load(str(self.model_path))
-            logger.info("Model loaded as MaskablePPO with action masking support")
-            self._is_maskable_ppo = True
-            self._is_sac = False
-            self.model = model  # Set model immediately after loading
-        except Exception as e:
-            try:
-                logger.info(f"Not a MaskablePPO model ({e}), trying standard PPO")
-                model = PPO.load(str(self.model_path))
-                logger.info("Model loaded as standard PPO (no action masking)")
-                self._is_maskable_ppo = False
-                self._is_sac = False
-                self.model = model  # Set model immediately after loading
-            except Exception as e2:
-                logger.info(f"Not a PPO model ({e2}), trying SAC")
-                model = SAC.load(str(self.model_path))
-                logger.info("Model loaded as SAC")
-                self._is_maskable_ppo = False
-                self._is_sac = True
-                self.model = model  # Set model immediately after loading
+    def get_historical_prices(self, limit: int) -> List[float]:
+        """Get historical prices (PriceDataProvider protocol)."""
+        return self._get_historical_prices(limit)
 
-        # ========================================================================
-        # Schema-based feature validation (Phase 3 Integration)
-        # ========================================================================
-        try:
-            from ztb.trading.environment.schema_env_factory import create_env_from_model_path
-            from ztb.training.core.feature_schema_manager import FeatureSchemaManager
-            
-            # Load model schema
-            model_name = self.model_path.stem
-            schema_manager = FeatureSchemaManager(model_name)
-            
-            try:
-                metadata = schema_manager.load_schema()
-                logger.info(f"✅ Schema loaded for model: {model_name}")
-                logger.info(f"   Expected features: {metadata.num_features}")
-                logger.info(f"   Schema hash: {metadata.schema_hash}")
-                logger.info(f"   Created at: {metadata.created_at}")
-                
-                # Store schema info for feature validation
-                self.expected_features = metadata.num_features
-                self.feature_names = metadata.feature_names
-                self.model_schema_hash = metadata.schema_hash
-                self.schema_available = True
-                
-                logger.info(f"📋 Model feature requirements:")
-                logger.info(f"   Total: {len(self.feature_names)} features")
-                logger.info(f"   First 5: {self.feature_names[:5]}")
-                logger.info(f"   Last 5: {self.feature_names[-5:]}")
-                
-            except FileNotFoundError:
-                logger.warning(f"⚠️  Schema not found for model: {model_name}")
-                logger.warning(f"   Schema file expected at: {self.ztb_config.get_model_dir()}/schemas/{model_name}/")
-                logger.warning(f"   Falling back to legacy validation")
-                logger.warning(f"   Recommendation: Run migration if this is an old model")
-                
-                self.expected_features = None
-                self.feature_names = None
-                self.model_schema_hash = None
-                self.schema_available = False
-                
-        except ImportError as e:
-            logger.warning(f"Schema system not available: {e}")
-            logger.warning("Using legacy feature validation")
-            self.expected_features = None
-            self.feature_names = None
-            self.model_schema_hash = None
-            self.schema_available = False
-
-        # Legacy feature validation (fallback)
-        try:
-            # Temporarily initialize price history for feature checking
-            if not hasattr(self, "price_history"):
-                current_price = 1000000.0  # Dummy price for checking
-                self.price_history = [current_price] * self.config[
-                    "price_history_length"
-                ]
-
-            # Use dummy price for model loading, real adapter will be used later
-            sample_features = self._get_market_features()
-            actual_features = len(sample_features)
-            
-            # Check against schema-based expectation if available
-            if self.expected_features is not None:
-                if actual_features != self.expected_features:
-                    logger.warning(
-                        f"Feature count mismatch: model expects {self.expected_features} (schema), "
-                        f"got {actual_features} (computed)"
-                    )
-                else:
-                    logger.info(f"Feature count validated: {actual_features} features")
-            elif model.observation_space.shape is not None:
-                expected_obs_space = model.observation_space.shape[0]
-                if actual_features != expected_obs_space:
-                    logger.warning(
-                        f"Feature count mismatch: model expects {expected_obs_space}, got {actual_features}"
-                    )
-                    logger.warning("Using only basic features to match training data")
-            else:
-                logger.warning("Could not determine model observation space shape")
-
-        except Exception as e:
-            logger.warning(f"Could not verify feature compatibility: {e}")
-
-        # Send model loaded notification
-        self._send_notification(
-            "✅ Model Loaded Successfully", f"Model path: {self.model_path}", "success"
-        )
-
-        logger.info(f"_load_model completed: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}, id={id(self)}")
-        return model
-
-    def _get_current_price(self) -> float:
+    # TradeExecutorProtocol implementation
+    def execute_trade(self, side: str, amount: float) -> bool:
+        """Execute trade (TradeExecutorProtocol protocol)."""
+        return self._execute_trade(side, amount)
         """Get current BTC/JPY price from exchange adapter."""
         start_time = time.time()
         if self.exchange_adapter:
@@ -1422,14 +1384,9 @@ class LiveTrader:
                 # Convert action based on model type
                 if self._is_sac:
                     # SAC returns continuous actions, convert to discrete
-                    threshold = self.config['continuous_to_discrete_threshold']
                     continuous_action = float(action.item())  # Use item() to handle scalar arrays safely
-                    if continuous_action > threshold:
-                        action = ACTION_BUY
-                    elif continuous_action < -threshold:
-                        action = ACTION_SELL
-                    else:
-                        action = ACTION_HOLD
+                    # Use the centralized continuous_to_discrete_action function for consistency
+                    action = continuous_to_discrete_action(continuous_action)
                     logger.debug(f"SAC continuous action {continuous_action:.3f} -> discrete action {action} ({ACTION_NAMES[action]})")
                 else:
                     # PPO/MaskablePPO return discrete actions

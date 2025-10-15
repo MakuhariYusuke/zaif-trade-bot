@@ -7,7 +7,7 @@ This module separates the complex reward calculation logic from the main environ
 # mypy: disable-error-code=literal-required
 
 import math
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 
@@ -23,6 +23,9 @@ from ztb.trading.constants import (
 )
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.trading.environment.utils.config import RewardSettings
+from ztb.trading.environment.components.reward_utils import RewardUtils
+from ztb.trading.environment.components.reward_components import RewardComponents
+from ztb.trading.environment.components.reward_stages import RewardStages
 
 
 class RewardCalculator:
@@ -44,7 +47,7 @@ class RewardCalculator:
     ):
         """
         Initialize RewardCalculator.
-        
+
         Args:
             config: Environment configuration
             reward_settings: Dictionary of reward settings
@@ -54,7 +57,12 @@ class RewardCalculator:
         self.reward_settings = reward_settings
         self.initial_portfolio_value = initial_portfolio_value
         self.logger = get_logger("ztb.trading.environment.reward")
-        
+
+        # Initialize components
+        self.utils = RewardUtils()
+        self.components = RewardComponents(cast(Dict[str, Any], reward_settings))
+        self.stages = RewardStages(cast(Dict[str, Any], reward_settings))
+
         # Internal state for tracking
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
         self._consecutive_idle_steps = 0
@@ -65,31 +73,15 @@ class RewardCalculator:
 
     def get_setting_int(self, key: str, default: int) -> int:
         """Get integer reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
-            if isinstance(value, (int, float)):
-                return int(value)
-        return default
+        return RewardUtils.get_setting_int(cast(Optional[Dict[str, Any]], self.reward_settings), key, default)
 
     def get_setting_float(self, key: str, default: float) -> float:
         """Get float reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
-            if isinstance(value, (int, float)):
-                return float(value)
-        return default
+        return RewardUtils.get_setting_float(cast(Optional[Dict[str, Any]], self.reward_settings), key, default)
 
     def get_setting_bool(self, key: str, default: bool) -> bool:
         """Get boolean reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
-            if isinstance(value, bool):
-                return value
-            if isinstance(value, (int, float)):
-                return bool(value)
-            if isinstance(value, str):
-                return value.lower() in {"true", "1", "yes", "y", "on"}
-        return default
+        return RewardUtils.get_setting_bool(cast(Optional[Dict[str, Any]], self.reward_settings), key, default)
 
     def calculate_reward(
         self,
@@ -179,7 +171,8 @@ class RewardCalculator:
 
         # Curriculum learning stages
         if curriculum_stage == "forced_balance":
-            reward = self._calculate_forced_balance_reward(action)
+            self.stages.update_action_counts(action)
+            reward = self.stages._calculate_forced_balance_reward(action)
             # Use smaller scaling for forced balance to prevent extreme values
             forced_balance_scaling = self.get_setting_float("forced_balance_scaling", 1.0)
             reward *= forced_balance_scaling
@@ -187,11 +180,12 @@ class RewardCalculator:
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
-            self.logger.info(f"Forced balance reward: {reward}, action_counts: {self._action_counts}")
+            self.logger.info(f"Forced balance reward: {reward}, action_counts: {self.stages.get_action_counts()}")
             self.logger.debug(f"Final reward: {reward}")
             return reward
         elif curriculum_stage == "balanced_transition":
-            reward = self._calculate_balanced_transition_reward(
+            self.stages.update_action_counts(action)
+            reward = self.stages._calculate_balanced_transition_reward(
                 action, atr_normalised, portfolio_return, position,
                 effective_max_position, current_price, atr, pnl, reward_scaling
             )
@@ -201,7 +195,8 @@ class RewardCalculator:
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             return reward
         elif curriculum_stage == "trading_focused":
-            reward = self._calculate_trading_focused_reward(
+            self.stages.update_action_counts(action)
+            reward = self.stages._calculate_trading_focused_reward(
                 action, atr_normalised, portfolio_return, position,
                 effective_max_position, current_price, atr, pnl, reward_scaling
             )
@@ -211,9 +206,10 @@ class RewardCalculator:
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             return reward
         elif curriculum_stage == "profit_optimized":
-            reward = self._calculate_profit_optimized_reward(
+            self.stages.update_action_counts(action)
+            reward = self.stages._calculate_profit_optimized_reward(
                 action, atr_normalised, portfolio_return, position,
-                effective_max_position, current_price, atr, pnl, reward_scaling, observation
+                effective_max_position, current_price, atr, pnl, reward_scaling
             )
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
@@ -221,7 +217,8 @@ class RewardCalculator:
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             return reward
         elif curriculum_stage == "ultra_profit":
-            reward = self._calculate_ultra_profit_reward(
+            self.stages.update_action_counts(action)
+            reward = self.stages._calculate_ultra_profit_reward(
                 action, atr_normalised, portfolio_return, position,
                 effective_max_position, current_price, atr, pnl, reward_scaling
             )
@@ -231,11 +228,11 @@ class RewardCalculator:
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             return reward
         elif curriculum_stage == "pnl_focused":
-            reward = self._calculate_pnl_focused_reward(
+            self.stages.update_action_counts(action)
+            reward = self.stages._calculate_trading_focused_reward(
                 action, atr_normalised, portfolio_return, position,
-                effective_max_position, current_price, atr, pnl, observation
+                effective_max_position, current_price, atr, pnl, reward_scaling
             )
-            reward *= reward_scaling
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -243,11 +240,11 @@ class RewardCalculator:
             return reward
         else:
             # Default stage
-            reward = self._calculate_default_reward(
+            self.stages.update_action_counts(action)
+            reward = self.components._calculate_base_reward(
                 action, atr_normalised, portfolio_return, position,
-                effective_max_position, current_price, atr, pnl
+                effective_max_position, current_price, atr, pnl, reward_scaling
             )
-            reward *= reward_scaling
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -403,7 +400,7 @@ class RewardCalculator:
         atr: float,
         pnl: float,
         reward_scaling: float,
-        observation: np.ndarray = None,
+        observation: Optional[np.ndarray] = None,
     ) -> float:
         """Stage: Profit-optimized reward that maximizes profitable trading while minimizing losses."""
         self._action_counts[action] += 1
@@ -644,7 +641,7 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
-        observation: np.ndarray = None,
+        observation: Optional[np.ndarray] = None,
     ) -> float:
         """Default reward calculation."""
         base_profit_bonus = max(0.0, self.get_setting_float("base_profit_bonus_atr_coeff", 1.5) * atr_normalised + self.get_setting_float("base_profit_bonus_portfolio_coeff", 1.2) * portfolio_return) if pnl > 0 else 0.0
@@ -735,7 +732,7 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
-        observation: np.ndarray = None,
+        observation: Optional[np.ndarray] = None,
     ) -> float:
         """Calculate base reward components."""
         return self._calculate_default_reward(
@@ -756,21 +753,7 @@ class RewardCalculator:
         
         return 0.0
 
-    def _calculate_diversity_bonus(self, action: int) -> float:
-        """Calculate bonus for action diversity."""
-        if len(self._recent_actions) < 3:
-            return 0.1  # Small bonus for early exploration
-        
-        unique_recent = len(set(self._recent_actions[-10:]))  # Last 10 actions
-        diversity_score = unique_recent / 3.0  # Normalize by action types
-        
-        # Bonus for maintaining diversity
-        base_bonus = 0.05
-        diversity_multiplier = diversity_score ** 2  # Quadratic scaling
-        
-        return base_bonus * diversity_multiplier
-
-    def _calculate_diversity_bonus(self, action: int) -> float:
+    def calculate_drawdown_penalty(self, reward_history: List[float]) -> float:
         """Calculate bonus for action diversity."""
         self._action_counts[action] += 1
         total_actions = sum(self._action_counts)
@@ -1164,23 +1147,23 @@ class RewardCalculator:
                 "description": "SELL with loss"
             }
         ]
-        
+
         print("Testing reward calculation...")
         for i, case in enumerate(test_cases):
             reward = self.calculate_reward(
-                action=case["action"],
-                current_price=case["current_price"],
-                position=case["position"],
-                portfolio_value=case["portfolio_value"],
-                atr=case["atr"],
+                action=cast(int, case["action"]),
+                current_price=cast(float, case["current_price"]),
+                position=cast(float, case["position"]),
+                portfolio_value=cast(float, case["portfolio_value"]),
+                atr=cast(float, case["atr"]),
                 transaction_cost=10.0,
                 reward_scaling=10.0,  # Scale rewards for testing
-                pnl=case["pnl"],
-                old_position=case["old_position"],
-                step=case["step"],
+                pnl=cast(float, case["pnl"]),
+                old_position=cast(float, case["old_position"]),
+                step=cast(int, case["step"]),
                 observation=None,
-                reward_history=[],
-                portfolio_value_history=[case["portfolio_value"]] * 30
+                reward_history=cast(List[float], []),
+                portfolio_value_history=[cast(float, case["portfolio_value"])] * 30
             )
             print(f"Test {i+1}: {case['description']} -> Reward: {reward:.4f}")
             print(f"  Components: pnl={case['pnl']:.2f}, position={case['position']:.4f}, atr={case['atr']:.2f}")

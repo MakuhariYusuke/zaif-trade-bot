@@ -1,5 +1,5 @@
 {
-    "model_name": "sac_v413_ultra_profit",
+  "model_name": "sac_v413_ultra_profit",
   "algorithm": "sac",
   "total_timesteps": 50000,
   "data_source": "csv",
@@ -22,8 +22,8 @@
     "target_entropy": -1.0
   },
   "environment": {
-    "initial_balance": 200000,
-    "transaction_cost": 0.00001,
+    "initial_balance": 200000.0,
+    "transaction_cost": 1e-05,
     "max_position_size": 1.0,
     "enable_action_masking": false,
     "use_continuous_actions": true,

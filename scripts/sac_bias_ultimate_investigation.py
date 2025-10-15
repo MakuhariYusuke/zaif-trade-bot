@@ -15,6 +15,8 @@ from pathlib import Path
 from collections import defaultdict
 from stable_baselines3 import SAC
 
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -106,11 +108,11 @@ def analyze_action_distribution(model, df, n_samples=10000):
 
         # Convert to discrete and count
         if action_value > buy_threshold:
-            discrete_action = 1  # BUY
+            discrete_action = ACTION_BUY  # BUY
         elif action_value < sell_threshold:
-            discrete_action = 2  # SELL
+            discrete_action = ACTION_SELL  # SELL
         else:
-            discrete_action = 0  # HOLD
+            discrete_action = ACTION_HOLD  # HOLD
 
         action_histogram[discrete_action] += 1
 

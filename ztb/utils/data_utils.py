@@ -182,9 +182,13 @@ def load_csv_data_optimized(
                 'win': 'int32'
             }
 
+        # Read header to determine available columns for parse_dates
+        header_df = pd.read_csv(file_path, nrows=0)
+        available_columns = list(header_df.columns)
+
         # Default parse_dates for timestamp columns
         if parse_dates is None:
-            parse_dates = ['timestamp']
+            parse_dates = [col for col in ['timestamp', 'ts'] if col in available_columns]
 
         df = cast(pd.DataFrame, pd.read_csv(
             file_path,

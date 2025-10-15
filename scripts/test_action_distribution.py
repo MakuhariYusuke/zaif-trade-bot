@@ -17,6 +17,7 @@ sys.path.insert(0, str(project_root))
 from stable_baselines3 import SAC
 from ztb.trading.environment.heavy_env import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
 
 def test_action_distribution(config_path: str):
     """Test action distribution for SAC model"""
@@ -69,12 +70,12 @@ def test_action_distribution(config_path: str):
             actions.append(action[0])
 
             # Convert to discrete for counting (using same threshold as environment: 0.1)
-            if action[0] < -0.1:
-                discrete_action = 2  # SELL
-            elif action[0] > 0.1:
-                discrete_action = 1  # BUY
+            if action[ACTION_HOLD] < -0.1:
+                discrete_action = ACTION_SELL
+            elif action[ACTION_HOLD] > 0.1:
+                discrete_action = ACTION_BUY
             else:
-                discrete_action = 0  # HOLD
+                discrete_action = ACTION_HOLD
 
             discrete_actions.append(discrete_action)
             episode_actions.append(action[0])
@@ -84,13 +85,13 @@ def test_action_distribution(config_path: str):
             obs, reward, done, truncated, info = env.step(action)
             done = done or truncated
 
-        print(f"Episode {episode+1}: Actions - BUY:{episode_discrete.count(1)}, SELL:{episode_discrete.count(2)}, HOLD:{episode_discrete.count(0)}")
+        print(f"Episode {episode+1}: Actions - BUY:{episode_discrete.count(ACTION_BUY)}, SELL:{episode_discrete.count(ACTION_SELL)}, HOLD:{episode_discrete.count(ACTION_HOLD)}")
 
     # Overall statistics
     total_actions = len(discrete_actions)
-    buy_count = discrete_actions.count(1)
-    sell_count = discrete_actions.count(2)
-    hold_count = discrete_actions.count(0)
+    buy_count = discrete_actions.count(ACTION_BUY)
+    sell_count = discrete_actions.count(ACTION_SELL)
+    hold_count = discrete_actions.count(ACTION_HOLD)
 
     buy_ratio = buy_count / total_actions * 100
     sell_ratio = sell_count / total_actions * 100

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Paper Trading Evaluation for Trained PPO Models.
+Paper Trading Evaluation for Trained RL Models.
 
+Supports both PPO and SAC algorithms for trading evaluation.
 Loads and simulates trading on test data to evaluate performance.
 """
 
@@ -10,19 +11,39 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, cast
+from typing import Any, Dict, List, Optional, TypedDict, cast, Union
+
+# Add project root to path before importing ztb modules
+current = Path(__file__).resolve()
+for parent in [current] + list(current.parents):
+    if any(
+        (parent / marker).exists()
+        for marker in [
+            "pyproject.toml",
+            "setup.py",
+            ".git",
+            "requirements.txt",
+            "package.json",
+        ]
+    ):
+        project_root = parent
+        break
+else:
+    project_root = current.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from ztb.utils.path_utils import ensure_dir, get_project_root
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 import numpy as np
 import pandas as pd
 import torch
 from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
+from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
-
-from ztb.utils.path_utils import ensure_dir, get_project_root
-
-# Add project root to path
-project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
@@ -32,6 +53,28 @@ from ztb.utils import DiscordNotifier
 from ztb.utils.data_utils import load_csv_data_optimized
 from ztb.utils.file_utils import safe_json_load
 from ztb.inference.decode import decode_action, InferenceConfig
+from ztb.trading.environment.constants import continuous_to_discrete_action
+
+
+def detect_algorithm(model_path: Path) -> str:
+    """Detect the RL algorithm from model path or config.
+    
+    Args:
+        model_path: Path to the model file
+        
+    Returns:
+        Algorithm name ('ppo' or 'sac')
+    """
+    model_name = model_path.stem.lower()
+    
+    # Check filename for algorithm hints
+    if 'sac' in model_name:
+        return 'sac'
+    elif 'ppo' in model_name:
+        return 'ppo'
+    
+    # Default to PPO for backward compatibility
+    return 'ppo'
 
 
 class TradeDict(TypedDict):
@@ -102,21 +145,27 @@ class PaperTrader:
         test_data_path: str,
         config: Optional[Dict[str, Any]] = None,
         verbose: bool = False,
+        algorithm: Optional[str] = None,
     ):
         self.model_path = Path(model_path)
         self.test_data_path = Path(test_data_path)
         self.config = config or self._get_default_config()
         self.verbose = verbose
-        print(f"PaperTrader verbose: {self.verbose}")
+        self.algorithm = algorithm or detect_algorithm(self.model_path)
+        print(f"PaperTrader verbose: {self.verbose}, algorithm: {self.algorithm}")
         self.logger = logging.getLogger(__name__)
 
         # Initialize instance variables
         self.test_df: Optional[pd.DataFrame] = None
-        self.model: Optional[MaskablePPO] = None
+        self.model: Optional[Union[MaskablePPO, SAC]] = None
         self.env: Optional[DummyVecEnv] = None
         self.episode_results: List[EpisodeResultDict] = []
         self._normalization_stats: Optional[Any] = None  # Store loaded normalization stats
 
+        self._setup_common_config()
+
+    def _setup_common_config(self) -> None:
+        """Common configuration setup for both PPO and SAC."""
         # Load test data first
         self.logger.info(f"Loading test data from {self.test_data_path}")
         self.test_df = load_csv_data_optimized(str(self.test_data_path))
@@ -129,19 +178,39 @@ class PaperTrader:
         self.logger.info(f"Loading model from {self.model_path}")
         self._load_model()
         self.logger.info("Model loaded successfully")
+        print(f"DEBUG: Model observation space: {self.model.observation_space}")
+
+        # Initialize schema attributes (only for PPO)
+        if self.algorithm == 'ppo':
+            self._initialize_schema()
+        else:
+            # For SAC, skip schema validation
+            self.schema_available = False
+            obs_shape = getattr(self.model.observation_space, "shape", None)
+            self.expected_features = int(obs_shape[0]) if obs_shape else None
+            self.feature_names = None
+            self.schema_hash = None
+
+        # For SAC, disable correlation reduction to match model expectations
+        if self.algorithm == 'sac':
+            # Recreate environment without correlation reduction
+            self.env = self._create_env_sac()
 
         # Trading results
         self.trades: List[TradeDict] = []
         self.portfolio_value: float = 10000.0  # Starting capital
         self.position: float = 0.0  # Current position size
 
-        # Inference configuration
-        self.inference_config: Optional[InferenceConfig] = InferenceConfig(
-            temperature=float(cast(float, self.config.get("temperature", 0.7))),
-            tiebreaker_tau=float(cast(float, self.config.get("tiebreaker_tau", 0.05))),
-            enable_tiebreaker=bool(cast(bool, self.config.get("enable_tiebreaker", True))),
-            deterministic=bool(cast(bool, self.config.get("deterministic", False))),
-        )
+        # Inference configuration (only for PPO)
+        if self.algorithm == 'ppo':
+            self.inference_config: Optional[InferenceConfig] = InferenceConfig(
+                temperature=float(cast(float, self.config.get("temperature", 0.7))),
+                tiebreaker_tau=float(cast(float, self.config.get("tiebreaker_tau", 0.05))),
+                enable_tiebreaker=bool(cast(bool, self.config.get("enable_tiebreaker", True))),
+                deterministic=bool(cast(bool, self.config.get("deterministic", False))),
+            )
+        else:
+            self.inference_config = None
 
     def _get_default_config(self) -> TradingEnvConfig:
         """Get default configuration for paper trading."""
@@ -150,6 +219,8 @@ class PaperTrader:
             "risk_free_rate": 0.0,
             "initial_portfolio_value": 10000.0,
             "verbose": 1,
+            "enable_correlation_reduction": False,  # Disable correlation reduction for SAC compatibility
+            "correlation_reduction": False,  # Also set the actual config key
         })
 
     def _create_env(self) -> DummyVecEnv:
@@ -163,7 +234,7 @@ class PaperTrader:
                 "risk_free_rate": self.config.get("risk_free_rate", 0.0),
                 "curriculum_stage": self.config.get("curriculum_stage", "full"),
                 "initial_portfolio_value": self.config.get(
-                    "initial_portfolio_value", 10000.0
+                    "initial_portfolio_value", 1000000.0
                 ),
                 "verbose": self.config.get("verbose", 1),
             },
@@ -174,9 +245,55 @@ class PaperTrader:
 
         return DummyVecEnv([lambda: env])
 
+    def _create_env_sac(self) -> DummyVecEnv:
+        """Create environment for SAC models (without correlation reduction)."""
+        self.logger.info("Creating SAC environment with correlation_reduction=False")
+        config = {
+            "reward_scaling": self.config.get("reward_scaling", 1.0),
+            "transaction_cost": self.config.get("transaction_cost", 0.001),
+            "max_position_size": self.config.get("max_position_size", 1.0),
+            "risk_free_rate": self.config.get("risk_free_rate", 0.0),
+            "curriculum_stage": self.config.get("curriculum_stage", "full"),
+            "initial_portfolio_value": self.config.get(
+                "initial_portfolio_value", 1000000.0
+            ),
+            "verbose": self.config.get("verbose", 1),
+            "correlation_reduction": True,  # Enable for SAC compatibility with this model
+            "enable_correlation_reduction": True,  # Also set the actual config key
+        }
+        expected_dim = self.expected_features
+        if expected_dim is None:
+            obs_shape = getattr(self.model.observation_space, "shape", None)
+            expected_dim = int(obs_shape[0]) if obs_shape else None
+        if expected_dim:
+            config["target_feature_count"] = int(expected_dim)
+        self.logger.info(f"SAC config: {config}")
+        env_kwargs: Dict[str, Any] = {
+            "df": self.test_df,
+            "config": config,
+        }
+        if expected_dim:
+            env_kwargs["max_features"] = int(expected_dim)
+        env = TradingEnvironment(**env_kwargs)
+        
+        # Store base environment reference for initial_portfolio_value access
+        self._base_env = env
+
+        return DummyVecEnv([lambda: env])
+
     def _load_model(self) -> None:
         """Load the trained model from checkpoint."""
-        self.logger.info(f"Loading model from {self.model_path}")
+        self.logger.info(f"Loading {self.algorithm.upper()} model from {self.model_path}")
+        
+        if self.algorithm == 'ppo':
+            self._load_ppo_model()
+        elif self.algorithm == 'sac':
+            self._load_sac_model()
+        else:
+            raise ValueError(f"Unsupported algorithm: {self.algorithm}")
+
+    def _load_ppo_model(self) -> None:
+        """Load PPO model with custom checkpoint support."""
         # Create a dummy model first, then load checkpoint
         dummy_env = self._create_env()
 
@@ -213,7 +330,7 @@ class PaperTrader:
                 env=dummy_env,
                 custom_objects={"policy_kwargs": policy_kwargs},
             )
-            print("Successfully loaded model using Stable Baselines3 load method")
+            print("Successfully loaded PPO model using Stable Baselines3 load method")
         except Exception as sb3_error:
             print(
                 f"Stable Baselines3 load failed: {sb3_error}, trying custom checkpoint format..."
@@ -270,17 +387,32 @@ class PaperTrader:
                 if policy_state:
                     self.model.policy.load_state_dict(policy_state)
                 if value_state and hasattr(self.model, "value_net"):
-                    self.model.value_net.load_state_dict(value_state)
+                    try:
+                        self.model.value_net.load_state_dict(value_state)
+                    except AttributeError:
+                        pass  # Some PPO variants may not have value_net
 
-                print("Successfully loaded model using custom checkpoint format")
+                print("Successfully loaded PPO model using custom checkpoint format")
 
             except Exception as custom_error:
                 raise RuntimeError(
-                    f"Failed to load model with both Stable Baselines3 and custom formats: SB3: {sb3_error}, Custom: {custom_error}"
+                    f"Failed to load PPO model with both Stable Baselines3 and custom formats: SB3: {sb3_error}, Custom: {custom_error}"
                 )
 
-        assert self.model is not None, "Model failed to load"
+        assert self.model is not None, "PPO model failed to load"
 
+    def _load_sac_model(self) -> None:
+        """Load SAC model."""
+        try:
+            self.model = SAC.load(str(self.model_path))
+            print("Successfully loaded SAC model")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load SAC model: {e}")
+
+        assert self.model is not None, "SAC model failed to load"
+
+    def _initialize_schema(self) -> None:
+        """Initialize feature schema for PPO models."""
         # Load and validate feature schema using Phase 3 FeatureSchemaManager
         self.schema_available = False
         self.expected_features: Optional[int] = None
@@ -324,6 +456,62 @@ class PaperTrader:
                 self.model_path.stem,
                 str(e)
             )
+
+    def _get_ppo_action(self, obs: Any) -> tuple:
+        """Get action from PPO model using inference pipeline."""
+        # Get legal actions mask for MaskablePPO
+        action_masks = cast(
+            NDArray[np.bool_], cast(
+                TradingEnvironment, self.env.envs[0]
+            ).get_legal_actions()
+        )
+
+        # Get logits from policy network
+        with torch.no_grad():
+            obs_tensor = torch.from_numpy(obs).float()
+            features = self.model.policy.extract_features(obs_tensor, self.model.policy.features_extractor)  # type: ignore[union-attr]
+            if self.model.policy.share_features_extractor:  # type: ignore[union-attr]
+                latent_pi, _ = self.model.policy.mlp_extractor(features)  # type: ignore[union-attr]
+            else:
+                latent_pi = self.model.policy.mlp_extractor.forward_actor(features[0])  # type: ignore[union-attr]
+            logits = self.model.policy.action_net(latent_pi).cpu().numpy()  # type: ignore[union-attr]
+
+        # Use unified decode_action for strict decode order
+        action, decode_info = decode_action(
+            logits[0] if logits.ndim > 1 else logits,
+            action_masks,
+            self.inference_config,
+        )
+        action = np.array([action])  # Wrap for env.step()
+        
+        return action, decode_info
+
+    def _get_sac_action(self, obs: Any) -> tuple:
+        """Get action from SAC model."""
+        # SAC uses continuous actions, convert to discrete
+        action, _ = self.model.predict(obs, deterministic=True)  # type: ignore[union-attr]
+        
+        # Convert continuous action to discrete (assuming 3 actions: HOLD, BUY, SELL)
+        # SAC outputs continuous values, map to discrete actions
+        if isinstance(action, np.ndarray) and action.ndim > 0:
+            action_value = action[0] if action.shape[0] > 0 else action.item()
+        else:
+            action_value = action
+        
+        # Map continuous action to discrete using centralized function
+        discrete_action = continuous_to_discrete_action(action_value)
+        action = np.array([discrete_action])
+        
+        # Create decode_info for compatibility
+        decode_info = {
+            'probabilities': [0.33, 0.33, 0.34],  # Placeholder
+            'top2_actions': [discrete_action, discrete_action],
+            'top2_probs': [1.0, 0.0],
+            'margin': 0.0,
+            'tiebreaker_activated': False
+        }
+        
+        return action, decode_info
 
     def _load_test_data(self) -> None:
         """Load test data for evaluation."""
@@ -411,30 +599,12 @@ class PaperTrader:
             # Get action from model
             predict_obs = obs[0] if isinstance(obs, tuple) else obs
 
-            # Get legal actions mask for MaskablePPO
-            action_masks = cast(
-                NDArray[np.bool_], cast(
-                    TradingEnvironment, self.env.envs[0]
-                ).get_legal_actions()
-            )
-
-            # Get logits from policy network
-            with torch.no_grad():
-                obs_tensor = torch.from_numpy(predict_obs).float()
-                features = self.model.policy.extract_features(obs_tensor, self.model.policy.features_extractor)  # type: ignore[union-attr]
-                if self.model.policy.share_features_extractor:  # type: ignore[union-attr]
-                    latent_pi, _ = self.model.policy.mlp_extractor(features)  # type: ignore[union-attr]
-                else:
-                    latent_pi = self.model.policy.mlp_extractor.forward_actor(features[0])  # type: ignore[union-attr]
-                logits = self.model.policy.action_net(latent_pi).cpu().numpy()  # type: ignore[union-attr]
-
-            # Use unified decode_action for strict decode order
-            action, decode_info = decode_action(
-                logits[0] if logits.ndim > 1 else logits,
-                action_masks,
-                self.inference_config,
-            )
-            action = np.array([action])  # Wrap for env.step()
+            if self.algorithm == 'ppo':
+                action, decode_info = self._get_ppo_action(predict_obs)
+            elif self.algorithm == 'sac':
+                action, decode_info = self._get_sac_action(predict_obs)
+            else:
+                raise ValueError(f"Unsupported algorithm: {self.algorithm}")
 
             # Debug: Log action distribution for first few steps AND environment state
             if self.verbose and steps < 10:
@@ -447,7 +617,13 @@ class PaperTrader:
                 print(f"  Curriculum Stage: {curriculum_stage}")
                 print(f"  Current Position: {self.position:.3f}")
                 print(f"  Portfolio Value: ${self.portfolio_value:.2f}")
-                print(f"  Legal Actions Mask: {action_masks}")
+                if self.algorithm == 'ppo':
+                    action_masks = cast(
+                        NDArray[np.bool_], cast(
+                            TradingEnvironment, self.env.envs[0]
+                        ).get_legal_actions()
+                    )
+                    print(f"  Legal Actions Mask: {action_masks}")
                 print(f"\n[Decode Pipeline Results]")
                 action_idx = int(action[0])
                 action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(action_idx, f"UNKNOWN({action_idx})")
@@ -480,7 +656,7 @@ class PaperTrader:
 
             # Record trade if position changed
             if (
-                abs(self.position - prev_position) > 0.01
+                abs(self.position - prev_position) > 0.0001
             ):  # Position changed significantly
                 trade: TradeDict = {
                     "step": steps,
@@ -590,7 +766,7 @@ class PaperTrader:
         action_counts: Dict[int, int] = {}
         for trade in self.trades:
             action = trade["action"]
-            action_idx = int(action)
+            action_idx = action
             action_counts[action_idx] = action_counts.get(action_idx, 0) + 1
         stats["action_distribution"] = action_counts
 
@@ -689,6 +865,11 @@ def main() -> int:
         help="Enable verbose logging",
     )
     parser.add_argument(
+        "--algorithm",
+        choices=["ppo", "sac"],
+        help="RL algorithm to use (auto-detected if not specified)",
+    )
+    parser.add_argument(
         "--reward-scaling",
         type=float,
         default=1.0,
@@ -714,8 +895,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--config",
-        default="scalping-config.json",
-        help="Path to config JSON file (default: scalping-config.json)",
+        default=None,
+        help="Path to config JSON file (optional)",
     )
 
     args = parser.parse_args()
@@ -731,6 +912,7 @@ def main() -> int:
     # Initialize Discord notifier
     notifier = DiscordNotifier()
 
+    trader = None  # Initialize to avoid unbound variable issues
     try:
         # Create custom config from args
         custom_config = {
@@ -755,6 +937,7 @@ def main() -> int:
             custom_config.get("test_data", args.test_data),
             config=custom_config,
             verbose=args.verbose,
+            algorithm=args.algorithm,
         )
 
         # Send start notification
@@ -766,9 +949,10 @@ def main() -> int:
         
         notifier.send_notification(
             title="📈 Paper Trading Started",
-            message=f"Evaluating model: {Path(args.model_path).name}",
+            message=f"Evaluating {trader.algorithm.upper()} model: {Path(args.model_path).name}",
             color="info",
             fields={
+                "Algorithm": trader.algorithm.upper(),
                 "Model": Path(args.model_path).name,
                 "Test Data": args.test_data,
                 "Episodes": str(args.episodes),
@@ -787,9 +971,10 @@ def main() -> int:
         # Send completion notification
         notifier.send_notification(
             title="✅ Paper Trading Completed",
-            message=f"Model evaluation completed: {Path(args.model_path).name}",
+            message=f"{trader.algorithm.upper()} model evaluation completed: {Path(args.model_path).name}",
             color="success",
             fields={
+                "Algorithm": trader.algorithm.upper(),
                 "Total Return": f"{results.get('total_return_percent', 0):.2f}%",
                 "Win Rate": f"{results.get('win_rate', 0):.2%}",
                 "Total Trades": str(results.get("total_trades", 0)),
@@ -820,7 +1005,11 @@ def main() -> int:
         logger.error(f"Paper trading failed: {e}", exc_info=True)
 
         # Clean up resources even on failure
-        trader.close()
+        try:
+            if 'trader' in locals() and trader is not None:
+                trader.close()
+        except NameError:
+            pass  # trader was not defined yet
 
         # Send failure notification
         notifier.send_notification(

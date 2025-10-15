@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import numpy as np
 
 from stable_baselines3.common.callbacks import BaseCallback
+from ztb.trading.environment.constants import continuous_to_discrete_action
 
 if TYPE_CHECKING:
     from ztb.training.core.base_trainer import BaseTrainer
@@ -136,12 +137,10 @@ class TradingTrainingCallback(BaseTrainingCallback):
                 action_val = action
 
             if isinstance(action_val, (int, float)):
-                if action_val > 0.1:
-                    action_name = "BUY"
-                elif action_val < -0.1:
-                    action_name = "SELL"
-                else:
-                    action_name = "HOLD"
+                # Use centralized function for consistent action classification
+                discrete_action = continuous_to_discrete_action(action_val)
+                action_names = ["HOLD", "BUY", "SELL"]
+                action_name = action_names[discrete_action]
             else:
                 action_name = str(action_val)
 

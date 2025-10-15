@@ -17,9 +17,12 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
+import logging
 
 from ztb.utils.path_utils import ensure_dir
+
+logger = logging.getLogger(__name__)
 
 try:
     import lz4.frame as lz4_frame
@@ -144,11 +147,24 @@ class CheckpointManager:
 
     def _load_raw_checkpoint(self, path: str) -> CheckpointData:
         """Load checkpoint without applying diffs"""
-        with open(path, "rb") as f:
-            compressed_data = f.read()
+        try:
+            with open(path, "rb") as f:
+                compressed_data = f.read()
+        except Exception as e:
+            logger.error(f"Failed to read checkpoint file {path}: {e}")
+            raise
 
-        data = self._decompress_data(compressed_data)
-        return pickle.loads(data)
+        try:
+            data = self._decompress_data(compressed_data)
+        except Exception as e:
+            logger.error(f"Failed to decompress checkpoint {path}: {e}")
+            raise
+
+        try:
+            return cast(CheckpointData, pickle.loads(data))
+        except Exception as e:
+            logger.error(f"Failed to deserialize checkpoint {path}: {e}")
+            raise
 
     def cleanup_old_checkpoints(self) -> None:
         """Clean up old checkpoints based on keep_last and keep_every_nth"""
@@ -252,7 +268,7 @@ class CheckpointManager:
             # Full checkpoint
             save_data = checkpoint_data
             filename = f"checkpoint_{step:08d}.pkl"
-            self.last_full_checkpoint = checkpoint_data  # type: ignore[assignment]
+            self.last_full_checkpoint = checkpoint_data
             self.last_checkpoint_path = None  # Reset diff chain
 
         # Serialize
@@ -280,14 +296,24 @@ class CheckpointManager:
 
     def _load_checkpoint(self, path: str) -> Tuple[CheckpointData, int, Dict[str, Any]]:
         """Internal load method with differential support"""
-        with open(path, "rb") as f:
-            compressed_data = f.read()
+        try:
+            with open(path, "rb") as f:
+                compressed_data = f.read()
+        except Exception as e:
+            logger.error(f"Failed to read checkpoint file {path}: {e}")
+            raise
 
-        # Decompress
-        data = self._decompress_data(compressed_data)
+        try:
+            data = self._decompress_data(compressed_data)
+        except Exception as e:
+            logger.error(f"Failed to decompress checkpoint {path}: {e}")
+            raise
 
-        # Deserialize
-        checkpoint_data = pickle.loads(data)
+        try:
+            checkpoint_data = pickle.loads(data)
+        except Exception as e:
+            logger.error(f"Failed to deserialize checkpoint {path}: {e}")
+            raise
 
         # If this is a differential checkpoint, apply it to base
         if isinstance(checkpoint_data, dict) and checkpoint_data.get("is_differential"):
@@ -338,22 +364,22 @@ class CheckpointManager:
     def _apply_compression(self, data: bytes, compressor: str) -> bytes:
         """Apply compression"""
         if compressor == "lz4" and HAS_LZ4 and lz4_frame:
-            return lz4_frame.compress(data)
+            return cast(bytes, lz4_frame.compress(data))
         elif compressor == "zstd" and HAS_ZSTD and zstd:
             compressor_obj = zstd.ZstdCompressor()
-            return compressor_obj.compress(data)
+            return cast(bytes, compressor_obj.compress(data))
         else:
             return zlib.compress(data, 6)
 
     def _decompress_lz4(self, data: bytes) -> bytes:
         if HAS_LZ4 and lz4_frame:
-            return lz4_frame.decompress(data)
+            return cast(bytes, lz4_frame.decompress(data))
         raise ImportError("lz4 not available")
 
     def _decompress_zstd(self, data: bytes) -> bytes:
         if HAS_ZSTD and zstd:
             decompressor = zstd.ZstdDecompressor()
-            return decompressor.decompress(data)
+            return cast(bytes, decompressor.decompress(data))
         raise ImportError("zstd not available")
 
     def _decompress_zlib(self, data: bytes) -> bytes:
@@ -511,10 +537,12 @@ class HierarchicalCheckpointManager:
         self.executor: Optional[ThreadPoolExecutor] = None
         self._init_executor()
 
-    def _init_executor(self):
+    def _init_executor(self) -> None:
         """Initialize ThreadPoolExecutor for async saving"""
+        import os
+        max_workers = min(4, os.cpu_count() or 2)
         self.executor = ThreadPoolExecutor(
-            max_workers=2, thread_name_prefix="checkpoint"
+            max_workers=max_workers, thread_name_prefix="checkpoint"
         )
 
     def should_save_light(self, step: int) -> bool:

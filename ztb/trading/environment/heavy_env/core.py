@@ -25,6 +25,7 @@ from ztb.trading.environment.heavy_env.mixins.initialization import (
     _initialize_features_and_spaces,
     _initialize_remaining_components,
     _refresh_features,
+    _select_features_by_correlation_in_env,
     _setup_scaler,
 )
 from ztb.trading.environment.heavy_env.mixins.pricing import (
@@ -141,6 +142,8 @@ class HeavyTradingEnv(
     _extract_numeric_column = _extract_numeric_column
     _setup_scaler = _setup_scaler
     _compute_scaler_from_data = _compute_scaler_from_data
+
+    _select_features_by_correlation_in_env = _select_features_by_correlation_in_env
 
     _fetch_streaming_snapshot = _fetch_streaming_snapshot
     _prepare_stream_batch = _prepare_stream_batch
@@ -381,6 +384,7 @@ class HeavyTradingEnv(
         action: Union[int, np.ndarray],  # Can be int (discrete) or np.ndarray (continuous)
     ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
         # Convert continuous action to discrete if necessary
+        from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
         from ztb.trading.environment.constants import continuous_to_discrete_action
         
         if isinstance(action, np.ndarray):
@@ -391,8 +395,21 @@ class HeavyTradingEnv(
             actual_action = discrete_action
             continuous_action_value = continuous_value
         else:
-            # Discrete action from PPO
-            actual_action = int(action)
+            # Discrete action from PPO or direct trading action
+            action_int = int(action)
+            if action_int in (ACTION_HOLD, ACTION_BUY, ACTION_SELL):
+                # Direct trading action
+                actual_action = action_int
+            elif action_int in (0, 1, 2):
+                # Map discrete action to trading action
+                if action_int == 0:
+                    actual_action = ACTION_HOLD
+                elif action_int == 1:
+                    actual_action = ACTION_BUY
+                elif action_int == 2:
+                    actual_action = ACTION_SELL
+            else:
+                raise ValueError(f"Invalid action: {action_int}")
             continuous_action_value = None
         
         old_position = self.position_manager.position
