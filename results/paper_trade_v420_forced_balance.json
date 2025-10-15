@@ -1,0 +1,15 @@
+{
+  "total_steps": 5000,
+  "initial_portfolio": 200000.0,
+  "final_portfolio": 373532.618450363,
+  "total_return_pct": 86.76630922518149,
+  "total_trades": 363,
+  "total_pnl": -182.98184502842062,
+  "action_distribution": {
+    "0": 1213,
+    "1": 2796,
+    "2": 990
+  },
+  "win_rate": 0.0,
+  "avg_trade_pnl": -0.5040822177091477
+}

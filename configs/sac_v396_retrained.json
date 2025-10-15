@@ -5,10 +5,22 @@
   "data_source": "csv",
   "data_path": "btc_jpy_featured_dataset.csv",
   "feature_names": [
-    "returns", "sma_5", "sma_10", "sma_20", "rsi_14", 
-    "macd", "macd_signal", "macd_hist",
-    "bb_upper", "bb_middle", "bb_lower", "bb_position",
-    "volatility_10", "volume_sma_5", "high_low_range", "log_returns"
+    "returns",
+    "sma_5",
+    "sma_10",
+    "sma_20",
+    "rsi_14",
+    "macd",
+    "macd_signal",
+    "macd_hist",
+    "bb_upper",
+    "bb_middle",
+    "bb_lower",
+    "bb_position",
+    "volatility_10",
+    "volume_sma_5",
+    "high_low_range",
+    "log_returns"
   ],
   "data_config": {
     "csv_path": "btc_jpy_real_dataset.csv",
@@ -28,7 +40,7 @@
     "target_entropy": "auto"
   },
   "environment": {
-    "initial_balance": 200000,
+    "initial_balance": 200000.0,
     "transaction_cost": 0.0005,
     "max_position_size": 1.0,
     "enable_action_masking": false,
@@ -37,14 +49,18 @@
     "random_start": true,
     "reward_settings": {
       "curriculum_stage": "balanced_transition",
-      "target_ratios": [0.5, 0.25, 0.25],
+      "target_ratios": [
+        0.5,
+        0.25,
+        0.25
+      ],
       "balance_penalty": 0.1,
       "balance_penalty_tolerance": 0.05,
-      "inactivity_penalty_rate": 0.00005,
+      "inactivity_penalty_rate": 5e-05,
       "immediate_bonus_rate": 0.5,
       "use_simple_reward": false,
       "reward_scale": 5.0,
-      "eps": 1e-8,
+      "eps": 1e-08,
       "scale_adjustment_base": 1.0,
       "max_position_size_min": 0.01,
       "forced_balance_reward_low_penalty": 20.0,

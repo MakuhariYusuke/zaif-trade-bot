@@ -9,9 +9,10 @@ import logging
 import os
 import sys
 import time
+from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 # Add project root to path
 from ztb.utils.path_utils import get_project_root
@@ -21,7 +22,7 @@ sys.path.insert(0, str(project_root))
 import numpy as np
 import pandas as pd
 import requests
-from dotenv import load_dotenv  # type: ignore[import-untyped]
+from dotenv import load_dotenv
 from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO, SAC
@@ -30,7 +31,12 @@ from ztb.trading.live.action_mask_provider import (
     ActionMaskConfig,
     ActionMaskProvider,
 )
+from ztb.trading.live_trader.action_prediction import ActionPrediction
 from ztb.trading.live_trader.config import LiveTradingOptions, prometheus_available
+from ztb.trading.live_trader.feature_computation import FeatureComputation
+from ztb.trading.live_trader.health_monitoring import HealthMonitoring
+from ztb.trading.live_trader.model_loading import ModelLoading
+from ztb.trading.live_trader.trading_loop import TradingLoop
 from ztb.trading.live.registry.broker_registry import get_broker_registry
 from ztb.utils.logging_utils import get_logger
 
@@ -109,6 +115,8 @@ class LiveTrader:
     If COINCHECK_API_KEY and COINCHECK_API_SECRET are not set, the bot runs in demo mode and does not execute real trades.
     """
 
+    compute_features_batch: Optional[Callable[[pd.DataFrame, Optional[List[str]], int, bool, Optional[bool], Optional[int], Optional[bool]], Union[pd.DataFrame, Tuple[pd.DataFrame, Dict[str, float]]]]]
+
     def __init__(
         self,
         model_path: Union[str, Path, LiveTradingOptions],
@@ -119,31 +127,172 @@ class LiveTrader:
         logger = get_logger(__name__)
         logger.info("LiveTrader.__init__ started")
         print("LiveTrader.__init__ started")
+        
+        # Quick dry-run initialization
+        if dry_run:
+            self._init_dry_run(model_path, disable_risk_limits)
+            return
+
+        self._init_normal(model_path, config, disable_risk_limits)
+
+    def _init_dry_run(self, model_path: Union[str, Path, LiveTradingOptions], disable_risk_limits: bool) -> None:
+        """Initialize for dry-run mode with live components."""
+        logger = get_logger(__name__)
+        logger.info("Dry-run mode: using simplified initialization with live components")
+        self.dry_run = True
         if isinstance(model_path, LiveTradingOptions):
             options = model_path
             self.model_path = Path(options.model_path).expanduser()
-            disable_risk_limits = options.disable_risk_limits
-            dry_run = options.dry_run
         else:
             self.model_path = Path(model_path).expanduser()
             options = LiveTradingOptions(
                 model_path=self.model_path,
-                algorithm="ppo",  # default
-                venue="coincheck",  # default
+                algorithm="sac" if "sac" in str(self.model_path).lower() else "ppo",
+                venue="coincheck",
                 disable_risk_limits=disable_risk_limits,
-                dry_run=dry_run,
+                dry_run=True,
             )
-
         self.options = options
-        if not self.model_path.exists():
-            raise ValueError(f"Model file not found: {self.model_path}")
-        self.ztb_config = ZTBConfig()
-        logger.debug("ZTBConfig initialized")
-        self.config = config or self._get_default_config()
+        self.disable_risk_limits = options.disable_risk_limits
+        self.algorithm = options.algorithm
+        self.ACTION_NAMES = ACTION_NAMES
+        self.price_history: deque[float] = deque(maxlen=100)
+        self.expected_features = 64
+        self.feature_names = None
+        self.schema_available = False
+        
+        # Initialize essential attributes for dry-run
+        self.price_cache = TTLCache(ttl_seconds=30.0)
+        self._last_valid_price = 0.0
+        self.total_pnl = 0.0
+        self.position = 0
+        self.entry_price = 0.0
+        self.trades_count = 0
+        self.daily_start_pnl = 0.0
+        self.daily_trades = 0
+        self.notifier = None
+        self.config = {'price_history_length': 100}  # Basic config for dry-run
+        self._current_step = 0
+        self._cleanup_counter = 0
+        self._cleanup_interval = 100
+        
+        # Initialize exchange adapter for live price access in dry-run
+        venue = self.options.venue.lower()
+        if venue == "coincheck":
+            self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
+            self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
+            self.base_url = "https://coincheck.com"
+            adapter_name = "coincheck"
+        else:
+            raise ValueError(f"Unsupported venue for dry-run: {venue}")
+        
+        try:
+            broker_registry = get_broker_registry()
+            self.exchange_adapter = broker_registry.get_broker(
+                adapter_name,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+                dry_run=True,  # Force dry-run mode for adapter
+            )
+            logger.info(f"{venue.upper()} adapter initialized for dry-run")
+        except Exception as e:
+            logger.warning(f"Failed to initialize {venue.upper()} adapter for dry-run: {e}")
+            self.exchange_adapter = None
+        
+        # Initialize PositionManager for dry-run
+        if position_manager_available:
+            try:
+                # Create a simple config object for PositionManager
+                class LivePositionConfig:
+                    """Configuration for PositionManager in live trading."""
+                    def __init__(self, config_dict: Dict[str, Any]) -> None:
+                        self.allow_reverse = config_dict.get("allow_reverse", False)
+                        self.transaction_cost = config_dict.get("transaction_cost", 0.001)
+                        self.max_position_size = config_dict.get(
+                            "max_position_size", 
+                            config_dict.get("min_trade_amount", 0.001)
+                        )
+                        self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
+                        self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
+                        
+                position_config = LivePositionConfig(self.config)
+                
+                self.position_manager = PositionManager(
+                    config=position_config,
+                    get_price_callback=lambda: self._last_valid_price if hasattr(self, '_last_valid_price') and self._last_valid_price > 0 else 5000000.0
+                )
+                logger.info(f"PositionManager initialized for dry-run (position_size={position_config.max_position_size})")
+            except Exception as e:
+                logger.warning(f"Failed to initialize PositionManager for dry-run: {e}")
+                self.position_manager = None
+        else:
+            self.position_manager = None
+            logger.warning("PositionManager not available, using legacy position logic")
+        
+        # Initialize action mask provider for dry-run
+        mask_config = ActionMaskConfig(
+            min_holding_period=self.config.get("min_holding_period", 5),
+            enable_forced_close=True,
+            max_position_age=self.config.get("max_position_age", 1000)
+        )
+        self.mask_provider = ActionMaskProvider(mask_config)
+        self._is_maskable_ppo = False
+        self._position_entry_step = 0
+        
+        # Initialize minimal components for dry-run
+        self.trading_loop = TradingLoop(self)
+        self.feature_computation = FeatureComputation(self)
+        self.action_prediction = ActionPrediction(self)
+        self.health_monitoring = HealthMonitoring(self)
+        self.model_loading = ModelLoading(self)
+        # Load model for dry-run
+        self.model = self.model_loading.load_model()
+        
+        # Initialize price history with current live price for dry-run
+        try:
+            # Get live price synchronously for dry-run initialization
+            import requests
+            response = requests.get("https://coincheck.com/api/ticker", timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            if isinstance(data, dict) and "last" in data:
+                current_price = float(data["last"])
+                self._last_valid_price = current_price
+                self.price_history.clear()
+                self.price_history.extend([current_price] * 100)  # Fill with current price
+                logger.info(f"Initialized price history with live price: ¥{current_price:,.0f}")
+            else:
+                raise ValueError("Invalid API response")
+        except Exception as e:
+            logger.warning(f"Failed to initialize price history with live price: {e}, using fallback")
+            fallback_price = 5000000.0
+            self._last_valid_price = fallback_price
+            self.price_history.clear()
+            self.price_history.extend([fallback_price] * 100)
+        
+        logger.info("Dry-run initialization completed with live components")
+
+    def _init_normal(self, model_path: Union[str, Path, LiveTradingOptions], config: Optional[Dict[str, Any]], disable_risk_limits: bool) -> None:
+        """Initialize for normal live trading mode."""
+        logger = get_logger(__name__)
+        logger.info("Starting normal live trader initialization")
+
+        # Initialize basic attributes
+        self.compute_features_batch = compute_features_batch
+        self._setup_archive_config()
+        self._setup_model_options(model_path, disable_risk_limits)
+        self._validate_model_path()
+        self._setup_config(config)
+
+        # Initialize core components
+        self._init_core_components()
+        self._init_trading_components()
+        self._init_monitoring_components()
+
+        logger.info("Normal live trader initialization completed")
         logger.debug(f"Trading config loaded: {self.config}")
         self.disable_risk_limits = options.disable_risk_limits
         self.dry_run = options.dry_run
-        self.notifier: Optional[DiscordNotifier] = None
 
         # Initialize Discord notifications
         if not self.dry_run and os.getenv("DISCORD_WEBHOOK_URL"):
@@ -167,9 +316,9 @@ class LiveTrader:
             )
             self.config.update(
                 {
-                    "max_daily_loss": float("inf"),
-                    "max_daily_trades": float("inf"),
-                    "emergency_stop_loss": float("inf"),
+                    "max_daily_loss": float("inf"),  # type: ignore[dict-item]
+                    "max_daily_trades": float("inf"),  # type: ignore[dict-item]
+                    "emergency_stop_loss": float("inf"),  # type: ignore[dict-item]
                 }
             )
 
@@ -215,6 +364,10 @@ class LiveTrader:
             self.exchange_adapter = None
 
         # Load and validate model (after coincheck adapter initialization)
+        # Initialize model_loading first
+        self.algorithm = "ppo"  # Default, will be updated by model_loading
+        self.ACTION_NAMES = ACTION_NAMES
+        self.model_loading = ModelLoading(self)
         self.model = self._load_model()
 
         # Initialize PositionManager (Bug #25, #26 fix) - moved after model loading
@@ -262,6 +415,11 @@ class LiveTrader:
 
         # Initialize price validation
         self._last_valid_price = 0.0
+        
+        # Initialize schema attributes
+        self.schema_available = False
+        self.expected_features = 64  # Default
+        self.feature_names = None
         
         # Initialize action mask provider for MaskablePPO support (Bug #27 fix)
         mask_config = ActionMaskConfig(
@@ -311,15 +469,28 @@ class LiveTrader:
         )
         self.api_circuit_breaker = CircuitBreaker("coincheck_api", circuit_config)
         
-        # Update price history if adapter is available
-        if self.exchange_adapter:
+        # Update price history if adapter is available (skip in dry-run)
+        if self.exchange_adapter and not self.dry_run:
             self._update_price_history()
+        elif self.dry_run:
+            logger.info("Dry-run mode: using mock price history")
+            # Initialize with mock prices for dry-run
+            mock_price = 5000000.0  # Mock BTC/JPY price
+            self.price_history.clear()
+            self.price_history.extend([mock_price] * self.config.get("price_history_length", 100))
         else:
             logger.info("Price history update deferred until adapter is available")
         
         # Memory optimization: Periodic cleanup counter
         self._cleanup_counter = 0
         self._cleanup_interval = 100  # Clean up every 100 iterations
+
+        # Initialize component modules
+        self.trading_loop = TradingLoop(self)
+        self.feature_computation = FeatureComputation(self)
+        self.action_prediction = ActionPrediction(self)
+        self.health_monitoring = HealthMonitoring(self)
+        # self.model_loading = ModelLoading(self)  # Already initialized above
 
         # Send startup notification (with schema info if available)
         feature_info = "68 technical indicators (default)"
@@ -350,29 +521,27 @@ class LiveTrader:
             logger.log(log_level, f"{title}: {message}")
             logger.debug("Notification logged to console")
 
-    async def run_trading_loop(self, duration_hours: float) -> None:
+    def run_trading_loop(self, duration_hours: float) -> None:
         """Run the main trading loop for live trading."""
-        from datetime import datetime, timedelta
-        import time
+        return self.trading_loop.run_trading_loop(duration_hours)
 
-        logger = get_logger(__name__)
-        logger.info(f"🚀 Starting live trading loop for {duration_hours} hours")
-        
         start_time = datetime.now()
         end_time = start_time + timedelta(hours=duration_hours)
-        
+
         iteration_count = 0
-        
+        consecutive_errors = 0
+        max_consecutive_errors = 5
+
         logger.debug("Entering trading loop")
         while datetime.now() < end_time:
             iteration_count += 1
             logger.debug(f"Starting iteration {iteration_count}")
-            
+
             with PerformanceMonitor(f"trading_iteration_{iteration_count}"):
                 try:
                     # Get current price
                     try:
-                        current_price = await self._get_current_price()
+                        current_price = self._get_current_price()
                         logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
                     except Exception as e:
                         logger.error(f"Failed to get current price: {e}")
@@ -381,11 +550,24 @@ class LiveTrader:
                             logger.warning(f"Using last valid price: ¥{current_price:,.0f}")
                         else:
                             logger.error("No valid price available, skipping iteration")
+                            consecutive_errors += 1
+                            if consecutive_errors >= max_consecutive_errors:
+                                logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
+                                self._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
+                                break
+                            time.sleep(60)
                             continue
-                    
+
+                    # Reset consecutive error counter on successful price fetch
+                    consecutive_errors = 0
+
                     # Update price history
-                    self._update_price_history()
-                    
+                    try:
+                        self._update_price_history()
+                    except Exception as e:
+                        logger.warning(f"Failed to update price history: {e}")
+                        # Continue with existing history
+
                     # Compute features for prediction
                     logger.debug("Computing features...")
                     try:
@@ -395,7 +577,7 @@ class LiveTrader:
                         logger.error(f"Failed to compute features: {e}")
                         logger.warning("Using zero features as fallback")
                         features = np.zeros(64, dtype=np.float32)
-                    
+
                     # Predict action
                     logger.debug("Predicting action...")
                     try:
@@ -406,17 +588,22 @@ class LiveTrader:
                         logger.error(f"Failed to predict action: {e}")
                         action = ACTION_HOLD
                         action_name = "HOLD (fallback)"
-                    
+
                     # Validate position before executing action
                     if not (-1 <= self.position <= 1):
                         logger.error(f"Invalid position detected: {self.position}, resetting to 0")
                         self.position = 0.0
-                    
+
                     # Execute action
                     logger.debug("Executing action...")
-                    pnl = self._execute_action(action)
-                    logger.debug(f"Action executed, PnL: {pnl}")
-                    
+                    try:
+                        pnl = self._execute_action(action)
+                        logger.debug(f"Action executed, PnL: {pnl}")
+                    except Exception as e:
+                        logger.error(f"Failed to execute action: {e}")
+                        pnl = 0.0
+                        action_name = f"{action_name} (execution failed)"
+
                     # Send periodic notification (every 10 iterations or significant events)
                     if iteration_count % 10 == 0 or action != ACTION_HOLD:
                         self._send_notification(
@@ -425,28 +612,38 @@ class LiveTrader:
                             "info" if action == ACTION_HOLD else "success"
                         )
                         logger.debug("Notification sent for iteration")
-                    
+
                     # Periodic cleanup
-                    self._periodic_cleanup()
-                    
+                    try:
+                        self._periodic_cleanup()
+                    except Exception as e:
+                        logger.warning(f"Failed to perform periodic cleanup: {e}")
+
                 except Exception as e:
-                    logger.error(f"❌ Error in trading loop iteration {iteration_count}: {e}")
+                    logger.error(f"❌ Critical error in trading loop iteration {iteration_count}: {e}")
                     import traceback
                     logger.error(f"Traceback: {traceback.format_exc()}")
                     print(f"Traceback: {traceback.format_exc()}")
-                    self._send_notification("⚠️ Trading Error", f"Error in iteration {iteration_count}: {e}", "error")
-            
+                    consecutive_errors += 1
+                    
+                    self._send_notification("⚠️ Trading Error", f"Critical error in iteration {iteration_count}: {e}", "error")
+                    
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
+                        self._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
+                        break
+
             # Wait before next iteration (1 minute)
             time.sleep(60)
-        
+
         # Final report
         total_pnl = self.total_pnl
         trades_count = self.trades_count
-        
+
         logger.info(f"🏁 Trading loop completed after {duration_hours} hours")
         logger.info(f"   Total PnL: ¥{total_pnl:,.2f}")
         logger.info(f"   Total trades: {trades_count}")
-        
+
         self._send_notification(
             "🏁 Trading Session Complete",
             f"Duration: {duration_hours} hours\nTotal PnL: ¥{total_pnl:,.2f}\nTrades: {trades_count}\nFinal Position: {self.position:.4f} BTC",
@@ -454,112 +651,91 @@ class LiveTrader:
         )
 
     async def _get_current_price(self) -> float:
-        """Get current BTC/JPY price from exchange with rate limiting, circuit breaker, and caching."""
-        # Check cache first
-        cache_key = "btc_jpy_price"
-        cached_price = self.price_cache.get(cache_key)
-        if cached_price is not None:
-            logger.debug(f"Using cached price: ¥{cached_price:,.0f}")
-            return cached_price
+        """Get current BTC/JPY price with timeout and error handling."""
+        if not self.exchange_adapter:
+            raise ValueError("Exchange adapter not initialized")
+        
+        try:
+            # Add timeout to prevent hanging
+            price = await asyncio.wait_for(
+                self.exchange_adapter.get_current_price("BTC/JPY"),
+                timeout=10.0  # 10 second timeout
+            )
+            if price is None or not isinstance(price, (int, float)) or not np.isfinite(price):
+                raise ValueError(f"Invalid price received: {price}")
+            self._last_valid_price = price
+            return price
+        except asyncio.TimeoutError:
+            logger = get_logger(__name__)
+            logger.error("Timeout getting current price from exchange")
+            raise
+        except Exception as e:
+            logger = get_logger(__name__)
+            logger.error(f"Failed to get current price: {e}")
+            raise
 
-        if self.exchange_adapter:
+    def _update_price_history(self) -> None:
+        """Update price history with current price."""
+        if not self.exchange_adapter:
+            return
+        
+        try:
+            # Get current price synchronously for history update
+            # Note: This assumes exchange_adapter has a sync method or we use asyncio.run
+            # For now, use the async method in a sync context (not ideal but matches existing code)
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             try:
-                # Apply rate limiting
-                if not await self.rate_limiter.acquire():
-                    logger.warning("Rate limit exceeded, using last valid price")
-                    if self._last_valid_price > 0:
-                        return self._last_valid_price
-                    else:
-                        raise ValueError("Rate limited and no cached price available")
+                current_price = loop.run_until_complete(self._get_current_price())
+                self.price_history.append(current_price)
+                logger = get_logger(__name__)
+                logger.debug(f"Price history updated with: ¥{current_price:,.0f}")
+            finally:
+                loop.close()
+        except Exception as e:
+            logger = get_logger(__name__)
+            logger.warning(f"Failed to update price history: {e}")
+            # Continue without updating history
 
-                # Apply circuit breaker
-                price = await self.api_circuit_breaker.call(
-                    self.exchange_adapter.get_current_price, "btc_jpy"
-                )
-                self._last_valid_price = price
-                
-                # Cache the result
-                self.price_cache.set(cache_key, price)
-                
+    def _get_current_price(self) -> float:
+        """
+        Get current BTC/JPY price from exchange adapter.
+        
+        Returns:
+            Current price as float
+        """
+        import asyncio
+        
+        async def _async_get_price():
+            if self.exchange_adapter is not None:
+                try:
+                    price = await self.exchange_adapter.get_current_price("btc_jpy")
+                    if price is not None:
+                        self._last_valid_price = price
+                        return price
+                except Exception as e:
+                    logger = get_logger(__name__)
+                    logger.warning(f"Failed to get price from adapter: {e}")
+            return None
+        
+        # Run async function synchronously
+        try:
+            price = asyncio.run(_async_get_price())
+            if price is not None:
                 return price
-
-            except Exception as e:
-                logger.warning(f"Failed to get price from adapter: {e}")
-                if self._last_valid_price > 0:
-                    logger.info(f"Using cached price: ¥{self._last_valid_price:,.0f}")
-                    return self._last_valid_price
-                else:
-                    raise ValueError("No valid price available")
-        else:
-            raise ValueError("Exchange adapter not available")
+        except Exception as e:
+            logger = get_logger(__name__)
+            logger.error(f"Failed to get current price: {e}")
+        
+        # Fallback to last valid price or mock price
+        if self._last_valid_price > 0:
+            return self._last_valid_price
+        return 5000000.0
 
     def _compute_features(self) -> NDArray[np.float32]:
-        """Compute features for model prediction."""
-        try:
-            # Use cached price history
-            prices = list(self.price_history)
-            
-            if len(prices) < 10:
-                logger.warning(f"Insufficient price history: {len(prices)} points")
-                # Pad with current price if needed
-                current_price = self._last_valid_price if self._last_valid_price > 0 else 5000000.0
-                while len(prices) < 10:
-                    prices.append(current_price)
-            
-            # Validate prices are reasonable
-            prices = [max(1000.0, min(10000000.0, p)) for p in prices]  # Clamp to reasonable range
-            
-            # Compute basic features (simplified)
-            features = []
-            
-            # Price-based features
-            if len(prices) >= 2:
-                features.append(prices[-1] / prices[-2] - 1)  # Return
-            else:
-                features.append(0.0)
-                
-            if len(prices) >= 2:
-                features.append((prices[-1] - prices[0]) / prices[0])  # Total return
-            else:
-                features.append(0.0)
-            
-            # Simple moving averages
-            if len(prices) >= 5:
-                sma5 = sum(prices[-5:]) / 5
-                features.append(sma5 / prices[-1] - 1)  # SMA5 ratio
-            else:
-                features.append(0.0)
-                
-            if len(prices) >= 10:
-                sma10 = sum(prices[-10:]) / 10
-                features.append(sma10 / prices[-1] - 1)  # SMA10 ratio
-            else:
-                features.append(0.0)
-            
-            # RSI (simplified)
-            if len(prices) >= 14:
-                rsi = self._compute_rsi(prices[-14:])
-                features.append(rsi / 100.0 - 0.5)  # Normalize around 0
-            else:
-                features.append(0.0)
-            
-            # Pad to expected feature count
-            expected_features = getattr(self, 'expected_features', 64) or 64
-            while len(features) < expected_features:
-                features.append(0.0)
-            
-            features = features[:expected_features]
-            
-            # Validate features are finite
-            features = [0.0 if not np.isfinite(f) else f for f in features]
-            
-            return np.array(features, dtype=np.float32)
-            
-        except Exception as e:
-            logger.error(f"Error in _compute_features: {e}")
-            # Return zero features as safe fallback
-            expected_features = getattr(self, 'expected_features', 64) or 64
-            return np.zeros(expected_features, dtype=np.float32)
+        """Compute features for model prediction using full feature engine when available."""
+        return self.feature_computation.compute_features()
 
     def _compute_rsi(self, prices: List[float]) -> float:
         """Compute RSI indicator."""
@@ -597,194 +773,108 @@ class LiveTrader:
 
     def _predict_action(self, features: NDArray[np.float32]) -> int:
         """Predict trading action using the model."""
-        logger = get_logger(__name__)
-        try:
-            # Handle different observation spaces for different algorithms
-            if hasattr(self, 'algorithm') and self.algorithm == 'sac':
-                # SAC expects 5 features, take first 5 or pad if needed
-                if len(features) >= 5:
-                    obs_features = features[:5]
-                else:
-                    obs_features = np.pad(features, (0, 5 - len(features)), 'constant')
-                logger.debug(f"Using first 5 features for SAC: {obs_features}")
-            else:
-                # PPO uses all features
-                obs_features = features
-            
-            # Reshape for model input
-            obs = obs_features.reshape(1, -1)
-            
-            if self._is_maskable_ppo:
-                # Update mask provider state
-                self.mask_provider.update_state(
-                    current_position=self.position,
-                    position_entry_step=self._position_entry_step,
-                    current_step=self._current_step,
-                    forced_close_reason=None
-                )
-                # Use action masking
-                action_masks = self.mask_provider.get_action_mask()
-                action, _ = self.model.predict(obs, action_masks=action_masks)
-            else:
-                # Standard prediction
-                action, _ = self.model.predict(obs)
-            
-            logger.debug(f"Model prediction result: {action}, type: {type(action)}, shape: {getattr(action, 'shape', 'no shape')}")
-            
-            # Handle different action formats and spaces
-            if hasattr(self, 'is_continuous_action') and self.is_continuous_action:
-                # Continuous action space - discretize to [0,1,2]
-                if isinstance(action, (int, np.integer)):
-                    action_val = float(action)
-                elif isinstance(action, (float, np.floating)):
-                    action_val = float(action)
-                elif isinstance(action, np.ndarray):
-                    if action.ndim == 0:
-                        action_val = float(action.item())
-                    elif action.ndim == 1 and len(action) == 1:
-                        action_val = float(action[0])
-                    elif action.ndim == 2 and action.shape == (1, 1):
-                        # SAC often returns [[value]] format
-                        action_val = float(action[0][0])
-                        logger.debug(f"SAC action format [[{action_val}]] detected")
-                    else:
-                        logger.warning(f"Unexpected continuous action format: {action}")
-                        action_val = 0.0
-                else:
-                    logger.warning(f"Unknown continuous action type: {type(action)}, value: {action}")
-                    action_val = 0.0
-                
-                logger.debug(f"Continuous action value: {action_val}")
-                logger.info(f"SAC model output: {action_val:.4f} (raw continuous action)")
-                
-                # Discretize: negative = SELL, zero = HOLD, positive = BUY
-                # SAC continuous action mapping: negative values = SELL intensity, 0 = HOLD, positive = BUY intensity
-                # Use the same threshold as the environment
-                from ztb.trading.environment.constants import CONTINUOUS_TO_DISCRETE_THRESHOLD
-                threshold = CONTINUOUS_TO_DISCRETE_THRESHOLD
-                
-                if action_val > threshold:
-                    final_action = ACTION_BUY   # 1
-                    logger.info(f"SAC action discretized: {action_val:.4f} -> BUY (1)")
-                elif action_val < -threshold:
-                    final_action = ACTION_SELL  # 2
-                    logger.info(f"SAC action discretized: {action_val:.4f} -> SELL (2)")
-                else:
-                    final_action = ACTION_HOLD  # 0
-                    logger.info(f"SAC action discretized: {action_val:.4f} -> HOLD (0)")
-                    
-            else:
-                # Discrete action space
-                if isinstance(action, (int, np.integer)):
-                    final_action = int(action)
-                elif isinstance(action, (float, np.floating)):
-                    final_action = int(action)
-                elif isinstance(action, np.ndarray):
-                    if action.ndim == 0:
-                        final_action = int(action.item())
-                    elif action.ndim == 1:
-                        if len(action) == 1:
-                            final_action = int(action[0])
-                        else:
-                            # Probability distribution
-                            logger.debug(f"Treating as probability distribution: {action}")
-                            final_action = int(np.argmax(action))
-                    else:
-                        logger.debug(f"Multi-dimensional action array, flattening: {action}")
-                        final_action = int(np.argmax(action.flatten()))
-                else:
-                    logger.warning(f"Unknown discrete action type: {type(action)}, value: {action}")
-                    try:
-                        final_action = int(action)
-                    except (ValueError, TypeError):
-                        logger.error(f"Cannot convert action {action} to int, using HOLD")
-                        final_action = ACTION_HOLD
-            
-            logger.debug(f"Converted action: {final_action}")
-            
-            # Clamp action to valid range [0, 1, 2]
-            if final_action < 0:
-                logger.warning(f"Action {final_action} is negative, clamping to 0")
-                final_action = 0
-            elif final_action > 2:
-                logger.warning(f"Action {final_action} is > 2, clamping to 2")
-                final_action = 2
-            
-            # Additional validation (should be 0, 1, or 2 now)
-            if final_action not in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
-                logger.error(f"Action {final_action} still invalid after clamping, using HOLD")
-                final_action = ACTION_HOLD
-            
-            # Legacy support: normalize old ACTION_SELL=2 to new ACTION_SELL=-1
-            final_action = normalize_action(final_action)
-            
-            action = final_action
-            logger.debug(f"Final validated action: {action}")
-            
-            self._current_step += 1
-            
-            return action
-            
-        except Exception as e:
-            logger = get_logger(__name__)
-            logger.error(f"Failed to predict action: {e}")
-            return ACTION_HOLD  # Safe fallback
+        return self.action_prediction.predict_action(features)
 
     def _execute_action(self, action: int) -> float:
-        """Execute trading action and return PnL."""
+        """
+        Execute trading action using PositionManager if available.
+        
+        Args:
+            action: Action to execute (0=HOLD, 1=BUY, 2=SELL)
+            
+        Returns:
+            pnl: PnL from the action
+        """
         logger = get_logger(__name__)
         
-        # Validate action
-        if action not in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
-            logger.error(f"Invalid action {action} passed to _execute_action, defaulting to HOLD")
-            action = ACTION_HOLD
-        
-        if not self.position_manager:
-            logger.warning("PositionManager not available, skipping action execution")
-            return 0.0
+        if self.position_manager is not None:
+            # Use PositionManager for execution
+            try:
+                pnl = self.position_manager.execute_action(
+                    action, 
+                    self._current_step,
+                    min_holding_period=self.config.get("min_holding_period", 5)
+                )
+                
+                # Sync position state with PositionManager
+                self.position = self.position_manager.position
+                self.entry_price = self.position_manager.entry_price
+                self.total_pnl = self.position_manager.total_pnl
+                self.trades_count = self.position_manager.trades_count
+                
+                logger.info(f"Action executed via PositionManager: {self.ACTION_NAMES.get(action, f'UNKNOWN({action})')}, PnL: {pnl:.2f}")
+                return pnl
+                
+            except Exception as e:
+                logger.error(f"Failed to execute action via PositionManager: {e}")
+                return 0.0
+        else:
+            # Legacy execution logic (fallback)
+            logger.warning("PositionManager not available, using legacy execution logic")
             
-        try:
-            # Debug logging
-            logger.debug(f"Executing action {action}, current_step={self._current_step}")
-            if self.mask_provider:
-                logger.debug(f"mask_provider.config.min_holding_period={self.mask_provider.config.min_holding_period}")
-            else:
-                logger.warning("mask_provider is None!")
+            old_position = self.position
+            current_price = self._last_valid_price
             
-            # Execute action through PositionManager
-            pnl = self.position_manager.execute_action(
-                action=action,
-                current_step=self._current_step,
-                min_holding_period=self.mask_provider.config.min_holding_period if self.mask_provider else 0
-            )
+            if action == 1:  # BUY
+                if self.position <= 0:  # Flat or short
+                    self.position = 1
+                    self.entry_price = current_price
+                    self.trades_count += 1
+                    logger.info(f"BUY executed: {self.config.get('min_trade_amount', 0.001)} BTC at ¥{current_price:,.0f}")
+                    
+                    if not self.dry_run:
+                        self._send_notification(
+                            "📈 Trade Executed",
+                            f"BUY {self.config.get('min_trade_amount', 0.001)} BTC\n"
+                            f"Price: ¥{current_price:,.0f}\n"
+                            f"New Position: long",
+                            "success",
+                        )
+                    
+                    return -current_price * self.config.get('transaction_cost', 0.001)  # Entry cost
+                    
+            elif action == 2:  # SELL
+                if self.position >= 0:  # Flat or long
+                    self.position = -1
+                    self.entry_price = current_price
+                    self.trades_count += 1
+                    logger.info(f"SELL executed: {self.config.get('min_trade_amount', 0.001)} BTC at ¥{current_price:,.0f}")
+                    
+                    if not self.dry_run:
+                        self._send_notification(
+                            "📈 Trade Executed",
+                            f"SELL {self.config.get('min_trade_amount', 0.001)} BTC\n"
+                            f"Price: ¥{current_price:,.0f}\n"
+                            f"New Position: short",
+                            "success",
+                        )
+                    
+                    return -current_price * self.config.get('transaction_cost', 0.001)  # Entry cost
             
-            # Update local state
-            self.position = self.position_manager.position
-            self.entry_price = self.position_manager.entry_price
-            self.total_pnl = self.position_manager.total_pnl
-            self.trades_count = self.position_manager.trades_count
+            # Calculate PnL if position was closed/reversed
+            if old_position != self.position and old_position != 0:
+                if old_position > 0:  # Closing long position
+                    pnl = (current_price - self.entry_price) * self.config.get("min_trade_amount", 0.001)
+                else:  # Closing short position
+                    pnl = (self.entry_price - current_price) * self.config.get("min_trade_amount", 0.001)
+                
+                self.total_pnl += pnl
+                logger.info(f"Position closed, PnL: {pnl:.2f}, Total PnL: {self.total_pnl:.2f}")
+                
+                if not self.dry_run:
+                    self._send_notification(
+                        "📊 Position Update",
+                        f"PnL: {pnl:.2f} JPY\nTotal PnL: {self.total_pnl:.2f} JPY\nTrades: {self.trades_count}",
+                        "info",
+                    )
+                
+                return pnl
             
-            # Update position entry step for masking
-            if action != ACTION_HOLD:
-                self._position_entry_step = self._current_step
-            
-            return pnl
-            
-        except Exception as e:
-            logger.error(f"Failed to execute action {action}: {e}")
-            return 0.0
+            return 0.0  # HOLD or no action
 
     def get_health_status(self) -> Dict[str, Any]:
-        """Get health status for monitoring."""
-        return {
-            "status": "healthy",
-            "position": self.position,
-            "total_pnl": self.total_pnl,
-            "trades_count": self.trades_count,
-            "last_price": self._last_valid_price,
-            "model_loaded": self.model is not None,
-            "adapter_available": self.exchange_adapter is not None,
-        }
+        """Get comprehensive health status for monitoring."""
+        return self.health_monitoring.get_health_status()
 
     def _update_price_history(self) -> None:
         """Update cached price history for technical indicators."""
@@ -813,17 +903,66 @@ class LiveTrader:
         else:
             logger.warning("No valid prices to update history")
     
+    def _archive_price_history(self) -> None:
+        """Archive current price history to disk to free memory."""
+        if not self.price_history:
+            return
+        
+        # Create DataFrame with timestamps
+        timestamps = pd.date_range(end=datetime.now(), periods=len(self.price_history), freq='1min')
+        df = pd.DataFrame({
+            'timestamp': timestamps,
+            'price': list(self.price_history)
+        })
+        
+        # Save to parquet file
+        archive_file = self.archive_dir / f"price_history_{int(time.time())}.parquet"
+        df.to_parquet(archive_file, index=False)
+        
+        logger = get_logger(__name__)
+        logger.info(f"Archived price history to {archive_file}")
+        
+        # Clear memory (though deque has maxlen, this ensures fresh start)
+        self.price_history.clear()
+    
     def _periodic_cleanup(self) -> None:
         """Perform periodic memory cleanup to prevent accumulation."""
         self._cleanup_counter += 1
         if self._cleanup_counter >= self._cleanup_interval:
-            # deque already has maxlen, so no manual trimming needed
-            
-            # Force garbage collection periodically
-            gc.collect()
-            
+            # Clear any accumulated caches that might grow (skip clear_expired in dry-run)
+            if not self.dry_run:
+                try:
+                    self.price_cache.clear_expired()
+                except AttributeError:
+                    # clear_expired method not available, skip
+                    pass
+
+            # Clean up old items from deque (though maxlen should prevent this)
+            # deque automatically handles maxlen, so no manual trimming needed
+
+            # Only force garbage collection if memory usage is high
+            # Avoid frequent GC as it can impact performance
+            import psutil
+            import os
+
+            try:
+                process = psutil.Process(os.getpid())
+                memory_percent = process.memory_percent()
+                if memory_percent > 80.0:  # Only GC if memory usage > 80%
+                    gc.collect()
+                    logger = get_logger(__name__)
+                    logger.info(f"Periodic cleanup: memory usage was {memory_percent:.1f}%, forced GC")
+                else:
+                    logger = get_logger(__name__)
+                    logger.debug(f"Periodic cleanup: memory usage {memory_percent:.1f}%, no GC needed")
+            except ImportError:
+                # psutil not available, skip memory check
+                pass
+            except Exception as e:
+                logger = get_logger(__name__)
+                logger.debug(f"Memory check failed: {e}")
+
             self._cleanup_counter = 0
-            logger.debug(f"Periodic cleanup: price_history={len(self.price_history)} items")
 
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default trading configuration with safety limits using ZTBConfig."""
@@ -905,8 +1044,7 @@ class LiveTrader:
 
         Schema Integration: Load schema information for feature validation.
         """
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Model file not found: {self.model_path}")
+        return self.model_loading.load_model()
 
         logger = get_logger(__name__)
         logger.info(f"Loading {self.options.algorithm.upper()} model from {self.model_path}")
@@ -1117,13 +1255,13 @@ class LiveTrader:
             if not data.get("success", False):
                 logger = get_logger(__name__)
                 logger.warning("Coincheck API returned success=False")
-                return [asyncio.run(self._get_current_price())] * 14
+                return [self._get_current_price()] * 14
 
             trades = data.get("data", [])
             if not trades:
                 logger = get_logger(__name__)
                 logger.warning("No trade data received from Coincheck")
-                return [asyncio.run(self._get_current_price())] * 14
+                return [self._get_current_price()] * 14
 
             # Extract prices (most recent first, we want oldest first for calculations)
             prices = []
@@ -1134,7 +1272,7 @@ class LiveTrader:
             if not prices:
                 logger = get_logger(__name__)
                 logger.warning("No valid price data in trades")
-                return [asyncio.run(self._get_current_price())] * 14
+                return [self._get_current_price()] * 14
 
             # Reverse to get chronological order (oldest first)
             prices.reverse()
@@ -1145,7 +1283,7 @@ class LiveTrader:
         except Exception as e:
             logger = get_logger(__name__)
             logger.warning(f"Failed to get historical prices: {e}, using fallback")
-            current_price = asyncio.run(self._get_current_price())
+            current_price = self._get_current_price()
             return [current_price] * 14
 
     def _calculate_rsi(self, prices: List[float], period: int = 14) -> float:  # type: ignore[no-any-return]
@@ -1269,7 +1407,7 @@ class LiveTrader:
         else:
             for attempt in range(max_retries):
                 try:
-                    current_price = asyncio.run(self._get_current_price())
+                    current_price = self._get_current_price()
                     if current_price > 0:
                         break
                 except Exception as e:
@@ -1696,3 +1834,25 @@ class LiveTrader:
                     f"PnL: {pnl:.2f} JPY\nTotal PnL: {self.total_pnl:.2f} JPY\nTrades: {self.trades_count}",
                     "info",
                 )
+
+    def _archive_price_history(self) -> None:
+        """Archive current price history to disk to free memory."""
+        if not self.price_history:
+            return
+        
+        # Create DataFrame with timestamps
+        timestamps = pd.date_range(end=datetime.now(), periods=len(self.price_history), freq='1min')
+        df = pd.DataFrame({
+            'timestamp': timestamps,
+            'price': list(self.price_history)
+        })
+        
+        # Save to parquet file
+        archive_file = self.archive_dir / f"price_history_{int(time.time())}.parquet"
+        df.to_parquet(archive_file, index=False)
+        
+        logger = get_logger(__name__)
+        logger.info(f"Archived price history to {archive_file}")
+        
+        # Clear memory (though deque has maxlen, this ensures fresh start)
+        self.price_history.clear()

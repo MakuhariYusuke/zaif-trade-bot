@@ -174,3 +174,40 @@ class TestHeavyTradingEnv:
 
         # Should eventually complete or reach safety limit
         assert steps > 0
+
+    def test_correlation_reduction_respects_target_count(self):
+        """Environment should reduce features to requested target count when enabled."""
+        rng = np.random.default_rng(42)
+        rows = 256
+        price_trend = np.linspace(100, 120, rows) + rng.normal(0, 0.5, rows)
+        df = pd.DataFrame(
+            {
+                "open": price_trend + rng.normal(0, 0.1, rows),
+                "high": price_trend + rng.normal(0, 0.2, rows),
+                "low": price_trend - rng.normal(0, 0.2, rows),
+                "close": price_trend + rng.normal(0, 0.05, rows),
+                "volume": rng.normal(1000, 50, rows),
+                "feature_a": price_trend * 0.5 + rng.normal(0, 0.05, rows),
+                "feature_b": price_trend * 0.52 + rng.normal(0, 0.05, rows),
+                "feature_c": rng.normal(0, 1, rows),
+                "feature_d": rng.normal(0, 1, rows),
+                "feature_e": rng.normal(0, 1, rows),
+                "feature_f": np.full(rows, 1.0),  # Constant column should be removed
+                "category": ["btc"] * rows,  # Non-numeric column should be ignored
+            }
+        )
+
+        env = HeavyTradingEnv(
+            df=df,
+            config={
+                "enable_correlation_reduction": True,
+                "correlation_reduction": True,
+                "target_feature_count": 5,
+            },
+        )
+
+        assert len(env.features) == 5
+        assert env.observation_space.shape[0] == 5
+        for feature_name in env.features:
+            assert feature_name in df.columns
+            assert pd.api.types.is_numeric_dtype(df[feature_name])

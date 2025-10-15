@@ -19,7 +19,7 @@ except ImportError:
 
 # Optional metrics collection
 try:
-    from prometheus_client import Counter, Gauge, Histogram, start_http_server  # type: ignore[import-untyped]
+    from prometheus_client import start_http_server  # type: ignore[import-untyped]
 
     prometheus_available = True
 except ImportError:
@@ -100,7 +100,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--algorithm",
         choices=["ppo", "sac"],
-        default="ppo",
+        default="sac",
         help="Algorithm type (ppo or sac)",
     )
     parser.add_argument(
@@ -182,3 +182,64 @@ def _start_health_server(
     thread.start()
     logger.info("Health check endpoint started on port %s", options.health_port)
     return HealthServerHandle(port=options.health_port, thread=thread)
+
+
+class TradingConfig:
+    """Configuration manager for trading parameters."""
+
+    def __init__(self, ztb_config: Optional[Any] = None) -> None:
+        """Initialize trading configuration.
+
+        Args:
+            ztb_config: ZTBConfig instance for environment-specific settings
+        """
+        self.ztb_config = ztb_config
+        self._config = self._get_default_config()
+
+    def _get_default_config(self) -> Dict[str, Any]:
+        """Get default trading configuration with safety limits."""
+        return {
+            "reward_scaling": self._get_float("ZTB_REWARD_SCALING", 1.0),
+            "transaction_cost": self._get_float("ZTB_TRANSACTION_COST", 0.001),
+            "max_position_size": self._get_float("ZTB_MAX_POSITION_SIZE", 0.1),
+            "sell_bias_multiplier": self._get_float("ZTB_SELL_BIAS_MULTIPLIER", 2.0),
+            "min_trade_amount": self._get_float("ZTB_MIN_TRADE_AMOUNT", 0.001),
+            "max_trades_per_hour": self._get_int("ZTB_MAX_TRADES_PER_HOUR", 6),
+            "price_check_interval": self._get_int("ZTB_PRICE_CHECK_INTERVAL", 60),
+            "max_daily_loss": self._get_float("ZTB_MAX_DAILY_LOSS", 10000.0),
+            "max_daily_trades": self._get_int("ZTB_MAX_DAILY_TRADES", 50),
+            "emergency_stop_loss": self._get_float("ZTB_EMERGENCY_STOP_LOSS", 0.05),
+            "price_history_length": self._get_int("ZTB_PRICE_HISTORY_LENGTH", 64),
+            "rsi_neutral_value": self._get_float("ZTB_RSI_NEUTRAL_VALUE", 50.0),
+            "rsi_period": self._get_int("ZTB_RSI_PERIOD", 14),
+            "fallback_price": self._get_float("ZTB_FALLBACK_PRICE", 5000000.0),
+            "price_min": self._get_int("ZTB_PRICE_MIN", 1000000),
+            "price_max": self._get_int("ZTB_PRICE_MAX", 50000000),
+            "price_change_threshold": self._get_float("ZTB_PRICE_CHANGE_THRESHOLD", 0.20),
+            "continuous_to_discrete_threshold": self._get_float("ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD", 0.33),
+        }
+
+    def _get_float(self, key: str, default: float) -> float:
+        """Get float value from config or environment."""
+        if self.ztb_config:
+            return self.ztb_config.get_float(key, default)
+        return float(os.getenv(key, str(default)))
+
+    def _get_int(self, key: str, default: int) -> int:
+        """Get int value from config or environment."""
+        if self.ztb_config:
+            return self.ztb_config.get_int(key, default)
+        return int(os.getenv(key, str(default)))
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get configuration value."""
+        return self._config.get(key, default)
+
+    def update(self, updates: Dict[str, Any]) -> None:
+        """Update configuration values."""
+        self._config.update(updates)
+
+    @property
+    def config(self) -> Dict[str, Any]:
+        """Get full configuration dictionary."""
+        return self._config.copy()

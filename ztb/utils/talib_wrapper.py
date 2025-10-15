@@ -5,7 +5,9 @@ This module provides a unified interface for technical analysis indicators,
 supporting both Ta-Lib and custom implementations with fallback logic.
 """
 
+import logging
 import warnings
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -38,6 +40,8 @@ if not TALIB_AVAILABLE:
             "Install Ta-Lib for better performance: pip install TA-Lib"
         )
 
+logger = logging.getLogger(__name__)
+
 
 class TaLibError(Exception):
     """Custom exception for Ta-Lib related errors."""
@@ -50,7 +54,7 @@ class TaLibWrapper:
 
     This class provides a unified interface for technical analysis indicators,
     automatically falling back to custom implementations when Ta-Lib is not available.
-    Enhanced with input validation, error handling, and performance optimizations.
+    Enhanced with input validation, error handling, caching, and performance optimizations.
     """
 
     # Default periods for technical indicators
@@ -75,39 +79,72 @@ class TaLibWrapper:
         "SAR_MAXIMUM": 0.2,
     }
 
+    def __init__(
+        self,
+        enable_cache: bool = True,
+        cache_size: int = 128,
+        strict_validation: bool = True,
+    ):
+        """
+        Initialize TaLibWrapper.
+
+        Args:
+            enable_cache: Whether to enable result caching
+            cache_size: Maximum cache size for LRU cache
+            strict_validation: Whether to perform strict input validation
+        """
+        self.enable_cache = enable_cache
+        self.cache_size = cache_size
+        self.strict_validation = strict_validation
+        self._cache: Dict[str, Any] = {}
+
     @staticmethod
     def check_talib_availability() -> bool:
         """Check if Ta-Lib is available."""
         return TALIB_AVAILABLE
 
-    @staticmethod
-    def _validate_input_data(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], name: str) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
+    def _validate_input_data(self, data: Union[NDArray[np.float64], pd.Series], name: str) -> NDArray[np.float64]:
         """Validate and convert input data to numpy array."""
-        if data is None:
-            raise TaLibError(f"{name} cannot be None")
+        if self.strict_validation:
+            if data is None:
+                raise TaLibError(f"{name} cannot be None")
 
-        try:
-            arr = np.asarray(data, dtype=float)
-        except (ValueError, TypeError) as e:
-            raise TaLibError(f"Cannot convert {name} to numeric array: {e}")
+            try:
+                arr = np.asarray(data, dtype=np.float64)
+            except (ValueError, TypeError) as e:
+                raise TaLibError(f"Cannot convert {name} to numeric array: {e}")
 
-        if arr.ndim != 1:
-            raise TaLibError(f"{name} must be 1-dimensional")
+            if arr.ndim != 1:
+                raise TaLibError(f"{name} must be 1-dimensional")
 
-        if len(arr) == 0:
-            raise TaLibError(f"{name} cannot be empty")
+            if len(arr) == 0:
+                raise TaLibError(f"{name} cannot be empty")
+
+            if not np.isfinite(arr).all():
+                if self.strict_validation:
+                    raise TaLibError(f"{name} contains NaN or infinite values")
+                else:
+                    logger.warning(f"{name} contains NaN or infinite values, proceeding anyway")
+        else:
+            # Minimal validation for performance
+            arr = np.asarray(data, dtype=np.float64)
 
         return arr
 
-    @staticmethod
-    def _validate_period(period: int, name: str) -> int:
+    def _validate_period(self, period: int, name: str) -> int:
         """Validate period parameter."""
         if not isinstance(period, int) or period <= 0:
             raise TaLibError(f"{name} must be a positive integer, got {period}")
         return period
 
-    @staticmethod
-    def sma(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], period: int) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
+    def _get_cache_key(self, func_name: str, *args, **kwargs) -> str:
+        """Generate cache key for function calls."""
+        # Create a hash of the arguments for caching
+        import hashlib
+        key_data = f"{func_name}_{str(args)}_{str(sorted(kwargs.items()))}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+
+    def sma(self, data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """
         Simple Moving Average.
 
@@ -121,29 +158,46 @@ class TaLibWrapper:
         Raises:
             TaLibError: If input validation fails
         """
-        data = TaLibWrapper._validate_input_data(data, "data")
-        period = TaLibWrapper._validate_period(period, "period")
+        data = self._validate_input_data(data, "data")
+        period = self._validate_period(period, "period")
 
         if len(data) < period:
             raise TaLibError(f"Data length {len(data)} is less than period {period}")
+
+        # Check cache
+        if self.enable_cache:
+            cache_key = self._get_cache_key("sma", data.tobytes(), period)
+            if cache_key in self._cache:
+                return self._cache[cache_key].copy()
 
         try:
             if TALIB_AVAILABLE:
                 result = talib.SMA(data, timeperiod=period)
                 # Handle NaN values at the beginning
-                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
+                result = cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             elif TA_AVAILABLE:
                 # Use ta library
                 sma_indicator = ta.trend.SMAIndicator(pd.Series(data), window=period)
                 result = sma_indicator.sma_indicator().values
-                return cast(NDArray[np.float64], result)
+                result = cast(NDArray[np.float64], result)
             else:
-                return TaLibWrapper._sma_custom(data, period)
+                result = self._sma_custom(data, period)
+
+            # Cache result
+            if self.enable_cache:
+                self._cache[cache_key] = result.copy()
+                # Limit cache size
+                if len(self._cache) > self.cache_size:
+                    # Remove oldest entry (simple FIFO)
+                    oldest_key = next(iter(self._cache))
+                    del self._cache[oldest_key]
+
+            return result
+
         except Exception as e:
             raise TaLibError(f"SMA calculation failed: {e}")
 
-    @staticmethod
-    def ema(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], period: int) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
+    def ema(self, data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """
         Exponential Moving Average.
 
@@ -157,28 +211,43 @@ class TaLibWrapper:
         Raises:
             TaLibError: If input validation fails
         """
-        data = TaLibWrapper._validate_input_data(data, "data")
-        period = TaLibWrapper._validate_period(period, "period")
+        data = self._validate_input_data(data, "data")
+        period = self._validate_period(period, "period")
 
         if len(data) < period:
             raise TaLibError(f"Data length {len(data)} is less than period {period}")
 
+        # Check cache
+        if self.enable_cache:
+            cache_key = self._get_cache_key("ema", data.tobytes(), period)
+            if cache_key in self._cache:
+                return self._cache[cache_key].copy()
+
         try:
             if TALIB_AVAILABLE:
                 result = talib.EMA(data, timeperiod=period)
-                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
+                result = cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
             elif TA_AVAILABLE:
                 # Use ta library
                 ema_indicator = ta.trend.EMAIndicator(pd.Series(data), window=period)
                 result = ema_indicator.ema_indicator().values
-                return cast(NDArray[np.float64], result)
+                result = cast(NDArray[np.float64], result)
             else:
-                return TaLibWrapper._ema_custom(data, period)
+                result = self._ema_custom(data, period)
+
+            # Cache result
+            if self.enable_cache:
+                self._cache[cache_key] = result.copy()
+                if len(self._cache) > self.cache_size:
+                    oldest_key = next(iter(self._cache))
+                    del self._cache[oldest_key]
+
+            return result
+
         except Exception as e:
             raise TaLibError(f"EMA calculation failed: {e}")
 
-    @staticmethod
-    def rsi(data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series], period: int = 14) -> np.ndarray[Any, np.dtype[np.floating[Any]]]:
+    def rsi(self, data: Union[NDArray[np.float64], pd.Series], period: int = 14) -> NDArray[np.float64]:
         """
         Relative Strength Index.
 
@@ -192,8 +261,8 @@ class TaLibWrapper:
         Raises:
             TaLibError: If input validation fails
         """
-        data = TaLibWrapper._validate_input_data(data, "data")
-        period = TaLibWrapper._validate_period(period, "period")
+        data = self._validate_input_data(data, "data")
+        period = self._validate_period(period, "period")
 
         if len(data) < period + 1:  # RSI needs at least period + 1 data points
             raise TaLibError(f"Data length {len(data)} is insufficient for RSI with period {period}")
@@ -207,13 +276,13 @@ class TaLibWrapper:
         except Exception as e:
             raise TaLibError(f"RSI calculation failed: {e}")
 
-    @staticmethod
     def macd(
-        data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
+        self,
+        data: Union[NDArray[np.float64], pd.Series],
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9
-    ) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], np.ndarray[Any, np.dtype[np.floating[Any]]], np.ndarray[Any, np.dtype[np.floating[Any]]]]:
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """
         MACD (Moving Average Convergence Divergence).
 
@@ -234,10 +303,10 @@ class TaLibWrapper:
         Raises:
             TaLibError: If input validation fails
         """
-        data = TaLibWrapper._validate_input_data(data, "data")
-        fast_period = TaLibWrapper._validate_period(fast_period, "fast_period")
-        slow_period = TaLibWrapper._validate_period(slow_period, "slow_period")
-        signal_period = TaLibWrapper._validate_period(signal_period, "signal_period")
+        data = self._validate_input_data(data, "data")
+        fast_period = self._validate_period(fast_period, "fast_period")
+        slow_period = self._validate_period(slow_period, "slow_period")
+        signal_period = self._validate_period(signal_period, "signal_period")
 
         if fast_period >= slow_period:
             raise TaLibError(f"fast_period ({fast_period}) must be less than slow_period ({slow_period})")
@@ -245,6 +314,13 @@ class TaLibWrapper:
         min_length = max(fast_period, slow_period) + signal_period
         if len(data) < min_length:
             raise TaLibError(f"Data length {len(data)} is insufficient for MACD calculation")
+
+        cache_key = None
+        if self.enable_cache:
+            cache_key = self._get_cache_key("macd", data.tobytes(), fast_period, slow_period, signal_period)
+            if cache_key in self._cache:
+                cached_result = self._cache[cache_key]
+                return (cached_result[0].copy(), cached_result[1].copy(), cached_result[2].copy())
 
         try:
             if TALIB_AVAILABLE:
@@ -254,25 +330,35 @@ class TaLibWrapper:
                     slowperiod=slow_period,
                     signalperiod=signal_period
                 )
-                return (
+                result = (
                     np.nan_to_num(macd, nan=np.nan),
                     np.nan_to_num(signal, nan=np.nan),
                     np.nan_to_num(hist, nan=np.nan)
                 )
             else:
-                return TaLibWrapper._macd_custom(data, fast_period, slow_period, signal_period)
+                result = self._macd_custom(data, fast_period, slow_period, signal_period)
+
+            # Cache result
+            if self.enable_cache and cache_key:
+                self._cache[cache_key] = (result[0].copy(), result[1].copy(), result[2].copy())
+                if len(self._cache) > self.cache_size:
+                    oldest_key = next(iter(self._cache))
+                    del self._cache[oldest_key]
+
+            return result
+
         except Exception as e:
             raise TaLibError(f"MACD calculation failed: {e}")
 
-    @staticmethod
     def stoch(
-        high: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
-        low: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
-        close: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series],
+        self,
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
         fastk_period: int = 14,
         slowk_period: int = 3,
         slowd_period: int = 3
-    ) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], np.ndarray[Any, np.dtype[np.floating[Any]]]]:
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
         """
         Stochastic Oscillator.
 
@@ -290,12 +376,12 @@ class TaLibWrapper:
         Raises:
             TaLibError: If input validation fails
         """
-        high = TaLibWrapper._validate_input_data(high, "high")
-        low = TaLibWrapper._validate_input_data(low, "low")
-        close = TaLibWrapper._validate_input_data(close, "close")
-        fastk_period = TaLibWrapper._validate_period(fastk_period, "fastk_period")
-        slowk_period = TaLibWrapper._validate_period(slowk_period, "slowk_period")
-        slowd_period = TaLibWrapper._validate_period(slowd_period, "slowd_period")
+        high = self._validate_input_data(high, "high")
+        low = self._validate_input_data(low, "low")
+        close = self._validate_input_data(close, "close")
+        fastk_period = self._validate_period(fastk_period, "fastk_period")
+        slowk_period = self._validate_period(slowk_period, "slowk_period")
+        slowd_period = self._validate_period(slowd_period, "slowd_period")
 
         if len(high) != len(low) or len(high) != len(close):
             raise TaLibError("High, low, and close arrays must have the same length")
@@ -303,6 +389,13 @@ class TaLibWrapper:
         min_length = fastk_period + max(slowk_period, slowd_period)
         if len(high) < min_length:
             raise TaLibError(f"Data length {len(high)} is insufficient for Stochastic calculation")
+
+        cache_key = None
+        if self.enable_cache:
+            cache_key = self._get_cache_key("stoch", high.tobytes(), low.tobytes(), close.tobytes(), fastk_period, slowk_period, slowd_period)
+            if cache_key in self._cache:
+                cached_result = self._cache[cache_key]
+                return (cached_result[0].copy(), cached_result[1].copy())
 
         try:
             if TALIB_AVAILABLE:
@@ -312,12 +405,22 @@ class TaLibWrapper:
                     slowk_period=slowk_period,
                     slowd_period=slowd_period
                 )
-                return (
+                result = (
                     np.nan_to_num(slowk, nan=np.nan),
                     np.nan_to_num(slowd, nan=np.nan)
                 )
             else:
-                return TaLibWrapper._stoch_custom(high, low, close, fastk_period, slowk_period, slowd_period)
+                result = self._stoch_custom(high, low, close, fastk_period, slowk_period, slowd_period)
+
+            # Cache result
+            if self.enable_cache and cache_key:
+                self._cache[cache_key] = (result[0].copy(), result[1].copy())
+                if len(self._cache) > self.cache_size:
+                    oldest_key = next(iter(self._cache))
+                    del self._cache[oldest_key]
+
+            return result
+
         except Exception as e:
             raise TaLibError(f"Stochastic calculation failed: {e}")
 

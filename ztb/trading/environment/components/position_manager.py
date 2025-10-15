@@ -78,6 +78,7 @@ class PositionManager:
             return 0.0
         
         # Check if we're within min_holding_period
+        min_holding_period = min_holding_period or 0  # Handle None case
         within_min_holding = (
             self._last_trade_step >= 0
             and current_step - self._last_trade_step < min_holding_period
@@ -160,8 +161,8 @@ class PositionManager:
         # 実際のポジションサイズ: 小さい方を採用（資金制約と設定値の両方を満たす）
         actual_position_size = min(max_position_size, affordable_size)
         
-        # 最小取引単位チェック (0.0001 BTC = 0.1 mBTC ≈ 1,800円)
-        min_trade_size = 0.0001
+        # 最小取引単位チェック (0.001 BTC = 1 mBTC ≈ 5,000円)
+        min_trade_size = 0.001
         if actual_position_size < min_trade_size:
             logger.warning(
                 "Insufficient funds for minimum trade size: available=%.2f, required=%.2f (min_size=%.4f BTC)",
@@ -173,6 +174,15 @@ class PositionManager:
         
         # Calculate entry cost based on actual size
         entry_cost = abs(float(actual_position_size)) * current_price * transaction_cost
+        
+        # Check if we have enough funds
+        if available_funds < entry_cost:
+            logger.warning(
+                "Insufficient funds for entry cost: available=%.2f, required=%.2f",
+                available_funds,
+                entry_cost,
+            )
+            return 0.0
         
         # Deduct entry cost from realized PnL
         self.realized_pnl -= entry_cost

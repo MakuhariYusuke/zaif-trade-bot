@@ -11,11 +11,12 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock
 
-from ztb.training.lagrange_constraint import LagrangeConstraint
-from ztb.training.custom_ppo import CustomPPO
-from ztb.training.sell_mitigation_ppo_trainer import SELLBiasMitigationPPOTrainer
-from ztb.training.trainer_params import SELLMitigationParams
-from ztb.training.ppo_config import PPOConfig, DEFAULT_PPO_CONFIG
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+from ztb.training.optimization.lagrange_constraint import LagrangeConstraint
+from ztb.training.models.custom_ppo import CustomPPO
+from ztb.training.experiments.sell_mitigation_ppo_trainer import SELLBiasMitigationPPOTrainer
+from ztb.training.config.trainer_params import SELLMitigationParams
+from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
 
 
 class TestLagrangeConstraintUnit:
@@ -40,14 +41,14 @@ class TestLagrangeConstraintUnit:
         assert lagrange.warmup_steps == 5000
         assert lagrange.lambda_dual == 0.0
         assert lagrange.step_count == 0
-        assert lagrange.action_idx == 2  # SELL=2
+        assert lagrange.action_idx == ACTION_SELL
     
     def test_compute_penalty_no_sell(self):
         """Test penalty computation when no SELL actions occur."""
         lagrange = LagrangeConstraint(target_action="SELL", r_target=0.15, warmup_steps=0, tolerance=0.05)
         
         # Batch of 10 actions: all HOLD (0) and BUY (1), no SELL (2)
-        actions = np.array([0, 0, 1, 1, 0, 1, 0, 1, 0, 1])
+        actions = np.array([ACTION_HOLD, ACTION_HOLD, ACTION_BUY, ACTION_BUY, ACTION_HOLD, ACTION_BUY, ACTION_HOLD, ACTION_BUY, ACTION_HOLD, ACTION_BUY])
         legal_masks = np.ones((10, 3))  # All actions legal
         
         penalty, info = lagrange.compute_penalty(actions, legal_masks)
@@ -63,7 +64,7 @@ class TestLagrangeConstraintUnit:
         lagrange = LagrangeConstraint(target_action="SELL", r_target=0.15, warmup_steps=0)
         
         # Batch of 20 actions: 3 SELL (15% = target)
-        actions = np.array([2, 2, 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0])
+        actions = np.array([ACTION_SELL, ACTION_SELL, ACTION_SELL, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD, ACTION_BUY, ACTION_BUY, ACTION_BUY, ACTION_BUY, ACTION_BUY, ACTION_BUY, ACTION_BUY, ACTION_BUY, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD])
         legal_masks = np.ones((20, 3))
         
         penalty, info = lagrange.compute_penalty(actions, legal_masks)
@@ -77,7 +78,7 @@ class TestLagrangeConstraintUnit:
         lagrange = LagrangeConstraint(target_action="SELL", r_target=0.15, warmup_steps=0, tolerance=0.05)
         
         # 10 actions, but only 5 legal steps (where SELL is legal)
-        actions = np.array([2, 2, 0, 0, 1, 1, 0, 0, 2, 0])
+        actions = np.array([ACTION_HOLD, ACTION_SELL, ACTION_HOLD, ACTION_HOLD, ACTION_BUY, ACTION_BUY, ACTION_HOLD, ACTION_HOLD, ACTION_SELL, ACTION_HOLD])
         legal_masks = np.array([
             [1, 1, 1],  # All legal - SELL chosen (counts)
             [1, 1, 1],  # All legal - SELL chosen (counts)
@@ -164,7 +165,18 @@ class TestLagrangeConstraintUnit:
         
         # Compute penalties for several batches
         for _ in range(10):
-            actions = np.array([2, 2, 0, 0, 1, 1, 0, 0, 0, 0])  # 2 SELL / 10 = 20%
+            actions = np.array([
+                ACTION_SELL, 
+                ACTION_SELL, 
+                ACTION_HOLD, 
+                ACTION_HOLD, 
+                ACTION_BUY, 
+                ACTION_BUY, 
+                ACTION_HOLD, 
+                ACTION_HOLD, 
+                ACTION_HOLD, 
+                ACTION_HOLD,
+            ])  # 2 SELL / 10 = 20%
             legal_masks = np.ones((10, 3))
             lagrange.compute_penalty(actions, legal_masks)
         

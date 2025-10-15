@@ -7,7 +7,7 @@
   "checkpoint_interval": 500,
   "data_path": "btc_jpy_real_dataset.csv",
   "environment": {
-    "initial_balance": 1000000,
+    "initial_balance": 1000000.0,
     "commission_rate": 0.001,
     "price_column": "close",
     "use_continuous_actions": true,

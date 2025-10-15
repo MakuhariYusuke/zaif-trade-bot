@@ -22,7 +22,7 @@
     "target_entropy": "auto"
   },
   "environment": {
-    "initial_balance": 200000,
+    "initial_balance": 200000.0,
     "transaction_cost": 0.0005,
     "max_position_size": 0.01,
     "enable_action_masking": false,
@@ -46,20 +46,23 @@
     "problem_1": "Observations not normalized (max value: 18 million)",
     "solution_1": "Enable use_standardized_observations = true",
     "expected_result_1": "All features scaled to mean=0, std=1",
-    
     "problem_2": "Zero rewards: 64.3% (insufficient learning signal)",
     "solution_2": "Add inactivity_penalty and opportunity_cost for HOLD actions",
     "expected_result_2": "Reduce zero rewards to < 30%",
-    
     "diagnostic_findings": {
-      "observations_mean_range": [0.0, 18111058.0],
-      "observations_std_range": [0.0, 1902.35],
+      "observations_mean_range": [
+        0.0,
+        18111058.0
+      ],
+      "observations_std_range": [
+        0.0,
+        1902.35
+      ],
       "large_std_features": 26,
       "zero_rewards_pct": 64.3,
       "reward_mean": -0.031,
       "reward_std": 0.042
     },
-    
     "expected_improvements": {
       "critic_loss": "< 1000 (was 1e7-1e10)",
       "actor_loss": "0.1 to 100 (was 1e6)",

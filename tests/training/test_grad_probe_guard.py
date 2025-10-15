@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from ztb.training.grad_probe_guard import (
+from ztb.training.utils.grad_probe_guard import (
     GradProbeConfig,
     GradProbeGuard,
     GradProbeStats,

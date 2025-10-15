@@ -27,7 +27,7 @@ import pandas as pd
 import pytest
 
 from ztb.trading.environment.environment import EnvironmentConfig, HeavyTradingEnv
-
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 class TestPnLInvariants:
     """PnL accounting invariant tests (xfail until environment is fixed)."""
@@ -79,14 +79,14 @@ class TestPnLInvariants:
         initial_value = env.portfolio_value
         
         # Execute random actions
-        env.step(1)  # BUY
-        env.step(0)  # HOLD
-        env.step(0)  # HOLD
-        env.step(2)  # SELL
-        env.step(0)  # HOLD
-        env.step(1)  # BUY
-        env.step(2)  # SELL
-        
+        env.step(ACTION_BUY)  # BUY
+        env.step(ACTION_HOLD)  # HOLD
+        env.step(ACTION_HOLD)  # HOLD
+        env.step(ACTION_SELL)  # SELL
+        env.step(ACTION_HOLD)  # HOLD
+        env.step(ACTION_BUY)  # BUY
+        env.step(ACTION_SELL)  # SELL
+
         final_value = env.portfolio_value
         
         # INVARIANT: Static prices → no profit/loss
@@ -107,15 +107,15 @@ class TestPnLInvariants:
         position_size = env.config.max_position_size
         
         # BUY at 100
-        env.step(1)
+        env.step(ACTION_BUY)
         price_buy = env.df.iloc[env.current_step]["close"]
         
         # Advance 10 steps (price rises to 105)
         for _ in range(10):
-            env.step(0)  # HOLD
+            env.step(ACTION_HOLD)
         
         # SELL at 105
-        env.step(2)
+        env.step(ACTION_SELL)
         price_sell = env.df.iloc[env.current_step]["close"]
         
         # INVARIANT: Realized PnL = (sell_price - buy_price) * position_size
@@ -135,14 +135,14 @@ class TestPnLInvariants:
         env.reset()
         
         # BUY at 100
-        env.step(1)
+        env.step(ACTION_BUY)
         
         # Check realized PnL after entry (should be 0 or negative due to entry cost)
         realized_after_entry = env.realized_pnl
         
         # HOLD while price rises (unrealized gain)
         for _ in range(10):
-            env.step(0)
+            env.step(ACTION_HOLD)
         
         # INVARIANT: realized_pnl should not change during HOLD (position not closed)
         assert env.realized_pnl == realized_after_entry, \
@@ -150,7 +150,7 @@ class TestPnLInvariants:
             f"realized_pnl={env.realized_pnl}, expected={realized_after_entry}"
         
         # Now close position
-        env.step(2)  # SELL
+        env.step(ACTION_SELL)
         
         # INVARIANT: After close, realized_pnl should reflect realized gain
         assert env.realized_pnl > realized_after_entry, \
@@ -168,13 +168,13 @@ class TestPnLInvariants:
         initial_value = env.portfolio_value
         
         # BUY at 100
-        env.step(1)
+        env.step(ACTION_BUY)
         entry_price = env.entry_price
         position = env.position
         
         # Advance to price=105
         for _ in range(10):
-            env.step(0)
+            env.step(ACTION_HOLD)
         
         current_price = env.df.iloc[env.current_step]["close"]
         
@@ -204,7 +204,7 @@ class TestPnLInvariants:
         initial_value = env.portfolio_value
         
         # BUY (should incur fee)
-        env.step(1)
+        env.step(ACTION_BUY)
         price = env.df.iloc[env.current_step]["close"]
         position = env.position
         expected_fee = price * position * config.transaction_cost
@@ -231,11 +231,11 @@ class TestPnLInvariants:
         
         # Multiple round trips at same price
         for _ in range(3):
-            env.step(1)  # BUY
-            env.step(0)  # HOLD
-            env.step(2)  # SELL
-            env.step(0)  # HOLD
-        
+            env.step(ACTION_BUY)
+            env.step(ACTION_HOLD)
+            env.step(ACTION_SELL)
+            env.step(ACTION_HOLD)
+
         final_value = env.portfolio_value
         
         # INVARIANT: Symmetric round trips at static price → zero net PnL

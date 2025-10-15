@@ -5,7 +5,6 @@ Utility functions for live trading.
 
 import logging
 from datetime import datetime
-from pathlib import Path
 
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root

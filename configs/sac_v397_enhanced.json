@@ -5,17 +5,14 @@
   "total_timesteps": 50000,
   "metrics_log_interval": 100,
   "checkpoint_interval": 10000,
-  
   "data_path": "btc_jpy_real_dataset.csv",
-  
   "environment": {
-    "initial_balance": 1000000,
+    "initial_balance": 1000000.0,
     "commission_rate": 0.001,
     "price_column": "close",
     "use_continuous_actions": true,
     "enable_action_masking": false
   },
-  
   "sac_hyperparameters": {
     "learning_rate": 0.000574,
     "batch_size": 128,
@@ -28,10 +25,12 @@
     "learning_starts": 100,
     "buffer_size": 50000,
     "policy_kwargs": {
-      "net_arch": [256, 256]
+      "net_arch": [
+        256,
+        256
+      ]
     }
   },
-  
   "enable_early_stopping": true,
   "early_stopping": {
     "metric": "critic_loss",
@@ -41,14 +40,12 @@
     "window_size": 1000,
     "cv_threshold": 0.05
   },
-  
   "enable_best_model_saving": true,
   "best_model": {
     "metric": "critic_loss",
     "mode": "min",
     "check_interval": 1000
   },
-  
   "notes": {
     "version": "v397 - Enhanced with Advanced Features",
     "improvements": [
@@ -68,10 +65,21 @@
       "tensorboard": "checkpoints/sac_session/SAC_*"
     },
     "csv_columns": [
-      "timestamp", "step",
-      "critic_loss", "actor_loss", "ent_coef", "ent_coef_loss", "learning_rate", "fps",
-      "episode_reward_mean", "episode_reward_std", "episode_length_mean",
-      "q_value_mean", "q_value_std", "q_value_min", "q_value_max",
+      "timestamp",
+      "step",
+      "critic_loss",
+      "actor_loss",
+      "ent_coef",
+      "ent_coef_loss",
+      "learning_rate",
+      "fps",
+      "episode_reward_mean",
+      "episode_reward_std",
+      "episode_length_mean",
+      "q_value_mean",
+      "q_value_std",
+      "q_value_min",
+      "q_value_max",
       "total_episodes"
     ]
   }

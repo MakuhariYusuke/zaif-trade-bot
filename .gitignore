@@ -40,6 +40,6 @@ trade-state.json
 trade-config.json
 node_modules
 
-# Virtual environments
-.venv*/
-venv*/
+# TypeScript legacy files (archived)
+typescript_legacy.zip
+node_modules

@@ -1,0 +1,445 @@
+#!/usr/bin/env python3
+"""
+Backtest Trading Bot for BTC/JPY using Trained PPO/SAC Model.
+
+This script performs backtesting on historical BTC/JPY data using the trained ML model.
+Implements sell-biased strategy as requested.
+"""
+
+import argparse
+import gc
+import logging
+import os
+import sys
+import time
+from collections import deque
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, cast
+
+import numpy as np
+import pandas as pd
+from numpy.typing import NDArray
+import requests
+from dotenv import load_dotenv  # type: ignore[import-untyped]
+from stable_baselines3 import PPO, SAC
+from sb3_contrib import MaskablePPO
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Cross-platform path handling
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Import our modules
+from ztb.trading.live_trader.config import TradingConfig
+from ztb.trading.live_trader.model_manager import ModelManager
+from ztb.trading.live.data.price_data_manager import PriceDataManager, PriceDataProvider
+from ztb.trading.live.core.trade_executor import TradeExecutor, TradeExecutorProtocol, PositionManagerProtocol
+from ztb.trading.live.core.health_monitor import HealthMonitor
+
+# Import existing components
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.environment.components.position_manager import PositionManager
+from ztb.trading.live.action_mask_provider import ActionMaskProvider, ActionMaskConfig
+from ztb.utils.notify.discord import DiscordNotifier
+from ztb.utils.config import ZTBConfig
+
+# Import feature computation
+try:
+    from ztb.features.feature_engine import (
+        compute_features_batch,
+    )  # type: ignore[assignment]
+    from ztb.features.momentum.rsi import compute_rsi
+
+    features_available = True
+except ImportError:
+    features_available = False
+
+# Import HeavyTradingEnv for optimized feature computation
+try:
+    from ztb.trading.environment.heavy_env import HeavyTradingEnv
+    from ztb.trading.environment.utils.config import EnvironmentConfig
+    heavy_env_available = True
+except ImportError:
+    heavy_env_available = False
+
+# Import configuration management
+from ztb.utils.config import ZTBConfig
+
+# Action constants for better readability
+ACTION_HOLD = 0
+ACTION_BUY = 1
+ACTION_SELL = 2
+
+ACTION_NAMES = {ACTION_HOLD: "HOLD", ACTION_BUY: "BUY", ACTION_SELL: "SELL"}
+
+# Import logging utils
+from ztb.utils.logging_utils import get_logger
+
+# Configure logging
+log_dir = PROJECT_ROOT / "logs"
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / f"backtest_trading_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.log"
+
+logger = get_logger(__name__)
+logger.setLevel(logging.INFO)
+
+# Remove any existing handlers
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# File handler
+file_handler = logging.FileHandler(log_file, encoding="utf-8")
+file_handler.setLevel(logging.INFO)
+file_formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+file_handler.setFormatter(file_formatter)
+
+# Console handler
+if not logger.handlers:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+
+logger.addHandler(file_handler)
+
+# Import risk management
+try:
+    from ztb.risk.advanced_auto_stop import create_production_auto_stop
+    auto_stop_available = True
+except ImportError:
+    auto_stop_available = False
+
+
+class BacktestTrader:
+    """
+    Backtest trading bot for BTC/JPY using trained PPO/SAC model.
+    """
+
+    def __init__(
+        self,
+        model_path: str,
+        data_path: str,
+        config: Optional[Dict[str, Any]] = None,
+        initial_balance: float = 100000.0,
+        max_steps: Optional[int] = None,
+    ):
+        # Initialize logger
+        self.logger = logging.getLogger(__name__)
+
+        # Cross-platform path handling
+        self.model_path = Path(model_path)
+        self.data_path = Path(data_path)
+        self.ztb_config = ZTBConfig()
+        self.initial_balance = initial_balance
+        self.max_steps = max_steps
+
+        # Initialize components
+        self.config_manager = TradingConfig(self.ztb_config)
+        if config:
+            self.config_manager.update(config)
+        self.config = self.config_manager.config
+
+        self.model_manager = ModelManager()
+        self.health_monitor = HealthMonitor()
+
+        # Initialize metrics
+        self.metrics = self.health_monitor.setup_metrics()
+
+        # Load historical data
+        self._load_historical_data()
+
+        # Load and validate model
+        self._load_model()
+
+        # Create HeavyTradingEnv for optimized feature computation
+        self._create_trading_env()
+
+        # Initialize backtest state
+        self._setup_backtest_state()
+
+        # Initialize trade executor
+        self.trade_executor = TradeExecutor(
+            self.config,
+            self,
+            None,  # No position manager for backtest
+            self.model_manager.is_sac
+        )
+
+        self.logger.info("BacktestTrader initialization completed")
+
+    def _load_historical_data(self) -> None:
+        """Load historical price data for backtesting."""
+        if not self.data_path.exists():
+            raise FileNotFoundError(f"Historical data file not found: {self.data_path}")
+
+        self.logger.info(f"Loading historical data from {self.data_path}")
+
+        # Load CSV data
+        self.historical_data = pd.read_csv(self.data_path)
+        self.logger.info(f"Loaded {len(self.historical_data)} historical data points")
+
+        # Convert timestamp to datetime if needed
+        if 'timestamp' in self.historical_data.columns:
+            self.historical_data['timestamp'] = pd.to_datetime(self.historical_data['timestamp'])
+            self.historical_data = self.historical_data.sort_values('timestamp').reset_index(drop=True)
+
+        # Validate required columns
+        required_columns = ['close', 'high', 'low', 'volume']
+        missing_columns = [col for col in required_columns if col not in self.historical_data.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns in data: {missing_columns}")
+
+    def _load_model(self) -> None:
+        """Load and validate model."""
+        self.model_manager.load_model(self.model_path)
+        model_name = self.model_path.stem
+        self.model_manager.load_schema_info(model_name)
+
+        # Copy model attributes for backward compatibility
+        self.model = self.model_manager.model
+        self._is_maskable_ppo = self.model_manager.is_maskable_ppo
+        self._is_sac = self.model_manager.is_sac
+        self.schema_available = self.model_manager.schema_available
+        self.expected_features = self.model_manager.expected_features
+        self.feature_names = self.model_manager.feature_names
+        self.model_schema_hash = self.model_manager.model_schema_hash
+
+        # Fallback to model observation space if schema not available
+        if self.expected_features is None and self.model is not None:
+            self.expected_features = self.model.observation_space.shape[0]
+            self.logger.info(f"Expected features from model observation space: {self.expected_features}")
+
+    def _create_trading_env(self) -> None:
+        """Create HeavyTradingEnv for optimized feature computation."""
+        if not heavy_env_available:
+            self.logger.warning("HeavyTradingEnv not available, falling back to manual feature computation")
+            self.trading_env = None
+            return
+
+        try:
+            # Create environment config using from_dict like in paper trading
+            from ztb.trading.environment.utils.config import EnvironmentConfig
+            config_dict = {
+                'environment': {
+                    'price_history_length': self.config.get("price_history_length", 100),
+                    'feature_count': 5,
+                },
+                'expected_features': 5,
+                'target_feature_count': 5,
+                'reward_settings': self.config.get("reward_settings", {}),
+                'action_space_type': 'discrete'
+            }
+            env_config = EnvironmentConfig.from_dict(config_dict)
+
+            # Create HeavyTradingEnv with our data
+            self.trading_env = HeavyTradingEnv(df=self.historical_data, config=env_config)
+            self.logger.info("HeavyTradingEnv created for optimized feature computation")
+
+        except Exception as e:
+            self.logger.warning(f"Failed to create HeavyTradingEnv: {e}, falling back to manual feature computation")
+            self.trading_env = None
+
+    def _setup_backtest_state(self) -> None:
+        """Setup backtest trading state variables."""
+        # Initialize backtest results tracking
+        self.portfolio_history = []
+
+        # Initialize action mask provider if needed
+        if self._is_maskable_ppo:
+            mask_config = ActionMaskConfig(
+                min_holding_period=self.config.get("min_holding_period", 5),
+                enable_forced_close=True,
+                max_position_age=self.config.get("max_position_age", 1000)
+            )
+            self.mask_provider = ActionMaskProvider(mask_config)
+
+    def run_backtest(self) -> Dict[str, Any]:
+        """Run backtest on historical data."""
+        self.logger.info("Starting backtest...")
+
+        if self.trading_env is None:
+            raise RuntimeError("HeavyTradingEnv not available for backtest")
+
+        total_steps = len(self.historical_data)
+        if self.max_steps:
+            total_steps = min(total_steps, self.max_steps)
+        self.logger.info(f"Running backtest for {total_steps} steps...")
+
+        # Reset environment
+        obs, _ = self.trading_env.reset()
+        print(f"Env features count: {len(self.trading_env.features)}")
+        print(f"Expected features: {self.expected_features}")
+
+        for step in range(total_steps):
+            # Make prediction
+            if self._is_maskable_ppo:
+                # Use action masking for MaskablePPO
+                self.mask_provider.update_state(
+                    current_position=self.trading_env.position,
+                    position_entry_step=getattr(self, '_position_entry_step', 0),
+                    current_step=step,
+                    forced_close_reason=None
+                )
+                action_masks = self.mask_provider.get_action_mask()
+                action, _ = self.model.predict(obs, action_masks=action_masks, deterministic=True)
+            else:
+                action, _ = self.model.predict(obs, deterministic=True)
+
+            # Convert continuous action to discrete for environment
+            if self._is_sac:
+                # SAC: continuous action space [-1, 1]
+                if isinstance(action, np.ndarray):
+                    action_value = float(action.item())
+                else:
+                    action_value = float(action)
+
+                # Convert to discrete action like in paper_trade
+                if action_value > 0.05:  # BUY threshold
+                    action = 1
+                elif action_value < -0.3:  # SELL threshold
+                    action = 2
+                else:
+                    action = 0  # HOLD
+            else:
+                # PPO: discrete action space
+                if isinstance(action, np.ndarray):
+                    action = int(action.item())
+                else:
+                    action = int(action)
+
+            # Execute action in environment
+            obs, reward, terminated, truncated, info = self.trading_env.step(action)
+
+            # Record portfolio value
+            current_step = min(self.trading_env.current_step, len(self.historical_data) - 1)
+            self.portfolio_history.append({
+                'timestamp': self.historical_data.iloc[current_step]['timestamp'],
+                'price': self.historical_data.iloc[current_step]['close'],
+                'position': self.trading_env.position,
+                'balance': self.trading_env.portfolio_value - (self.trading_env.position * self.historical_data.iloc[current_step]['close'] if self.trading_env.position > 0 else 0),
+                'portfolio_value': self.trading_env.portfolio_value,
+                'pnl': self.trading_env.total_pnl
+            })
+
+            # Progress logging
+            if step % 1000 == 0:
+                self.logger.info(f"Backtest progress: {step}/{total_steps} steps")
+
+            if terminated or truncated:
+                break
+
+        # Calculate final results
+        results = self._calculate_results()
+        self.logger.info("Backtest completed")
+        return results
+
+    def _calculate_results(self) -> Dict[str, Any]:
+        """Calculate backtest results."""
+        if not self.portfolio_history:
+            return {}
+
+        final_value = self.portfolio_history[-1]['portfolio_value']
+        initial_value = self.initial_balance
+
+        total_return = (final_value - initial_value) / initial_value * 100
+        total_trades = self.trading_env.trades_count
+
+        # Calculate Sharpe ratio (simplified)
+        returns = pd.Series([p['portfolio_value'] for p in self.portfolio_history])
+        if len(returns) > 1:
+            returns_pct = returns.pct_change().dropna()
+            sharpe_ratio = returns_pct.mean() / returns_pct.std() * np.sqrt(252) if returns_pct.std() > 0 else 0
+        else:
+            sharpe_ratio = 0
+
+        # Calculate max drawdown
+        peak = initial_value
+        max_drawdown = 0
+        for value in [p['portfolio_value'] for p in self.portfolio_history]:
+            if value > peak:
+                peak = value
+            drawdown = (peak - value) / peak * 100
+            max_drawdown = max(max_drawdown, drawdown)
+
+        return {
+            'initial_balance': initial_value,
+            'final_value': final_value,
+            'total_return_pct': total_return,
+            'total_trades': total_trades,
+            'sharpe_ratio': sharpe_ratio,
+            'max_drawdown_pct': max_drawdown,
+            'total_pnl': self.trading_env.total_pnl,
+            'trades': [],  # Simplified, can add if needed
+            'portfolio_history': self.portfolio_history
+        }
+
+
+def main():
+    """Main entry point for backtesting."""
+    parser = argparse.ArgumentParser(description="Backtest Trading Bot")
+    parser.add_argument("model_path", help="Path to trained model file")
+    parser.add_argument("data_path", help="Path to historical data CSV file")
+    parser.add_argument("--config", type=str, help="Path to config JSON file")
+    parser.add_argument("--initial-balance", type=float, default=100000.0,
+                       help="Initial balance for backtest")
+    parser.add_argument("--max-steps", type=int, default=None,
+                       help="Maximum number of steps to run (default: all data)")
+    parser.add_argument("--output", type=str, help="Output file for results")
+
+    args = parser.parse_args()
+
+    # Load config if provided
+    config = None
+    if args.config:
+        import json
+        with open(args.config, 'r') as f:
+            config = json.load(f)
+
+    # Create backtest trader
+    trader = BacktestTrader(
+        model_path=args.model_path,
+        data_path=args.data_path,
+        config=config,
+        initial_balance=args.initial_balance,
+        max_steps=args.max_steps
+    )
+
+    # Run backtest
+    results = trader.run_backtest()
+
+    # Print results
+    print("\n=== Backtest Results ===")
+    print(f"Initial Balance: {results.get('initial_balance', 0):.2f}")
+    print(f"Final Value: {results.get('final_value', 0):.2f}")
+    print(f"Total Return: {results.get('total_return_pct', 0):.2f}%")
+    print(f"Total Trades: {results.get('total_trades', 0)}")
+    print(f"Sharpe Ratio: {results.get('sharpe_ratio', 0):.4f}")
+    print(f"Max Drawdown: {results.get('max_drawdown_pct', 0):.2f}%")
+    print(f"Total PnL: {results.get('total_pnl', 0):.2f}")
+
+    # Save results if output specified
+    if args.output:
+        import json
+        with open(args.output, 'w') as f:
+            # Convert timestamps to strings for JSON serialization
+            clean_results = results.copy()
+            clean_results['trades'] = [
+                {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in trade.items()}
+                for trade in results['trades']
+            ]
+            clean_results['portfolio_history'] = [
+                {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in hist.items()}
+                for hist in results['portfolio_history']
+            ]
+            json.dump(clean_results, f, indent=2)
+        print(f"\nResults saved to {args.output}")
+
+
+if __name__ == "__main__":
+    main()

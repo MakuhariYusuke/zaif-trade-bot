@@ -13,7 +13,11 @@ import pandas as pd
 import pytest
 
 from ztb.trading.environment.environment import HeavyTradingEnv
-
+from ztb.trading.constants import (
+    ACTION_HOLD,
+    ACTION_BUY,
+    ACTION_SELL,
+)
 
 class TestForcedActions:
     """Test cases for forced action execution."""
@@ -93,7 +97,7 @@ class TestForcedActions:
         env.reset()
 
         # Step 1: BUY
-        env.step(1)  # 1 = BUY
+        env.step(ACTION_BUY)
 
         # Should have long position now
         assert env.position > 0, "BUY should create positive position"
@@ -102,13 +106,13 @@ class TestForcedActions:
 
         # Step 2: HOLD for a few steps
         for _ in range(3):
-            env.step(0)  # HOLD
+            env.step(ACTION_HOLD)  # HOLD
 
         # Position should remain
         assert abs(env.position - expected_position) < 1e-6, "HOLD should maintain position"
 
         # Step 3: SELL
-        env.step(2)  # 2 = SELL
+        env.step(ACTION_SELL)  # 2 = SELL
 
         # SELL closes long AND opens short
         assert env.position < 0, "SELL should close long and open short"
@@ -126,11 +130,11 @@ class TestForcedActions:
         assert env.position == 0.0, "Should start with no position"
         
         # BUY
-        env.step(1)
+        env.step(ACTION_BUY)
         assert env.position > 0, "BUY should create long position"
         
         # SELL
-        env.step(2)
+        env.step(ACTION_SELL)
         assert env.position < 0, "SELL should close long and open short"
 
     def test_multiple_round_trips(self, zero_fee_env: HeavyTradingEnv) -> None:
@@ -147,22 +151,22 @@ class TestForcedActions:
         # Execute 3 round trips
         for i in range(3):
             # BUY (should go long)
-            env.step(1)
+            env.step(ACTION_BUY)
             assert abs(env.position - position_size) < 1e-6, \
                 f"Round {i+1}: After BUY, should be long {position_size}"
             
             # HOLD (maintain position)
-            env.step(0)
+            env.step(ACTION_HOLD)
             assert abs(env.position - position_size) < 1e-6, \
                 f"Round {i+1}: After HOLD, should still be long {position_size}"
             
             # SELL (should go short)
-            env.step(2)
+            env.step(ACTION_SELL)
             assert abs(env.position - (-position_size)) < 1e-6, \
                 f"Round {i+1}: After SELL, should be short {-position_size}"
             
             # Return to neutral for next round
-            env.step(1)  # BUY to close short
+            env.step(ACTION_BUY)  # BUY to close short
             assert abs(env.position - position_size) < 1e-6, \
                 f"Round {i+1}: After closing short, should be long {position_size}"
 
@@ -178,19 +182,19 @@ class TestForcedActions:
         assert env.position == 0.0, "Should start at neutral"
 
         # BUY from neutral
-        env.step(1)
+        env.step(ACTION_BUY)
         position_after_buy = env.position
         assert position_after_buy > 0, "BUY from neutral should create long"
 
         # SELL from long
-        env.step(2)
+        env.step(ACTION_SELL)
         position_after_sell = env.position
         assert position_after_sell < 0, "SELL from long should create short"
         assert abs(position_after_sell) == position_after_buy, \
             "Position size should be symmetric (same magnitude, opposite sign)"
         
         # BUY from short (return to long)
-        env.step(1)
+        env.step(ACTION_BUY)
         position_after_buy2 = env.position
         assert abs(position_after_buy2 - position_after_buy) < 1e-6, \
             "BUY from short should return to same long position size"
@@ -213,7 +217,7 @@ class TestForcedActions:
         assert legal_actions[2] == 1, "SELL should be legal at position=0 (can go short)"
         
         # Go long
-        env.step(1)  # BUY
+        env.step(ACTION_BUY)
         assert env.position > 0, "Should have long position"
         
         legal_actions = env.get_legal_actions()
@@ -222,14 +226,14 @@ class TestForcedActions:
         assert legal_actions[2] == 1, "SELL should be legal to close long/open short"
         
         # Close long and go short
-        env.step(2)  # SELL
+        env.step(ACTION_SELL)
         assert env.position < 0, "Should have short position"
         
         legal_actions = env.get_legal_actions()
-        assert legal_actions[0] == 1, "HOLD should be legal"
-        assert legal_actions[1] == 1, "BUY should be legal to close short/open long"
-        assert legal_actions[2] == 0, "SELL should be illegal when already short"        # BUY to create position
-        env.step(1)
+        assert legal_actions[ACTION_HOLD] == 1, "HOLD should be legal"
+        assert legal_actions[ACTION_BUY] == 1, "BUY should be legal to close short/open long"
+        assert legal_actions[ACTION_SELL] == 0, "SELL should be illegal when already short"        # BUY to create position
+        env.step(ACTION_BUY)
         
         # Now check legal actions with position
         legal_actions = env.get_legal_actions()
@@ -244,9 +248,18 @@ class TestForcedActions:
         
         env1.reset()
         env2.reset()
-        
-        action_sequence = [0, 1, 0, 0, 2, 0, 1, 2]  # HOLD, BUY, HOLD, HOLD, SELL, HOLD, BUY, SELL
-        
+
+        action_sequence = [
+            ACTION_HOLD, 
+            ACTION_BUY, 
+            ACTION_HOLD, 
+            ACTION_HOLD, 
+            ACTION_SELL, 
+            ACTION_HOLD, 
+            ACTION_BUY, 
+            ACTION_SELL
+        ]
+
         for action in action_sequence:
             obs1, r1, d1, t1, i1 = env1.step(action)
             obs2, r2, d2, t2, i2 = env2.step(action)

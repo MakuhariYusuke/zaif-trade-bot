@@ -14,6 +14,7 @@ Example:
 from typing import Any, Dict, List, Optional
 from ztb.utils.logging_utils import get_logger
 from ztb.training.core.config_manager import ConfigManager
+from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
 
 logger = get_logger(__name__)
 
@@ -149,7 +150,7 @@ class ConfigBuilder:
             "continuous_to_discrete_threshold": self.get_config_value(
                 "continuous_to_discrete_threshold",
                 sections=["environment"],
-                default=0.33
+                default=SAC_CONTINUOUS_THRESHOLD
             ),
         }
     
