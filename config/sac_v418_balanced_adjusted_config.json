@@ -1,9 +1,9 @@
 {
   "model_name": "sac_v418_balanced_adjusted",
   "algorithm": "sac",
-  "total_timesteps": 1000,
+  "total_timesteps": 100000,
   "data_source": "csv",
-  "data_path": "btc_jpy_real_dataset.csv",
+  "data_path": "data/btc_jpy_real_dataset.csv",
   "data_config": {
     "csv_path": "btc_jpy_real_dataset.csv",
     "use_real_data": true
@@ -22,7 +22,7 @@
     "target_entropy": -1.0
   },
   "environment": {
-    "initial_balance": 200000,
+    "initial_balance": 200000.0,
     "transaction_cost": 1e-05,
     "max_position_size": 1.0,
     "enable_action_masking": false,

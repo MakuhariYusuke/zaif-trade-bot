@@ -25,6 +25,7 @@ from stable_baselines3 import SAC
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
 from ztb.utils.logging_utils import get_logger
 
 class SACBiasAnalyzer:
@@ -115,11 +116,11 @@ class SACBiasAnalyzer:
             sell_threshold = self.config.get('reward_settings', {}).get('action_threshold_sell', -0.3)
 
             if action_value > buy_threshold:
-                discrete_action = 1  # BUY
+                discrete_action = ACTION_BUY
             elif action_value < sell_threshold:
-                discrete_action = 2  # SELL
+                discrete_action = ACTION_SELL
             else:
-                discrete_action = 0  # HOLD
+                discrete_action = ACTION_HOLD
 
             # Calculate reward for this action
             reward = self.reward_calculator.calculate_reward(
@@ -192,11 +193,11 @@ class SACBiasAnalyzer:
                 sell_threshold = self.config.get('reward_settings', {}).get('action_threshold_sell', -0.3)
 
                 if action_value > buy_threshold:
-                    discrete_action = 1
+                    discrete_action = ACTION_BUY
                 elif action_value < sell_threshold:
-                    discrete_action = 2
+                    discrete_action = ACTION_SELL
                 else:
-                    discrete_action = 0
+                    discrete_action = ACTION_HOLD
 
                 # Calculate reward
                 reward = self.reward_calculator.calculate_reward(

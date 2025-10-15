@@ -8,10 +8,9 @@
   "checkpoint_freq": 1000,
   "enable_checkpoint_on_best": true,
   "checkpoint_comparison_metric": "episode_reward_mean",
-  
   "environment": {
     "env_name": "HeavyTradingEnv-v0",
-    "initial_balance": 100000,
+    "initial_balance": 100000.0,
     "maker_fee": 0.0,
     "taker_fee": 0.001,
     "use_real_data": true,
@@ -32,27 +31,22 @@
     "step_reward_logging": true,
     "continuous_to_discrete_threshold": 0.25
   },
-  
   "reward_settings": {
     "use_simple_reward": true,
     "reward_scale": 1000.0,
     "reward_clip_min": -10.0,
     "reward_clip_max": 10.0,
-    
     "enable_inactivity_penalty": true,
     "inactivity_penalty_rate": 0.01,
     "inactivity_penalty_window": 3,
     "inactivity_hold_threshold": 0.05,
-    
     "enable_opportunity_cost": true,
     "opportunity_cost_rate": 0.005,
-    
     "enable_trade_execution_bonus": true,
     "trade_execution_bonus_rate": 0.05,
     "trade_execution_position_threshold": 0.01,
     "trade_execution_action_multiplier": 1.5
   },
-  
   "sac_params": {
     "learning_rate": 0.0003,
     "buffer_size": 50000,
@@ -69,11 +63,13 @@
     "sde_sample_freq": -1,
     "use_sde_at_warmup": false,
     "policy_kwargs": {
-      "net_arch": [256, 256],
+      "net_arch": [
+        256,
+        256
+      ],
       "activation_fn": "relu",
       "log_std_init": -3
     }
   },
-  
   "notes": "v397c: max_position_size=1.0を維持しつつ、RewardCalculatorのpnl_ratio正規化を活用。reward_scale=1000で0.1%変動=reward 10の設計。ボーナス/ペナルティは絶対値で設定し、PnLの0.5-3%程度に調整。これによりポジションサイズに依存しない安定した報酬設計を実現。"
 }

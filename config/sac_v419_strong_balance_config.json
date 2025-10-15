@@ -1,5 +1,5 @@
 {
-    "model_name": "sac_v420_forced_balance",
+  "model_name": "sac_v420_forced_balance",
   "algorithm": "sac",
   "total_timesteps": 5000,
   "data_source": "csv",
@@ -22,8 +22,8 @@
     "target_entropy": -1.0
   },
   "environment": {
-    "initial_balance": 200000,
-    "transaction_cost": 0.00001,
+    "initial_balance": 200000.0,
+    "transaction_cost": 1e-05,
     "max_position_size": 1.0,
     "enable_action_masking": false,
     "use_continuous_actions": true,
@@ -58,7 +58,11 @@
     "balance_penalty_tolerance": 0.05,
     "balance_penalty": 5.0,
     "constraint_penalty": 1.0,
-    "profit_bonus_multipliers": [3.0, 0.4, 0.2],
+    "profit_bonus_multipliers": [
+      3.0,
+      0.4,
+      0.2
+    ],
     "base_profit_bonus_atr_coeff": 1.5,
     "base_profit_bonus_portfolio_coeff": 1.2,
     "hold_action_penalty": 0.0,

@@ -5,25 +5,16 @@ Main entry point for Unified Trainer.
 
 import argparse
 import sys
-from pathlib import Path
-from typing import Any, Dict, Optional
 
-from ztb.training.unified_trainer.config import load_config
+from ztb.training.unified_trainer.config_manager import ConfigManager
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
-from ztb.utils.errors import safe_operation
+from ztb.utils.logging_utils import get_logger
 
 
 def main() -> None:
     """Main entry point for unified training."""
-    safe_operation(
-        _main_impl,
-        logger=None,  # Will be configured inside
-        context="Unified training execution"
-    )
+    logger = get_logger(__name__)
 
-
-def _main_impl(logger) -> None:
-    """Implementation of main function."""
     parser = argparse.ArgumentParser(description="Unified Training Runner for Zaif Trade Bot")
     parser.add_argument(
         "--config",
@@ -64,10 +55,23 @@ def _main_impl(logger) -> None:
 
     args = parser.parse_args()
 
-    # Load configuration
-    config = load_config(args.config)
+    # Load and validate configuration
+    config_manager = ConfigManager(logger)
+    config, is_valid, errors, warnings = config_manager.load_and_validate(args.config)
+
+    if not is_valid:
+        print("❌ Configuration validation failed:")
+        for error in errors:
+            print(f"  - {error}")
+        sys.exit(1)
+
+    if warnings:
+        print("⚠️  Configuration warnings:")
+        for warning in warnings:
+            print(f"  - {warning}")
+
     if config is None:
-        logger.error(f"Failed to load configuration from {args.config}")
+        print("❌ Failed to load configuration")
         sys.exit(1)
 
     # Create and run trainer

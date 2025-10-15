@@ -5,15 +5,22 @@ This module defines all magic numbers and constants used throughout the trading 
 Centralizing constants improves maintainability and reduces errors.
 """
 
+from ztb.trading.constants import (
+    ACTION_HOLD,
+    ACTION_BUY,
+    ACTION_SELL,
+    SAC_CONTINUOUS_THRESHOLD,
+)
+
 # ============================================================================
 # Action Space Constants
 # ============================================================================
 
 # Discrete action space (for PPO with Masked actions)
 NUM_DISCRETE_ACTIONS = 3
-ACTION_HOLD = 0
-ACTION_BUY = 1
-ACTION_SELL = 2
+# ACTION_HOLD = 0
+# ACTION_BUY = 1
+# ACTION_SELL = -1
 
 # Action names for logging and display
 ACTION_NAMES = ["HOLD", "BUY", "SELL"]
@@ -27,7 +34,7 @@ CONTINUOUS_ACTION_DIM = 1  # Single continuous value
 
 # Thresholds for converting continuous actions to discrete
 # If continuous action is in [-threshold, threshold], it's HOLD
-CONTINUOUS_TO_DISCRETE_THRESHOLD = 0.33
+CONTINUOUS_TO_DISCRETE_THRESHOLD = SAC_CONTINUOUS_THRESHOLD
 
 
 # ============================================================================

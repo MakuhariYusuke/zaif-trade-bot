@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Unified Trainer implementation.
+Refactored Unified Trainer implementation with enhanced UI and modularity.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from ztb.training.unified_trainer.config import UnifiedAlgorithm, UnifiedTrainerConfig
-from ztb.training.unified_trainer.utils import configure_progress_bar
-from ztb.utils.cache_utils import TTLCache
+from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
+from ztb.training.unified_trainer.config_manager import ConfigManager
+from ztb.training.unified_trainer.reporting import TrainingReporter
+from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.performance_utils import PerformanceMonitor
 
 
 class UnifiedTrainer:
     """
-    Unified training interface for different algorithms.
+    Refactored Unified training interface with enhanced UI and modularity.
 
     WORK ASSIGNMENT:
     ---------------
@@ -56,39 +56,18 @@ class UnifiedTrainer:
         self.total_timesteps = total_timesteps
 
         # Initialize components
-        self.algorithm = str(config.get("algorithm", "ppo")).lower()
         self.logger = get_logger(__name__)
+        self.ui = TrainingUI(self.logger)
+        self.config_manager = ConfigManager(self.logger)
+        self.reporter = TrainingReporter(self.logger)
 
-        # Initialize utility components
-        self.config_cache = TTLCache(ttl_seconds=300.0)  # 5 minutes cache
-        self.performance_monitor = PerformanceMonitor("unified_trainer")
+        # Algorithm trainer (created during run)
+        self.algorithm_trainer = None
 
-        # Configure progress bar
-        self.progress_bar_enabled = configure_progress_bar(self.config, log=self.logger)
-
-        # Initialize Discord notifier (disabled in offline mode)
-        if config.get("offline_mode", False):
-            from ztb.utils import DiscordNotifier
-            self.notifier = DiscordNotifier(webhook_url=None)  # Explicitly disable
-        else:
-            from ztb.utils import DiscordNotifier
-            self.notifier = DiscordNotifier()
-
-        # Preserve legacy config object for backward compatibility with tests/tools
-        try:
-            algorithm_enum = UnifiedAlgorithm(self.algorithm)
-        except ValueError:
-            algorithm_enum = UnifiedAlgorithm.PPO
-        self.config_obj = UnifiedTrainerConfig(
-            algorithm=algorithm_enum,
-            force=force,
-            dry_run=dry_run,
-            enable_streaming=enable_streaming,
-            stream_batch_size=stream_batch_size,
-            max_features=max_features,
-            offline_mode=config.get("offline_mode", False),
-            total_timesteps=total_timesteps,
-        )
+        # Training results
+        self.training_success = False
+        self.training_stats = {}
+        self.training_report = {}
 
     def run(self) -> bool:
         """
@@ -97,53 +76,115 @@ class UnifiedTrainer:
         Returns:
             bool: True if training completed successfully
         """
-        with self.performance_monitor:
-            self.logger.info(f"Starting {self.algorithm} training")
+        try:
+            # Display header
+            algorithm = self.config.get('algorithm', 'unknown')
+            config_name = self.config.get('model_name', 'unnamed')
+            self.ui.print_header(algorithm, config_name)
 
-            try:
-                if self.algorithm == "ppo":
-                    return self._run_ppo_training()
-                elif self.algorithm == "base_ml":
-                    return self._run_base_ml_training()
-                elif self.algorithm == "iterative":
-                    return self._run_iterative_training()
-                elif self.algorithm == "ensemble":
-                    return self._run_ensemble_training()
-                elif self.algorithm == "curriculum":
-                    return self._run_curriculum_training()
-                else:
-                    self.logger.error(f"Unknown algorithm: {self.algorithm}")
-                    return False
-            except Exception as e:
-                self.logger.error(f"Training failed: {e}")
+            # Display configuration summary
+            self.ui.print_config_summary(self.config)
+
+            # Validate configuration
+            if not self._validate_configuration():
                 return False
 
-    def _run_ppo_training(self) -> bool:
-        """Run PPO training."""
-        self.logger.info("Running PPO training")
-        # TODO: Implement PPO training logic
-        return True
+            # Handle dry run
+            if self.dry_run:
+                self.ui.print_info("Dry run mode: validation completed successfully")
+                return True
 
-    def _run_base_ml_training(self) -> bool:
-        """Run Base ML training."""
-        self.logger.info("Running Base ML training")
-        # TODO: Implement Base ML training logic
-        return True
+            # Execute training
+            return self._execute_training()
 
-    def _run_iterative_training(self) -> bool:
-        """Run Iterative training."""
-        self.logger.info("Running Iterative training")
-        # TODO: Implement Iterative training logic
-        return True
+        except Exception as e:
+            self.ui.print_error(f"Training execution failed: {e}")
+            self.logger.error(f"Training execution failed: {e}", exc_info=True)
+            return False
 
-    def _run_ensemble_training(self) -> bool:
-        """Run Ensemble training."""
-        self.logger.info("Running Ensemble training")
-        # TODO: Implement Ensemble training logic
-        return True
+    def _validate_configuration(self) -> bool:
+        """Validate configuration using enhanced validator."""
+        self.logger.info("Validating configuration...")
 
-    def _run_curriculum_training(self) -> bool:
-        """Run Curriculum training."""
-        self.logger.info("Running Curriculum training")
-        # TODO: Implement Curriculum training logic
-        return True
+        # Use the algorithm trainer's validation if available
+        algorithm = self.config.get('algorithm', '').lower()
+
+        try:
+            # Create algorithm trainer for validation
+            trainer = create_algorithm_trainer(algorithm, self.config, self.logger)
+
+            # Validate using trainer
+            is_valid = trainer.validate_config()
+
+            if is_valid:
+                self.ui.print_success("Configuration validation passed")
+                return True
+            else:
+                self.ui.print_error("Configuration validation failed")
+                return False
+
+        except ValueError as e:
+            self.ui.print_error(f"Invalid algorithm: {e}")
+            return False
+        except Exception as e:
+            self.ui.print_error(f"Configuration validation error: {e}")
+            return False
+
+    def _execute_training(self) -> bool:
+        """Execute the actual training."""
+        algorithm = self.config.get('algorithm', '').lower()
+
+        try:
+            # Override total_timesteps from command line if provided
+            if self.total_timesteps is not None:
+                self.config['total_timesteps'] = self.total_timesteps
+                self.logger.info(f"Overriding total_timesteps from command line: {self.total_timesteps:,}")
+
+            # Create algorithm trainer
+            self.logger.info(f"Creating {algorithm.upper()} trainer...")
+            self.algorithm_trainer = create_algorithm_trainer(algorithm, self.config, self.logger)
+
+            # Start training UI
+            self.ui.start_training()
+
+            # Execute training
+            self.logger.info(f"Starting {algorithm.upper()} training...")
+            success = self.algorithm_trainer.train()
+
+            # Get training statistics
+            if success and hasattr(self.algorithm_trainer, 'get_training_stats'):
+                self.training_stats = self.algorithm_trainer.get_training_stats()
+
+            # Display completion
+            self.ui.print_training_complete(success, self.training_stats if success else None)
+
+            # Generate and save training report
+            if success:
+                self.training_report = self.reporter.generate_report(
+                    self.config, self.training_stats, success
+                )
+                report_path = self.reporter.save_report(self.training_report)
+                self.reporter.print_summary(self.training_report)
+
+                if report_path:
+                    self.ui.print_success(f"Training report saved to: {report_path}")
+
+            self.training_success = success
+            return success
+
+        except Exception as e:
+            self.ui.print_error(f"Training execution failed: {e}")
+            self.logger.error(f"Training execution failed: {e}", exc_info=True)
+            return False
+
+    def get_training_stats(self) -> Dict[str, Any]:
+        """Get training statistics."""
+        return self.training_stats.copy()
+
+    def get_training_report(self) -> Dict[str, Any]:
+        """Get complete training report."""
+        return self.training_report.copy()
+
+    def is_training_complete(self) -> bool:
+        """Check if training completed successfully."""
+        return self.training_success

@@ -17,7 +17,7 @@ try:
     from ztb.training.stratified_sampler import StratifiedSampler
 except ImportError:
     pytest.skip("ztb.training.stratified_sampler module not available", allow_module_level=True)
-
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
 
 class TestStratifiedSampler:
     """Test suite for StratifiedSampler."""
@@ -75,9 +75,9 @@ class TestStratifiedSampler:
         sampler = StratifiedSampler(n_actions=3)
         
         # Create synthetic data
-        regimes = np.array([0, 0, 1, 1, 2, 2, 0, 1, 2])  # 3 of each regime
-        prev_actions = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2])  # Cyclic actions
-        
+        regimes = np.array([ACTION_HOLD, ACTION_HOLD, ACTION_BUY, ACTION_BUY, ACTION_SELL, ACTION_SELL, ACTION_HOLD, ACTION_HOLD, ACTION_SELL])  # 3 of each regime
+        prev_actions = np.array([ACTION_HOLD, ACTION_BUY, ACTION_SELL, ACTION_HOLD, ACTION_BUY, ACTION_SELL, ACTION_HOLD, ACTION_BUY, ACTION_SELL])  # Cyclic actions
+
         buckets = sampler.bucket_indices(regimes, prev_actions)
         
         # Check bucket structure
@@ -118,9 +118,9 @@ class TestStratifiedSampler:
         prev_actions = np.zeros(n_samples, dtype=int)  # Majority HOLD
         
         # Add minority actions
-        prev_actions[100:110] = 1  # 1% BUY
-        prev_actions[200:205] = 2  # 0.5% SELL (extreme minority)
-        
+        prev_actions[100:110] = ACTION_BUY  # 1% BUY
+        prev_actions[200:205] = ACTION_SELL  # 0.5% SELL (extreme minority)
+
         # Sample batch
         batch_size = 90
         batch_indices = sampler.sample_batch(prices, prev_actions, batch_size)
@@ -216,15 +216,15 @@ def test_stratified_sampler_visual():
     prev_actions = np.zeros(n_samples, dtype=int)
     
     # Add minority actions
-    prev_actions[100:150] = 1  # 5% BUY
-    prev_actions[200:220] = 2  # 2% SELL (minority)
-    
+    prev_actions[100:150] = ACTION_BUY  # 5% BUY
+    prev_actions[200:220] = ACTION_SELL  # 2% SELL (minority)
+
     original_counts = np.bincount(prev_actions, minlength=3)
     print("Original data distribution:")
-    print(f"  HOLD: {original_counts[0]} ({original_counts[0]/n_samples*100:.1f}%)")
-    print(f"  BUY:  {original_counts[1]} ({original_counts[1]/n_samples*100:.1f}%)")
-    print(f"  SELL: {original_counts[2]} ({original_counts[2]/n_samples*100:.1f}%)")
-    
+    print(f"  HOLD: {original_counts[ACTION_HOLD]} ({original_counts[ACTION_HOLD]/n_samples*100:.1f}%)")
+    print(f"  BUY:  {original_counts[ACTION_BUY]} ({original_counts[ACTION_BUY]/n_samples*100:.1f}%)")
+    print(f"  SELL: {original_counts[ACTION_SELL]} ({original_counts[ACTION_SELL]/n_samples*100:.1f}%)")
+
     # Uniform sampling
     batch_size = 90
     uniform_indices = np.random.choice(n_samples, size=batch_size, replace=False)
@@ -232,10 +232,10 @@ def test_stratified_sampler_visual():
     uniform_counts = np.bincount(uniform_actions, minlength=3)
     
     print("\nUniform sampling:")
-    print(f"  HOLD: {uniform_counts[0]} ({uniform_counts[0]/batch_size*100:.1f}%)")
-    print(f"  BUY:  {uniform_counts[1]} ({uniform_counts[1]/batch_size*100:.1f}%)")
-    print(f"  SELL: {uniform_counts[2]} ({uniform_counts[2]/batch_size*100:.1f}%)")
-    
+    print(f"  HOLD: {uniform_counts[ACTION_HOLD]} ({uniform_counts[ACTION_HOLD]/batch_size*100:.1f}%)")
+    print(f"  BUY:  {uniform_counts[ACTION_BUY]} ({uniform_counts[ACTION_BUY]/batch_size*100:.1f}%)")
+    print(f"  SELL: {uniform_counts[ACTION_SELL]} ({uniform_counts[ACTION_SELL]/batch_size*100:.1f}%)")
+
     # Stratified sampling
     sampler = StratifiedSampler(n_actions=3, regime_window=20)
     stratified_indices = sampler.sample_batch(prices, prev_actions, batch_size)
@@ -243,10 +243,10 @@ def test_stratified_sampler_visual():
     stratified_counts = np.bincount(stratified_actions, minlength=3)
     
     print("\nStratified sampling:")
-    print(f"  HOLD: {stratified_counts[0]} ({stratified_counts[0]/batch_size*100:.1f}%)")
-    print(f"  BUY:  {stratified_counts[1]} ({stratified_counts[1]/batch_size*100:.1f}%)")
-    print(f"  SELL: {stratified_counts[2]} ({stratified_counts[2]/batch_size*100:.1f}%)")
-    
+    print(f"  HOLD: {stratified_counts[ACTION_HOLD]} ({stratified_counts[ACTION_HOLD]/batch_size*100:.1f}%)")
+    print(f"  BUY:  {stratified_counts[ACTION_BUY]} ({stratified_counts[ACTION_BUY]/batch_size*100:.1f}%)")
+    print(f"  SELL: {stratified_counts[ACTION_SELL]} ({stratified_counts[ACTION_SELL]/batch_size*100:.1f}%)")
+
     # Check minority boosting
     sell_boost = stratified_counts[2] / max(1, uniform_counts[2])
     print(f"\nSELL boost factor: {sell_boost:.2f}x")
