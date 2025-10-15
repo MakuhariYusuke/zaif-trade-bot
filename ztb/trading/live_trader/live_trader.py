@@ -110,9 +110,45 @@ from ztb.trading.constants import (
 
 class LiveTrader:
     """
-    Live trading bot for BTC/JPY using trained PPO model.
+    Live trading bot for BTC/JPY using trained reinforcement learning models.
 
-    If COINCHECK_API_KEY and COINCHECK_API_SECRET are not set, the bot runs in demo mode and does not execute real trades.
+    This class implements a production-ready trading system that can operate in live markets
+    using pre-trained PPO or SAC models. It includes comprehensive risk management, monitoring,
+    and error handling features.
+
+    Key Features:
+    - Support for PPO and SAC algorithms
+    - Multiple exchange integrations (Coincheck, Bitflyer)
+    - Comprehensive risk management with configurable limits
+    - Real-time monitoring and health checks
+    - Discord notifications for trade alerts
+    - Dry-run mode for testing without real trades
+    - Automatic position management and PnL tracking
+    - Memory-efficient operation with periodic cleanup
+
+    Safety Features:
+    - Emergency stop loss protection
+    - Daily loss and trade count limits
+    - API credential validation
+    - Circuit breaker pattern for error handling
+    - Comprehensive logging and error reporting
+
+    Args:
+        model_path: Path to trained model or LiveTradingOptions configuration
+        config: Optional trading configuration overrides
+        disable_risk_limits: Disable all risk management limits (dangerous!)
+        dry_run: Operate in simulation mode without real trades
+
+    Environment Variables:
+        COINCHECK_API_KEY: Coincheck exchange API key
+        COINCHECK_API_SECRET: Coincheck exchange API secret
+        BITFLYER_API_KEY: Bitflyer exchange API key
+        BITFLYER_API_SECRET: Bitflyer exchange API secret
+        DISCORD_WEBHOOK_URL: Discord webhook for notifications
+
+    Note:
+        If exchange API credentials are not set, the bot runs in demo mode
+        and does not execute real trades. This is the default safe mode.
     """
 
     compute_features_batch: Optional[Callable[[pd.DataFrame, Optional[List[str]], int, bool, Optional[bool], Optional[int], Optional[bool]], Union[pd.DataFrame, Tuple[pd.DataFrame, Dict[str, float]]]]]
@@ -923,7 +959,58 @@ class LiveTrader:
                 logger = get_logger(__name__)
                 logger.debug(f"Memory check failed: {e}")
 
+            # Clear any accumulated references that might prevent GC
+            # This helps prevent memory leaks in long-running processes
+            if hasattr(self, '_feature_cache'):
+                # Clear feature cache if it gets too large
+                if len(getattr(self, '_feature_cache', {})) > 1000:
+                    self._feature_cache.clear()
+                    logger = get_logger(__name__)
+                    logger.debug("Cleared feature cache to prevent memory accumulation")
+
             self._cleanup_counter = 0
+
+    def _validate_config(self, config: Dict[str, Any]) -> None:
+        """Validate trading configuration for safety and correctness."""
+        logger = get_logger(__name__)
+
+        # Required configuration keys
+        required_keys = [
+            "price_history_length",
+            "max_daily_loss",
+            "max_daily_trades",
+            "emergency_stop_loss"
+        ]
+
+        for key in required_keys:
+            if key not in config:
+                raise ValueError(f"Required configuration key missing: {key}")
+
+        # Validate numeric ranges
+        if config.get("price_history_length", 0) <= 0:
+            raise ValueError("price_history_length must be positive")
+
+        if config.get("max_daily_loss", 0) < 0:
+            raise ValueError("max_daily_loss cannot be negative")
+
+        if config.get("max_daily_trades", 0) < 0:
+            raise ValueError("max_daily_trades cannot be negative")
+
+        if not (0 < config.get("emergency_stop_loss", 0) < 1):
+            raise ValueError("emergency_stop_loss must be between 0 and 1")
+
+        # Validate transaction costs are reasonable
+        if config.get("transaction_cost", 0) > 0.01:  # More than 1%
+            logger.warning(f"High transaction cost detected: {config['transaction_cost']:.4f}")
+
+        # Validate position sizes are reasonable
+        max_pos = config.get("max_position_size", 0)
+        if max_pos > 1.0:
+            raise ValueError("max_position_size cannot exceed 1.0 (100%)")
+        elif max_pos > 0.5:
+            logger.warning(f"Large position size detected: {max_pos:.2f}")
+
+        logger.debug("Configuration validation passed")
 
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default trading configuration with safety limits using ZTBConfig."""
@@ -1829,6 +1916,10 @@ class LiveTrader:
         self.ztb_config = ZTBConfig()
         logger.debug("ZTBConfig initialized")
         self.config = config or self._get_default_config()
+
+        # Validate configuration for safety
+        self._validate_config(self.config)
+
         self.dry_run = self.options.dry_run
         self.disable_risk_limits = self.options.disable_risk_limits
 
