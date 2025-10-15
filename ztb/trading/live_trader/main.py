@@ -3,14 +3,13 @@
 Main entry point for live trading.
 """
 
-import argparse
 import asyncio
-import logging
-import os
 import sys
 from pathlib import Path
 
 # Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+
 from ztb.utils.path_utils import get_project_root
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
@@ -30,14 +29,14 @@ from ztb.utils.errors import safe_operation
 
 def main() -> None:
     """Main entry point for live trading."""
-    safe_operation(
-        _main_impl,
-        logger=None,  # Will be configured inside
-        context="Live trading execution"
-    )
+    try:
+        _main_impl()
+    except Exception as e:
+        print(f"Error in main: {e}")
+        raise
 
 
-def _main_impl(logger: logging.Logger) -> None:
+def _main_impl() -> None:
     """Implementation of main function."""
     print("Entering _main_impl")
     parser = _build_argument_parser()
@@ -47,6 +46,7 @@ def _main_impl(logger: logging.Logger) -> None:
     options = LiveTradingOptions.from_cli_args(args)
     runtime_logger = _configure_live_logging(options.log_level)
 
+    print("After configure logging")
     # Start servers if enabled
     metrics_handle: MetricsServerHandle | None = _start_metrics_server(options, runtime_logger)
     health_handle: HealthServerHandle | None = _start_health_server(
@@ -56,7 +56,7 @@ def _main_impl(logger: logging.Logger) -> None:
     )
 
     # Initialize trader
-    trader = LiveTrader(options.model_path, dry_run=options.dry_run)
+    trader = LiveTrader(options)
 
     # Update health provider with trader
     if health_handle:
