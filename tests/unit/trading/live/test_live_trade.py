@@ -150,7 +150,7 @@ class TestBugFixDocumentation:
         from ztb.trading.live_trader.live_trader import ACTION_HOLD, ACTION_BUY, ACTION_SELL
         assert ACTION_HOLD == 0
         assert ACTION_BUY == 1
-        assert ACTION_SELL == 2
+        assert ACTION_SELL == -1
 
     def test_sell_bias_multiplier_config(self):
         """Verify sell_bias_multiplier is read from config."""
@@ -172,4 +172,42 @@ class TestBugFixDocumentation:
 # 3. Creating a test harness that mocks the full LiveTrader environment
 #
 # For now, these validation tests confirm the bug fixes are correctly implemented.
+
+    def test_update_price_history_with_valid_prices(self):
+        """Test _update_price_history with valid prices."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+        from unittest.mock import patch
+        
+        mock_trader = Mock()
+        mock_trader.config = {"price_history_length": 10}
+        mock_trader.price_history = Mock()
+        mock_trader._get_historical_prices.return_value = [100.0, 101.0, 102.0]
+        
+        with patch.object(mock_trader, '_safe_update_price_history') as mock_safe_update:
+            LiveTrader._update_price_history(mock_trader)
+            mock_safe_update.assert_called_once_with([100.0, 101.0, 102.0])
+
+    def test_safe_update_price_history_with_valid_prices(self):
+        """Test _safe_update_price_history with valid prices."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+        from collections import deque
+        
+        mock_trader = Mock()
+        mock_trader.price_history = Mock(spec=deque)
+        mock_trader.price_history.__len__ = Mock(return_value=2)
+        
+        LiveTrader._safe_update_price_history(mock_trader, [100.0, 101.0])
+        mock_trader.price_history.clear.assert_called_once()
+        mock_trader.price_history.extend.assert_called_once_with([100.0, 101.0])
+
+    def test_safe_update_price_history_with_empty_prices(self):
+        """Test _safe_update_price_history with empty prices."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+        
+        mock_trader = Mock()
+        mock_trader.price_history = Mock()
+        
+        LiveTrader._safe_update_price_history(mock_trader, [])
+        mock_trader.price_history.clear.assert_not_called()
+        mock_trader.price_history.extend.assert_not_called()
 

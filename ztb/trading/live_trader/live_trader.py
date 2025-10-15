@@ -42,6 +42,7 @@ try:
     features_available = True
 except ImportError:
     features_available = False
+    compute_features_batch = None
 
 # Import trading adapters
 try:
@@ -92,12 +93,13 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Action constants for better readability
-ACTION_HOLD = 0
-ACTION_BUY = 1
-ACTION_SELL = 2
-
-ACTION_NAMES = {ACTION_HOLD: "HOLD", ACTION_BUY: "BUY", ACTION_SELL: "SELL"}
+from ztb.trading.constants import (
+    ACTION_HOLD,
+    ACTION_BUY,
+    ACTION_SELL,
+    ACTION_NAMES,
+    normalize_action,
+)
 
 
 class LiveTrader:
@@ -116,6 +118,7 @@ class LiveTrader:
     ) -> None:
         logger = get_logger(__name__)
         logger.info("LiveTrader.__init__ started")
+        print("LiveTrader.__init__ started")
         if isinstance(model_path, LiveTradingOptions):
             options = model_path
             self.model_path = Path(options.model_path).expanduser()
@@ -229,6 +232,8 @@ class LiveTrader:
                             "max_position_size", 
                             config_dict.get("min_trade_amount", 0.001)
                         )
+                        self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
+                        self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
                         
                 position_config = LivePositionConfig(self.config)
                 
@@ -366,21 +371,51 @@ class LiveTrader:
             with PerformanceMonitor(f"trading_iteration_{iteration_count}"):
                 try:
                     # Get current price
-                    current_price = await self._get_current_price()
-                    logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
+                    try:
+                        current_price = await self._get_current_price()
+                        logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
+                    except Exception as e:
+                        logger.error(f"Failed to get current price: {e}")
+                        if self._last_valid_price > 0:
+                            current_price = self._last_valid_price
+                            logger.warning(f"Using last valid price: ¥{current_price:,.0f}")
+                        else:
+                            logger.error("No valid price available, skipping iteration")
+                            continue
                     
                     # Update price history
                     self._update_price_history()
                     
                     # Compute features for prediction
-                    features = self._compute_features()
+                    logger.debug("Computing features...")
+                    try:
+                        features = self._compute_features()
+                        logger.debug(f"Features computed: {len(features)} features")
+                    except Exception as e:
+                        logger.error(f"Failed to compute features: {e}")
+                        logger.warning("Using zero features as fallback")
+                        features = np.zeros(64, dtype=np.float32)
                     
                     # Predict action
-                    action = self._predict_action(features)
-                    action_name = ACTION_NAMES.get(action, f"UNKNOWN({action})")
+                    logger.debug("Predicting action...")
+                    try:
+                        action = self._predict_action(features)
+                        action_name = ACTION_NAMES.get(action, f"UNKNOWN({action})")
+                        logger.debug(f"Predicted action: {action_name}")
+                    except Exception as e:
+                        logger.error(f"Failed to predict action: {e}")
+                        action = ACTION_HOLD
+                        action_name = "HOLD (fallback)"
+                    
+                    # Validate position before executing action
+                    if not (-1 <= self.position <= 1):
+                        logger.error(f"Invalid position detected: {self.position}, resetting to 0")
+                        self.position = 0.0
                     
                     # Execute action
+                    logger.debug("Executing action...")
                     pnl = self._execute_action(action)
+                    logger.debug(f"Action executed, PnL: {pnl}")
                     
                     # Send periodic notification (every 10 iterations or significant events)
                     if iteration_count % 10 == 0 or action != ACTION_HOLD:
@@ -396,6 +431,9 @@ class LiveTrader:
                     
                 except Exception as e:
                     logger.error(f"❌ Error in trading loop iteration {iteration_count}: {e}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
+                    print(f"Traceback: {traceback.format_exc()}")
                     self._send_notification("⚠️ Trading Error", f"Error in iteration {iteration_count}: {e}", "error")
             
             # Wait before next iteration (1 minute)
@@ -457,83 +495,124 @@ class LiveTrader:
 
     def _compute_features(self) -> NDArray[np.float32]:
         """Compute features for model prediction."""
-        # Use cached price history
-        prices = list(self.price_history)
-        
-        if len(prices) < 10:
-            logger.warning(f"Insufficient price history: {len(prices)} points")
-            # Pad with current price if needed
-            current_price = self._last_valid_price
-            while len(prices) < 10:
-                prices.append(current_price)
-        
-        # Compute basic features (simplified)
-        features = []
-        
-        # Price-based features
-        features.append(prices[-1] / prices[-2] - 1)  # Return
-        features.append((prices[-1] - prices[0]) / prices[0])  # Total return
-        
-        # Simple moving averages
-        if len(prices) >= 5:
-            features.append(sum(prices[-5:]) / 5 / prices[-1] - 1)  # SMA5 ratio
-        else:
-            features.append(0.0)
+        try:
+            # Use cached price history
+            prices = list(self.price_history)
             
-        if len(prices) >= 10:
-            features.append(sum(prices[-10:]) / 10 / prices[-1] - 1)  # SMA10 ratio
-        else:
-            features.append(0.0)
-        
-        # RSI (simplified)
-        if len(prices) >= 14:
-            rsi = self._compute_rsi(prices[-14:])
-            features.append(rsi / 100.0 - 0.5)  # Normalize around 0
-        else:
-            features.append(0.0)
-        
-        # Pad to expected feature count
-        expected_features = getattr(self, 'expected_features', 64)
-        while len(features) < expected_features:
-            features.append(0.0)
-        
-        features = features[:expected_features]
-        
-        return np.array(features, dtype=np.float32)
+            if len(prices) < 10:
+                logger.warning(f"Insufficient price history: {len(prices)} points")
+                # Pad with current price if needed
+                current_price = self._last_valid_price if self._last_valid_price > 0 else 5000000.0
+                while len(prices) < 10:
+                    prices.append(current_price)
+            
+            # Validate prices are reasonable
+            prices = [max(1000.0, min(10000000.0, p)) for p in prices]  # Clamp to reasonable range
+            
+            # Compute basic features (simplified)
+            features = []
+            
+            # Price-based features
+            if len(prices) >= 2:
+                features.append(prices[-1] / prices[-2] - 1)  # Return
+            else:
+                features.append(0.0)
+                
+            if len(prices) >= 2:
+                features.append((prices[-1] - prices[0]) / prices[0])  # Total return
+            else:
+                features.append(0.0)
+            
+            # Simple moving averages
+            if len(prices) >= 5:
+                sma5 = sum(prices[-5:]) / 5
+                features.append(sma5 / prices[-1] - 1)  # SMA5 ratio
+            else:
+                features.append(0.0)
+                
+            if len(prices) >= 10:
+                sma10 = sum(prices[-10:]) / 10
+                features.append(sma10 / prices[-1] - 1)  # SMA10 ratio
+            else:
+                features.append(0.0)
+            
+            # RSI (simplified)
+            if len(prices) >= 14:
+                rsi = self._compute_rsi(prices[-14:])
+                features.append(rsi / 100.0 - 0.5)  # Normalize around 0
+            else:
+                features.append(0.0)
+            
+            # Pad to expected feature count
+            expected_features = getattr(self, 'expected_features', 64) or 64
+            while len(features) < expected_features:
+                features.append(0.0)
+            
+            features = features[:expected_features]
+            
+            # Validate features are finite
+            features = [0.0 if not np.isfinite(f) else f for f in features]
+            
+            return np.array(features, dtype=np.float32)
+            
+        except Exception as e:
+            logger.error(f"Error in _compute_features: {e}")
+            # Return zero features as safe fallback
+            expected_features = getattr(self, 'expected_features', 64) or 64
+            return np.zeros(expected_features, dtype=np.float32)
 
     def _compute_rsi(self, prices: List[float]) -> float:
         """Compute RSI indicator."""
-        if len(prices) < 2:
+        try:
+            if len(prices) < 2:
+                return 50.0
+                
+            gains = []
+            losses = []
+            
+            for i in range(1, len(prices)):
+                change = prices[i] - prices[i-1]
+                if change > 0:
+                    gains.append(change)
+                    losses.append(0)
+                else:
+                    gains.append(0)
+                    losses.append(-change)
+            
+            avg_gain = sum(gains) / len(gains) if gains else 0
+            avg_loss = sum(losses) / len(losses) if losses else 0
+            
+            if avg_loss == 0:
+                return 100.0
+                
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            
+            # Validate RSI is in reasonable range
+            return max(0.0, min(100.0, rsi))
+            
+        except Exception as e:
+            logger.warning(f"Error computing RSI: {e}")
             return 50.0
-            
-        gains = []
-        losses = []
-        
-        for i in range(1, len(prices)):
-            change = prices[i] - prices[i-1]
-            if change > 0:
-                gains.append(change)
-                losses.append(0)
-            else:
-                gains.append(0)
-                losses.append(-change)
-        
-        avg_gain = sum(gains) / len(gains) if gains else 0
-        avg_loss = sum(losses) / len(losses) if losses else 0
-        
-        if avg_loss == 0:
-            return 100.0
-            
-        rs = avg_gain / avg_loss
-        rsi = 100 - (100 / (1 + rs))
-        
-        return rsi
 
     def _predict_action(self, features: NDArray[np.float32]) -> int:
         """Predict trading action using the model."""
+        logger = get_logger(__name__)
         try:
+            # Handle different observation spaces for different algorithms
+            if hasattr(self, 'algorithm') and self.algorithm == 'sac':
+                # SAC expects 5 features, take first 5 or pad if needed
+                if len(features) >= 5:
+                    obs_features = features[:5]
+                else:
+                    obs_features = np.pad(features, (0, 5 - len(features)), 'constant')
+                logger.debug(f"Using first 5 features for SAC: {obs_features}")
+            else:
+                # PPO uses all features
+                obs_features = features
+            
             # Reshape for model input
-            obs = features.reshape(1, -1)
+            obs = obs_features.reshape(1, -1)
             
             if self._is_maskable_ppo:
                 # Update mask provider state
@@ -550,27 +629,133 @@ class LiveTrader:
                 # Standard prediction
                 action, _ = self.model.predict(obs)
             
-            action = int(action[0])
+            logger.debug(f"Model prediction result: {action}, type: {type(action)}, shape: {getattr(action, 'shape', 'no shape')}")
+            
+            # Handle different action formats and spaces
+            if hasattr(self, 'is_continuous_action') and self.is_continuous_action:
+                # Continuous action space - discretize to [0,1,2]
+                if isinstance(action, (int, np.integer)):
+                    action_val = float(action)
+                elif isinstance(action, (float, np.floating)):
+                    action_val = float(action)
+                elif isinstance(action, np.ndarray):
+                    if action.ndim == 0:
+                        action_val = float(action.item())
+                    elif action.ndim == 1 and len(action) == 1:
+                        action_val = float(action[0])
+                    elif action.ndim == 2 and action.shape == (1, 1):
+                        # SAC often returns [[value]] format
+                        action_val = float(action[0][0])
+                        logger.debug(f"SAC action format [[{action_val}]] detected")
+                    else:
+                        logger.warning(f"Unexpected continuous action format: {action}")
+                        action_val = 0.0
+                else:
+                    logger.warning(f"Unknown continuous action type: {type(action)}, value: {action}")
+                    action_val = 0.0
+                
+                logger.debug(f"Continuous action value: {action_val}")
+                logger.info(f"SAC model output: {action_val:.4f} (raw continuous action)")
+                
+                # Discretize: negative = SELL, zero = HOLD, positive = BUY
+                # SAC continuous action mapping: negative values = SELL intensity, 0 = HOLD, positive = BUY intensity
+                # Use the same threshold as the environment
+                from ztb.trading.environment.constants import CONTINUOUS_TO_DISCRETE_THRESHOLD
+                threshold = CONTINUOUS_TO_DISCRETE_THRESHOLD
+                
+                if action_val > threshold:
+                    final_action = ACTION_BUY   # 1
+                    logger.info(f"SAC action discretized: {action_val:.4f} -> BUY (1)")
+                elif action_val < -threshold:
+                    final_action = ACTION_SELL  # 2
+                    logger.info(f"SAC action discretized: {action_val:.4f} -> SELL (2)")
+                else:
+                    final_action = ACTION_HOLD  # 0
+                    logger.info(f"SAC action discretized: {action_val:.4f} -> HOLD (0)")
+                    
+            else:
+                # Discrete action space
+                if isinstance(action, (int, np.integer)):
+                    final_action = int(action)
+                elif isinstance(action, (float, np.floating)):
+                    final_action = int(action)
+                elif isinstance(action, np.ndarray):
+                    if action.ndim == 0:
+                        final_action = int(action.item())
+                    elif action.ndim == 1:
+                        if len(action) == 1:
+                            final_action = int(action[0])
+                        else:
+                            # Probability distribution
+                            logger.debug(f"Treating as probability distribution: {action}")
+                            final_action = int(np.argmax(action))
+                    else:
+                        logger.debug(f"Multi-dimensional action array, flattening: {action}")
+                        final_action = int(np.argmax(action.flatten()))
+                else:
+                    logger.warning(f"Unknown discrete action type: {type(action)}, value: {action}")
+                    try:
+                        final_action = int(action)
+                    except (ValueError, TypeError):
+                        logger.error(f"Cannot convert action {action} to int, using HOLD")
+                        final_action = ACTION_HOLD
+            
+            logger.debug(f"Converted action: {final_action}")
+            
+            # Clamp action to valid range [0, 1, 2]
+            if final_action < 0:
+                logger.warning(f"Action {final_action} is negative, clamping to 0")
+                final_action = 0
+            elif final_action > 2:
+                logger.warning(f"Action {final_action} is > 2, clamping to 2")
+                final_action = 2
+            
+            # Additional validation (should be 0, 1, or 2 now)
+            if final_action not in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
+                logger.error(f"Action {final_action} still invalid after clamping, using HOLD")
+                final_action = ACTION_HOLD
+            
+            # Legacy support: normalize old ACTION_SELL=2 to new ACTION_SELL=-1
+            final_action = normalize_action(final_action)
+            
+            action = final_action
+            logger.debug(f"Final validated action: {action}")
+            
             self._current_step += 1
             
             return action
             
         except Exception as e:
+            logger = get_logger(__name__)
             logger.error(f"Failed to predict action: {e}")
             return ACTION_HOLD  # Safe fallback
 
     def _execute_action(self, action: int) -> float:
         """Execute trading action and return PnL."""
+        logger = get_logger(__name__)
+        
+        # Validate action
+        if action not in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
+            logger.error(f"Invalid action {action} passed to _execute_action, defaulting to HOLD")
+            action = ACTION_HOLD
+        
         if not self.position_manager:
             logger.warning("PositionManager not available, skipping action execution")
             return 0.0
             
         try:
+            # Debug logging
+            logger.debug(f"Executing action {action}, current_step={self._current_step}")
+            if self.mask_provider:
+                logger.debug(f"mask_provider.config.min_holding_period={self.mask_provider.config.min_holding_period}")
+            else:
+                logger.warning("mask_provider is None!")
+            
             # Execute action through PositionManager
             pnl = self.position_manager.execute_action(
                 action=action,
                 current_step=self._current_step,
-                min_holding_period=self.mask_provider.config.min_holding_period
+                min_holding_period=self.mask_provider.config.min_holding_period if self.mask_provider else 0
             )
             
             # Update local state
@@ -603,22 +788,30 @@ class LiveTrader:
 
     def _update_price_history(self) -> None:
         """Update cached price history for technical indicators."""
+        logger = get_logger(__name__)
         try:
             prices = self._get_historical_prices(
                 limit=self.config["price_history_length"]
             )
+            self._safe_update_price_history(prices)
+        except Exception as e:
+            logger.warning(f"Failed to update price history: {e}")
+            # Fallback to current price
+            current_price = asyncio.run(self._get_current_price())
+            self._safe_update_price_history([current_price] * self.config["price_history_length"])
+    
+    def _safe_update_price_history(self, prices: List[float]) -> None:
+        """Safely update price history with None checks."""
+        logger = get_logger(__name__)
+        if prices and len(prices) > 0:
             # Convert list to deque
             self.price_history.clear()
             self.price_history.extend(prices)
             logger.info(
                 f"Updated price history with {len(self.price_history)} data points"
             )
-        except Exception as e:
-            logger.warning(f"Failed to update price history: {e}")
-            # Fallback to current price
-            current_price = asyncio.run(self._get_current_price())
-            self.price_history.clear()
-            self.price_history.extend([current_price] * self.config["price_history_length"])
+        else:
+            logger.warning("No valid prices to update history")
     
     def _periodic_cleanup(self) -> None:
         """Perform periodic memory cleanup to prevent accumulation."""
@@ -686,6 +879,22 @@ class LiveTrader:
             "price_change_threshold": self.ztb_config.get_float(
                 "ZTB_PRICE_CHANGE_THRESHOLD", 0.20
             ),  # 20% price change threshold
+            # Action mask parameters
+            "min_holding_period": self.ztb_config.get_int(
+                "ZTB_MIN_HOLDING_PERIOD", 5
+            ),  # Minimum holding period for action masking
+            "max_position_age": self.ztb_config.get_int(
+                "ZTB_MAX_POSITION_AGE", 1000
+            ),  # Maximum position age before forced close
+            "allow_reverse": self.ztb_config.get_bool(
+                "ZTB_ALLOW_REVERSE", False
+            ),  # Allow position reversal
+            "enforce_reverse_cooldown": self.ztb_config.get_bool(
+                "ZTB_ENFORCE_REVERSE_COOLDOWN", False
+            ),  # Enforce cooldown before position reversal
+            "initial_portfolio_value": self.ztb_config.get_float(
+                "ZTB_INITIAL_PORTFOLIO_VALUE", 200000.0
+            ),  # Initial portfolio value for position sizing
         }
 
     def _load_model(self) -> PPO | MaskablePPO | SAC:
@@ -706,17 +915,54 @@ class LiveTrader:
             model = SAC.load(str(self.model_path))
             logger.info("Model loaded as SAC")
             self._is_maskable_ppo = False  # SAC doesn't use masks
+            self.algorithm = "sac"
         else:
             # Try loading as MaskablePPO first, fallback to PPO
             try:
                 model = MaskablePPO.load(str(self.model_path))
                 logger.info("Model loaded as MaskablePPO with action masking support")
                 self._is_maskable_ppo = True
+                self.algorithm = "ppo"
             except Exception as e:
                 logger.info(f"Not a MaskablePPO model ({e}), loading as standard PPO")
                 model = PPO.load(str(self.model_path))
                 logger.info("Model loaded as standard PPO (no action masking)")
                 self._is_maskable_ppo = False
+                self.algorithm = "ppo"
+
+        # Log model spaces
+        obs_space = model.observation_space
+        action_space = model.action_space
+        logger.info(f"Model observation space: {obs_space}")
+        logger.info(f"Observation shape: {obs_space.shape}")
+        logger.info(f"Model action space: {action_space}")
+        logger.info(f"Action space type: {type(action_space)}")
+        
+        # Check if action space is continuous
+        try:
+            import gymnasium as gym
+            Box = gym.spaces.Box
+            Discrete = gym.spaces.Discrete
+        except ImportError:
+            try:
+                import gym
+                Box = gym.spaces.Box
+                Discrete = gym.spaces.Discrete
+            except ImportError:
+                # Fallback: check by type name
+                Box = type(None)
+                Discrete = type(None)
+                logger.warning("Could not import gym/gymnasium spaces, cannot detect action space type")
+        
+        if isinstance(action_space, Box):
+            self.is_continuous_action = True
+            logger.info("Detected continuous action space - will discretize actions")
+        elif isinstance(action_space, Discrete):
+            self.is_continuous_action = False
+            logger.info("Detected discrete action space")
+        else:
+            self.is_continuous_action = False
+            logger.warning(f"Unknown action space type: {type(action_space)} - assuming discrete")
 
         # ========================================================================
         # Schema-based feature validation (Phase 3 Integration)
@@ -830,25 +1076,28 @@ class LiveTrader:
         if not prometheus_available:
             return
 
+        # Import prometheus classes only when available
+        from prometheus_client import Counter, Gauge, Histogram  # type: ignore[import-untyped]
+
         self.metrics = {
-            "trades_total": Counter(  # type: ignore[name-defined]
+            "trades_total": Counter(
                 "ztb_trades_total",
                 "Total number of trades executed",
                 ["action", "dry_run"],
             ),
-            "trade_profit": Histogram(  # type: ignore[name-defined]
+            "trade_profit": Histogram(
                 "ztb_trade_profit", "Profit/loss per trade", ["action"]
             ),
-            "price_fetches": Counter(  # type: ignore[name-defined]
+            "price_fetches": Counter(
                 "ztb_price_fetches_total", "Total price fetch attempts", ["success"]
             ),
-            "price_fetch_duration": Histogram(  # type: ignore[name-defined]
+            "price_fetch_duration": Histogram(
                 "ztb_price_fetch_duration_seconds", "Price fetch duration"
             ),
-            "current_pnl": Gauge("ztb_current_pnl", "Current total profit/loss"),  # type: ignore[name-defined]
-            "daily_trades": Gauge("ztb_daily_trades", "Trades executed today"),  # type: ignore[name-defined]
-            "price_current": Gauge("ztb_price_current", "Current BTC/JPY price"),  # type: ignore[name-defined]
-            "model_predictions": Counter(  # type: ignore[name-defined]
+            "current_pnl": Gauge("ztb_current_pnl", "Current total profit/loss"),
+            "daily_trades": Gauge("ztb_daily_trades", "Trades executed today"),
+            "price_current": Gauge("ztb_price_current", "Current BTC/JPY price"),
+            "model_predictions": Counter(
                 "ztb_model_predictions_total", "Total model predictions", ["action"]
             ),
         }
