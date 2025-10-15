@@ -19,21 +19,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
 from numpy.typing import NDArray
 import requests
 from dotenv import load_dotenv  # type: ignore[import-untyped]
 from stable_baselines3 import PPO, SAC
 from sb3_contrib import MaskablePPO
-from ztb.training.policies.policy_utils import predict_with_masks  # type: ignore[attr-defined]
-from ztb.trading.live.action_mask_provider import (
-    ActionMaskProvider,
-    ActionMaskConfig,
-)
-from ztb.utils.logging_utils import get_logger
-from ztb.utils.performance_utils import timed
-from ztb.utils.errors import safe_operation
 
 # Optional health check endpoint
 try:
@@ -55,11 +46,26 @@ except ImportError:
 load_dotenv()
 
 # Cross-platform path handling
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# Debug: Print paths
+print(f"PROJECT_ROOT: {PROJECT_ROOT}")
+print(f"sys.path[0]: {sys.path[0]}")
+print(f"Current working directory: {os.getcwd()}")
 
 # Initialize compute_features_batch to None for linter recognition
 compute_features_batch = None
+
+# Import ztb modules after path setup
+from ztb.training.policies.policy_utils import predict_with_masks  # type: ignore[attr-defined]
+from ztb.trading.live.action_mask_provider import (
+    ActionMaskProvider,
+    ActionMaskConfig,
+)
+from ztb.utils.logging_utils import get_logger
+from ztb.utils.performance_utils import timed
+from ztb.utils.errors import safe_operation
 
 # Import feature computation
 try:
@@ -74,11 +80,13 @@ except ImportError:
 
 # Import trading adapters
 try:
-    from ztb.trading.live.exchanges.broker_registry import broker_registry
+    from ztb.trading.live.registry.broker_registry import get_broker_registry
 
+    broker_registry = get_broker_registry()
     broker_registry_available = True
 except ImportError:
     broker_registry_available = False
+    broker_registry = None
 
 # Import position management
 try:
@@ -218,7 +226,7 @@ class LiveTrader:
             self.notifier = None
 
         # Initialize exchange adapter based on config
-        if broker_registry_available:
+        if broker_registry_available and broker_registry is not None:
             try:
                 exchange_name = self.config.get("exchange", "coincheck")
                 self.exchange_adapter = broker_registry.get_broker(
@@ -229,7 +237,7 @@ class LiveTrader:
                 )
                 logger.info(f"{exchange_name.capitalize()} adapter initialized")
             except Exception as e:
-                logger.warning(f"Failed to initialize {exchange_name} adapter: {e}")
+                logger.warning(f"Failed to initialize exchange adapter: {e}")
                 self.exchange_adapter = None
         else:
             self.exchange_adapter = None
@@ -285,7 +293,7 @@ class LiveTrader:
         )
         self.mask_provider = ActionMaskProvider(mask_config)
         self._is_maskable_ppo = False  # Will be set in _load_model()
-        self._is_sac = False  # Will be set in _load_model()
+        # self._is_sac = False  # Will be set in _load_model()  # Removed duplicate reset
         self._current_step = 0
         self._position_entry_step = 0
         logger.info(
@@ -310,7 +318,7 @@ class LiveTrader:
         self._price_history_max_size = self.config.get("price_history_length", 30)
         self.price_history: deque[float] = deque(maxlen=self._price_history_max_size)
         self._update_price_history()
-        
+
         # Memory optimization: Periodic cleanup counter
         self._cleanup_counter = 0
         self._cleanup_interval = 100  # Clean up every 100 iterations
@@ -322,11 +330,13 @@ class LiveTrader:
         elif hasattr(self, 'expected_features') and self.expected_features:
             feature_info = f"{self.expected_features} features (detected)"
         
+        logger.info(f"before _send_notification: _is_sac={self._is_sac}, id={id(self)}")
         self._send_notification(
             "🚀 BTC/JPY Live Trading Started",
             f"Model: {model_path}\nStrategy: Sell-biased\nMode: {'DEMO' if self.demo_mode else 'LIVE'}\nFeatures: {feature_info}\nTrading Mode: Normal (1M timeframe)\nMemory: Optimized (history={self._price_history_max_size})",
             "info",
         )
+        logger.info(f"__init__ end: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}, id={id(self)}")
 
     def _send_notification(self, title: str, message: str, level: str = "info"):
         """Send notification with error handling."""
@@ -449,6 +459,7 @@ class LiveTrader:
             logger.info("Model loaded as MaskablePPO with action masking support")
             self._is_maskable_ppo = True
             self._is_sac = False
+            self.model = model  # Set model immediately after loading
         except Exception as e:
             try:
                 logger.info(f"Not a MaskablePPO model ({e}), trying standard PPO")
@@ -456,12 +467,14 @@ class LiveTrader:
                 logger.info("Model loaded as standard PPO (no action masking)")
                 self._is_maskable_ppo = False
                 self._is_sac = False
+                self.model = model  # Set model immediately after loading
             except Exception as e2:
                 logger.info(f"Not a PPO model ({e2}), trying SAC")
                 model = SAC.load(str(self.model_path))
                 logger.info("Model loaded as SAC")
                 self._is_maskable_ppo = False
                 self._is_sac = True
+                self.model = model  # Set model immediately after loading
 
         # ========================================================================
         # Schema-based feature validation (Phase 3 Integration)
@@ -551,6 +564,7 @@ class LiveTrader:
             "✅ Model Loaded Successfully", f"Model path: {self.model_path}", "success"
         )
 
+        logger.info(f"_load_model completed: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}, id={id(self)}")
         return model
 
     def _get_current_price(self) -> float:
@@ -1280,6 +1294,7 @@ class LiveTrader:
         """Run the main trading loop."""
         logger.info(f"Starting live trading for {duration_hours} hours")
         logger.info("Strategy: Sell-biased BTC/JPY trading")
+        logger.info(f"run_trading_loop start: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}, id={id(self)}")
 
         start_time = datetime.now()
         end_time = start_time + timedelta(hours=duration_hours)
@@ -1387,6 +1402,7 @@ class LiveTrader:
                     )
                 
                 # Predict action based on model type
+                logger.info(f"Model type flags: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}")
                 if self._is_maskable_ppo:
                     # Use predict_with_masks utility for MaskablePPO
                     # This handles action_masks parameter correctly
@@ -1401,12 +1417,13 @@ class LiveTrader:
                 else:
                     # Standard PPO or SAC without masking
                     action, _ = self.model.predict(obs, deterministic=True)
+                    logger.debug(f"Raw model prediction: {action}, type: {type(action)}, shape: {getattr(action, 'shape', 'no shape')}")
                     
                 # Convert action based on model type
                 if self._is_sac:
                     # SAC returns continuous actions, convert to discrete
                     threshold = self.config['continuous_to_discrete_threshold']
-                    continuous_action = float(action[0])
+                    continuous_action = float(action.item())  # Use item() to handle scalar arrays safely
                     if continuous_action > threshold:
                         action = ACTION_BUY
                     elif continuous_action < -threshold:
@@ -1416,7 +1433,9 @@ class LiveTrader:
                     logger.debug(f"SAC continuous action {continuous_action:.3f} -> discrete action {action} ({ACTION_NAMES[action]})")
                 else:
                     # PPO/MaskablePPO return discrete actions
-                    action = int(action[0])
+                    logger.debug(f"PPO/MaskablePPO action before int(): {action}")
+                    action = int(action.item())  # Use item() for consistency
+                    logger.debug(f"PPO/MaskablePPO action after int(): {action}")
 
                 # Increment step counter
                 if not hasattr(self, '_current_step'):
