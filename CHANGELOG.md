@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added dry-run functionality verification with SAC model `sac_v420_hold_relaxed.zip`.
 
 ### Changed
+- Refactored `data_generation.py` into a `DataGenerator` class with improved caching, error handling, and performance optimizations.
+- Enhanced `talib_wrapper.py` with instance-based caching, better validation, and configurable strictness.
+- Refactored `live_trader.py` initialization into smaller, more maintainable methods with better error handling.
 - Improved code structure in `data_generation.py` with better error handling and performance optimizations.
 - Improved code structure in `talib_wrapper.py` with enhanced wrapper functions and validation.
 - Improved code structure in `live_trader.py` with additional methods and integrations.
