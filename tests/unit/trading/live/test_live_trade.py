@@ -1,16 +1,17 @@
 """
-Unit tests for live_trade.py - _should_trade_sell_bias() method.
+Unit tests for live_trade.py - _should_trade_sell_bias() method and initialization robustness.
 
 Tests verify Bug #33 and Bug #41 fixes:
 - Bug #33: SELL warmup only blocks SHORT opening (position==0), not long closes
 - Bug #41: BUY always allowed for short closes (position<0), no probability filter
 
-These tests use unittest.mock to inject dependencies and verify actual logic.
+Additional tests for initialization robustness and error handling.
 """
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 import numpy as np
+from pathlib import Path
 
 
 class TestShouldTradeSellBiasLogic:
@@ -210,4 +211,143 @@ class TestBugFixDocumentation:
         LiveTrader._safe_update_price_history(mock_trader, [])
         mock_trader.price_history.clear.assert_not_called()
         mock_trader.price_history.extend.assert_not_called()
+
+
+class TestLiveTraderInitialization:
+    """Test LiveTrader initialization robustness and error handling."""
+
+    @patch('ztb.trading.live_trader.live_trader.get_broker_registry')
+    @patch('ztb.trading.live_trader.live_trader.DiscordNotifier')
+    @patch('ztb.trading.live_trader.live_trader.ModelLoading')
+    @patch('ztb.trading.live_trader.live_trader.PositionManager', None)
+    def test_init_normal_with_exchange_adapter_failure(self, mock_model_loading, mock_discord, mock_registry):
+        """Test initialization handles exchange adapter failure gracefully."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+
+        # Mock broker registry to raise exception
+        mock_registry.return_value.get_broker.side_effect = Exception("Adapter init failed")
+
+        # Mock other dependencies
+        mock_discord.return_value = Mock()
+        mock_model_loading.return_value = Mock()
+        mock_model_loading.return_value._load_model.return_value = Mock()
+
+        # Create minimal config
+        config = {
+            "price_history_length": 100,
+            "max_daily_loss": 100000,
+            "max_daily_trades": 100,
+            "emergency_stop_loss": 0.1
+        }
+
+        # This should not raise an exception due to error handling
+        trader = LiveTrader(
+            model_path="dummy_path.zip",
+            config=config,
+            disable_risk_limits=False,
+            dry_run=False
+        )
+
+        # Verify trader was created but adapter is None
+        assert trader.exchange_adapter is None
+
+    @patch('ztb.trading.live_trader.live_trader.get_broker_registry')
+    @patch('ztb.trading.live_trader.live_trader.DiscordNotifier')
+    def test_init_normal_with_discord_failure(self, mock_discord, mock_registry):
+        """Test initialization handles Discord notifier failure gracefully."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+
+        # Mock Discord to raise exception
+        mock_discord.side_effect = Exception("Discord init failed")
+
+        # Mock broker registry
+        mock_broker = Mock()
+        mock_registry.return_value.get_broker.return_value = mock_broker
+
+        # Mock model loading
+        with patch('ztb.trading.live_trader.live_trader.ModelLoading') as mock_model_loading:
+            mock_model_instance = Mock()
+            mock_model_loading.return_value = mock_model_instance
+            mock_model_instance._load_model.return_value = Mock()
+
+            config = {
+                "price_history_length": 100,
+                "max_daily_loss": 100000,
+                "max_daily_trades": 100,
+                "emergency_stop_loss": 0.1
+            }
+
+            # Set environment variable to trigger Discord init
+            import os
+            old_webhook = os.environ.get('DISCORD_WEBHOOK_URL')
+            os.environ['DISCORD_WEBHOOK_URL'] = 'dummy_webhook'
+
+            try:
+                trader = LiveTrader(
+                    model_path="dummy_path.zip",
+                    config=config,
+                    disable_risk_limits=False,
+                    dry_run=False
+                )
+
+                # Verify Discord notifier is None despite webhook being set
+                assert trader.notifier is None
+            finally:
+                # Restore environment
+                if old_webhook:
+                    os.environ['DISCORD_WEBHOOK_URL'] = old_webhook
+                else:
+                    os.environ.pop('DISCORD_WEBHOOK_URL', None)
+
+    def test_dry_run_initialization(self):
+        """Test dry-run mode initialization works correctly."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+
+        trader = LiveTrader(
+            model_path="dummy_path.zip",
+            config=None,
+            disable_risk_limits=True,
+            dry_run=True
+        )
+
+        # Verify dry-run specific attributes
+        assert trader.dry_run is True
+        assert trader.disable_risk_limits is True
+        assert trader.notifier is None
+        assert hasattr(trader, 'price_cache')
+        assert trader.total_pnl == 0.0
+        assert trader.position == 0
+        assert trader.trades_count == 0
+
+    @patch('asyncio.run')
+    def test_get_current_price_sync_fallback(self, mock_asyncio_run):
+        """Test _get_current_price_sync uses fallback on async failure."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+
+        # Mock asyncio.run to raise exception
+        mock_asyncio_run.side_effect = Exception("Async call failed")
+
+        trader = Mock()
+        trader._last_valid_price = 0.0  # No last valid price
+
+        result = LiveTrader._get_current_price_sync(trader)
+
+        # Should return fallback price
+        assert result == 5000000.0
+
+    @patch('asyncio.run')
+    def test_get_current_price_sync_with_last_valid_price(self, mock_asyncio_run):
+        """Test _get_current_price_sync uses last valid price on async failure."""
+        from ztb.trading.live_trader.live_trader import LiveTrader
+
+        # Mock asyncio.run to raise exception
+        mock_asyncio_run.side_effect = Exception("Async call failed")
+
+        trader = Mock()
+        trader._last_valid_price = 6000000.0  # Has last valid price
+
+        result = LiveTrader._get_current_price_sync(trader)
+
+        # Should return last valid price
+        assert result == 6000000.0
 
