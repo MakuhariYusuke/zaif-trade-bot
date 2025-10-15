@@ -277,127 +277,135 @@ class LiveTrader:
         logger = get_logger(__name__)
         logger.info("Starting normal live trader initialization")
 
-        # Initialize basic attributes
-        self.compute_features_batch = compute_features_batch
-        self._setup_archive_config()
-        self._setup_model_options(model_path, disable_risk_limits)
-        self._validate_model_path()
-        self._setup_config(config)
-
-        # Initialize core components
-        self._init_core_components()
-        self._init_trading_components()
-        self._init_monitoring_components()
-
-        logger.info("Normal live trader initialization completed")
-        logger.debug(f"Trading config loaded: {self.config}")
-        self.disable_risk_limits = options.disable_risk_limits
-        self.dry_run = options.dry_run
-
-        # Initialize Discord notifications
-        if not self.dry_run and os.getenv("DISCORD_WEBHOOK_URL"):
-            try:
-                self.notifier = DiscordNotifier(os.getenv("DISCORD_WEBHOOK_URL"))
-                logger.info("Discord notifications enabled")
-            except Exception as e:
-                logger.warning(f"Failed to initialize Discord notifier: {e}")
-                self.notifier = None
-        else:
-            logger.info("Discord notifications disabled (dry-run or no webhook)")
-        if prometheus_available:
-            self._setup_metrics()
-        else:
-            self.metrics: Optional[Dict[str, Any]] = None
-
-        # Adjust risk limits if disabled
-        if self.disable_risk_limits:
-            logger.warning(
-                "RISK LIMITS DISABLED - Operating without safety restrictions"
-            )
-            self.config.update(
-                {
-                    "max_daily_loss": float("inf"),  # type: ignore[dict-item]
-                    "max_daily_trades": float("inf"),  # type: ignore[dict-item]
-                    "emergency_stop_loss": float("inf"),  # type: ignore[dict-item]
-                }
-            )
-
-        # Exchange API settings based on venue
-        venue = self.options.venue.lower()
-        if venue == "coincheck":
-            self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
-            self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
-            self.base_url = "https://coincheck.com"
-            adapter_name = "coincheck"
-        elif venue == "bitflyer":
-            self.api_key = os.getenv("BITFLYER_API_KEY", "").strip()
-            self.api_secret = os.getenv("BITFLYER_API_SECRET", "").strip()
-            self.base_url = "https://api.bitflyer.com"
-            adapter_name = "bitflyer"
-        else:
-            raise ValueError(f"Unsupported venue: {venue}")
-
-        # Validate API credentials for live trading (check for non-empty values)
-        self.demo_mode = not (self.api_key and self.api_secret) or self.dry_run
-        if self.demo_mode:
-            if self.dry_run:
-                logger.info("DRY RUN MODE - No real trades will be executed")
-            elif not (self.api_key and self.api_secret):
-                logger.warning(
-                    f"{venue.upper()}_API_KEY and/or {venue.upper()}_API_SECRET not set or empty - running in DEMO mode"
-                )
-                logger.warning(
-                    "Set environment variables or create .env file with API credentials for live trading"
-                )
-
         try:
-            broker_registry = get_broker_registry()
-            self.exchange_adapter = broker_registry.get_broker(
-                adapter_name,
-                api_key=self.api_key,
-                api_secret=self.api_secret,
-                dry_run=self.dry_run,
-            )
-            logger.info(f"{venue.upper()} adapter initialized")
-        except Exception as e:
-            logger.warning(f"Failed to initialize {venue.upper()} adapter: {e}")
-            self.exchange_adapter = None
+            # Initialize basic attributes
+            self.compute_features_batch = compute_features_batch
+            self._setup_archive_config()
+            self._setup_model_options(model_path, disable_risk_limits)
+            self._validate_model_path()
+            self._setup_config(config)
 
-        # Load and validate model (after coincheck adapter initialization)
-        # Initialize model_loading first
-        self.algorithm = "ppo"  # Default, will be updated by model_loading
-        self.ACTION_NAMES = ACTION_NAMES
-        self.model_loading = ModelLoading(self)
-        self.model = self._load_model()
+            # Initialize core components
+            self._init_core_components()
+            self._init_trading_components()
+            self._init_monitoring_components()
 
-        # Initialize PositionManager (Bug #25, #26 fix) - moved after model loading
-        logger.info(f"PositionManager available: {position_manager_available}")
-        if position_manager_available:
-            try:
-                # Create a simple config object for PositionManager
-                class LivePositionConfig:
-                    """Configuration for PositionManager in live trading."""
-                    def __init__(self, config_dict: Dict[str, Any]) -> None:
-                        self.allow_reverse = config_dict.get("allow_reverse", False)
-                        self.transaction_cost = config_dict.get("transaction_cost", 0.001)
-                        # Bug #28 fix: Pass max_position_size to prevent scale mismatch
-                        self.max_position_size = config_dict.get(
-                            "max_position_size", 
-                            config_dict.get("min_trade_amount", 0.001)
-                        )
-                        self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
-                        self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
-                        
-                position_config = LivePositionConfig(self.config)
-                
-                self.position_manager = PositionManager(  # type: ignore[name-defined]
-                    config=position_config,
-                    get_price_callback=lambda: self._last_valid_price if hasattr(self, '_last_valid_price') and self._last_valid_price > 0 else 5000000.0
+            logger.info("Normal live trader initialization completed")
+            logger.debug(f"Trading config loaded: {self.config}")
+            self.disable_risk_limits = self.options.disable_risk_limits
+            self.dry_run = self.options.dry_run
+
+            # Initialize Discord notifications
+            if not self.dry_run and os.getenv("DISCORD_WEBHOOK_URL"):
+                try:
+                    self.notifier = DiscordNotifier(os.getenv("DISCORD_WEBHOOK_URL"))
+                    logger.info("Discord notifications enabled")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Discord notifier: {e}")
+                    self.notifier = None
+            else:
+                logger.info("Discord notifications disabled (dry-run or no webhook)")
+                self.notifier = None
+
+            if prometheus_available:
+                self._setup_metrics()
+            else:
+                self.metrics: Optional[Dict[str, Any]] = None
+
+            # Adjust risk limits if disabled
+            if self.disable_risk_limits:
+                logger.warning(
+                    "RISK LIMITS DISABLED - Operating without safety restrictions"
                 )
-                logger.info(f"PositionManager initialized for live trading (position_size={position_config.max_position_size})")
+                self.config.update(
+                    {
+                        "max_daily_loss": float("inf"),  # type: ignore[dict-item]
+                        "max_daily_trades": float("inf"),  # type: ignore[dict-item]
+                        "emergency_stop_loss": float("inf"),  # type: ignore[dict-item]
+                    }
+                )
+
+            # Exchange API settings based on venue
+            venue = self.options.venue.lower()
+            if venue == "coincheck":
+                self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
+                self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
+                self.base_url = "https://coincheck.com"
+                adapter_name = "coincheck"
+            elif venue == "bitflyer":
+                self.api_key = os.getenv("BITFLYER_API_KEY", "").strip()
+                self.api_secret = os.getenv("BITFLYER_API_SECRET", "").strip()
+                self.base_url = "https://api.bitflyer.com"
+                adapter_name = "bitflyer"
+            else:
+                raise ValueError(f"Unsupported venue: {venue}")
+
+            # Validate API credentials for live trading (check for non-empty values)
+            self.demo_mode = not (self.api_key and self.api_secret) or self.dry_run
+            if self.demo_mode:
+                if self.dry_run:
+                    logger.info("DRY RUN MODE - No real trades will be executed")
+                elif not (self.api_key and self.api_secret):
+                    logger.warning(
+                        f"{venue.upper()}_API_KEY and/or {venue.upper()}_API_SECRET not set or empty - running in DEMO mode"
+                    )
+                    logger.warning(
+                        "Set environment variables or create .env file with API credentials for live trading"
+                    )
+
+            try:
+                broker_registry = get_broker_registry()
+                self.exchange_adapter = broker_registry.get_broker(
+                    adapter_name,
+                    api_key=self.api_key,
+                    api_secret=self.api_secret,
+                    dry_run=self.dry_run,
+                )
+                logger.info(f"{venue.upper()} adapter initialized")
             except Exception as e:
-                logger.warning(f"Failed to initialize PositionManager: {e}")
-                self.position_manager = None
+                logger.warning(f"Failed to initialize {venue.upper()} adapter: {e}")
+                self.exchange_adapter = None
+
+            # Load and validate model (after coincheck adapter initialization)
+            # Initialize model_loading first
+            self.algorithm = "ppo"  # Default, will be updated by model_loading
+            self.ACTION_NAMES = ACTION_NAMES
+            self.model_loading = ModelLoading(self)
+            self.model = self._load_model()
+
+            # Initialize PositionManager (Bug #25, #26 fix) - moved after model loading
+            logger.info(f"PositionManager available: {position_manager_available}")
+            if position_manager_available:
+                try:
+                    # Create a simple config object for PositionManager
+                    class LivePositionConfig:
+                        """Configuration for PositionManager in live trading."""
+                        def __init__(self, config_dict: Dict[str, Any]) -> None:
+                            self.allow_reverse = config_dict.get("allow_reverse", False)
+                            self.transaction_cost = config_dict.get("transaction_cost", 0.001)
+                            # Bug #28 fix: Pass max_position_size to prevent scale mismatch
+                            self.max_position_size = config_dict.get(
+                                "max_position_size", 
+                                config_dict.get("min_trade_amount", 0.001)
+                            )
+                            self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
+                            self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
+                            
+                    position_config = LivePositionConfig(self.config)
+                    
+                    self.position_manager = PositionManager(  # type: ignore[name-defined]
+                        config=position_config,
+                        get_price_callback=lambda: self._last_valid_price if hasattr(self, '_last_valid_price') and self._last_valid_price > 0 else 5000000.0
+                    )
+                    logger.info(f"PositionManager initialized for live trading (position_size={position_config.max_position_size})")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize PositionManager: {e}")
+                    self.position_manager = None
+
+        except Exception as e:
+            logger.error(f"Critical error during live trader initialization: {e}")
+            logger.error("Initialization failed - trader will not function properly")
+            raise RuntimeError(f"Failed to initialize LiveTrader: {e}") from e
         else:
             self.position_manager = None
             logger.warning("PositionManager not available, using legacy position logic")
@@ -541,7 +549,7 @@ class LiveTrader:
                 try:
                     # Get current price
                     try:
-                        current_price = self._get_current_price()
+                        current_price = self._get_current_price_sync()
                         logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
                     except Exception as e:
                         logger.error(f"Failed to get current price: {e}")
@@ -674,64 +682,17 @@ class LiveTrader:
             logger.error(f"Failed to get current price: {e}")
             raise
 
-    def _update_price_history(self) -> None:
-        """Update price history with current price."""
-        if not self.exchange_adapter:
-            return
-        
+    def _get_current_price_sync(self) -> float:
+        """Synchronous wrapper for async _get_current_price method."""
         try:
-            # Get current price synchronously for history update
-            # Note: This assumes exchange_adapter has a sync method or we use asyncio.run
-            # For now, use the async method in a sync context (not ideal but matches existing code)
-            import asyncio
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                current_price = loop.run_until_complete(self._get_current_price())
-                self.price_history.append(current_price)
-                logger = get_logger(__name__)
-                logger.debug(f"Price history updated with: ¥{current_price:,.0f}")
-            finally:
-                loop.close()
+            return asyncio.run(self._get_current_price())
         except Exception as e:
             logger = get_logger(__name__)
-            logger.warning(f"Failed to update price history: {e}")
-            # Continue without updating history
-
-    def _get_current_price(self) -> float:
-        """
-        Get current BTC/JPY price from exchange adapter.
-        
-        Returns:
-            Current price as float
-        """
-        import asyncio
-        
-        async def _async_get_price():
-            if self.exchange_adapter is not None:
-                try:
-                    price = await self.exchange_adapter.get_current_price("btc_jpy")
-                    if price is not None:
-                        self._last_valid_price = price
-                        return price
-                except Exception as e:
-                    logger = get_logger(__name__)
-                    logger.warning(f"Failed to get price from adapter: {e}")
-            return None
-        
-        # Run async function synchronously
-        try:
-            price = asyncio.run(_async_get_price())
-            if price is not None:
-                return price
-        except Exception as e:
-            logger = get_logger(__name__)
-            logger.error(f"Failed to get current price: {e}")
-        
-        # Fallback to last valid price or mock price
-        if self._last_valid_price > 0:
-            return self._last_valid_price
-        return 5000000.0
+            logger.error(f"Failed to get current price synchronously: {e}")
+            # Fallback to last valid price or mock price
+            if self._last_valid_price > 0:
+                return self._last_valid_price
+            return 5000000.0
 
     def _compute_features(self) -> NDArray[np.float32]:
         """Compute features for model prediction using full feature engine when available."""
@@ -942,10 +903,10 @@ class LiveTrader:
 
             # Only force garbage collection if memory usage is high
             # Avoid frequent GC as it can impact performance
-            import psutil
-            import os
-
             try:
+                import psutil  # type: ignore[import-untyped]
+                import os
+
                 process = psutil.Process(os.getpid())
                 memory_percent = process.memory_percent()
                 if memory_percent > 80.0:  # Only GC if memory usage > 80%
@@ -1255,13 +1216,13 @@ class LiveTrader:
             if not data.get("success", False):
                 logger = get_logger(__name__)
                 logger.warning("Coincheck API returned success=False")
-                return [self._get_current_price()] * 14
+                return [self._get_current_price_sync()] * 14
 
             trades = data.get("data", [])
             if not trades:
                 logger = get_logger(__name__)
                 logger.warning("No trade data received from Coincheck")
-                return [self._get_current_price()] * 14
+                return [self._get_current_price_sync()] * 14
 
             # Extract prices (most recent first, we want oldest first for calculations)
             prices = []
@@ -1272,7 +1233,7 @@ class LiveTrader:
             if not prices:
                 logger = get_logger(__name__)
                 logger.warning("No valid price data in trades")
-                return [self._get_current_price()] * 14
+                return [self._get_current_price_sync()] * 14
 
             # Reverse to get chronological order (oldest first)
             prices.reverse()
@@ -1283,7 +1244,7 @@ class LiveTrader:
         except Exception as e:
             logger = get_logger(__name__)
             logger.warning(f"Failed to get historical prices: {e}, using fallback")
-            current_price = self._get_current_price()
+            current_price = self._get_current_price_sync()
             return [current_price] * 14
 
     def _calculate_rsi(self, prices: List[float], period: int = 14) -> float:  # type: ignore[no-any-return]
@@ -1407,7 +1368,7 @@ class LiveTrader:
         else:
             for attempt in range(max_retries):
                 try:
-                    current_price = self._get_current_price()
+                    current_price = self._get_current_price_sync()
                     if current_price > 0:
                         break
                 except Exception as e:
@@ -1835,24 +1796,160 @@ class LiveTrader:
                     "info",
                 )
 
-    def _archive_price_history(self) -> None:
-        """Archive current price history to disk to free memory."""
-        if not self.price_history:
-            return
-        
-        # Create DataFrame with timestamps
-        timestamps = pd.date_range(end=datetime.now(), periods=len(self.price_history), freq='1min')
-        df = pd.DataFrame({
-            'timestamp': timestamps,
-            'price': list(self.price_history)
-        })
-        
-        # Save to parquet file
-        archive_file = self.archive_dir / f"price_history_{int(time.time())}.parquet"
-        df.to_parquet(archive_file, index=False)
-        
+    def _setup_archive_config(self) -> None:
+        """Setup archive configuration."""
+        self.archive_counter = 0
+        self.archive_interval = 1000
+        self.archive_dir = Path("data/archives")
+        self.archive_dir.mkdir(parents=True, exist_ok=True)
+
+    def _setup_model_options(self, model_path: Union[str, Path, LiveTradingOptions], disable_risk_limits: bool) -> None:
+        """Setup model options."""
+        if isinstance(model_path, LiveTradingOptions):
+            self.options = model_path
+            self.model_path = Path(self.options.model_path).expanduser()
+        else:
+            self.model_path = Path(model_path).expanduser()
+            self.options = LiveTradingOptions(
+                model_path=self.model_path,
+                algorithm="sac" if "sac" in str(self.model_path).lower() else "ppo",
+                venue="coincheck",
+                disable_risk_limits=disable_risk_limits,
+                dry_run=False,
+            )
+
+    def _validate_model_path(self) -> None:
+        """Validate model path exists."""
+        if not self.model_path.exists():
+            raise ValueError(f"Model file not found: {self.model_path}")
+
+    def _setup_config(self, config: Optional[Dict[str, Any]]) -> None:
+        """Setup configuration."""
         logger = get_logger(__name__)
-        logger.info(f"Archived price history to {archive_file}")
-        
-        # Clear memory (though deque has maxlen, this ensures fresh start)
-        self.price_history.clear()
+        self.ztb_config = ZTBConfig()
+        logger.debug("ZTBConfig initialized")
+        self.config = config or self._get_default_config()
+        self.dry_run = self.options.dry_run
+        self.disable_risk_limits = self.options.disable_risk_limits
+
+    def _init_core_components(self) -> None:
+        """Initialize core components."""
+        logger = get_logger(__name__)
+        self.algorithm = self.options.algorithm
+        self.ACTION_NAMES = ACTION_NAMES
+        self.price_history: deque[float] = deque(maxlen=100)
+        self.expected_features = 64
+        self.feature_names = None
+        self.schema_available = False
+
+        # Initialize essential attributes
+        self.price_cache = TTLCache(ttl_seconds=30.0)
+        self._last_valid_price = 0.0
+        self.total_pnl = 0.0
+        self.position = 0
+        self.entry_price = 0.0
+        self.trades_count = 0
+        self.daily_start_pnl = 0.0
+        self.daily_trades = 0
+        self.notifier = None
+        self._current_step = 0
+        self._cleanup_counter = 0
+        self._cleanup_interval = 100
+
+    def _init_trading_components(self) -> None:
+        """Initialize trading components."""
+        # Initialize exchange adapter
+        self._init_exchange_adapter()
+
+        # Initialize position manager
+        self._init_position_manager()
+
+        # Initialize action mask provider
+        self._init_action_mask_provider()
+
+        # Initialize trading components
+        self.trading_loop = TradingLoop(self)
+        self.feature_computation = FeatureComputation(self)
+        self.action_prediction = ActionPrediction(self)
+
+    def _init_monitoring_components(self) -> None:
+        """Initialize monitoring components."""
+        self.health_monitoring = HealthMonitoring(self)
+        self.model_loading = ModelLoading(self)
+
+        # Load model
+        self.model = self.model_loading.load_model()
+
+    def _init_exchange_adapter(self) -> None:
+        """Initialize exchange adapter."""
+        logger = get_logger(__name__)
+        venue = self.options.venue.lower()
+        if venue == "coincheck":
+            self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
+            self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
+            self.base_url = "https://coincheck.com"
+            adapter_name = "coincheck"
+        else:
+            raise ValueError(f"Unsupported venue: {venue}")
+
+        try:
+            broker_registry = get_broker_registry()
+            self.exchange_adapter = broker_registry.get_broker(
+                adapter_name,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+                dry_run=self.dry_run,
+            )
+            logger.info(f"{venue.upper()} adapter initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize {venue.upper()} adapter: {e}")
+            raise
+
+    def _init_position_manager(self) -> None:
+        """Initialize position manager."""
+        logger = get_logger(__name__)
+        if position_manager_available:
+            try:
+                position_config = self._create_position_config()
+                self.position_manager = PositionManager(
+                    config=position_config,
+                    get_price_callback=self._get_current_price_callback,
+                )
+                logger.info(f"PositionManager initialized (position_size={position_config.max_position_size})")
+            except Exception as e:
+                logger.warning(f"Failed to initialize PositionManager: {e}")
+                self.position_manager = None
+        else:
+            self.position_manager = None
+            logger.warning("PositionManager not available, using legacy position logic")
+
+    def _create_position_config(self) -> Any:
+        """Create position configuration."""
+        class LivePositionConfig:
+            """Configuration for PositionManager in live trading."""
+            def __init__(self, config_dict: Dict[str, Any]) -> None:
+                self.allow_reverse = config_dict.get("allow_reverse", False)
+                self.transaction_cost = config_dict.get("transaction_cost", 0.001)
+                self.max_position_size = config_dict.get(
+                    "max_position_size",
+                    config_dict.get("min_trade_amount", 0.001)
+                )
+                self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
+                self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
+
+        return LivePositionConfig(self.config)
+
+    def _get_current_price_callback(self) -> float:
+        """Get current price callback for position manager."""
+        return self._last_valid_price if self._last_valid_price > 0 else 5000000.0
+
+    def _init_action_mask_provider(self) -> None:
+        """Initialize action mask provider."""
+        mask_config = ActionMaskConfig(
+            min_holding_period=self.config.get("min_holding_period", 5),
+            enable_forced_close=True,
+            max_position_age=self.config.get("max_position_age", 1000)
+        )
+        self.mask_provider = ActionMaskProvider(mask_config)
+        self._is_maskable_ppo = False
+        self._position_entry_step = 0
