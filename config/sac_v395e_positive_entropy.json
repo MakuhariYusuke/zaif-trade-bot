@@ -22,11 +22,14 @@
     "target_entropy": 0.3,
     "policy_kwargs": {
       "log_std_init": -1.0,
-      "net_arch": [256, 256]
+      "net_arch": [
+        256,
+        256
+      ]
     }
   },
   "environment": {
-    "initial_balance": 200000,
+    "initial_balance": 200000.0,
     "transaction_cost": 0.0005,
     "max_position_size": 0.01,
     "enable_action_masking": false,

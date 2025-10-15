@@ -5,7 +5,7 @@ from __future__ import annotations
 import gc
 from collections import deque
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,6 @@ from gymnasium import spaces
 from numpy.typing import NDArray
 from pandas.api import types as ptypes
 
-from ztb.features.registry import FeatureRegistry
 from ztb.trading.environment.components import (
     ActionValidator,
     DataProcessor,
@@ -187,23 +186,49 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         enable_correlation_reduction = getattr(
             self.config, "enable_correlation_reduction", True
         )
+        target_feature_count = getattr(self.config, "target_feature_count", None)
+        if target_feature_count is None:
+            target_feature_count = getattr(self.config, "expected_features", None)
+        threshold_trigger = target_feature_count or 10
         logger.info(f"Correlation reduction enabled: {enable_correlation_reduction}")
-        if enable_correlation_reduction and len(self.features) > 10:
-            logger.info("Applying correlation reduction...")
+        if enable_correlation_reduction and len(self.features) > threshold_trigger:
+            logger.info(
+                "Applying correlation reduction...",
+                extra={
+                    "current_count": len(self.features),
+                    "target": target_feature_count,
+                },
+            )
             correlation_threshold = getattr(self.config, "correlation_threshold", 0.95)
             try:
-                # FeatureRegistry.select_features_by_correlation(
-                #     correlation_threshold=correlation_threshold
-                # )
-                # For now, skip correlation reduction
-                optimized_features = self.features
-                if len(optimized_features) >= 10:
+                optimized_features, reduction_stats = self._select_features_by_correlation_in_env(
+                    self.features,
+                    correlation_threshold,
+                    target_feature_count=target_feature_count,
+                )
+                if len(optimized_features) >= max(1, (target_feature_count or 1)):
                     removed_count = len(self.features) - len(optimized_features)
                     self.features = optimized_features
-                    logger.info(
-                        "Applied correlation-based feature reduction",
-                        extra={"removed_count": removed_count, "remaining": len(self.features)},
-                    )
+                    if removed_count > 0:
+                        logger.info(
+                            "Applied correlation-based feature reduction",
+                            extra={
+                                "removed_count": removed_count,
+                                "remaining": len(self.features),
+                                "target": target_feature_count,
+                                "dropped_non_numeric": reduction_stats.get("non_numeric"),
+                                "dropped_constant": reduction_stats.get("constant"),
+                                "dropped_correlated": reduction_stats.get("correlated"),
+                            },
+                        )
+                    else:
+                        logger.info(
+                            "Correlation reduction made no changes",
+                            extra={
+                                "remaining": len(self.features),
+                                "target": target_feature_count,
+                            },
+                        )
                 else:
                     logger.warning(
                         "Correlation reduction would leave too few features",
@@ -590,3 +615,152 @@ def _extract_numeric_column(
         return np.empty(0, dtype=np.float32)
 
     return np.full(self.n_steps, fallback, dtype=np.float32)
+
+
+def _select_features_by_correlation_in_env(
+    self: Any,
+    features: List[str],
+    correlation_threshold: float = 0.95,
+    *,
+    target_feature_count: Optional[int] = None,
+) -> Tuple[List[str], Dict[str, List[str]]]:
+    """
+    Select features by removing highly correlated ones based on current DataFrame.
+
+    Args:
+        features: List of feature names to consider.
+        correlation_threshold: Correlation threshold above which features are considered redundant.
+        target_feature_count: Optional hard limit for remaining features after reduction.
+
+    Returns:
+        Tuple[List[str], Dict[str, List[str]]]: reduced feature list (preserving original order)
+        and metadata describing removed feature categories.
+    """
+    reduction_stats: Dict[str, List[str]] = {
+        "non_numeric": [],
+        "constant": [],
+        "correlated": [],
+    }
+
+    if not features or len(features) <= 1:
+        return features, reduction_stats
+
+    # Sanitize target count
+    try:
+        if target_feature_count is not None:
+            target_feature_count = int(target_feature_count)
+            if target_feature_count <= 0:
+                target_feature_count = None
+    except (TypeError, ValueError):
+        target_feature_count = None
+
+    available_features = [name for name in features if name in self.df.columns]
+    if not available_features:
+        return features, reduction_stats
+
+    for name in available_features:
+        series = self.df[name]
+        if not ptypes.is_numeric_dtype(series):
+            reduction_stats["non_numeric"].append(name)
+
+    numeric_features = [
+        name for name in available_features if name not in reduction_stats["non_numeric"]
+    ]
+
+    if not numeric_features:
+        return features, reduction_stats
+
+    numeric_frame = self.df[numeric_features]
+    variances = numeric_frame.var(ddof=0).astype(float)
+
+    constant_features = [
+        name
+        for name, value in variances.items()
+        if not np.isfinite(value) or value <= 1e-12
+    ]
+    if constant_features:
+        reduction_stats["constant"].extend(constant_features)
+        numeric_features = [name for name in numeric_features if name not in constant_features]
+        numeric_frame = numeric_frame.drop(columns=constant_features, errors="ignore")
+        variances = variances.drop(labels=constant_features, errors="ignore")
+
+    if not numeric_features:
+        # Fall back to the highest variance features among the original numeric set
+        top_features = (
+            variances.sort_values(ascending=False)
+            .head(target_feature_count or 1)
+            .index.tolist()
+        )
+        return top_features, reduction_stats
+
+    if len(numeric_features) == 1:
+        final_features = [name for name in features if name == numeric_features[0]]
+        return final_features, reduction_stats
+
+    corr_matrix = numeric_frame.corr().abs().fillna(0.0)
+    remaining = list(numeric_features)
+    variance_map = variances.to_dict()
+    original_positions = {name: idx for idx, name in enumerate(features)}
+
+    while len(remaining) > 1:
+        corr_subset = corr_matrix.loc[remaining, remaining].to_numpy(copy=True)
+        if corr_subset.size == 0:
+            break
+        np.fill_diagonal(corr_subset, 0.0)
+        max_corr = float(np.nanmax(corr_subset))
+        if not np.isfinite(max_corr) or max_corr < correlation_threshold:
+            break
+        idx_flat = int(np.nanargmax(corr_subset))
+        subset_size = len(remaining)
+        i, j = divmod(idx_flat, subset_size)
+        if i == j:
+            break
+        feature_i = remaining[i]
+        feature_j = remaining[j]
+        var_i = float(variance_map.get(feature_i, 0.0))
+        var_j = float(variance_map.get(feature_j, 0.0))
+        mean_corr_i = float(corr_matrix.loc[feature_i, remaining].mean())
+        mean_corr_j = float(corr_matrix.loc[feature_j, remaining].mean())
+
+        if not np.isfinite(var_i):
+            drop = feature_i
+        elif not np.isfinite(var_j):
+            drop = feature_j
+        else:
+            if var_i == var_j:
+                drop = feature_i if mean_corr_i >= mean_corr_j else feature_j
+            else:
+                drop = feature_i if var_i < var_j else feature_j
+
+        reduction_stats["correlated"].append(drop)
+        remaining.remove(drop)
+        if target_feature_count is not None and len(remaining) <= target_feature_count:
+            break
+
+    if target_feature_count is not None and len(remaining) > target_feature_count:
+        ranked = sorted(
+            remaining,
+            key=lambda name: (
+                variance_map.get(name, -np.inf),
+                -original_positions.get(name, 0),
+            ),
+            reverse=True,
+        )
+        keep = set(ranked[:target_feature_count])
+        extra_removed = [name for name in remaining if name not in keep]
+        reduction_stats["correlated"].extend(extra_removed)
+        remaining = [name for name in remaining if name in keep]
+
+    if not remaining:
+        ranked = sorted(
+            numeric_features,
+            key=lambda name: (
+                variance_map.get(name, -np.inf),
+                -original_positions.get(name, 0),
+            ),
+            reverse=True,
+        )
+        remaining = ranked[: max(1, target_feature_count or 1)]
+
+    final_features = [name for name in features if name in remaining]
+    return final_features, reduction_stats

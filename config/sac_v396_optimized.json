@@ -1,5 +1,5 @@
 {
-    "model_name": "sac_v406_sell_bonus_adjusted",
+  "model_name": "sac_v406_sell_bonus_adjusted",
   "algorithm": "sac",
   "total_timesteps": 5000,
   "data_source": "csv",
@@ -22,7 +22,7 @@
     "target_entropy": "auto"
   },
   "environment": {
-    "initial_balance": 200000,
+    "initial_balance": 200000.0,
     "transaction_cost": 0.0005,
     "max_position_size": 0.01,
     "enable_action_masking": false,

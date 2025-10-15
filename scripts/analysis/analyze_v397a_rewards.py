@@ -20,6 +20,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -100,11 +101,11 @@ def analyze_rewards_and_actions(
         # Determine discrete action
         threshold = 0.15
         if action_continuous[0] > threshold:
-            discrete_action = 1  # BUY
+            discrete_action = ACTION_BUY  # BUY
         elif action_continuous[0] < -threshold:
-            discrete_action = 2  # SELL
+            discrete_action = ACTION_SELL  # SELL
         else:
-            discrete_action = 0  # HOLD
+            discrete_action = ACTION_HOLD  # HOLD
         discrete_actions.append(discrete_action)
         
         old_position = current_position

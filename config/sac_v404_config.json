@@ -1,5 +1,5 @@
 {
-    "model_name": "sac_v406_moderate_rewards",
+  "model_name": "sac_v406_moderate_rewards",
   "algorithm": "sac",
   "total_timesteps": 20000,
   "data_source": "csv",
@@ -22,7 +22,7 @@
     "target_entropy": -1.0
   },
   "environment": {
-    "initial_balance": 200000,
+    "initial_balance": 200000.0,
     "transaction_cost": 0.0005,
     "max_position_size": 1.0,
     "enable_action_masking": false,

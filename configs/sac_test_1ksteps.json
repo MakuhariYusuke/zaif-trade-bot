@@ -21,12 +21,15 @@
     "gradient_steps": 1,
     "target_update_interval": 1,
     "policy_kwargs": {
-      "net_arch": [256, 256]
+      "net_arch": [
+        256,
+        256
+      ]
     }
   },
   "environment": {
     "data_path": "btc_jpy_real_dataset.csv",
-    "initial_balance": 100000,
+    "initial_balance": 100000.0,
     "commission_rate": 0.001,
     "position_size": 0.1
   },

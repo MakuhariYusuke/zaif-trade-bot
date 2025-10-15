@@ -22,6 +22,7 @@ from stable_baselines3 import SAC
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
 from ztb.utils.logging_utils import get_logger
 
 def load_model(model_path: str) -> SAC:
@@ -98,11 +99,11 @@ def run_paper_trading(
             else:
                 action_val = float(action)
 
-            discrete_action = 0  # HOLD
+            discrete_action = ACTION_HOLD  # HOLD
             if action_val < -0.3:
-                discrete_action = 2  # SELL
+                discrete_action = ACTION_SELL  # SELL
             elif action_val > 0.3:
-                discrete_action = 1  # BUY
+                discrete_action = ACTION_BUY  # BUY
 
             action_counts[discrete_action] += 1
 

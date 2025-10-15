@@ -17,6 +17,13 @@ from numpy.typing import NDArray
 import pandas as pd
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO, SAC
+from ztb.trading.constants import(
+    SAC_CONTINUOUS_THRESHOLD, 
+    SAC_CONTINUOUS_THRESHOLD_NEG, 
+    ACTION_HOLD, 
+    ACTION_BUY, 
+    ACTION_SELL,
+)
 
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.performance_utils import timed
@@ -202,13 +209,13 @@ def run_backtest(
         # Convert continuous action to discrete for SAC models
         if model_type == "SAC":
             # SAC uses continuous actions, convert to discrete
-            # threshold = 0.33 as used in training
-            if action > 0.33:
-                discrete_action = 1  # BUY
-            elif action < -0.33:
-                discrete_action = 2  # SELL
+            # Use centralized thresholds from constants
+            if action > SAC_CONTINUOUS_THRESHOLD:
+                discrete_action = ACTION_BUY
+            elif action < SAC_CONTINUOUS_THRESHOLD_NEG:
+                discrete_action = ACTION_SELL
             else:
-                discrete_action = 0  # HOLD
+                discrete_action = ACTION_HOLD
             action = discrete_action
         else:
             action = cast(int, action.item() if hasattr(action, "item") else action)
