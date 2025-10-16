@@ -7,6 +7,7 @@ This module contains configuration classes for the Heavy Trading Environment.
 import dataclasses
 from typing import Any, Dict, List, Optional, TypedDict, Union
 
+from ztb.features.curated_features import get_feature_set
 from ztb.training.config.ppo_config import (
     DEFAULT_REWARD_SCALING,
     DEFAULT_RISK_FREE_RATE,
@@ -30,6 +31,9 @@ from ztb.training.config.ppo_config import (
     DEFAULT_REWARD_CLIP_VALUE,
 )
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class RewardSettings(TypedDict, total=False):
@@ -70,6 +74,7 @@ class EnvironmentConfig:
     risk_free_rate: float = DEFAULT_RISK_FREE_RATE
     timeframe: str = "1m"
     feature_set: str = "full"
+    feature_names: Optional[List[str]] = None  # Explicit feature list (overrides feature_set)
     correlation_reduction: bool = True
     curriculum_stage: str = "forced_balance"
     feature_storage_dtype: str = "float16"
@@ -201,6 +206,16 @@ class EnvironmentConfig:
                         pass  # Keep original value
                 config_kwargs[field.name] = value
             # Field will use default if not in config_dict
+
+        # Apply curated feature set if specified
+        feature_set = config_dict.get("feature_set", "full")
+        if feature_set == "curated" and "feature_names" not in config_dict:
+            try:
+                curated_features = get_feature_set("curated")
+                config_kwargs["feature_names"] = curated_features
+                logger.info(f"Applied curated feature set with {len(curated_features)} features")
+            except Exception as e:
+                logger.warning(f"Failed to load curated features: {e}")
 
         return cls(**config_kwargs)  # type: ignore[arg-type]
 

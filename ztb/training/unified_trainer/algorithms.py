@@ -81,12 +81,14 @@ class TrainingProgressCallback(BaseCallback):
         # Always show progress, even if no actions recorded yet
         if self.discrete_actions:
             total_actions = len(self.discrete_actions)
-            discrete_counts = np.bincount(self.discrete_actions, minlength=3)
+            # Shift discrete actions to non-negative range for bincount: SELL(-1)->0, HOLD(0)->1, BUY(1)->2
+            shifted_actions = np.array(self.discrete_actions) + 1
+            discrete_counts = np.bincount(shifted_actions, minlength=3)
 
             action_dist = {
-                'HOLD': discrete_counts[0] / total_actions,
-                'BUY': discrete_counts[1] / total_actions,
-                'SELL': discrete_counts[2] / total_actions
+                'SELL': discrete_counts[0] / total_actions,
+                'HOLD': discrete_counts[1] / total_actions,
+                'BUY': discrete_counts[2] / total_actions
             }
 
             print(f"Step {self.n_calls:6d} | "
@@ -275,7 +277,20 @@ class SACTrainer(BaseAlgorithmTrainer):
             return {'HOLD': 0.0, 'BUY': 0.0, 'SELL': 0.0}
 
         total_actions = len(callback.discrete_actions)
-        discrete_counts = np.bincount(callback.discrete_actions, minlength=3)
+        
+        # Convert discrete actions to proper indices (SELL: -1 -> 2, HOLD: 0 -> 0, BUY: 1 -> 1)
+        discrete_indices = []
+        for action in callback.discrete_actions:
+            if action == -1:  # SELL
+                discrete_indices.append(2)
+            elif action == 0:  # HOLD
+                discrete_indices.append(0)
+            elif action == 1:  # BUY
+                discrete_indices.append(1)
+            else:
+                discrete_indices.append(0)  # Default to HOLD
+        
+        discrete_counts = np.bincount(discrete_indices, minlength=3)
 
         return {
             'HOLD': discrete_counts[0] / total_actions,

@@ -12,7 +12,10 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union, cast
+
+# Type definitions for better type safety
+TradingConfig = Dict[str, Any]  # Configuration dictionary for trading parameters
 
 # Add project root to path
 from ztb.utils.path_utils import get_project_root
@@ -38,7 +41,7 @@ from ztb.trading.live_trader.health_monitoring import HealthMonitoring
 from ztb.trading.live_trader.model_loading import ModelLoading
 from ztb.trading.live_trader.trading_loop import TradingLoop
 from ztb.trading.live.registry.broker_registry import get_broker_registry
-from ztb.utils.logging_utils import get_logger
+from ztb.utils.errors import InsufficientFundsError, MinimumSizeError, OrderNotFoundError
 
 # Import feature computation
 try:
@@ -73,6 +76,7 @@ from ztb.utils.notify.discord import DiscordNotifier
 # Import utility modules
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
+from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import PerformanceMonitor, timed
 from ztb.utils.rate_limiter import TokenBucketRateLimiter, RateLimitConfig
 
@@ -104,7 +108,14 @@ from ztb.trading.constants import (
     ACTION_BUY,
     ACTION_SELL,
     ACTION_NAMES,
-    normalize_action,
+)
+from ztb.trading.live.exchanges.coincheck.config import (
+    get_coincheck_credentials,
+    get_coincheck_credentials_optional,
+    validate_credentials,
+)
+from ztb.trading.live.exchanges.bitflyer.config import (
+    get_bitflyer_credentials,
 )
 
 
@@ -116,6 +127,14 @@ class LiveTrader:
     using pre-trained PPO or SAC models. It includes comprehensive risk management, monitoring,
     and error handling features.
 
+    Architecture:
+    - Modular design with separate components for different responsibilities
+    - TradingLoop: Main trading execution logic
+    - FeatureComputation: Technical indicator calculation
+    - ActionPrediction: Model inference and action selection
+    - HealthMonitoring: System health checks and metrics
+    - ModelLoading: Model loading and validation
+
     Key Features:
     - Support for PPO and SAC algorithms
     - Multiple exchange integrations (Coincheck, Bitflyer)
@@ -125,6 +144,7 @@ class LiveTrader:
     - Dry-run mode for testing without real trades
     - Automatic position management and PnL tracking
     - Memory-efficient operation with periodic cleanup
+    - Configurable caching, rate limiting, and circuit breaking
 
     Safety Features:
     - Emergency stop loss protection
@@ -132,6 +152,17 @@ class LiveTrader:
     - API credential validation
     - Circuit breaker pattern for error handling
     - Comprehensive logging and error reporting
+    - Graceful degradation on component failures
+
+    Configuration:
+    The system supports extensive configuration through the config parameter:
+    - price_cache_ttl: Price cache TTL in seconds (default: 30.0)
+    - requests_per_second: API rate limit (default: 1.0)
+    - burst_limit: API burst limit (default: 5)
+    - circuit_failure_threshold: Circuit breaker threshold (default: 5)
+    - circuit_recovery_timeout: Circuit breaker recovery time (default: 60.0)
+    - cleanup_interval: Memory cleanup interval (default: 100)
+    - max_consecutive_errors: Max consecutive errors before shutdown (default: 5)
 
     Args:
         model_path: Path to trained model or LiveTradingOptions configuration
@@ -152,6 +183,9 @@ class LiveTrader:
     """
 
     compute_features_batch: Optional[Callable[[pd.DataFrame, Optional[List[str]], int, bool, Optional[bool], Optional[int], Optional[bool]], Union[pd.DataFrame, Tuple[pd.DataFrame, Dict[str, float]]]]]
+
+    # Instance attributes with type hints
+    config: TradingConfig
 
     def __init__(
         self,
@@ -215,8 +249,7 @@ class LiveTrader:
         # Initialize exchange adapter for live price access in dry-run
         venue = self.options.venue.lower()
         if venue == "coincheck":
-            self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
-            self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
+            self.api_key, self.api_secret = get_coincheck_credentials_optional()
             self.base_url = "https://coincheck.com"
             adapter_name = "coincheck"
         else:
@@ -308,10 +341,140 @@ class LiveTrader:
         
         logger.info("Dry-run initialization completed with live components")
 
+    def _init_exchange_adapter(self) -> None:
+        """Initialize exchange adapter for live trading."""
+        logger = get_logger(__name__)
+        
+        # Exchange API settings based on venue
+        venue = self.options.venue.lower()
+        if venue == "coincheck":
+            self.api_key, self.api_secret = get_coincheck_credentials()
+            self.base_url = "https://coincheck.com"
+            adapter_name = "coincheck"
+        elif venue == "bitflyer":
+            self.api_key, self.api_secret = get_bitflyer_credentials()
+            self.base_url = "https://api.bitflyer.com"
+            adapter_name = "bitflyer"
+        else:
+            raise ValueError(f"Unsupported venue: {venue}")
+
+        # Validate API credentials for live trading (check for non-empty values)
+        self.demo_mode = not (self.api_key and self.api_secret) or self.dry_run
+        if self.demo_mode:
+            if self.dry_run:
+                logger.info("DRY RUN MODE - No real trades will be executed")
+            elif not (self.api_key and self.api_secret):
+                logger.warning(
+                    f"{venue.upper()}_API_KEY and/or {venue.upper()}_API_SECRET not set or empty - running in DEMO mode"
+                )
+                logger.warning(
+                    "Set environment variables or create .env file with API credentials for live trading"
+                )
+
+        try:
+            broker_registry = get_broker_registry()
+            self.exchange_adapter = broker_registry.get_broker(
+                adapter_name,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+                dry_run=self.dry_run,
+            )
+            logger.info(f"{venue.upper()} adapter initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize {venue.upper()} adapter: {e}")
+            self.exchange_adapter = None
+
+    def _init_position_manager(self) -> None:
+        """Initialize PositionManager for live trading."""
+        logger = get_logger(__name__)
+        logger.info(f"PositionManager available: {position_manager_available}")
+        
+        if position_manager_available:
+            try:
+                # Create a simple config object for PositionManager
+                class LivePositionConfig:
+                    """Configuration for PositionManager in live trading."""
+                    def __init__(self, config_dict: Dict[str, Any]) -> None:
+                        self.allow_reverse = config_dict.get("allow_reverse", False)
+                        self.transaction_cost = config_dict.get("transaction_cost", 0.001)
+                        # Bug #28 fix: Pass max_position_size to prevent scale mismatch
+                        self.max_position_size = config_dict.get(
+                            "max_position_size", 
+                            config_dict.get("min_trade_amount", 0.001)
+                        )
+                        self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
+                        self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
+                        
+                position_config = LivePositionConfig(self.config)
+                
+                self.position_manager = PositionManager(  # type: ignore[name-defined]
+                    config=position_config,
+                    get_price_callback=lambda: self._last_valid_price if hasattr(self, '_last_valid_price') and self._last_valid_price > 0 else 5000000.0
+                )
+                logger.info(f"PositionManager initialized for live trading (position_size={position_config.max_position_size})")
+            except Exception as e:
+                logger.warning(f"Failed to initialize PositionManager: {e}")
+                self.position_manager = None
+        else:
+            self.position_manager = None
+            logger.warning("PositionManager not available, using legacy position logic")
+
+    def _init_trading_state(self) -> None:
+        """Initialize trading state variables."""
+        # Initialize trading state
+        self.position = 0  # -1 (short), 0 (flat), 1 (long)
+        self.entry_price = 0.0
+        self.total_pnl = 0.0
+        self.trades_count = 0
+        self.daily_start_pnl = 0.0
+        self.daily_trades = 0
+        self.daily_start_time = datetime.now().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        # Initialize price validation
+        self._last_valid_price = 0.0
+        
+        # Initialize schema attributes
+        self.schema_available = False
+        self.expected_features = 64  # Default
+        self.feature_names = None
+        
+        # Initialize action mask provider for MaskablePPO support (Bug #27 fix)
+        mask_config = ActionMaskConfig(
+            min_holding_period=self.config.get("min_holding_period", 5),
+            enable_forced_close=True,
+            max_position_age=self.config.get("max_position_age", 1000)
+        )
+        self.mask_provider = ActionMaskProvider(mask_config)
+        self._is_maskable_ppo = False  # Will be set in _load_model()
+        self._current_step = 0
+        self._position_entry_step = 0
+        logger = get_logger(__name__)
+        logger.info(
+            f"ActionMaskProvider initialized (min_holding={mask_config.min_holding_period}, "
+            f"max_age={mask_config.max_position_age})"
+        )
+
+        # Initialize advanced auto-stop system
+        if auto_stop_available:
+            try:
+                self.auto_stop = create_production_auto_stop()  # type: ignore[name-defined]
+                logger.info("Advanced auto-stop system initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize auto-stop system: {e}")
+                self.auto_stop = None
+        else:
+            self.auto_stop = None
+            logger.warning("Advanced auto-stop system not available")
+
     def _init_normal(self, model_path: Union[str, Path, LiveTradingOptions], config: Optional[Dict[str, Any]], disable_risk_limits: bool) -> None:
         """Initialize for normal live trading mode."""
         logger = get_logger(__name__)
         logger.info("Starting normal live trader initialization")
+        
+        # Store model_path for later use
+        self.model_path = model_path
 
         try:
             # Initialize basic attributes
@@ -361,46 +524,8 @@ class LiveTrader:
                     }
                 )
 
-            # Exchange API settings based on venue
-            venue = self.options.venue.lower()
-            if venue == "coincheck":
-                self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
-                self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
-                self.base_url = "https://coincheck.com"
-                adapter_name = "coincheck"
-            elif venue == "bitflyer":
-                self.api_key = os.getenv("BITFLYER_API_KEY", "").strip()
-                self.api_secret = os.getenv("BITFLYER_API_SECRET", "").strip()
-                self.base_url = "https://api.bitflyer.com"
-                adapter_name = "bitflyer"
-            else:
-                raise ValueError(f"Unsupported venue: {venue}")
-
-            # Validate API credentials for live trading (check for non-empty values)
-            self.demo_mode = not (self.api_key and self.api_secret) or self.dry_run
-            if self.demo_mode:
-                if self.dry_run:
-                    logger.info("DRY RUN MODE - No real trades will be executed")
-                elif not (self.api_key and self.api_secret):
-                    logger.warning(
-                        f"{venue.upper()}_API_KEY and/or {venue.upper()}_API_SECRET not set or empty - running in DEMO mode"
-                    )
-                    logger.warning(
-                        "Set environment variables or create .env file with API credentials for live trading"
-                    )
-
-            try:
-                broker_registry = get_broker_registry()
-                self.exchange_adapter = broker_registry.get_broker(
-                    adapter_name,
-                    api_key=self.api_key,
-                    api_secret=self.api_secret,
-                    dry_run=self.dry_run,
-                )
-                logger.info(f"{venue.upper()} adapter initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize {venue.upper()} adapter: {e}")
-                self.exchange_adapter = None
+            # Initialize exchange adapter
+            self._init_exchange_adapter()
 
             # Load and validate model (after coincheck adapter initialization)
             # Initialize model_loading first
@@ -410,33 +535,7 @@ class LiveTrader:
             self.model = self._load_model()
 
             # Initialize PositionManager (Bug #25, #26 fix) - moved after model loading
-            logger.info(f"PositionManager available: {position_manager_available}")
-            if position_manager_available:
-                try:
-                    # Create a simple config object for PositionManager
-                    class LivePositionConfig:
-                        """Configuration for PositionManager in live trading."""
-                        def __init__(self, config_dict: Dict[str, Any]) -> None:
-                            self.allow_reverse = config_dict.get("allow_reverse", False)
-                            self.transaction_cost = config_dict.get("transaction_cost", 0.001)
-                            # Bug #28 fix: Pass max_position_size to prevent scale mismatch
-                            self.max_position_size = config_dict.get(
-                                "max_position_size", 
-                                config_dict.get("min_trade_amount", 0.001)
-                            )
-                            self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
-                            self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
-                            
-                    position_config = LivePositionConfig(self.config)
-                    
-                    self.position_manager = PositionManager(  # type: ignore[name-defined]
-                        config=position_config,
-                        get_price_callback=lambda: self._last_valid_price if hasattr(self, '_last_valid_price') and self._last_valid_price > 0 else 5000000.0
-                    )
-                    logger.info(f"PositionManager initialized for live trading (position_size={position_config.max_position_size})")
-                except Exception as e:
-                    logger.warning(f"Failed to initialize PositionManager: {e}")
-                    self.position_manager = None
+            self._init_position_manager()
 
         except Exception as e:
             logger.error(f"Critical error during live trader initialization: {e}")
@@ -445,8 +544,6 @@ class LiveTrader:
         else:
             self.position_manager = None
             logger.warning("PositionManager not available, using legacy position logic")
-
-        # Initialize trading state
         self.position = 0  # -1 (short), 0 (flat), 1 (long)
         self.entry_price = 0.0
         self.total_pnl = 0.0
@@ -492,26 +589,41 @@ class LiveTrader:
             self.auto_stop = None
             logger.warning("Advanced auto-stop system not available")
 
-        # Initialize utility components
-        # Price cache for API response caching (TTL: 30 seconds)
-        self.price_cache = TTLCache(ttl_seconds=30.0)
+    def _init_utility_components(self) -> None:
+        """Initialize utility components (cache, rate limiter, circuit breaker)."""
+        logger = get_logger(__name__)
         
-        # Rate limiter for API calls (1 request per second, burst limit 5)
+        # Get configuration values with defaults
+        price_cache_ttl = self.config.get('price_cache_ttl', 30.0)
+        requests_per_second = self.config.get('requests_per_second', 1.0)
+        burst_limit = self.config.get('burst_limit', 5)
+        circuit_failure_threshold = self.config.get('circuit_failure_threshold', 5)
+        circuit_recovery_timeout = self.config.get('circuit_recovery_timeout', 60.0)
+        
+        # Price cache for API response caching
+        self.price_cache = TTLCache(ttl_seconds=price_cache_ttl)
+        
+        # Rate limiter for API calls
         rate_limit_config = RateLimitConfig(
-            requests_per_second=1.0,
-            burst_limit=5,
+            requests_per_second=requests_per_second,
+            burst_limit=burst_limit,
             window_seconds=1.0
         )
         self.rate_limiter = TokenBucketRateLimiter(rate_limit_config)
         
-        # Circuit breaker for API protection (5 failures -> open, 60s recovery)
+        # Circuit breaker for API protection
         circuit_config = CircuitBreakerConfig(
-            failure_threshold=5,
-            recovery_timeout=60.0,
+            failure_threshold=circuit_failure_threshold,
+            recovery_timeout=circuit_recovery_timeout,
             success_threshold=3,
             timeout=10.0
         )
         self.api_circuit_breaker = CircuitBreaker("coincheck_api", circuit_config)
+        logger.info(f"Utility components initialized (Cache TTL: {price_cache_ttl}s, Rate: {requests_per_second}/s, Circuit: {circuit_failure_threshold} failures)")
+
+    def _init_price_history(self) -> None:
+        """Initialize price history for live trading."""
+        logger = get_logger(__name__)
         
         # Update price history if adapter is available (skip in dry-run)
         if self.exchange_adapter and not self.dry_run:
@@ -524,6 +636,12 @@ class LiveTrader:
             self.price_history.extend([mock_price] * self.config.get("price_history_length", 100))
         else:
             logger.info("Price history update deferred until adapter is available")
+
+        # Initialize utility components
+        self._init_utility_components()
+        
+        # Initialize price history
+        self._init_price_history()
         
         # Memory optimization: Periodic cleanup counter
         self._cleanup_counter = 0
@@ -545,7 +663,7 @@ class LiveTrader:
         
         self._send_notification(
             "🚀 BTC/JPY Live Trading Started",
-            f"Model: {model_path}\nStrategy: Sell-biased\nMode: {'DEMO' if self.demo_mode else 'LIVE'}\nFeatures: {feature_info}\nTrading Mode: Normal (1M timeframe)\nUtils: RateLimiter+CircuitBreaker+Cache enabled",
+            f"Model: {self.model_path}\nStrategy: Sell-biased\nMode: {'DEMO' if self.demo_mode else 'LIVE'}\nFeatures: {feature_info}\nTrading Mode: Normal (1M timeframe)\nUtils: RateLimiter+CircuitBreaker+Cache enabled",
             "info",
         )
 
@@ -565,134 +683,28 @@ class LiveTrader:
             logger.log(log_level, f"{title}: {message}")
             logger.debug("Notification logged to console")
 
-    def run_trading_loop(self, duration_hours: float) -> None:
-        """Run the main trading loop for live trading."""
-        return self.trading_loop.run_trading_loop(duration_hours)
+    def set_log_level(self, level: str) -> None:
+        """Dynamically adjust logging level for this trader instance."""
+        logger = get_logger(__name__)
+        numeric_level = getattr(logging, level.upper(), logging.INFO)
+        logger.setLevel(numeric_level)
+        logger.info(f"Log level changed to {level.upper()}")
 
-        start_time = datetime.now()
-        end_time = start_time + timedelta(hours=duration_hours)
+    def get_system_status(self) -> Dict[str, Any]:
+        """Get comprehensive system status for monitoring."""
+        return {
+            'position': self.position,
+            'total_pnl': self.total_pnl,
+            'trades_count': self.trades_count,
+            'last_valid_price': self._last_valid_price,
+            'demo_mode': getattr(self, 'demo_mode', True),
+            'dry_run': getattr(self, 'dry_run', False),
+            'exchange_adapter': self.exchange_adapter is not None,
+            'position_manager': self.position_manager is not None,
+            'price_cache_size': len(getattr(self.price_cache, '_cache', {})) if hasattr(self, 'price_cache') else 0,
+            'uptime': (datetime.now() - getattr(self, 'daily_start_time', datetime.now())).total_seconds()
+        }
 
-        iteration_count = 0
-        consecutive_errors = 0
-        max_consecutive_errors = 5
-
-        logger.debug("Entering trading loop")
-        while datetime.now() < end_time:
-            iteration_count += 1
-            logger.debug(f"Starting iteration {iteration_count}")
-
-            with PerformanceMonitor(f"trading_iteration_{iteration_count}"):
-                try:
-                    # Get current price
-                    try:
-                        current_price = self._get_current_price_sync()
-                        logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
-                    except Exception as e:
-                        logger.error(f"Failed to get current price: {e}")
-                        if self._last_valid_price > 0:
-                            current_price = self._last_valid_price
-                            logger.warning(f"Using last valid price: ¥{current_price:,.0f}")
-                        else:
-                            logger.error("No valid price available, skipping iteration")
-                            consecutive_errors += 1
-                            if consecutive_errors >= max_consecutive_errors:
-                                logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
-                                self._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
-                                break
-                            time.sleep(60)
-                            continue
-
-                    # Reset consecutive error counter on successful price fetch
-                    consecutive_errors = 0
-
-                    # Update price history
-                    try:
-                        self._update_price_history()
-                    except Exception as e:
-                        logger.warning(f"Failed to update price history: {e}")
-                        # Continue with existing history
-
-                    # Compute features for prediction
-                    logger.debug("Computing features...")
-                    try:
-                        features = self._compute_features()
-                        logger.debug(f"Features computed: {len(features)} features")
-                    except Exception as e:
-                        logger.error(f"Failed to compute features: {e}")
-                        logger.warning("Using zero features as fallback")
-                        features = np.zeros(64, dtype=np.float32)
-
-                    # Predict action
-                    logger.debug("Predicting action...")
-                    try:
-                        action = self._predict_action(features)
-                        action_name = ACTION_NAMES.get(action, f"UNKNOWN({action})")
-                        logger.debug(f"Predicted action: {action_name}")
-                    except Exception as e:
-                        logger.error(f"Failed to predict action: {e}")
-                        action = ACTION_HOLD
-                        action_name = "HOLD (fallback)"
-
-                    # Validate position before executing action
-                    if not (-1 <= self.position <= 1):
-                        logger.error(f"Invalid position detected: {self.position}, resetting to 0")
-                        self.position = 0.0
-
-                    # Execute action
-                    logger.debug("Executing action...")
-                    try:
-                        pnl = self._execute_action(action)
-                        logger.debug(f"Action executed, PnL: {pnl}")
-                    except Exception as e:
-                        logger.error(f"Failed to execute action: {e}")
-                        pnl = 0.0
-                        action_name = f"{action_name} (execution failed)"
-
-                    # Send periodic notification (every 10 iterations or significant events)
-                    if iteration_count % 10 == 0 or action != ACTION_HOLD:
-                        self._send_notification(
-                            f"📊 Trading Update #{iteration_count}",
-                            f"Price: ¥{current_price:,.0f}\nAction: {action_name}\nPnL: ¥{pnl:,.2f}\nPosition: {self.position:.4f} BTC",
-                            "info" if action == ACTION_HOLD else "success"
-                        )
-                        logger.debug("Notification sent for iteration")
-
-                    # Periodic cleanup
-                    try:
-                        self._periodic_cleanup()
-                    except Exception as e:
-                        logger.warning(f"Failed to perform periodic cleanup: {e}")
-
-                except Exception as e:
-                    logger.error(f"❌ Critical error in trading loop iteration {iteration_count}: {e}")
-                    import traceback
-                    logger.error(f"Traceback: {traceback.format_exc()}")
-                    print(f"Traceback: {traceback.format_exc()}")
-                    consecutive_errors += 1
-                    
-                    self._send_notification("⚠️ Trading Error", f"Critical error in iteration {iteration_count}: {e}", "error")
-                    
-                    if consecutive_errors >= max_consecutive_errors:
-                        logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
-                        self._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
-                        break
-
-            # Wait before next iteration (1 minute)
-            time.sleep(60)
-
-        # Final report
-        total_pnl = self.total_pnl
-        trades_count = self.trades_count
-
-        logger.info(f"🏁 Trading loop completed after {duration_hours} hours")
-        logger.info(f"   Total PnL: ¥{total_pnl:,.2f}")
-        logger.info(f"   Total trades: {trades_count}")
-
-        self._send_notification(
-            "🏁 Trading Session Complete",
-            f"Duration: {duration_hours} hours\nTotal PnL: ¥{total_pnl:,.2f}\nTrades: {trades_count}\nFinal Position: {self.position:.4f} BTC",
-            "success"
-        )
 
     async def _get_current_price(self) -> float:
         """Get current BTC/JPY price with timeout and error handling."""
@@ -1636,10 +1648,11 @@ class LiveTrader:
 
         return False
 
-    def _execute_trade(self, side: str, amount: float) -> bool:
-        """Execute trade on Coincheck with enhanced error handling and notifications."""
+    def _execute_trade(self, side: Literal["buy", "sell"], amount: float) -> bool:
+        """Execute trade using exchange adapter with enhanced error handling and notifications."""
+        logger = get_logger(__name__)
+        
         if self.demo_mode:
-            logger = get_logger(__name__)
             logger.info(f"DEMO MODE: Would execute {side} {amount} BTC")
             # Send notification for demo trades
             self._send_notification(
@@ -1651,34 +1664,76 @@ class LiveTrader:
             )
             return True
 
-        # Enhanced error notification for live trading
+        # Use exchange adapter for live trading
+        if not self.exchange_adapter:
+            logger.error("No exchange adapter available for live trading")
+            self._send_notification(
+                "🚨 CRITICAL: No Exchange Adapter",
+                "Exchange adapter not available for live trading",
+                "error",
+            )
+            return False
+
         try:
-            # TODO: Implement actual Coincheck API trading calls
-            logger = get_logger(__name__)
-            logger.warning(
-                f"LIVE MODE: Trade execution not implemented yet - {side} {amount} BTC"
+            # Execute trade using exchange adapter
+            order = self.exchange_adapter.place_order(
+                symbol="BTC_JPY",
+                side=side,
+                quantity=amount,
+                order_type="market",  # Use market orders for live trading
+                sizing_reason="live_trading",
             )
+            
+            if order:
+                logger.info(f"LIVE TRADE EXECUTED: {side.upper()} {amount} BTC, Order ID: {order.order_id}")
+                self._send_notification(
+                    "📈 Live Trade Executed",
+                    f"Side: {side.upper()}\n"
+                    f"Amount: {amount} BTC\n"
+                    f"Order ID: {order.order_id}\n"
+                    f"Position: {self.position}\n"
+                    f"Entry Price: ¥{self.entry_price:,.0f}",
+                    "success",
+                )
+                return True
+            else:
+                logger.error("Order placement returned None")
+                self._send_notification(
+                    "⚠️ Trade Failed",
+                    f"Order placement failed for {side.upper()} {amount} BTC",
+                    "warning",
+                )
+                return False
+                
+        except InsufficientFundsError as e:
+            # Handle insufficient funds gracefully
+            error_msg = str(e)
+            logger.warning(f"Trade failed due to insufficient funds: {error_msg}")
             self._send_notification(
-                "⚠️ Live Trade Not Implemented",
-                f"Would execute: {side.upper()} {amount} BTC\n"
-                f"Please implement actual API calls\n"
-                f"Position: {self.position}, Entry: ¥{self.entry_price:,.0f}",
-                "warning",
-            )
-            # Still send trade info notification even though execution is not implemented
-            self._send_notification(
-                "📈 Live Trade Info",
+                "⚠️ Insufficient Funds",
                 f"Side: {side.upper()}\n"
                 f"Amount: {amount} BTC\n"
-                f"Position: {self.position}\n"
-                f"Entry Price: ¥{self.entry_price:,.0f}",
-                "info",
+                f"Error: {error_msg}\n"
+                f"Trading will continue",
+                "warning",
+            )
+            return False
+        except MinimumSizeError as e:
+            # Handle minimum size errors gracefully
+            error_msg = str(e)
+            logger.warning(f"Trade failed due to minimum size requirements: {error_msg}")
+            self._send_notification(
+                "⚠️ Order Too Small",
+                f"Side: {side.upper()}\n"
+                f"Amount: {amount} BTC\n"
+                f"Error: {error_msg}\n"
+                f"Trading will continue",
+                "warning",
             )
             return False
         except Exception as e:
             # Critical error notification
             error_msg = f"CRITICAL: Trade execution failed - {str(e)}"
-            logger = get_logger(__name__)
             logger.error(error_msg)
             self._send_notification(
                 "🚨 CRITICAL: Trade Execution Error",
@@ -1976,8 +2031,7 @@ class LiveTrader:
         logger = get_logger(__name__)
         venue = self.options.venue.lower()
         if venue == "coincheck":
-            self.api_key = os.getenv("COINCHECK_API_KEY", "").strip()
-            self.api_secret = os.getenv("COINCHECK_API_SECRET", "").strip()
+            self.api_key, self.api_secret = get_coincheck_credentials()
             self.base_url = "https://coincheck.com"
             adapter_name = "coincheck"
         else:
@@ -1994,7 +2048,8 @@ class LiveTrader:
             logger.info(f"{venue.upper()} adapter initialized")
         except Exception as e:
             logger.error(f"Failed to initialize {venue.upper()} adapter: {e}")
-            raise
+            self.exchange_adapter = None
+            # Don't re-raise - allow initialization to continue with None adapter
 
     def _init_position_manager(self) -> None:
         """Initialize position manager."""
@@ -2043,4 +2098,33 @@ class LiveTrader:
         )
         self.mask_provider = ActionMaskProvider(mask_config)
         self._is_maskable_ppo = False
-        self._position_entry_step = 0
+
+    async def run_trading_loop(self, duration_hours: float) -> None:
+        """
+        Run the main trading loop for live trading.
+        
+        Args:
+            duration_hours: Duration to run trading in hours
+        """
+        logger = get_logger(__name__)
+        
+        # Display initial balance
+        try:
+            initial_balance = await self.get_account_balance()
+            logger.info("💰 Initial account balance:")
+            for currency, amount in initial_balance.items():
+                logger.info(f"   {currency}: {amount:,.2f}")
+        except Exception as e:
+            logger.warning(f"Could not fetch initial balance: {e}")
+        
+        # Run trading loop
+        self.trading_loop.run_trading_loop(duration_hours)
+        
+        # Display final balance
+        try:
+            final_balance = await self.get_account_balance()
+            logger.info("💰 Final account balance:")
+            for currency, amount in final_balance.items():
+                logger.info(f"   {currency}: {amount:,.2f}")
+        except Exception as e:
+            logger.warning(f"Could not fetch final balance: {e}")

@@ -61,6 +61,14 @@ def run_historical_backtest(
 
     # Action counters for analysis
     action_counts = {0: 0, 1: 0, 2: 0}  # HOLD, BUY, SELL
+    continuous_actions = []  # Store continuous action values for analysis
+    discrete_actions = []  # Store discrete action sequence for streak analysis
+    
+    # History tracking for detailed analysis
+    portfolio_history = []
+    price_history = []
+    action_history = []
+    timestamps = []
 
     logger.info("Starting historical backtest simulation")
     logger.info(f"Initial portfolio value: {portfolio_value:.2f} JPY")
@@ -86,6 +94,10 @@ def run_historical_backtest(
 
         # Count actions
         action_counts[action] += 1
+        
+        # Store continuous action value and discrete action for analysis
+        continuous_actions.append(action_value)
+        discrete_actions.append(action)
 
         # Execute action in environment
         next_obs, reward, terminated, truncated, info = env.step(action)
@@ -95,6 +107,15 @@ def run_historical_backtest(
         portfolio_value = env.portfolio_value
         total_pnl = env.total_pnl
         trades_count = env.trades_count
+
+        # Store history data (after step execution)
+        current_price = float(data.iloc[min(env.current_step, len(data) - 1)]['close'])
+        price_history.append(current_price)
+        action_history.append(action)
+        timestamps.append(str(data.iloc[min(env.current_step, len(data) - 1)]['timestamp']))
+
+        # Store portfolio history
+        portfolio_history.append(portfolio_value)
 
         # Log progress
         if step % 500 == 0:
@@ -109,6 +130,74 @@ def run_historical_backtest(
     final_portfolio_value = portfolio_value + (position * current_price if position > 0 else 0)
     total_return = (final_portfolio_value - 200000.0) / 200000.0 * 100
 
+    # Calculate continuous action statistics
+    if continuous_actions:
+        import numpy as np
+        continuous_actions_array = np.array(continuous_actions)
+        action_stats = {
+            "continuous_action_mean": float(np.mean(continuous_actions_array)),
+            "continuous_action_std": float(np.std(continuous_actions_array)),
+            "continuous_action_min": float(np.min(continuous_actions_array)),
+            "continuous_action_max": float(np.max(continuous_actions_array)),
+            "continuous_action_median": float(np.median(continuous_actions_array)),
+            "continuous_action_q25": float(np.percentile(continuous_actions_array, 25)),
+            "continuous_action_q75": float(np.percentile(continuous_actions_array, 75)),
+        }
+        
+        # Create histogram bins for action distribution
+        hist_bins = np.linspace(-1, 1, 21)  # -1 to 1 with 0.1 intervals
+        hist, bin_edges = np.histogram(continuous_actions_array, bins=hist_bins)
+        action_stats["continuous_action_histogram"] = {
+            "bins": [f"{bin_edges[i]:.1f}-{bin_edges[i+1]:.1f}" for i in range(len(bin_edges)-1)],
+            "counts": hist.tolist(),
+            "percentages": (hist / len(continuous_actions_array) * 100).tolist()
+        }
+        
+        # Calculate action streaks (consecutive BUY/SELL sequences)
+        if discrete_actions:
+            buy_streaks = []
+            sell_streaks = []
+            current_buy_streak = 0
+            current_sell_streak = 0
+            
+            for action in discrete_actions:
+                if action == 1:  # BUY
+                    current_buy_streak += 1
+                    if current_sell_streak > 0:
+                        sell_streaks.append(current_sell_streak)
+                        current_sell_streak = 0
+                elif action == 2:  # SELL
+                    current_sell_streak += 1
+                    if current_buy_streak > 0:
+                        buy_streaks.append(current_buy_streak)
+                        current_buy_streak = 0
+                else:  # HOLD
+                    if current_buy_streak > 0:
+                        buy_streaks.append(current_buy_streak)
+                        current_buy_streak = 0
+                    if current_sell_streak > 0:
+                        sell_streaks.append(current_sell_streak)
+                        current_sell_streak = 0
+            
+            # Add final streaks if any
+            if current_buy_streak > 0:
+                buy_streaks.append(current_buy_streak)
+            if current_sell_streak > 0:
+                sell_streaks.append(current_sell_streak)
+            
+            action_stats["action_streaks"] = {
+                "buy_streaks": buy_streaks,
+                "sell_streaks": sell_streaks,
+                "max_buy_streak": max(buy_streaks) if buy_streaks else 0,
+                "max_sell_streak": max(sell_streaks) if sell_streaks else 0,
+                "avg_buy_streak": float(np.mean(buy_streaks)) if buy_streaks else 0.0,
+                "avg_sell_streak": float(np.mean(sell_streaks)) if sell_streaks else 0.0,
+                "total_buy_streak_count": len(buy_streaks),
+                "total_sell_streak_count": len(sell_streaks)
+            }
+    else:
+        action_stats = {}
+
     results = {
         "total_steps": max_steps,
         "initial_portfolio": 200000.0,
@@ -117,8 +206,13 @@ def run_historical_backtest(
         "total_trades": trades_count,
         "total_pnl": total_pnl,
         "action_distribution": action_counts,
+        "continuous_action_stats": action_stats,
         "win_rate": 0.0,  # Simplified for this test
-        "avg_trade_pnl": total_pnl / max(trades_count, 1)
+        "avg_trade_pnl": total_pnl / max(trades_count, 1),
+        "portfolio_history": portfolio_history,
+        "price_history": price_history,
+        "action_history": action_history,
+        "timestamps": timestamps
     }
 
     return results
