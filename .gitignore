@@ -43,3 +43,53 @@ node_modules
 # TypeScript legacy files (archived)
 typescript_legacy.zip
 node_modules
+
+# Python cache and build files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Large files and binaries
+*.whl
+*.tar.gz
+*.zip
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Model checkpoints and large data files
+checkpoints/
+models/
+*.pkl
+*.h5
+*.pb
+*.onnx
+*.pt
+*.pth
+
+# Test artifacts
+test_results/
+multimodal_system_test_results_*.json
+
+# Virtual environments
+venv*/
+venv311/
+venv313/

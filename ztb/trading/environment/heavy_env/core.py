@@ -61,6 +61,8 @@ if TYPE_CHECKING:
     from ztb.trading.environment.components.position_manager import PositionManager
     from ztb.trading.environment.components.reward_calculator import RewardCalculator
     from ztb.trading.environment.components.streaming_handler import StreamingHandler
+    from ztb.data.streaming_pipeline import StreamingPipeline
+    from ztb.features.adaptive_selection import AdaptiveFeatureSelector
     from ztb.trading.live.data.stream_to_bars import StreamToBarsConverter
 
 logger = get_logger(__name__)
@@ -93,6 +95,7 @@ class HeavyTradingEnv(
     reward_calculator: "RewardCalculator"
     observation_builder: "ObservationBuilder"
     action_validator: "ActionValidator"
+    adaptive_feature_selector: Optional["AdaptiveFeatureSelector"]
     
     # Data attributes
     df: pd.DataFrame
@@ -275,6 +278,9 @@ class HeavyTradingEnv(
 
         self._initialize_components(streaming_pipeline, stream_batch_size, df)
         self._initialize_data_structures()
+        
+        # Initialize adaptive feature selector (will be set during feature initialization if enabled)
+        self.adaptive_feature_selector = None
         self._initialize_data(df)
         self._initialize_features_and_spaces(max_features)
         self._setup_scaler()
