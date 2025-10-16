@@ -1,6 +1,6 @@
 {
   "name": "zaif-trade-bot",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "main": "dist/index.js",
   "ts-node": {
     "require": [
