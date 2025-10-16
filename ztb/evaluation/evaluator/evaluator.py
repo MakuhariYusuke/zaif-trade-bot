@@ -15,11 +15,32 @@ from stable_baselines3 import PPO
 from torch.utils.tensorboard import SummaryWriter
 
 from ztb.evaluation.evaluator.types import EvaluationResult, ModelConfigDict, SingleEpisodeResultDict
+from ztb.metrics.metrics import (
+    calculate_all_metrics,
+    seasonality_analysis,
+    multi_market_backtest_analysis,
+    classify_market_regime,
+    perform_statistical_tests,
+    p_mean_method,
+)
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import PerformanceMonitor
+
+# Optional imports for advanced analysis
+try:
+    from scripts.analysis.walkforward_analysis import WalkforwardAnalyzer
+    WALKFORWARD_AVAILABLE = True
+except ImportError:
+    WALKFORWARD_AVAILABLE = False
+
+try:
+    from scripts.validation.stress_test import StressTestAnalyzer
+    STRESS_TEST_AVAILABLE = True
+except ImportError:
+    STRESS_TEST_AVAILABLE = False
 
 logger = get_logger(__name__)
 
@@ -192,22 +213,90 @@ class TradingEvaluator:
         all_rewards = [r for result in results for r in result["rewards"]]
         all_pnls = [p for result in results for p in result["pnls"]]
 
-        total_return = np.sum(all_pnls)
-        annual_return = total_return * 252  # Assuming daily data
-        sharpe_ratio = np.mean(all_rewards) / (np.std(all_rewards) + 1e-8)
-        max_drawdown = self._calculate_max_drawdown(all_pnls)
-        win_rate = np.mean([1 if p > 0 else 0 for p in all_pnls])
+        # Convert PnLs to returns for metrics calculation
+        pnl_returns = np.array(all_pnls)
+
+        # Use comprehensive metrics from metrics.py
+        metrics = calculate_all_metrics(pnl_returns)
+
         total_trades = len([a for result in results for a in result["actions"] if a != 0])  # Non-hold actions
 
+        # Extract timestamps for seasonality analysis
+        timestamps = []
+        if self.df is not None:
+            for result in results:
+                # Assume each step corresponds to one timestamp
+                episode_timestamps = [self.df.index[i] for i in range(len(result["rewards"])) if i < len(self.df)]
+                timestamps.extend(episode_timestamps)
+
+        # Perform seasonality analysis if we have enough data
+        seasonality_results = {}
+        if len(timestamps) >= 30:  # Need at least a month of data
+            seasonality_results = seasonality_analysis(pnl_returns, timestamps)
+
+        # Perform multi-market analysis if we have price data
+        market_analysis_results = {}
+        if self.df is not None and hasattr(self.df, 'close') and len(self.df) > 20:
+            try:
+                prices = self.df['close'].iloc[:len(pnl_returns)] if len(self.df) >= len(pnl_returns) else self.df['close']
+                market_analysis_results = multi_market_backtest_analysis(pnl_returns, prices)
+            except Exception as e:
+                logger.warning(f"Could not perform market analysis: {e}")
+
+        # Perform walk-forward analysis if available and we have enough data
+        walkforward_results = {}
+        if WALKFORWARD_AVAILABLE and len(pnl_returns) >= 100:  # Need substantial data
+            try:
+                analyzer = WalkforwardAnalyzer()
+                # Create synthetic time series for walk-forward analysis
+                synthetic_returns = pd.Series(pnl_returns, 
+                    index=pd.date_range(start='2020-01-01', periods=len(pnl_returns), freq='D'))
+                wf_result = analyzer.run_walkforward_analysis(synthetic_returns)
+                walkforward_results = {
+                    'available': True,
+                    'windows_count': len(wf_result.windows),
+                    'average_sharpe': np.mean(wf_result.rolling_sharpe) if wf_result.rolling_sharpe else 0.0,
+                    'sharpe_volatility': np.std(wf_result.rolling_sharpe) if wf_result.rolling_sharpe else 0.0,
+                }
+            except Exception as e:
+                logger.warning(f"Could not perform walk-forward analysis: {e}")
+                walkforward_results = {'available': False, 'error': str(e)}
+
+        # Perform stress test analysis if available
+        stress_test_results = {}
+        if STRESS_TEST_AVAILABLE and len(pnl_returns) >= 50:
+            try:
+                analyzer = StressTestAnalyzer()
+                # Run basic stress tests on the returns
+                stress_result = analyzer.run_stress_test(pd.Series(pnl_returns))
+                stress_test_results = {
+                    'available': True,
+                    'scenarios_tested': len(stress_result.results) if hasattr(stress_result, 'results') else 0,
+                    'average_survival_rate': np.mean([r.survival_probability for r in stress_result.results]) 
+                        if hasattr(stress_result, 'results') and stress_result.results else 0.0,
+                }
+            except Exception as e:
+                logger.warning(f"Could not perform stress test analysis: {e}")
+                stress_test_results = {'available': False, 'error': str(e)}
+
         return {
-            "total_return": float(total_return),
-            "annual_return": float(annual_return),
-            "sharpe_ratio": float(sharpe_ratio),
-            "max_drawdown": float(max_drawdown),
-            "win_rate": float(win_rate),
+            "total_return": metrics["total_return"],
+            "annual_return": metrics["annual_return"],
+            "sharpe_ratio": metrics["sharpe_ratio"],
+            "sortino_ratio": metrics["sortino_ratio"],
+            "calmar_ratio": metrics["calmar_ratio"],
+            "max_drawdown": metrics["max_drawdown"],
+            "win_rate": metrics["win_rate"],
+            "profit_factor": metrics["profit_factor"],
+            "expected_value": metrics["expected_value"],
+            "recovery_factor": metrics["recovery_factor"],
             "total_trades": total_trades,
             "avg_trade_return": float(np.mean(all_pnls)) if all_pnls else 0.0,
-            "profit_factor": float(self._calculate_profit_factor(all_pnls)),
+            "volatility": metrics["volatility"],
+            "seasonality_analysis": seasonality_results,
+            "market_regime_analysis": market_analysis_results,
+            "walkforward_analysis": walkforward_results,
+            "stress_test_analysis": stress_test_results,
             "rewards": all_rewards,
             "positions": [p for result in results for p in result["positions"]],
             "pnls": all_pnls,
@@ -216,23 +305,6 @@ class TradingEvaluator:
             "model_path": str(self.model_path),
             "evaluation_config": self.config,
         }
-
-    def _calculate_max_drawdown(self, pnls: List[float]) -> float:
-        """最大ドローダウンを計算"""
-        cumulative = np.cumsum(pnls)
-        running_max = np.maximum.accumulate(cumulative)
-        drawdown = cumulative - running_max
-        return float(np.min(drawdown))
-
-    def _calculate_profit_factor(self, pnls: List[float]) -> float:
-        """プロフィットファクターを計算"""
-        profits = [p for p in pnls if p > 0]
-        losses = [abs(p) for p in pnls if p < 0]
-
-        if not losses:
-            return float('inf') if profits else 1.0
-
-        return sum(profits) / sum(losses) if profits else 0.0
 
     def close(self) -> None:
         """Clean up resources."""

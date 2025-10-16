@@ -40,6 +40,8 @@ class EvaluationResult(TypedDict, total=False):
     volatility: float
     sortino_ratio: float
     calmar_ratio: float
+    expected_value: float
+    recovery_factor: float
     var_95: float
     cvar_95: float
 
@@ -53,6 +55,12 @@ class EvaluationResult(TypedDict, total=False):
     avg_loss: float
     consecutive_wins: int
     consecutive_losses: int
+
+    # Advanced analysis
+    seasonality_analysis: Dict[str, Any]
+    market_regime_analysis: Dict[str, Any]
+    walkforward_analysis: Dict[str, Any]
+    stress_test_analysis: Dict[str, Any]
 
     # Episode data
     rewards: List[float]

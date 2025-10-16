@@ -25,12 +25,32 @@ class TradingBotError(ZTBError):
     pass
 
 
-class ConfigurationError(ZTBError):
-    """Configuration-related errors."""
+class InsufficientFundsError(TradingBotError):
+    """Raised when trading operation fails due to insufficient funds."""
+    pass
+
+
+class OrderError(TradingBotError):
+    """Base class for order-related errors."""
+    pass
+
+
+class OrderNotFoundError(OrderError):
+    """Raised when trying to cancel or query a non-existent order."""
+    pass
+
+
+class MinimumSizeError(OrderError):
+    """Raised when order size is below exchange minimum requirements."""
+    pass
 
 
 class ValidationError(ZTBError):
     """Data validation errors."""
+
+
+class ConfigurationError(ZTBError):
+    """Configuration-related errors."""
 
 
 class SchemaError(ZTBError):

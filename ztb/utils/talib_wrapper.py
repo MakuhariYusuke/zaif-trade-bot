@@ -105,9 +105,10 @@ class TaLibWrapper:
         """Check if Ta-Lib is available."""
         return TALIB_AVAILABLE
 
-    def _validate_input_data(self, data: Union[NDArray[np.float64], pd.Series], name: str) -> NDArray[np.float64]:
+    @staticmethod
+    def _validate_input_data(data: Union[NDArray[np.float64], pd.Series], name: str, strict_validation: bool = True) -> NDArray[np.float64]:
         """Validate and convert input data to numpy array."""
-        if self.strict_validation:
+        if strict_validation:
             if data is None:
                 raise TaLibError(f"{name} cannot be None")
 
@@ -123,7 +124,7 @@ class TaLibWrapper:
                 raise TaLibError(f"{name} cannot be empty")
 
             if not np.isfinite(arr).all():
-                if self.strict_validation:
+                if strict_validation:
                     raise TaLibError(f"{name} contains NaN or infinite values")
                 else:
                     logger.warning(f"{name} contains NaN or infinite values, proceeding anyway")
@@ -133,7 +134,8 @@ class TaLibWrapper:
 
         return arr
 
-    def _validate_period(self, period: int, name: str) -> int:
+    @staticmethod
+    def _validate_period(period: int, name: str) -> int:
         """Validate period parameter."""
         if not isinstance(period, int) or period <= 0:
             raise TaLibError(f"{name} must be a positive integer, got {period}")

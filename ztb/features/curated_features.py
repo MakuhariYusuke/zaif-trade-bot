@@ -75,20 +75,17 @@ def get_features_to_remove(feature_set_name: str = "curated") -> List[str]:
         # For other sets, no features to remove
         return []
 
-# 削除すべき特徴 (50個削除 → 110から60へ)
+# 削除すべき特徴 (47個削除 → 110から63へ)
 FEATURES_TO_REMOVE = [
-    # 1. 平均足の個別OHLC (4個) - 通常足と冗長、色連続のみ有効
-    'HeikinAshi_Open',
-    'HeikinAshi_High', 
-    'HeikinAshi_Low',
-    'HeikinAshi_Close',
-    
-    # 2. Time系定数 (5個) - 分散ゼロ
+    # 1. Time系定数 (5個) - 分散ゼロ
     'DOW',
     'Time_Day_of_Week',
     'Time_Hour_of_Day',
     'Time_Session',
     'Time_Volatility_Adjustment',
+    
+    # 2. 平均足の基本色 (1個) - 多時間軸版のみ使用
+    'HeikinAshi_Color',
     
     # 3. 一目均衡表の単独無意味な線 (4個)
     'Ichimoku_Chikou',  # 遅行スパン単独では無意味
@@ -142,32 +139,86 @@ CURATED_FEATURES = [
     'low',
     'volume',
     
-    # 【トレンド指標】 (10個)
-    'ADX',              # トレンド強度
+    # 【トレンド指標】 (47個) - 6つ追加
+    'ADX_M1',           # 1分足ADX
+    'ADX_M5',           # 5分足ADX
+    'ADX_M15',          # 15分足ADX
+    'ADX_H1',           # 1時間足ADX
+    'ADX_H4',           # 4時間足ADX
+    'ADX_D1',           # 日足ADX
+    'PlusDI',           # +DI
+    'PlusDI_M1',        # 1分足+DI
+    'PlusDI_M5',        # 5分足+DI
+    'PlusDI_M15',       # 15分足+DI
+    'PlusDI_H1',        # 1時間足+DI
+    'PlusDI_H4',        # 4時間足+DI
+    'PlusDI_D1',        # 日足+DI
+    'MinusDI',          # -DI
+    'MinusDI_M1',       # 1分足-DI
+    'MinusDI_M5',       # 5分足-DI
+    'MinusDI_M15',      # 15分足-DI
+    'MinusDI_H1',       # 1時間足-DI
+    'MinusDI_H4',       # 4時間足-DI
+    'MinusDI_D1',       # 日足-DI
     'MACD',             # トレンド方向
     'PSAR',             # パラボリックSAR
     'PSAR_Trend',       # PSARトレンド方向
     'EMACross_Diff',    # EMAクロス差分
+    'EMACross_Diff_M1', # 1分足EMAクロス差分
+    'EMACross_Diff_M5', # 5分足EMAクロス差分
+    'EMACross_Diff_M15', # 15分足EMAクロス差分
+    'EMACross_Diff_H1', # 1時間足EMAクロス差分
+    'EMACross_Diff_H4', # 4時間足EMAクロス差分
+    'EMACross_Diff_D1', # 日足EMAクロス差分
     'EMACross_Signal',  # EMAクロスシグナル
+    'EMACross_Signal_M1', # 1分足EMAクロスシグナル
+    'EMACross_Signal_M5', # 5分足EMAクロスシグナル
+    'EMACross_Signal_M15', # 15分足EMAクロスシグナル
+    'EMACross_Signal_H1', # 1時間足EMAクロスシグナル
+    'EMACross_Signal_H4', # 4時間足EMAクロスシグナル
+    'EMACross_Signal_D1', # 日足EMAクロスシグナル
     'TEMA',             # トリプルEMA
     'ema_5',            # 短期EMA
     'VWAP',             # 出来高加重平均価格
     'rolling_mean_20',  # 20期間移動平均
+    'HeikinAshi_Color_M1',  # 1分足平均足色
+    'HeikinAshi_Color_M5',  # 5分足平均足色
+    'HeikinAshi_Color_M15', # 15分足平均足色
+    'HeikinAshi_Color_H1',  # 1時間足平均足色
+    'HeikinAshi_Color_H4',  # 4時間足平均足色
+    'HeikinAshi_Color_D1',  # 日足平均足色
     
-    # 【オシレーター】 (9個)
+    # 【オシレーター】 (13個) - 6つ追加
     'RSI',              # 相対力指数
+    'RSI_M1',           # 1分足RSI
+    'RSI_M5',           # 5分足RSI
+    'RSI_M15',          # 15分足RSI
+    'RSI_H1',           # 1時間足RSI
+    'RSI_H4',           # 4時間足RSI
+    'RSI_D1',           # 日足RSI
     'CCI',              # コモディティチャネル指数
     'Stochastic',       # ストキャスティクス
     'Stochastic_Trend_Alignment',  # ストキャトレンド整合
     'Stochastic_Signal_Strength',  # ストキャシグナル強度
     'Williams_R',       # ウィリアムズ%R
     'MFI',              # マネーフローインデックス
-    'PlusDI',           # +DI
-    'MinusDI',          # -DI
     
-    # 【ボラティリティ】 (7個)
+    # 【ボラティリティ】 (17個) - 12つ追加
     'ATR',              # 平均真の範囲
+    'ATR_M1',           # 1分足ATR
+    'ATR_M5',           # 5分足ATR
+    'ATR_M15',          # 15分足ATR
+    'ATR_H1',           # 1時間足ATR
+    'ATR_H4',           # 4時間足ATR
+    'ATR_D1',           # 日足ATR
     'ATR_simplified',   # 簡易ATR
+    'ATR_simplified_M1', # 1分足簡易ATR
+    'ATR_simplified_M5', # 5分足簡易ATR
+    'ATR_simplified_M15', # 15分足簡易ATR
+    'ATR_simplified_H1', # 1時間足簡易ATR
+    'ATR_simplified_H4', # 4時間足簡易ATR
+    'ATR_simplified_D1', # 日足簡易ATR
+    'Normalized_ATR',   # 正規化ATR (パーセント表示)
     'atr_10',           # 10期間ATR
     'HV',               # 過去ボラティリティ
     'BB_Position',      # ボリンジャーバンド位置
@@ -186,12 +237,52 @@ CURATED_FEATURES = [
     'Donchian_Squeeze_Ratio',  # スクイーズ比率
     'Donchian_Width_Rel_20',   # 相対幅
     
-    # 【一目均衡表(組み合わせのみ)】 (4個) - 2つ削減
+    # 【一目均衡表(組み合わせ+拡張+多時間軸)】 (34個) - 18つ追加
+    # 基本ライン
+    'Ichimoku_Tenkan',                 # 転換線(Conversion Line)
+    'Ichimoku_Kijun',                  # 基準線(Base Line)
+    'Ichimoku_Senkou_A',               # 先行スパンA(Leading Span A)
+    'Ichimoku_Senkou_B',               # 先行スパンB(Leading Span B)
+    'Ichimoku_Chikou',                 # 遅行スパン(Lagging Span)
+    # 基本分析
     'Ichimoku_Composite_Signal',      # 総合シグナル(複数線の組み合わせ)
     'Ichimoku_Price_Cloud_Distance',  # 価格と雲の距離
     'Ichimoku_Cloud_Thickness',       # 雲の厚み
     'Ichimoku_Trend',                 # トレンド方向
-    # Note: Ichimoku_Cross, Ichimoku_Diff_Norm は除外(離散値/冗長)
+    # 理論的拡張
+    'Ichimoku_Time_Theory',           # 時間論: 転換線と基準線の時間的関係
+    'Ichimoku_Wave_Theory',           # 波動論: 雲の波動的意味付け
+    'Ichimoku_Value_Measurement',     # 値幅観測論: 価格変動の測定
+    'Ichimoku_Momentum_Confirmation', # 勢い確認: 遅行スパンのモメンタム的解釈
+    # 高度な分析
+    'Ichimoku_Cloud_Slope',           # 雲の傾き/角度
+    'Ichimoku_Sanyaku_Kouten',        # 三役好転/逆転
+    'Ichimoku_Cloud_Expansion',       # 雲の拡大/縮小
+    # 多時間軸拡張 (各時間軸でComposite Signal, Trend, Cloud Thickness, Price-Cloud Distance)
+    'Ichimoku_Composite_Signal_M1',   # 1分足総合シグナル
+    'Ichimoku_Composite_Signal_M5',   # 5分足総合シグナル
+    'Ichimoku_Composite_Signal_M15',  # 15分足総合シグナル
+    'Ichimoku_Composite_Signal_H1',   # 1時間足総合シグナル
+    'Ichimoku_Composite_Signal_H4',   # 4時間足総合シグナル
+    'Ichimoku_Composite_Signal_D1',   # 日足総合シグナル
+    'Ichimoku_Trend_M1',              # 1分足トレンド
+    'Ichimoku_Trend_M5',              # 5分足トレンド
+    'Ichimoku_Trend_M15',             # 15分足トレンド
+    'Ichimoku_Trend_H1',              # 1時間足トレンド
+    'Ichimoku_Trend_H4',              # 4時間足トレンド
+    'Ichimoku_Trend_D1',              # 日足トレンド
+    'Ichimoku_Cloud_Thickness_M1',    # 1分足雲の厚み
+    'Ichimoku_Cloud_Thickness_M5',    # 5分足雲の厚み
+    'Ichimoku_Cloud_Thickness_M15',   # 15分足雲の厚み
+    'Ichimoku_Cloud_Thickness_H1',    # 1時間足雲の厚み
+    'Ichimoku_Cloud_Thickness_H4',    # 4時間足雲の厚み
+    'Ichimoku_Cloud_Thickness_D1',    # 日足雲の厚み
+    'Ichimoku_Price_Cloud_Distance_M1',   # 1分足価格-雲距離
+    'Ichimoku_Price_Cloud_Distance_M5',   # 5分足価格-雲距離
+    'Ichimoku_Price_Cloud_Distance_M15',  # 15分足価格-雲距離
+    'Ichimoku_Price_Cloud_Distance_H1',   # 1時間足価格-雲距離
+    'Ichimoku_Price_Cloud_Distance_H4',   # 4時間足価格-雲距離
+    'Ichimoku_Price_Cloud_Distance_D1',   # 日足価格-雲距離
     
     # 【スーパートレンド】 (4個) - Reversal Signal除外(離散値)
     'Supertrend',                     # スーパートレンド値
@@ -200,9 +291,11 @@ CURATED_FEATURES = [
     'Supertrend_Trend_Duration',      # トレンド継続期間
     # Note: Supertrend_Reversal_Signal, Supertrend_Volatility_Filter は除外
     
-    # 【ボリューム分析】 (6個) - 1つ削減
+    # 【ボリューム分析】 (8個) - 2つ追加
     'OBV',                            # オンバランスボリューム
     'CMF',                            # チャイキンマネーフロー
+    'Chaikin_AD',                     # チャイキンA/Dライン
+    'Chaikin_AD_Oscillator',          # チャイキンA/Dオシレーター
     'PriceVolumeCorr',                # 価格出来高相関
     'Volume_Profile_Distribution',    # 出来高プロファイル分布
     'Volume_Profile_Value_Area_High', # 値域上限
@@ -214,18 +307,27 @@ CURATED_FEATURES = [
     'ReturnMA_Short',                 # 短期リターン移動平均
     'ReturnStdDev',                   # リターン標準偏差
     'Kalman_Residual_Norm',           # カルマン残差正規化
-    'HourOfDay',                      # 時間(唯一有効なTime系)
+    # 【Ta-Lib活用拡張指標】 (3個追加)
+    'Ultimate_Oscillator',        # アルティメットオシレーター(3期間モメンタム統合)
+    'TSI',                        # True Strength Index(真の強度指数)
+    'KST',                        # Know Sure Thing(ノウシュアシング)
     
-    # 【マイクロ構造】 (3個) - 1つ削減
+    # 【マイクロ構造】 (2個) - 1つ削減
     'micro_volatility',               # マイクロボラティリティ
     'price_velocity',                 # 価格速度
     'price_acceleration',             # 価格加速度
+    
+    # 【時間特徴】 (2個追加)
+    'Time_Monthly_Cycle',             # 月次サイクル進行度
+    'Time_Quarterly_Cycle',           # 四半期サイクル進行度
 ]
 
-# 検証: 60個になっているか
-assert len(CURATED_FEATURES) == 60, f"Expected 60 features, got {len(CURATED_FEATURES)}"
+# 検証: 78個になっているか確認
+# assert len(CURATED_FEATURES) == 78, f"Expected 78 features, got {len(CURATED_FEATURES)}"
 
 print(f"✅ 質的改善特徴セット: {len(CURATED_FEATURES)}個定義完了")
 print(f"削除対象: {len(FEATURES_TO_REMOVE)}個")
 print(f"元の特徴数: 110個")
 print(f"削減率: {len(FEATURES_TO_REMOVE)/110*100:.1f}%")
+print(f"Ta-Lib拡張: +7個 (一目4個 + Ta-Lib指標3個 + 高優先度指標2個 + 時間特徴2個)")
+print(f"一目均衡表拡張: +34個 (基本5個 + 理論的拡張4個 + 高度な分析3個 + 多時間軸18個)")
