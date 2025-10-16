@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added comprehensive unit tests for `DataGenerator` class in `test_data_generation.py` covering synthetic data generation, caching, and validation.
+- Added comprehensive unit tests for `TaLibWrapper` class in `test_talib_wrapper.py` covering technical indicators, input validation, and error handling.
 - Added `_archive_price_history` method to `LiveTrader` class for memory management by archiving price history to disk.
 - Added PositionManager integration in LiveTrader for better position and PnL management.
 - Added advanced auto-stop system initialization in LiveTrader.
