@@ -31,7 +31,19 @@
     "random_start": true,
     "curriculum_stage": "profit_optimized",
     "continuous_to_discrete_threshold": 0.1,
-    "feature_set": "curated"
+    "feature_set": "curated",
+    "adaptive_feature_selection": {
+      "enabled": true,
+      "regime_classifier": {
+        "adx_threshold": 25.0,
+        "volatility_percentile": 70.0
+      },
+      "attention_layer": {
+        "enabled": false,
+        "hidden_dim": 64
+      },
+      "min_weight_threshold": 0.4
+    }
   },
   "reward_settings": {
     "reward_scale": 500.0,
