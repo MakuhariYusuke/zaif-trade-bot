@@ -125,6 +125,17 @@ class CircuitBreaker:
                     )
             # CLOSED state: no action needed
 
+    def _on_success_sync(self) -> None:
+        """Handle successful operation (synchronous version)."""
+        # Create a new event loop for synchronous execution
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._on_success())
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
     async def _on_failure(self) -> None:
         """Handle failed operation."""
         async with self._lock:
@@ -145,6 +156,17 @@ class CircuitBreaker:
                     f"Circuit breaker '{self.name}' opened after {self.failure_count} failures"
                 )
 
+    def _on_failure_sync(self) -> None:
+        """Handle failed operation (synchronous version)."""
+        # Create a new event loop for synchronous execution
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._on_failure())
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
     def get_state(self) -> CircuitState:
         """Get current circuit breaker state."""
         return self.state
@@ -156,6 +178,24 @@ class CircuitBreaker:
         self.success_count = 0
         self.last_failure_time = None
         logger.info(f"Circuit breaker '{self.name}' manually reset")
+
+    def record_success(self) -> None:
+        """Record a successful operation (synchronous version)."""
+        try:
+            # Try to create task if event loop is running
+            asyncio.create_task(self._on_success())
+        except RuntimeError:
+            # No event loop, call synchronously
+            self._on_success_sync()
+
+    def record_failure(self) -> None:
+        """Record a failed operation (synchronous version)."""
+        try:
+            # Try to create task if event loop is running
+            asyncio.create_task(self._on_failure())
+        except RuntimeError:
+            # No event loop, call synchronously
+            self._on_failure_sync()
 
 
 # Global registry
