@@ -12,6 +12,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import numpy as np
 from pathlib import Path
+from ztb.trading.constants import ACTION_SELL
 
 
 class TestShouldTradeSellBiasLogic:
@@ -44,7 +45,6 @@ class TestShouldTradeSellBiasLogic:
         
         # Import and call the actual method
         from ztb.trading.live_trader.live_trader import LiveTrader
-        ACTION_SELL = 2
         result = LiveTrader._should_trade_sell_bias(mock_trader, ACTION_SELL)
         
         assert result is False, "Bug #33: SELL warmup should block flat->short opening"
@@ -68,7 +68,6 @@ class TestShouldTradeSellBiasLogic:
         }
         
         from ztb.trading.live_trader.live_trader import LiveTrader
-        ACTION_SELL = 2
         result = LiveTrader._should_trade_sell_bias(mock_trader, ACTION_SELL)
         
         assert result is True, "Bug #33: Long closes should be allowed during warmup"
@@ -232,23 +231,28 @@ class TestLiveTraderInitialization:
         mock_model_loading.return_value = Mock()
         mock_model_loading.return_value._load_model.return_value = Mock()
 
-        # Create minimal config
-        config = {
-            "price_history_length": 100,
-            "max_daily_loss": 100000,
-            "max_daily_trades": 100,
-            "emergency_stop_loss": 0.1
-        }
+        with patch('ztb.trading.live_trader.live_trader.prometheus_available', False):
+            # Use existing file as model path
+            model_path = Path("package.json")
 
-        # This should not raise an exception due to error handling
-        trader = LiveTrader(
-            model_path="dummy_path.zip",
-            config=config,
-            disable_risk_limits=False,
-            dry_run=False
-        )
+            # Create minimal config
+            config = {
+                "price_history_length": 100,
+                "max_daily_loss": 100000,
+                "max_daily_trades": 100,
+                "emergency_stop_loss": 0.1
+            }
 
-        # Verify trader was created but adapter is None
+            # This should not raise an exception due to error handling
+            trader = LiveTrader(
+                model_path=model_path,
+                config=config,
+                disable_risk_limits=False,
+                dry_run=False
+            )
+
+            # Verify trader was created but adapter is None
+            assert trader.exchange_adapter is None
         assert trader.exchange_adapter is None
 
     @patch('ztb.trading.live_trader.live_trader.get_broker_registry')
@@ -265,10 +269,14 @@ class TestLiveTraderInitialization:
         mock_registry.return_value.get_broker.return_value = mock_broker
 
         # Mock model loading
-        with patch('ztb.trading.live_trader.live_trader.ModelLoading') as mock_model_loading:
+        with patch('ztb.trading.live_trader.live_trader.ModelLoading') as mock_model_loading, \
+             patch('ztb.trading.live_trader.live_trader.prometheus_available', False):
             mock_model_instance = Mock()
             mock_model_loading.return_value = mock_model_instance
             mock_model_instance._load_model.return_value = Mock()
+
+            # Use existing file as model path
+            model_path = Path("package.json")
 
             config = {
                 "price_history_length": 100,
@@ -284,7 +292,7 @@ class TestLiveTraderInitialization:
 
             try:
                 trader = LiveTrader(
-                    model_path="dummy_path.zip",
+                    model_path=model_path,
                     config=config,
                     disable_risk_limits=False,
                     dry_run=False
@@ -303,12 +311,21 @@ class TestLiveTraderInitialization:
         """Test dry-run mode initialization works correctly."""
         from ztb.trading.live_trader.live_trader import LiveTrader
 
-        trader = LiveTrader(
-            model_path="dummy_path.zip",
-            config=None,
-            disable_risk_limits=True,
-            dry_run=True
-        )
+        # Mock model loading
+        with patch('ztb.trading.live_trader.live_trader.ModelLoading') as mock_model_loading:
+            mock_model_instance = Mock()
+            mock_model_loading.return_value = mock_model_instance
+            mock_model_instance._load_model.return_value = Mock()
+
+            # Use existing file as model path
+            model_path = Path("package.json")
+
+            trader = LiveTrader(
+                model_path=model_path,
+                config=None,
+                disable_risk_limits=True,
+                dry_run=True
+            )
 
         # Verify dry-run specific attributes
         assert trader.dry_run is True

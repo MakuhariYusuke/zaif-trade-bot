@@ -9,16 +9,23 @@ import hmac
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, Literal
 
 import requests
 
 from ztb.utils.rate_limiter import RateLimiter
+from ztb.utils.errors import InsufficientFundsError, MinimumSizeError
 
 from ..base.adapter import BaseExchangeAdapter
 from ..base.broker_interfaces import Balance, Order, Position
 
 logger = logging.getLogger(__name__)
+
+
+# Type definitions for API responses
+BitFlyerOrderResponse = Dict[str, Union[str, int, float]]
+BitFlyerBalanceResponse = List[Dict[str, Union[str, float]]]
+BitFlyerErrorResponse = Dict[str, str]
 
 
 class BitFlyerAdapter(BaseExchangeAdapter):
@@ -65,7 +72,20 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     def _generate_signature(
         self, timestamp: str, method: str, path: str, body: str = ""
     ) -> str:
-        """Generate HMAC-SHA256 signature for bitFlyer API authentication."""
+        """Generate HMAC-SHA256 signature for bitFlyer API.
+
+        Args:
+            timestamp: Request timestamp
+            method: HTTP method
+            path: API endpoint path
+            body: Request body
+
+        Returns:
+            Hexadecimal signature string
+
+        Raises:
+            ValueError: If API secret is not set
+        """
         if not self.api_secret:
             raise ValueError("API secret is required for authentication")
 
@@ -91,8 +111,37 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         }
 
     async def _make_request(
-        self, method: str, path: str, data: Optional[Dict[str, Any]] = None
+        self,
+        method: Literal["GET", "POST"],
+        path: str,
+        data: Optional[Dict[str, Any]] = None
     ) -> Any:
+        """Make authenticated API request to bitFlyer.
+
+        Args:
+            method: HTTP method
+            path: API endpoint path
+            data: Request data for POST requests
+
+        Returns:
+            API response
+
+        Raises:
+            Exception: For API errors
+        """
+        """Make authenticated API request to bitFlyer.
+
+        Args:
+            method: HTTP method
+            path: API endpoint path
+            data: Request data for POST requests
+
+        Returns:
+            API response
+
+        Raises:
+            Exception: For API errors
+        """
         """Make authenticated API request to bitFlyer."""
         url = self.BASE_URL + path
         body = json.dumps(data) if data else ""
@@ -186,8 +235,19 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             self._orders[order_id] = order
             return order
         except Exception as e:
-            logger.error(f"Failed to place order on bitFlyer: {e}")
-            raise
+            error_msg = str(e)
+            logger.error(f"Failed to place order on bitFlyer: {error_msg}")
+            
+            # Check for specific API errors and raise appropriate exceptions
+            if "insufficient funds" in error_msg.lower():
+                logger.warning(f"Order failed due to insufficient funds: {error_msg}")
+                raise InsufficientFundsError(f"Insufficient funds for {side} order of {quantity} {symbol}")
+            elif "minimum" in error_msg.lower() or "size" in error_msg.lower():
+                logger.warning(f"Order failed due to minimum size requirements: {error_msg}")
+                raise MinimumSizeError(f"Order size {quantity} below minimum requirements")
+            else:
+                # Re-raise other errors
+                raise
 
     async def _cancel_order_real(self, order_id: str) -> bool:
         """Cancel order via bitFlyer API."""
@@ -201,8 +261,16 @@ class BitFlyerAdapter(BaseExchangeAdapter):
 
             return True
         except Exception as e:
-            logger.error(f"Failed to cancel order on bitFlyer: {e}")
-            return False
+            error_msg = str(e)
+            logger.error(f"Failed to cancel order on bitFlyer: {error_msg}")
+            
+            # Check for specific API errors
+            if "not found" in error_msg.lower() or "already cancelled" in error_msg.lower():
+                logger.warning(f"Order cancellation failed (order may have already executed or been cancelled): {error_msg}")
+                return False
+            else:
+                # Re-raise other errors
+                raise
 
     async def _get_order_status_real(self, order_id: str) -> Optional[Order]:
         """Get order status from bitFlyer API."""
