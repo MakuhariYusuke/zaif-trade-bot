@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Train SAC v421 with balanced trading strategy.
+Train SAC v422 with balanced trading strategy.
 """
 
 import json
@@ -21,8 +21,8 @@ from ztb.training.unified_trainer.main import main as train_main
 
 
 def main():
-    """Train SAC v421 model with balanced trading strategy."""
-    config_path = "config/sac_v421_balanced_trading_config.json"
+    """Train SAC v422 model with balanced trading strategy."""
+    config_path = "config/sac_v422_balanced_trading_config.json"
 
     if not os.path.exists(config_path):
         print(f"Config file not found: {config_path}")
@@ -53,7 +53,7 @@ def main():
 
     print("Starting training with unified trainer...")
     # Use unified trainer
-    sys.argv = ['train_sac_v421.py', '--config', config_path, '--force']
+    sys.argv = ['train_sac_v422.py', '--config', config_path, '--force']
     train_main()
 
 
