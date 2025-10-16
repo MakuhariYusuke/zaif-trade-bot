@@ -11,6 +11,20 @@ import pandas as pd
 from ztb.features.registry import FeatureRegistry
 
 
+@FeatureRegistry.register("Time_Monthly_Cycle")
+def compute_time_monthly_cycle(df: pd.DataFrame) -> pd.Series:
+    """Monthly cycle progress (0-1, where 1 is end of month)"""
+    extended_features = calculate_time_features_extended(df)
+    return extended_features["time_monthly_cycle"]
+
+
+@FeatureRegistry.register("Time_Quarterly_Cycle")
+def compute_time_quarterly_cycle(df: pd.DataFrame) -> pd.Series:
+    """Quarterly cycle progress (0-1, where 1 is end of quarter)"""
+    extended_features = calculate_time_features_extended(df)
+    return extended_features["time_quarterly_cycle"]
+
+
 @FeatureRegistry.register("Time_Session")
 def compute_time_session(df: pd.DataFrame) -> pd.Series:
     """Market Session (0=pre-market, 1=regular, 2=after-hours)"""
@@ -143,6 +157,35 @@ def calculate_time_features_extended(df: pd.DataFrame) -> pd.DataFrame:
         0,  # Outside regular session
     )
 
+    # Monthly cycle progress (0-1, where 1 is end of month)
+    if isinstance(datetime_index, pd.DatetimeIndex):
+        days_in_month = datetime_index.days_in_month
+        day_of_month = datetime_index.day
+        result["time_monthly_cycle"] = (day_of_month - 1) / (days_in_month - 1)
+    else:
+        # Fallback for non-DatetimeIndex
+        result["time_monthly_cycle"] = np.nan
+
+    # Quarterly cycle progress (0-1, where 1 is end of quarter)
+    if isinstance(datetime_index, pd.DatetimeIndex):
+        quarter_start_month = ((result["time_quarter"] - 1) * 3) + 1
+        quarter_end_month = result["time_quarter"] * 3
+
+        # Calculate approximate days in quarter (simplified)
+        # Q1: 90-91 days, Q2: 91 days, Q3: 92 days, Q4: 92 days
+        quarter_days = result["time_quarter"].map({1: 91, 2: 91, 3: 92, 4: 92})
+
+        # Calculate day of quarter (simplified approximation)
+        month_in_quarter = result["time_month"] - quarter_start_month + 1
+        days_before_current_month = (month_in_quarter - 1) * 30.44  # Average days per month
+        day_of_month = datetime_index.day
+        day_of_quarter = days_before_current_month + day_of_month
+
+        result["time_quarterly_cycle"] = day_of_quarter / quarter_days
+    else:
+        # Fallback for non-DatetimeIndex
+        result["time_quarterly_cycle"] = np.nan
+
     return result
 
 
@@ -156,6 +199,8 @@ def time_feature_summary() -> dict[str, str]:
         "time_hour_of_day": "Hour of day (0-23)",
         "time_month": "Month of year (1-12)",
         "time_quarter": "Quarter of year (1-4)",
+        "time_monthly_cycle": "Monthly cycle progress (0-1, where 1 is end of month)",
+        "time_quarterly_cycle": "Quarterly cycle progress (0-1, where 1 is end of quarter)",
         "time_is_weekend": "Is weekend (1=yes, 0=no)",
         "time_is_business_day": "Is business day (1=yes, 0=no)",
         "time_volatility_adjustment": "Time-based volatility multiplier",

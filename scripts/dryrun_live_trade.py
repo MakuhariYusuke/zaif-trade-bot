@@ -4,6 +4,7 @@ Dry-run script for modularized live trader.
 """
 
 import argparse
+import asyncio
 import sys
 import os
 
@@ -21,16 +22,20 @@ def main():
 
     args = parser.parse_args()
 
-    # Create live trader instance
-    print("Creating LiveTrader instance...")
-    trader = LiveTrader(
-        model_path=args.model_path,
-        dry_run=True
-    )
-    print("LiveTrader instance created successfully")
+    async def run_trading():
+        # Create live trader instance
+        print("Creating LiveTrader instance...")
+        trader = LiveTrader(
+            model_path=args.model_path,
+            dry_run=True
+        )
+        print("LiveTrader instance created successfully")
 
-    # Run trading loop
-    trader.run_trading_loop(duration_hours=args.duration)
+        # Run trading loop
+        await trader.run_trading_loop(duration_hours=args.duration)
+
+    # Run async function
+    asyncio.run(run_trading())
 
 
 if __name__ == "__main__":

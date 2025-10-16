@@ -10,13 +10,45 @@ import logging
 import random
 import time
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional, TypedDict, Union
 
+from ztb.utils.errors import InsufficientFundsError, MinimumSizeError, OrderNotFoundError, TradingBotError
 from ztb.utils.rate_limiter import RateLimitConfig, RateLimiter
 
 from .broker_interfaces import Balance, IBroker, Order, Position
 
 logger = logging.getLogger(__name__)
+
+
+# Type definitions for better type safety
+class BaseOrderResponse(TypedDict, total=False):
+    """Base response structure for order operations."""
+    order_id: str
+    symbol: str
+    side: Union[Literal["buy"], Literal["sell"]]
+    quantity: float
+    price: Optional[float]
+    order_type: Union[Literal["market"], Literal["limit"]]
+    status: str
+    client_order_id: Optional[str]
+    timestamp: Optional[int]
+
+
+class BaseBalanceResponse(TypedDict, total=False):
+    """Base response structure for balance operations."""
+    currency: str
+    free: float
+    locked: float
+    total: float
+
+
+class BasePositionResponse(TypedDict, total=False):
+    """Base response structure for position operations."""
+    symbol: str
+    quantity: float
+    avg_price: float
+    current_price: float
+    pnl: float
 
 
 class BaseExchangeAdapter(IBroker, ABC):
@@ -102,15 +134,21 @@ class BaseExchangeAdapter(IBroker, ABC):
     async def _place_order_dry_run(
         self,
         symbol: str,
-        side: str,
+        side: Union[str, Literal["buy"], Literal["sell"]],
         quantity: float,
         price: Optional[float] = None,
-        order_type: str = "market",
+        order_type: Union[str, Literal["market"], Literal["limit"]] = "market",
         client_order_id: Optional[str] = None,
         sizing_reason: Optional[str] = None,
         target_vol: Optional[float] = None,
     ) -> Order:
         """Place order in dry-run mode."""
+        # Validate minimum order size
+        if quantity <= 0.00001:  # Minimum BTC order size
+            raise MinimumSizeError(
+                f"Order quantity {quantity} is below minimum size requirement (0.00001 BTC)"
+            )
+
         order_id = self._generate_order_id()
         current_price = self._current_prices.get(symbol, 5000000.0)
 
@@ -127,42 +165,49 @@ class BaseExchangeAdapter(IBroker, ABC):
             # Update balances/positions
             if side == "buy":
                 cost = exec_price * quantity
-                if self._balances["JPY"].free >= cost:
-                    self._balances["JPY"].free -= cost
-                    self._balances["JPY"].total -= cost
-                    # Add to position
-                    if symbol in self._positions:
-                        pos = self._positions[symbol]
-                        total_qty = pos.quantity + quantity
-                        total_cost = (pos.quantity * pos.avg_price) + (
-                            quantity * exec_price
-                        )
-                        new_avg = total_cost / total_qty
-                        pos.quantity = total_qty
-                        pos.avg_price = new_avg
-                        pos.current_price = exec_price
-                        pos.pnl = (exec_price - pos.avg_price) * total_qty
-                    else:
-                        self._positions[symbol] = Position(
-                            symbol=symbol,
-                            quantity=quantity,
-                            avg_price=exec_price,
-                            current_price=exec_price,
-                            pnl=0.0,
-                        )
+                if self._balances["JPY"].free < cost:
+                    raise InsufficientFundsError(
+                        f"Insufficient JPY balance for buy order. Required: {cost}, Available: {self._balances['JPY'].free}"
+                    )
+                self._balances["JPY"].free -= cost
+                self._balances["JPY"].total -= cost
+                # Add to position
+                if symbol in self._positions:
+                    pos = self._positions[symbol]
+                    total_qty = pos.quantity + quantity
+                    total_cost = (pos.quantity * pos.avg_price) + (
+                        quantity * exec_price
+                    )
+                    new_avg = total_cost / total_qty
+                    pos.quantity = total_qty
+                    pos.avg_price = new_avg
+                    pos.current_price = exec_price
+                    pos.pnl = (exec_price - pos.avg_price) * total_qty
+                else:
+                    self._positions[symbol] = Position(
+                        symbol=symbol,
+                        quantity=quantity,
+                        avg_price=exec_price,
+                        current_price=exec_price,
+                        pnl=0.0,
+                    )
             elif side == "sell":
                 if (
-                    symbol in self._positions
-                    and self._positions[symbol].quantity >= quantity
+                    symbol not in self._positions
+                    or self._positions[symbol].quantity < quantity
                 ):
-                    pos = self._positions[symbol]
-                    proceeds = exec_price * quantity
-                    self._balances["JPY"].free += proceeds
-                    pos.quantity -= quantity
-                    pos.current_price = exec_price
-                    pos.pnl = (exec_price - pos.avg_price) * pos.quantity
-                    if pos.quantity <= 0:
-                        del self._positions[symbol]
+                    available_qty = self._positions.get(symbol, Position(symbol, 0, 0, 0, 0)).quantity
+                    raise InsufficientFundsError(
+                        f"Insufficient {symbol} position for sell order. Required: {quantity}, Available: {available_qty}"
+                    )
+                pos = self._positions[symbol]
+                proceeds = exec_price * quantity
+                self._balances["JPY"].free += proceeds
+                pos.quantity -= quantity
+                pos.current_price = exec_price
+                pos.pnl = (exec_price - pos.avg_price) * pos.quantity
+                if pos.quantity <= 0:
+                    del self._positions[symbol]
         else:
             status = "pending"  # Simulate unfilled order
 
@@ -184,15 +229,19 @@ class BaseExchangeAdapter(IBroker, ABC):
 
     async def _cancel_order_dry_run(self, order_id: str) -> bool:
         """Cancel order in dry-run mode."""
-        if order_id in self._orders:
-            order = self._orders[order_id]
-            if order.status == "pending":
-                order.status = "cancelled"
-                return True
+        if order_id not in self._orders:
+            raise OrderNotFoundError(f"Order with ID {order_id} not found")
+
+        order = self._orders[order_id]
+        if order.status == "pending":
+            order.status = "cancelled"
+            return True
         return False
 
     async def _get_order_status_dry_run(self, order_id: str) -> Optional[Order]:
         """Get order status in dry-run mode."""
+        if order_id not in self._orders:
+            raise OrderNotFoundError(f"Order with ID {order_id} not found")
         return self._orders.get(order_id)
 
     async def _get_open_orders_dry_run(
@@ -225,10 +274,10 @@ class BaseExchangeAdapter(IBroker, ABC):
     async def _place_order_real(
         self,
         symbol: str,
-        side: str,
+        side: Union[str, Literal["buy"], Literal["sell"]],
         quantity: float,
         price: Optional[float] = None,
-        order_type: str = "market",
+        order_type: Union[str, Literal["market"], Literal["limit"]] = "market",
         client_order_id: Optional[str] = None,
         sizing_reason: Optional[str] = None,
         target_vol: Optional[float] = None,
