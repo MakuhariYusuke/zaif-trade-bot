@@ -22,6 +22,7 @@ from ztb.trading.environment.components import (
     RewardCalculator,
     StreamingHandler,
 )
+from ztb.features.adaptive_selection import AdaptiveFeatureSelector
 from ztb.utils.errors import ValidationError
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root, safe_path_join
@@ -251,6 +252,42 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
     max_features_limit = _resolve_max_features_limit(self, max_features)
     if max_features_limit and len(self.features) > max_features_limit:
         _enforce_feature_limit(self, max_features_limit)
+
+    # Apply adaptive feature selection if enabled
+    adaptive_selection_config = getattr(self.config, "adaptive_feature_selection", None)
+    if adaptive_selection_config and getattr(adaptive_selection_config, "enabled", False):
+        logger.info("Applying adaptive feature selection...")
+        try:
+            selector = AdaptiveFeatureSelector(adaptive_selection_config)
+            # Store the selector instance for potential reuse
+            self.adaptive_feature_selector = selector
+            selected_features, selection_stats = selector.select_features(
+                self.df, self.features
+            )
+            if len(selected_features) > 0:
+                removed_count = len(self.features) - len(selected_features)
+                self.features = selected_features
+                logger.info(
+                    "Applied adaptive feature selection",
+                    extra={
+                        "removed_count": removed_count,
+                        "remaining": len(self.features),
+                        "regime": selection_stats.get("regime"),
+                        "attention_weighted": selection_stats.get("attention_weighted"),
+                        "selection_threshold": selection_stats.get("selection_threshold"),
+                    },
+                )
+            else:
+                logger.warning(
+                    "Adaptive feature selection returned no features, keeping original set",
+                    extra={"original_count": len(self.features)},
+                )
+        except Exception as exc:
+            logger.warning(
+                "Failed to apply adaptive feature selection: %s",
+                exc,
+                exc_info=True,
+            )
 
     self.data_processor.apply_feature_storage_dtype(
         self.df, self.features, self.config.__dict__
