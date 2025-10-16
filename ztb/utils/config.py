@@ -9,6 +9,12 @@ import logging
 import os
 from typing import Any, Optional, TypeVar, Dict, List, cast
 
+try:
+    import jsonschema
+    JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    JSONSCHEMA_AVAILABLE = False
+
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -18,6 +24,24 @@ T = TypeVar('T')
 
 class ZTBConfig:
     """Central configuration management for all ZTB components"""
+
+    # Configuration schema for validation
+    CONFIG_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "ZTB_MEM_PROFILE": {"type": "boolean"},
+            "ZTB_CUDA_WARN_GB": {"type": "number", "minimum": 0},
+            "ZTB_LOG_LEVEL": {"enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]},
+            "ZTB_CHECKPOINT_INTERVAL": {"type": "integer", "minimum": 1},
+            "ZTB_MAX_MEMORY_GB": {"type": "number", "minimum": 0},
+            "ZTB_TEST_ISOLATION": {"type": "boolean"},
+            "ZTB_FLOAT_TOLERANCE": {"type": "number", "minimum": 0},
+            "ZTB_MODEL_DIR": {"type": "string"},
+            "ZTB_CACHE_SIZE": {"type": "integer", "minimum": 1},
+            "ZTB_ENABLE_PROFILING": {"type": "boolean"},
+        },
+        "additionalProperties": True
+    }
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value from environment variables"""
@@ -72,6 +96,123 @@ class ZTBConfig:
             value = os.getenv(var)
             if value is not None:
                 logger.info(f"  {var}={value}")
+
+    def validate_config(self) -> bool:
+        """
+        Validate current configuration against schema.
+
+        Returns:
+            True if configuration is valid, False otherwise
+        """
+        if not JSONSCHEMA_AVAILABLE:
+            logger.warning("jsonschema not available, skipping configuration validation")
+            return True
+
+        # Collect current configuration
+        config_dict = {}
+        for key in self.CONFIG_SCHEMA.get("properties", {}):
+            value = os.getenv(key)
+            if value is not None:
+                # Convert string values to appropriate types
+                if key in ["ZTB_MEM_PROFILE", "ZTB_TEST_ISOLATION", "ZTB_ENABLE_PROFILING"]:
+                    config_dict[key] = value.lower() in ("true", "1", "yes", "on")
+                elif key in ["ZTB_CUDA_WARN_GB", "ZTB_MAX_MEMORY_GB", "ZTB_FLOAT_TOLERANCE"]:
+                    try:
+                        config_dict[key] = float(value)
+                    except ValueError:
+                        logger.error(f"Invalid float value for {key}: {value}")
+                        return False
+                elif key in ["ZTB_CHECKPOINT_INTERVAL", "ZTB_CACHE_SIZE"]:
+                    try:
+                        config_dict[key] = int(value)
+                    except ValueError:
+                        logger.error(f"Invalid integer value for {key}: {value}")
+                        return False
+                else:
+                    config_dict[key] = value
+
+        try:
+            jsonschema.validate(instance=config_dict, schema=self.CONFIG_SCHEMA)
+            logger.info("Configuration validation passed")
+            return True
+        except jsonschema.ValidationError as e:
+            logger.error(f"Configuration validation failed: {e.message}")
+            return False
+        except Exception as e:
+            logger.error(f"Configuration validation error: {e}")
+            return False
+
+    def get_validated_config(self) -> Dict[str, Any]:
+        """
+        Get validated configuration as a dictionary.
+
+        Returns:
+            Dictionary of validated configuration values
+        """
+        if not self.validate_config():
+            raise ValueError("Configuration validation failed")
+
+        config = {}
+        for key in self.CONFIG_SCHEMA.get("properties", {}):
+            value = os.getenv(key)
+            if value is not None:
+                config[key] = value
+
+        return config
+
+    def get_environment(self) -> str:
+        """
+        Get current environment (development, testing, production).
+
+        Returns:
+            Environment name
+        """
+        return cast(str, self.get("ZTB_ENV", "development"))
+
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.get_environment() == "development"
+
+    def is_testing(self) -> bool:
+        """Check if running in testing environment."""
+        return self.get_environment() == "testing"
+
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.get_environment() == "production"
+
+    def get_environment_config(self) -> Dict[str, Any]:
+        """
+        Get environment-specific configuration overrides.
+
+        Returns:
+            Dictionary of environment-specific configuration
+        """
+        env = self.get_environment()
+
+        # Base configuration for all environments
+        config = {
+            "debug": self.is_development(),
+            "log_level": "DEBUG" if self.is_development() else "INFO",
+            "enable_profiling": self.is_development(),
+            "strict_validation": not self.is_testing(),
+        }
+
+        # Environment-specific overrides
+        if env == "testing":
+            config.update({
+                "cache_size": 64,  # Smaller cache for testing
+                "max_memory_gb": 2.0,  # Lower memory limit for testing
+                "test_isolation": True,
+            })
+        elif env == "production":
+            config.update({
+                "cache_size": 512,  # Larger cache for production
+                "max_memory_gb": 16.0,  # Higher memory limit for production
+                "enable_profiling": False,  # Disable profiling in production
+            })
+
+        return config
 
     def get_model_dir(self) -> str:
         """Get the base directory for model files."""
