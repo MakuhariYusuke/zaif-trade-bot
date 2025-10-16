@@ -18,6 +18,7 @@ import pandas as pd
 from ztb.utils.errors import safe_operation, ZTBError
 from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.path_utils import ensure_dir
+from ztb.utils.performance_utils import timed
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class DataGenerator:
         if self.cache_dir and self.cache_dir.exists():
             ensure_dir(self.cache_dir)
 
+    @timed
     def generate_synthetic_market_data(
         self,
         n_samples: int = 10000,
@@ -81,6 +83,7 @@ class DataGenerator:
             seed=actual_seed,
         )
 
+    @timed
     def _generate_synthetic_market_data_impl(
         self,
         n_samples: int,
