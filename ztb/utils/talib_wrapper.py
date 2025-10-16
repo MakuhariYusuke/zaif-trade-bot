@@ -42,6 +42,8 @@ if not TALIB_AVAILABLE:
 
 logger = logging.getLogger(__name__)
 
+from ztb.utils.performance_utils import timed
+
 
 class TaLibError(Exception):
     """Custom exception for Ta-Lib related errors."""
@@ -144,6 +146,7 @@ class TaLibWrapper:
         key_data = f"{func_name}_{str(args)}_{str(sorted(kwargs.items()))}"
         return hashlib.md5(key_data.encode()).hexdigest()
 
+    @timed
     def sma(self, data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """
         Simple Moving Average.
@@ -197,6 +200,7 @@ class TaLibWrapper:
         except Exception as e:
             raise TaLibError(f"SMA calculation failed: {e}")
 
+    @timed
     def ema(self, data: Union[NDArray[np.float64], pd.Series], period: int) -> NDArray[np.float64]:
         """
         Exponential Moving Average.
@@ -247,6 +251,7 @@ class TaLibWrapper:
         except Exception as e:
             raise TaLibError(f"EMA calculation failed: {e}")
 
+    @timed
     def rsi(self, data: Union[NDArray[np.float64], pd.Series], period: int = 14) -> NDArray[np.float64]:
         """
         Relative Strength Index.
