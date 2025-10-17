@@ -64,6 +64,7 @@ class UnifiedTrainer:
         stream_batch_size: int = 256,
         max_features: Optional[int] = None,
         total_timesteps: Optional[int] = None,
+        gradient_accumulation_steps: int = 1,
     ):
         """
         Initialize UnifiedTrainer.
@@ -76,6 +77,7 @@ class UnifiedTrainer:
             stream_batch_size: Batch size for streaming
             max_features: Maximum number of features
             total_timesteps: Override total_timesteps from config (for quick validation runs)
+            gradient_accumulation_steps: Number of steps to accumulate gradients
         """
         # Store configuration
         self.config = config
@@ -85,6 +87,7 @@ class UnifiedTrainer:
         self.stream_batch_size = stream_batch_size
         self.max_features = max_features
         self.total_timesteps = total_timesteps
+        self.gradient_accumulation_steps = gradient_accumulation_steps
 
         # Initialize components
         self.logger = get_logger(__name__)
@@ -207,7 +210,12 @@ class UnifiedTrainer:
 
             # Create algorithm trainer
             self.logger.info(f"Creating {algorithm.upper()} trainer...")
-            self.algorithm_trainer = create_algorithm_trainer(algorithm, self.config, self.logger)
+            self.algorithm_trainer = create_algorithm_trainer(
+                algorithm, 
+                self.config, 
+                self.logger, 
+                gradient_accumulation_steps=self.gradient_accumulation_steps
+            )
 
             # Start training UI
             self.ui.start_training()
