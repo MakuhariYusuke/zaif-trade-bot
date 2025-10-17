@@ -11,14 +11,16 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
+import torch
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.trading.environment.constants import continuous_to_discrete_action
-from ztb.utils.logging_utils import get_logger
+from ztb.trading.environment.components.memory_manager import MemoryManager
+from ztb.multimodal.pretraining import SelfSupervisedTrainer as SSPTrainer
+from ztb.multimodal.pretraining.config import get_config as get_ssp_config
 
 
 class TrainingProgressCallback(BaseCallback):
@@ -321,6 +323,155 @@ class PPOTrainer(BaseAlgorithmTrainer):
         return {}
 
 
+class SelfSupervisedTrainer(BaseAlgorithmTrainer):
+    """Self-supervised pre-training trainer for financial data."""
+
+    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None):
+        """Initialize self-supervised trainer."""
+        super().__init__(config, logger)
+        self.ssp_trainer = None
+        self.train_data = None
+        self.val_data = None
+
+        # Initialize memory manager for self-supervised training
+        memory_log_path = self.config.get('memory_log_path', 'logs/memory_self_supervised.csv')
+        self.memory_manager = MemoryManager(
+            memory_log_path=memory_log_path,
+            memory_logging_enabled=self.config.get('memory_logging_enabled', True),
+            memory_log_interval_steps=self.config.get('memory_log_interval', 1000)
+        )
+
+    def validate_config(self) -> bool:
+        """Validate self-supervised pre-training configuration."""
+        required_keys = ['input_dim', 'device']
+        for key in required_keys:
+            if key not in self.config:
+                self.logger.error(f"Missing required configuration key: {key}")
+                return False
+
+        # Validate data paths if provided
+        if 'train_data_path' in self.config:
+            if not os.path.exists(self.config['train_data_path']):
+                self.logger.error(f"Training data file not found: {self.config['train_data_path']}")
+                return False
+
+        if 'val_data_path' in self.config:
+            if not os.path.exists(self.config['val_data_path']):
+                self.logger.error(f"Validation data file not found: {self.config['val_data_path']}")
+                return False
+
+        self.logger.info("Self-supervised pre-training configuration validated successfully")
+        return True
+
+    def _load_data(self) -> bool:
+        """Load training and validation data."""
+        try:
+            input_dim = self.config['input_dim']
+
+            # Load training data
+            if 'train_data_path' in self.config:
+                self.logger.info(f"Loading training data from {self.config['train_data_path']}")
+                train_df = pd.read_csv(self.config['train_data_path'])
+                # Convert to tensor format (assuming CSV has time series data)
+                # This is a simplified example - adjust based on actual data format
+                self.train_data = torch.tensor(train_df.values, dtype=torch.float32)
+                self.train_data = self.train_data.unsqueeze(0)  # Add batch dimension if needed
+            else:
+                self.logger.warning("No training data path provided, using synthetic data for demonstration")
+                # Generate synthetic data for demonstration
+                batch_size = self.config.get('synthetic_batch_size', 100)
+                seq_len = self.config.get('seq_len', 100)
+                self.train_data = torch.randn(batch_size, seq_len, input_dim)
+
+            # Load validation data
+            if 'val_data_path' in self.config:
+                self.logger.info(f"Loading validation data from {self.config['val_data_path']}")
+                val_df = pd.read_csv(self.config['val_data_path'])
+                self.val_data = torch.tensor(val_df.values, dtype=torch.float32)
+                self.val_data = self.val_data.unsqueeze(0)
+            else:
+                # Generate synthetic validation data
+                val_batch_size = self.config.get('synthetic_val_batch_size', 20)
+                seq_len = self.config.get('seq_len', 100)
+                self.val_data = torch.randn(val_batch_size, seq_len, input_dim)
+
+            self.logger.info(f"Data loaded - Train: {self.train_data.shape}, Val: {self.val_data.shape}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Failed to load data: {e}")
+            return False
+
+    def train(self) -> bool:
+        """Execute self-supervised pre-training."""
+        try:
+            self.logger.info("Starting self-supervised pre-training")
+
+            # Log initial memory usage
+            self.memory_manager.log_memory_usage("SSP_training_start")
+
+            # Load data
+            if not self._load_data():
+                return False
+
+            # Initialize self-supervised trainer with memory manager
+            self.ssp_trainer = SSPTrainer(
+                input_dim=self.config['input_dim'],
+                device=self.config.get('device', 'cuda' if torch.cuda.is_available() else 'cpu'),
+                checkpoint_dir=self.config.get('checkpoint_dir', 'checkpoints/pretraining'),
+                memory_manager=self.memory_manager
+            )
+
+            # Get training configuration
+            ssp_config_type = self.config.get('config_type', 'default')
+            ssp_config = get_ssp_config(ssp_config_type)
+
+            # Override with custom config if provided
+            if 'custom_config' in self.config:
+                from ztb.multimodal.pretraining.config import update_config
+                ssp_config = update_config(ssp_config, self.config['custom_config'])
+
+            # Train all stages
+            self.logger.info(f"Training with configuration: {ssp_config_type}")
+            self.ssp_trainer.train_all_stages(self.train_data, self.val_data, ssp_config)
+
+            # Save final checkpoint
+            checkpoint_name = self.config.get('checkpoint_name', 'final')
+            self.ssp_trainer.save_checkpoint(checkpoint_name)
+
+            # Save training history
+            history_path = self.config.get('history_path', 'training_history.json')
+            self.ssp_trainer.save_training_history(history_path)
+
+            # Log final memory usage
+            self.memory_manager.log_memory_usage("SSP_training_complete")
+
+            # Memory cleanup
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            self.logger.info("Self-supervised pre-training completed successfully")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Self-supervised pre-training failed: {e}")
+            return False
+
+    def get_training_stats(self) -> Dict[str, Any]:
+        """Get training statistics."""
+        if self.ssp_trainer is None:
+            return {}
+
+        return {
+            'training_history': self.ssp_trainer.training_history,
+            'encoders_available': list(self.ssp_trainer.get_pretrained_encoders().keys()),
+            'data_shapes': {
+                'train': self.train_data.shape if self.train_data is not None else None,
+                'val': self.val_data.shape if self.val_data is not None else None
+            }
+        }
+
+
 def create_algorithm_trainer(algorithm: str, config: Dict[str, Any], logger: Optional[logging.Logger] = None) -> BaseAlgorithmTrainer:
     """Factory function to create algorithm-specific trainer."""
     algorithm = algorithm.lower()
@@ -329,5 +480,7 @@ def create_algorithm_trainer(algorithm: str, config: Dict[str, Any], logger: Opt
         return SACTrainer(config, logger)
     elif algorithm == "ppo":
         return PPOTrainer(config, logger)
+    elif algorithm == "self_supervised":
+        return SelfSupervisedTrainer(config, logger)
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}")

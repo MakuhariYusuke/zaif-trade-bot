@@ -28,6 +28,13 @@ from ztb.training.models.advanced_networks import LSTMPolicy, TransformerPolicy
 
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
 from ztb.features.curated_features import get_feature_set
+from ztb.optimization.model_compression import (
+    ModelCompressionManager,
+    QuantizationCompressor,
+    PruningCompressor,
+    KnowledgeDistillationCompressor,
+    create_compression_pipeline
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +92,16 @@ DEFAULT_SAC_CONFIG = {
     "use_sde": False,
     "sde_sample_freq": -1,
     "use_sde_at_warmup": False,
+
+    # モデル圧縮設定
+    "compression_enabled": False,  # モデル圧縮を使用するか
+    "compression_techniques": [],  # 使用する圧縮手法のリスト
+    "quantization_type": "dynamic",  # 量子化タイプ ("dynamic", "static", "mixed_precision")
+    "pruning_type": "l1_unstructured",  # プルーニングタイプ ("l1_unstructured", "l2_unstructured", "structured")
+    "pruning_amount": 0.3,  # プルーニング量 (0.0-1.0)
+    "distillation_temperature": 2.0,  # 蒸留温度
+    "distillation_alpha": 0.5,  # 蒸留損失の重み
+    "compressed_model_path": None,  # 圧縮モデルの保存パス
 }
 
 
@@ -111,6 +128,7 @@ class SACAlgorithm(BaseRLAlgorithm):
     def __init__(self) -> None:
         """SACAlgorithmを初期化。"""
         self._model: Optional[BaseAlgorithm] = None
+        self.compression_manager: Optional[ModelCompressionManager] = None
         logger.info("SACAlgorithm initialized")
     
     @property
@@ -294,6 +312,48 @@ class SACAlgorithm(BaseRLAlgorithm):
             if fine_tune_lr is not None and fine_tune_lr <= 0:
                 raise ValueError("fine_tune_learning_rate must be positive if specified")
 
+        # モデル圧縮設定の検証
+        if config.get("compression_enabled", False):
+            compression_techniques = config.get("compression_techniques", [])
+            if not compression_techniques:
+                logger.warning("compression_enabled is True but compression_techniques is empty")
+                # 空のtechniquesは警告のみで許可する
+
+            valid_techniques = ["quantization", "pruning", "distillation"]
+            for technique in compression_techniques:
+                if technique not in valid_techniques:
+                    raise ValueError(f"Unsupported compression technique: {technique}. Must be one of: {valid_techniques}")
+
+            # 量子化設定の検証
+            if "quantization" in compression_techniques:
+                quant_type = config.get("quantization_type", "dynamic")
+                if quant_type not in ["dynamic", "static", "mixed_precision"]:
+                    raise ValueError(f"Unsupported quantization_type: {quant_type}")
+
+            # プルーニング設定の検証
+            if "pruning" in compression_techniques:
+                pruning_type = config.get("pruning_type", "l1_unstructured")
+                if pruning_type not in ["l1_unstructured", "l2_unstructured", "structured"]:
+                    raise ValueError(f"Unsupported pruning_type: {pruning_type}")
+
+                pruning_amount = config.get("pruning_amount", 0.3)
+                if not (0.0 < pruning_amount < 1.0):
+                    raise ValueError(f"pruning_amount must be between 0.0 and 1.0, got {pruning_amount}")
+
+            # 蒸留設定の検証
+            if "distillation" in compression_techniques:
+                teacher_path = config.get("teacher_model_path")
+                if not teacher_path:
+                    raise ValueError("distillation requested but teacher_model_path not specified")
+
+                distillation_temp = config.get("distillation_temperature", 2.0)
+                if distillation_temp <= 0:
+                    raise ValueError("distillation_temperature must be positive")
+
+                distillation_alpha = config.get("distillation_alpha", 0.5)
+                if not (0.0 <= distillation_alpha <= 1.0):
+                    raise ValueError("distillation_alpha must be between 0.0 and 1.0")
+
         logger.debug(f"SAC config validation passed: {config}")
         return True
     
@@ -383,6 +443,10 @@ class SACAlgorithm(BaseRLAlgorithm):
         if config.get("transfer_learning_enabled", False):
             self._apply_transfer_learning(self._model, config)
         
+        # モデル圧縮の適用
+        if config.get("compression_enabled", False):
+            self._apply_model_compression(self._model, config)
+        
         # 特徴量情報をログに出力
         feature_set = config.get("feature_set", "curated")
         expected_features = config.get("expected_features", 88)
@@ -454,6 +518,86 @@ class SACAlgorithm(BaseRLAlgorithm):
             
         except Exception as e:
             logger.error(f"Failed to apply transfer learning: {e}")
+            raise
+    
+    def _apply_model_compression(self, model: BaseAlgorithm, config: Dict[str, Any]) -> None:
+        """
+        モデル圧縮をモデルに適用。
+        
+        Args:
+            model: 適用対象のSACモデル
+            config: モデル圧縮設定を含む設定辞書
+        """
+        compression_techniques = config.get("compression_techniques", [])
+        if not compression_techniques:
+            logger.warning("Model compression enabled but no compression_techniques specified")
+            return
+        
+        try:
+            logger.info(f"Applying model compression techniques: {compression_techniques}")
+            
+            # 圧縮パイプラインの設定
+            techniques_config = {}
+            teacher_model = None  # 蒸留用の教師モデル
+            
+            if "quantization" in compression_techniques:
+                techniques_config["quantization"] = {
+                    "type": "quantization",
+                    "quantization_type": config.get("quantization_type", "dynamic")
+                }
+            
+            if "pruning" in compression_techniques:
+                techniques_config["pruning"] = {
+                    "type": "pruning",
+                    "pruning_type": config.get("pruning_type", "l1_unstructured"),
+                    "amount": config.get("pruning_amount", 0.3)
+                }
+            
+            if "distillation" in compression_techniques:
+                # 教師モデルが必要
+                teacher_model_path = config.get("teacher_model_path")
+                if teacher_model_path:
+                    teacher_model = SAC.load(teacher_model_path, device=model.device)
+                    techniques_config["distillation"] = {
+                        "type": "distillation",
+                        "temperature": config.get("distillation_temperature", 2.0),
+                        "alpha": config.get("distillation_alpha", 0.5)
+                    }
+                else:
+                    logger.warning("Knowledge distillation requested but teacher_model_path not specified")
+            
+            if not techniques_config:
+                logger.warning("No valid compression techniques configured")
+                return
+            
+            # 圧縮マネージャーの作成と適用
+            self.compression_manager = create_compression_pipeline(techniques_config)
+            
+            # モデルのポリシーを取得して圧縮
+            policy = model.policy
+            
+            # 蒸留の場合は教師モデルを渡す
+            compress_kwargs = {}
+            if teacher_model is not None:
+                compress_kwargs["teacher_model"] = teacher_model
+            
+            compressed_policy = self.compression_manager.compress_model(policy, list(techniques_config.keys()), **compress_kwargs)
+            
+            # 圧縮されたポリシーをモデルに設定
+            model.policy = compressed_policy
+            
+            # 圧縮モデルの保存
+            compressed_path = config.get("compressed_model_path")
+            if compressed_path:
+                self.compression_manager.save_compressed_model(model, compressed_path)
+                logger.info(f"Compressed model saved to {compressed_path}")
+            
+            # 圧縮レポートの取得
+            compression_report = self.compression_manager.get_compression_report()
+            logger.info(f"Model compression completed: {compression_report}")
+            
+        except Exception as e:
+            logger.error(f"Failed to apply model compression: {e}")
             raise
     
     def _validate_pretrained_model(
