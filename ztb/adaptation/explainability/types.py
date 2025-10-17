@@ -39,6 +39,22 @@ class DecisionExplanation:
 
 
 @dataclass
+class VisualizationResult:
+    """可視化結果"""
+    plots: Dict[str, Any]  # プロット名 -> プロットデータ
+    timestamp: datetime
+    format: str  # png, svg, htmlなど
+
+    def to_dict(self) -> Dict[str, Any]:
+        """辞書形式に変換"""
+        return {
+            "plots": self.plots,
+            "timestamp": self.timestamp.isoformat(),
+            "format": self.format
+        }
+
+
+@dataclass
 class ExplanationResult:
     """説明結果"""
     explanation_id: str
@@ -48,6 +64,7 @@ class ExplanationResult:
     target_prediction: Any
     feature_importance: List[FeatureImportance]
     decision_explanation: Optional[DecisionExplanation] = None
+    visualization: Optional[VisualizationResult] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     processing_time_seconds: float = 0.0
 
@@ -76,6 +93,33 @@ class ExplanationResult:
 
 @dataclass
 class ExplanationCache:
+    """説明キャッシュ"""
+    explanation_id: str
+    result: ExplanationResult
+    created_at: datetime
+    ttl_seconds: int
+
+    @property
+    def is_expired(self) -> bool:
+        """キャッシュが期限切れかどうか"""
+        from datetime import timedelta
+        return datetime.now() - self.created_at > timedelta(seconds=self.ttl_seconds)
+
+
+@dataclass
+class ExplanationReport:
+    """可視化結果"""
+    plots: Dict[str, Any]  # プロット名 -> プロットデータ
+    timestamp: datetime
+    format: str  # png, svg, htmlなど
+
+    def to_dict(self) -> Dict[str, Any]:
+        """辞書形式に変換"""
+        return {
+            "plots": self.plots,
+            "timestamp": self.timestamp.isoformat(),
+            "format": self.format
+        }
     """説明キャッシュ"""
     explanation_id: str
     result: ExplanationResult

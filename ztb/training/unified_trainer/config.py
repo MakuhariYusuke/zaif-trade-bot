@@ -33,6 +33,19 @@ class UnifiedTrainerConfig:
     max_features: Optional[int] = None
     offline_mode: bool = False
     total_timesteps: Optional[int] = None  # Added to fix attribute access error
+    
+    # Federated Learning Configuration
+    enable_federated: bool = False
+    num_clients: int = 3
+    federated_rounds: int = 10
+    privacy_budget: float = 1.0  # Differential privacy budget
+    client_fraction: float = 1.0  # Fraction of clients to participate per round
+    
+    # Mixed Precision Training Configuration
+    enable_mixed_precision: bool = False
+    precision: str = "fp16"  # "fp16", "bf16", "fp8"
+    gradient_scaling: bool = True
+    gradient_clip_norm: Optional[float] = 1.0
 
 
 def load_config(config_path: str) -> Optional[Dict[str, Any]]:
