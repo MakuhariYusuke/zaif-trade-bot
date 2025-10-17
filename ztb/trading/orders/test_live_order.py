@@ -12,9 +12,11 @@ import time
 import requests
 from pathlib import Path
 import json
+import urllib.parse
+from dotenv import load_dotenv
 
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 def create_signature(secret: str, message: str) -> str:
@@ -36,30 +38,28 @@ def place_buy_order(api_key: str, api_secret: str, price: float, amount: float) 
     """Place a buy order on Coincheck."""
     url = "https://coincheck.com/api/exchange/orders"
 
-    # Prepare order data
+    # Prepare order data - Coincheck expects URL-encoded form data
     order_data = {
         "pair": "btc_jpy",
         "order_type": "buy",
         "rate": str(int(price)),  # Price as string
         "amount": str(amount),    # Amount as string
-        "market_buy_amount": None,
-        "position_id": None,
-        "stop_loss_rate": None
     }
+    body = urllib.parse.urlencode(order_data)
 
-    # Create signature
+    # Create signature using the exact payload string that will be sent
     nonce = str(int(time.time() * 1000000))
-    message = nonce + url + json.dumps(order_data, separators=(',', ':'))
+    message = nonce + url + body
     signature = create_signature(api_secret, message)
 
     headers = {
         "ACCESS-KEY": api_key,
         "ACCESS-NONCE": nonce,
         "ACCESS-SIGNATURE": signature,
-        "Content-Type": "application/json"
+        "Content-Type": "application/x-www-form-urlencoded"
     }
 
-    response = requests.post(url, headers=headers, json=order_data, timeout=10)
+    response = requests.post(url, headers=headers, data=body, timeout=10)
 
     if response.status_code == 200:
         return response.json()
@@ -70,6 +70,10 @@ def place_buy_order(api_key: str, api_secret: str, price: float, amount: float) 
 def main():
     """Main function to place a test buy order."""
     try:
+        # Load environment variables from .env file
+        env_path = PROJECT_ROOT / ".env"
+        load_dotenv(env_path)
+        
         print("🚀 Starting real Coincheck trading test")
 
         # Get API credentials

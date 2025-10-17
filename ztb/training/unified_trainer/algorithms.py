@@ -22,13 +22,21 @@ from ztb.trading.environment.components.memory_manager import MemoryManager
 from ztb.multimodal.pretraining import SelfSupervisedTrainer as SSPTrainer
 from ztb.multimodal.pretraining.config import get_config as get_ssp_config
 
+# Import distributed training utilities
+from ztb.training.distributed.distributed_training import (
+    DistributedTrainingConfig,
+    DistributedTrainer,
+    get_distributed_info,
+)
+
 
 class TrainingProgressCallback(BaseCallback):
     """Enhanced callback for monitoring training progress and action distribution."""
 
-    def __init__(self, check_freq: int = 1000, verbose: int = 1):
+    def __init__(self, check_freq: int = 1000, verbose: int = 1, system_optimizer: Optional[Any] = None):
         super().__init__(verbose)
         self.check_freq = check_freq
+        self.system_optimizer = system_optimizer
         self.continuous_actions = []
         self.discrete_actions = []
         self.reward_history = []
@@ -108,6 +116,14 @@ class TrainingProgressCallback(BaseCallback):
                   f"No actions recorded yet | "
                   f"Rewards: {len(self.reward_history)} recorded")
 
+        # Apply system optimizations during training
+        if self.system_optimizer:
+            try:
+                with self.system_optimizer.optimize_training_step(f"training_step_{self.n_calls}"):
+                    pass  # System optimization is applied in the context manager
+            except Exception as e:
+                print(f"Warning: System optimization failed: {e}")
+
 
 class BaseAlgorithmTrainer(ABC):
     """Base class for algorithm-specific trainers."""
@@ -135,10 +151,11 @@ class BaseAlgorithmTrainer(ABC):
 class SACTrainer(BaseAlgorithmTrainer):
     """SAC algorithm trainer with enhanced UI and monitoring."""
 
-    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None, gradient_accumulation_steps: int = 1):
+    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None, gradient_accumulation_steps: int = 1, system_optimizer: Optional[Any] = None):
         super().__init__(config, logger)
         self.model = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
+        self.system_optimizer = system_optimizer
         self.training_stats = {}
 
     def validate_config(self) -> bool:
@@ -236,8 +253,16 @@ class SACTrainer(BaseAlgorithmTrainer):
             total_timesteps = self.config.get('total_timesteps', 50000)
             self.logger.info(f"🎯 Training for {total_timesteps:,} timesteps")
 
+            # Check for distributed training
+            dist_info = get_distributed_info()
+            if dist_info['is_distributed']:
+                self.logger.info(f"🔄 Distributed training enabled: rank {dist_info['rank']}/{dist_info['world_size']}")
+                # Adjust total_timesteps for distributed training (each process handles subset)
+                total_timesteps = total_timesteps // dist_info['world_size']
+                self.logger.info(f"Adjusted total_timesteps per process: {total_timesteps:,}")
+
             # Create progress callback
-            callback = TrainingProgressCallback(check_freq=1000)
+            callback = TrainingProgressCallback(check_freq=1000, system_optimizer=self.system_optimizer)
 
             # Start training
             start_time = time.time()
@@ -494,13 +519,14 @@ def create_algorithm_trainer(
     algorithm: str, 
     config: Dict[str, Any], 
     logger: Optional[logging.Logger] = None,
-    gradient_accumulation_steps: int = 1
+    gradient_accumulation_steps: int = 1,
+    system_optimizer: Optional[Any] = None
 ) -> BaseAlgorithmTrainer:
     """Factory function to create algorithm-specific trainer."""
     algorithm = algorithm.lower()
 
     if algorithm == "sac":
-        return SACTrainer(config, logger, gradient_accumulation_steps)
+        return SACTrainer(config, logger, gradient_accumulation_steps, system_optimizer)
     elif algorithm == "ppo":
         return PPOTrainer(config, logger, gradient_accumulation_steps)
     elif algorithm == "self_supervised":
