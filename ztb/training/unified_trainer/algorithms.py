@@ -188,6 +188,12 @@ class SACTrainer(BaseAlgorithmTrainer):
             df = pd.read_csv(data_path)
             self.logger.info(f"✅ Loaded {len(df)} data points")
 
+            # Optimize data types for memory efficiency
+            self.logger.info("🔧 Optimizing data types for memory efficiency...")
+            for col in df.select_dtypes(include=[np.float64]).columns:
+                df[col] = df[col].astype(np.float32)
+            self.logger.info("✅ Data type optimization completed")
+
             # Create environment config
             env_config = EnvironmentConfig()
             env_config.initial_portfolio_value = env_config_dict.get('initial_balance', 200000)
@@ -236,11 +242,18 @@ class SACTrainer(BaseAlgorithmTrainer):
             start_time = time.time()
             self.logger.info("🏃 Training started...")
 
+            # Use memory efficient processing during training
+            import gc
+            gc.disable()  # Disable automatic GC during training for performance
+
             self.model.learn(
                 total_timesteps=total_timesteps,
                 callback=callback,
                 progress_bar=True
             )
+
+            gc.enable()  # Re-enable GC after training
+            gc.collect()  # Force garbage collection
 
             # Training completed
             training_time = time.time() - start_time

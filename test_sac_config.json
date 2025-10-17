@@ -1,0 +1,33 @@
+{
+  "algorithm": "sac",
+  "data_path": "data/btc_jpy_real_dataset.csv",
+  "model_name": "test_sac_optimization",
+  "total_timesteps": 1000,
+
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 10000,
+    "learning_starts": 100,
+    "batch_size": 64,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": 0.01,
+    "target_update_interval": 1,
+    "target_entropy": -1.0
+  },
+
+  "environment": {
+    "initial_balance": 100000,
+    "transaction_cost": 0.0005,
+    "max_position_size": 1.0,
+    "use_standardized_observations": true,
+    "curriculum_stage": "profit_optimized"
+  },
+
+  "reward_settings": {
+    "reward_scale": 100.0,
+    "reward_clip_max": 200.0
+  }
+}
