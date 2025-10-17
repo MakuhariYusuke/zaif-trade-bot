@@ -1,0 +1,309 @@
+"""
+Improved data loading utilities for ZTB.
+
+This module provides enhanced data loading with prefetching, memory-mapped files,
+caching, and parallel processing for improved performance.
+"""
+
+import asyncio
+import logging
+import mmap
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache, partial
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+import time
+
+import numpy as np
+import pandas as pd
+
+from ztb.utils.errors import safe_operation, ZTBError
+from ztb.utils.cache_utils import cached_with_ttl
+from ztb.utils.path_utils import ensure_dir
+
+logger = logging.getLogger(__name__)
+
+
+class ImprovedDataLoader:
+    """
+    Enhanced data loader with performance optimizations.
+
+    Features:
+    - Memory-mapped file loading for large datasets
+    - Asynchronous prefetching
+    - Parallel feature computation
+    - Incremental loading and caching
+    """
+
+    def __init__(
+        self,
+        cache_dir: Optional[str] = None,
+        max_workers: int = 4,
+        prefetch_buffer_size: int = 1000,
+        enable_memory_mapping: bool = True,
+        enable_async_loading: bool = True,
+    ):
+        """
+        Initialize improved data loader.
+
+        Args:
+            cache_dir: Directory for caching
+            max_workers: Max threads for parallel processing
+            prefetch_buffer_size: Size of prefetch buffer
+            enable_memory_mapping: Use memory-mapped files
+            enable_async_loading: Enable async operations
+        """
+        self.cache_dir = Path(cache_dir) if cache_dir else Path("./cache/data")
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.max_workers = max_workers
+        self.prefetch_buffer_size = prefetch_buffer_size
+        self.enable_memory_mapping = enable_memory_mapping
+        self.enable_async_loading = enable_async_loading
+
+        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._prefetch_queue = asyncio.Queue(maxsize=prefetch_buffer_size)
+        self._cache = {}
+        self._mmap_files = {}
+
+    def load_csv_memory_mapped(
+        self,
+        file_path: Union[str, Path],
+        chunk_size: Optional[int] = None,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Load CSV using memory mapping for large files.
+
+        Args:
+            file_path: Path to CSV file
+            chunk_size: Size for chunked reading
+            **kwargs: Additional pandas read_csv arguments
+
+        Returns:
+            Loaded DataFrame
+        """
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise ZTBError(f"File not found: {file_path}")
+
+        cache_key = f"mmap_{file_path.stem}_{file_path.stat().st_mtime}"
+        if cache_key in self._cache:
+            return self._cache[cache_key].copy()
+
+        try:
+            if self.enable_memory_mapping and file_path.stat().st_size > 10 * 1024 * 1024:  # >10MB
+                # Memory-mapped loading
+                with open(file_path, 'r+b') as f:
+                    mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+                    self._mmap_files[str(file_path)] = mm
+
+                    # Read in chunks to avoid loading entire file
+                    if chunk_size:
+                        chunks = []
+                        offset = 0
+                        while offset < len(mm):
+                            chunk_data = mm[offset:offset + chunk_size * 1000]  # Rough estimate
+                            if not chunk_data:
+                                break
+                            chunk_df = pd.read_csv(pd.io.common.StringIO(chunk_data.decode('utf-8')), **kwargs)
+                            chunks.append(chunk_df)
+                            offset += len(chunk_data)
+                        df = pd.concat(chunks, ignore_index=True)
+                    else:
+                        content = mm.read().decode('utf-8')
+                        df = pd.read_csv(pd.io.common.StringIO(content), **kwargs)
+            else:
+                # Standard loading with chunking
+                if chunk_size:
+                    chunks = []
+                    for chunk in pd.read_csv(file_path, chunksize=chunk_size, **kwargs):
+                        chunks.append(chunk)
+                    df = pd.concat(chunks, ignore_index=True)
+                else:
+                    df = pd.read_csv(file_path, **kwargs)
+
+            # Cache result
+            self._cache[cache_key] = df.copy()
+            logger.info(f"Loaded data from {file_path} with {len(df)} rows")
+            return df
+
+        except Exception as e:
+            logger.error(f"Failed to load {file_path}: {e}")
+            raise ZTBError(f"Data loading failed: {e}")
+
+    async def load_csv_async(
+        self,
+        file_path: Union[str, Path],
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Load CSV asynchronously.
+
+        Args:
+            file_path: Path to CSV file
+            **kwargs: Additional pandas arguments
+
+        Returns:
+            Loaded DataFrame
+        """
+        if not self.enable_async_loading:
+            return self.load_csv_memory_mapped(file_path, **kwargs)
+
+        loop = asyncio.get_event_loop()
+        func = partial(self.load_csv_memory_mapped, file_path, **kwargs)
+        return await loop.run_in_executor(self.executor, func)
+
+    def compute_features_parallel(
+        self,
+        data: pd.DataFrame,
+        feature_functions: Dict[str, callable],
+        max_workers: Optional[int] = None
+    ) -> pd.DataFrame:
+        """
+        Compute features in parallel.
+
+        Args:
+            data: Input DataFrame
+            feature_functions: Dict of feature name -> function
+            max_workers: Number of parallel workers
+
+        Returns:
+            DataFrame with computed features
+        """
+        if max_workers is None:
+            max_workers = self.max_workers
+
+        results = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(func, data): name
+                for name, func in feature_functions.items()
+            }
+
+            for future in futures:
+                name = futures[future]
+                try:
+                    results[name] = future.result()
+                except Exception as e:
+                    logger.error(f"Failed to compute feature {name}: {e}")
+                    results[name] = pd.Series([np.nan] * len(data), index=data.index)
+
+        # Combine results
+        feature_df = pd.DataFrame(results)
+        return pd.concat([data, feature_df], axis=1)
+
+    def incremental_feature_computation(
+        self,
+        data: pd.DataFrame,
+        feature_functions: Dict[str, callable],
+        cache_key: str,
+        force_recompute: bool = False
+    ) -> pd.DataFrame:
+        """
+        Compute features incrementally with caching.
+
+        Args:
+            data: Input DataFrame
+            feature_functions: Feature computation functions
+            cache_key: Unique cache identifier
+            force_recompute: Force recomputation
+
+        Returns:
+            DataFrame with features
+        """
+        cache_file = self.cache_dir / f"{cache_key}_features.pkl"
+
+        if not force_recompute and cache_file.exists():
+            try:
+                cached_data = pd.read_pickle(cache_file)
+                # Check if data has changed
+                if len(cached_data) == len(data) and cached_data.index.equals(data.index):
+                    logger.info(f"Loaded cached features for {cache_key}")
+                    return cached_data
+            except Exception as e:
+                logger.warning(f"Failed to load cached features: {e}")
+
+        # Compute features
+        logger.info(f"Computing features for {cache_key}")
+        start_time = time.time()
+
+        result_df = self.compute_features_parallel(data, feature_functions)
+
+        # Cache result
+        try:
+            result_df.to_pickle(cache_file)
+            logger.info(f"Cached features to {cache_file}")
+        except Exception as e:
+            logger.warning(f"Failed to cache features: {e}")
+
+        elapsed = time.time() - start_time
+        logger.info(f"Feature computation took {elapsed:.2f}s")
+
+        return result_df
+
+    async def prefetch_data(
+        self,
+        file_paths: List[Union[str, Path]],
+        **kwargs
+    ) -> None:
+        """
+        Prefetch multiple files asynchronously.
+
+        Args:
+            file_paths: List of file paths to prefetch
+            **kwargs: Loading arguments
+        """
+        if not self.enable_async_loading:
+            return
+
+        tasks = [
+            self.load_csv_async(path, **kwargs)
+            for path in file_paths
+        ]
+
+        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info(f"Prefetched {len(file_paths)} files")
+
+    def cleanup(self):
+        """Clean up resources."""
+        for mm in self._mmap_files.values():
+            mm.close()
+        self._mmap_files.clear()
+        self._cache.clear()
+        self.executor.shutdown(wait=True)
+        logger.info("DataLoader cleaned up")
+
+
+# Convenience functions
+@lru_cache(maxsize=32)
+def get_cached_data_loader(
+    cache_dir: str = "./cache/data",
+    max_workers: int = 4
+) -> ImprovedDataLoader:
+    """Get cached data loader instance."""
+    return ImprovedDataLoader(
+        cache_dir=cache_dir,
+        max_workers=max_workers
+    )
+
+
+@cached_with_ttl(ttl_seconds=300)  # 5 minute cache
+def load_market_data_cached(
+    file_path: str,
+    loader: Optional[ImprovedDataLoader] = None
+) -> pd.DataFrame:
+    """
+    Load market data with caching.
+
+    Args:
+        file_path: Path to data file
+        loader: Data loader instance
+
+    Returns:
+        Loaded DataFrame
+    """
+    if loader is None:
+        loader = get_cached_data_loader()
+
+    return loader.load_csv_memory_mapped(file_path)
