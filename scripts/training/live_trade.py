@@ -9,14 +9,17 @@ Cross-platform compatible (Windows/Raspberry Pi).
 
 import argparse
 import gc
+import hashlib
+import hmac
 import logging
 import os
 import sys
 import time
+import urllib.parse
 from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 import pandas as pd
@@ -1058,39 +1061,142 @@ class LiveTrader:
 
         return False
 
+    def _build_coincheck_order_request(self, payload: Dict[str, str]) -> Tuple[str, str, Dict[str, str]]:
+        """Create signed Coincheck order request components."""
+        if not self.api_key or not self.api_secret:
+            raise ValueError("Coincheck API credentials are required for live trading")
+
+        url = f"{self.base_url}/api/exchange/orders"
+        body = urllib.parse.urlencode(payload)
+        nonce = str(int(time.time() * 1000000))
+        message = nonce + url + body
+        signature = hmac.new(
+            self.api_secret.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        headers = {
+            "ACCESS-KEY": self.api_key,
+            "ACCESS-NONCE": nonce,
+            "ACCESS-SIGNATURE": signature,
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        return url, body, headers
+
     def _execute_trade(self, side: str, amount: float) -> bool:
         """Execute trade on Coincheck with enhanced error handling and notifications."""
+        side = side.lower()
         if self.demo_mode:
             logger.info(f"DEMO MODE: Would execute {side} {amount} BTC")
             return True
 
-        # Enhanced error notification for live trading
-        try:
-            # TODO: Implement actual Coincheck API trading calls
-            logger.warning(
-                f"LIVE MODE: Trade execution not implemented yet - {side} {amount} BTC"
-            )
-            self._send_notification(
-                "⚠️ Live Trade Not Implemented",
-                f"Would execute: {side.upper()} {amount} BTC\n"
-                f"Please implement actual API calls\n"
-                f"Position: {self.position}, Entry: ¥{self.entry_price:,.0f}",
-                "warning",
-            )
+        if side not in {"buy", "sell"}:
+            logger.error(f"Invalid trade side received: {side}")
             return False
-        except Exception as e:
-            # Critical error notification
-            error_msg = f"CRITICAL: Trade execution failed - {str(e)}"
-            logger.error(error_msg)
+
+        if amount <= 0:
+            logger.error(f"Invalid trade amount: {amount}")
+            return False
+
+        if not (self.api_key and self.api_secret):
+            logger.error("Coincheck API credentials are missing - cannot execute live trade")
             self._send_notification(
-                "🚨 CRITICAL: Trade Execution Error",
-                f"Side: {side.upper()}\n"
-                f"Amount: {amount} BTC\n"
-                f"Error: {str(e)}\n"
-                f"Position: {self.position}",
+                "❌ Trade Skipped",
+                "Coincheck API credentials are not configured. Trade cancelled.",
                 "error",
             )
             return False
+
+        # Determine price to use for limit order
+        price_source = self._last_valid_price if self._last_valid_price > 0 else self._get_current_price()
+        if price_source <= 0:
+            logger.error("Unable to determine current price for live trade execution")
+            self._send_notification(
+                "❌ Live Trade Failed",
+                "Could not determine a valid market price. Trade cancelled.",
+                "error",
+            )
+            return False
+
+        rate = max(int(round(price_source)), 1)
+        amount_str = f"{amount:.8f}".rstrip("0").rstrip(".")
+        if not amount_str:
+            amount_str = str(amount)
+
+        payload = {
+            "pair": "btc_jpy",
+            "order_type": side,
+            "rate": str(rate),
+            "amount": amount_str,
+        }
+
+        try:
+            url, body, headers = self._build_coincheck_order_request(payload)
+        except ValueError as e:
+            logger.error(f"Failed to build Coincheck order request: {e}")
+            self._send_notification(
+                "❌ Live Trade Failed",
+                f"Failed to prepare Coincheck order: {e}",
+                "error",
+            )
+            return False
+
+        try:
+            response = requests.post(url, headers=headers, data=body, timeout=10)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Coincheck order request failed: {e}")
+            self._send_notification(
+                "❌ Live Trade Failed",
+                f"Network error while submitting order: {e}",
+                "error",
+            )
+            return False
+
+        if response.status_code != 200:
+            logger.error(f"Coincheck API returned status {response.status_code}: {response.text}")
+            self._send_notification(
+                "❌ Live Trade Failed",
+                f"Order rejected with status {response.status_code}: {response.text}",
+                "error",
+            )
+            return False
+
+        try:
+            result = response.json()
+        except ValueError as e:
+            logger.error(f"Failed to parse Coincheck response: {e} - Body: {response.text}")
+            self._send_notification(
+                "❌ Live Trade Failed",
+                "Received invalid JSON response from Coincheck.",
+                "error",
+            )
+            return False
+
+        if result.get("success"):
+            order_id = str(result.get("id", "unknown"))
+            logger.info(
+                f"Executed {side} order on Coincheck (id={order_id}, amount={amount_str}, rate={rate})"
+            )
+            if self.metrics:
+                self.metrics["trades_total"].labels(
+                    action=side, dry_run="true" if self.dry_run else "false"
+                ).inc()
+            self._send_notification(
+                "✅ Live Trade Executed",
+                f"{side.upper()} {amount_str} BTC @ ¥{rate:,}\nOrder ID: {order_id}",
+                "info",
+            )
+            return True
+
+        error_detail = result.get("error") or response.text
+        logger.error(f"Coincheck order rejected: {error_detail}")
+        self._send_notification(
+            "❌ Live Trade Rejected",
+            f"{side.upper()} {amount_str} BTC @ ¥{rate:,}\nError: {error_detail}",
+            "error",
+        )
+        return False
 
     def _update_position(self, action: int, current_price: float) -> None:
         """Update position based on model action using PositionManager.
