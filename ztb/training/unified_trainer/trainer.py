@@ -38,9 +38,20 @@ from ztb.utils.performance_profiler import PerformanceProfiler
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.parallel_experiments import ParallelExperimentConfig
 
+# Import system optimizer
+from ztb.optimization.system_optimizer import SystemOptimizer, MemoryOptimizer, PerformanceOptimizer
+
+# Import distributed training utilities
+from ztb.training.distributed.distributed_training import (
+    DistributedTrainingConfig,
+    DistributedTrainer,
+    setup_distributed_training,
+    cleanup_distributed_training,
+)
+
 # Import quantization and compression utilities
 from ztb.training.quantization.quantizer import SACQuantizer, QuantizationPipeline
-from ztb.training.distillation.distiller import SACDistiller, DistillationPipeline
+from ztb.training.distillation.dist
 from ztb.training.compression.compressor import CompositeCompressor
 
 
@@ -65,6 +76,9 @@ class UnifiedTrainer:
         max_features: Optional[int] = None,
         total_timesteps: Optional[int] = None,
         gradient_accumulation_steps: int = 1,
+        enable_distributed: bool = False,
+        world_size: int = 1,
+        distributed_backend: str = "gloo",
     ):
         """
         Initialize UnifiedTrainer.
@@ -78,6 +92,9 @@ class UnifiedTrainer:
             max_features: Maximum number of features
             total_timesteps: Override total_timesteps from config (for quick validation runs)
             gradient_accumulation_steps: Number of steps to accumulate gradients
+            enable_distributed: Enable distributed training
+            world_size: Number of processes for distributed training
+            distributed_backend: Backend for distributed training ('gloo' or 'nccl')
         """
         # Store configuration
         self.config = config
@@ -88,6 +105,9 @@ class UnifiedTrainer:
         self.max_features = max_features
         self.total_timesteps = total_timesteps
         self.gradient_accumulation_steps = gradient_accumulation_steps
+        self.enable_distributed = enable_distributed
+        self.world_size = world_size
+        self.distributed_backend = distributed_backend
 
         # Initialize components
         self.logger = get_logger(__name__)
@@ -102,6 +122,10 @@ class UnifiedTrainer:
         self.federated_clients = []
         self.global_model_state = None
 
+        # Distributed Training components
+        self.distributed_config = None
+        self.distributed_trainer = None
+
         # Mixed Precision Training components
         self.grad_scaler = None
         if AMP_AVAILABLE and config.get('enable_mixed_precision', False):
@@ -115,6 +139,17 @@ class UnifiedTrainer:
         self.memory_tracker = MemoryTracker()
         self.performance_profiler = PerformanceProfiler()
         self.feature_cache = TTLCache(ttl_seconds=300)  # 5 minute TTL for feature computations
+
+        # Initialize system optimizer for comprehensive optimizations
+        self.system_optimizer = SystemOptimizer(
+            enable_memory_tracking=config.get('enable_memory_tracking', True),
+            enable_performance_profiling=config.get('enable_performance_profiling', True),
+            enable_io_caching=config.get('enable_io_caching', True),
+            memory_threshold_mb=config.get('memory_threshold_mb', 100.0),
+            cache_ttl_seconds=config.get('cache_ttl_seconds', 300),
+            gc_interval_steps=config.get('gc_interval_steps', 100),
+        )
+
         # Parallel config will be initialized when needed for parallel experiments
         self.parallel_config = None
 
@@ -156,6 +191,32 @@ class UnifiedTrainer:
             self.logger.error(f"Training execution failed: {e}", exc_info=True)
             return False
 
+    def _apply_system_optimizations(self) -> None:
+        """Apply system-level optimizations to the training setup."""
+        try:
+            # Optimize model memory usage
+            if hasattr(self.algorithm_trainer, 'model'):
+                self.algorithm_trainer.model = self.system_optimizer.optimize_model_memory(
+                    self.algorithm_trainer.model
+                )
+
+            # Optimize dataloader if available
+            if hasattr(self.algorithm_trainer, 'dataloader'):
+                self.algorithm_trainer.dataloader = self.system_optimizer.optimize_dataloader(
+                    self.algorithm_trainer.dataloader
+                )
+
+            # Enable performance optimizations
+            PerformanceOptimizer.enable_torch_optimizations()
+            PerformanceOptimizer.optimize_numpy_operations()
+
+            # Log optimization status
+            system_stats = self.system_optimizer.get_system_stats()
+            self.logger.info(f"System optimizations applied: {system_stats}")
+
+        except Exception as e:
+            self.logger.warning(f"Failed to apply some system optimizations: {e}")
+
     def _validate_configuration(self) -> bool:
         """Validate configuration using enhanced validator."""
         self.logger.info("Validating configuration...")
@@ -194,6 +255,13 @@ class UnifiedTrainer:
                 self.config['total_timesteps'] = self.total_timesteps
                 self.logger.info(f"Overriding total_timesteps from command line: {self.total_timesteps:,}")
 
+            # Check for distributed training
+            if self.enable_distributed and self.world_size > 1:
+                self.logger.info(f"Distributed training enabled with {self.world_size} processes")
+                if not self._setup_distributed_training():
+                    self.ui.print_error("Failed to setup distributed training")
+                    return False
+
             # Check for federated learning
             if self.config.get('enable_federated', False):
                 self.logger.info("Federated learning enabled")
@@ -214,8 +282,13 @@ class UnifiedTrainer:
                 algorithm, 
                 self.config, 
                 self.logger, 
-                gradient_accumulation_steps=self.gradient_accumulation_steps
+                gradient_accumulation_steps=self.gradient_accumulation_steps,
+                system_optimizer=self.system_optimizer
             )
+
+            # Apply system optimizations before training
+            self.logger.info("Applying system-level optimizations...")
+            self._apply_system_optimizations()
 
             # Start training UI
             self.ui.start_training()
@@ -242,6 +315,12 @@ class UnifiedTrainer:
             self.logger.info("Training performance metrics:")
             self.logger.info(f"Memory usage: {memory_stats}")
             self.logger.info(f"Performance profile: {perf_report}")
+
+            # Log system optimization statistics
+            system_stats = self.system_optimizer.get_system_stats()
+            self.logger.info("System optimization statistics:")
+            for key, value in system_stats.items():
+                self.logger.info(f"  {key}: {value}")
 
             # Get training statistics
             if success and hasattr(self.algorithm_trainer, 'get_training_stats'):
@@ -487,3 +566,28 @@ class UnifiedTrainer:
             self.grad_scaler.update()
         else:
             optimizer.step()
+
+    def _setup_distributed_training(self) -> bool:
+        """
+        Setup distributed training environment.
+
+        Returns:
+            bool: True if setup successful
+        """
+        try:
+            # Create distributed training configuration
+            self.distributed_config = DistributedTrainingConfig.from_env()
+            self.distributed_config.world_size = self.world_size
+            self.distributed_config.backend = self.distributed_backend
+
+            # Setup distributed training
+            success = setup_distributed_training(self.distributed_config)
+            if not success:
+                return False
+
+            self.logger.info(f"Distributed training setup complete: rank {self.distributed_config.rank}/{self.distributed_config.world_size}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup distributed training: {e}")
+            return False
