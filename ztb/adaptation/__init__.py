@@ -9,6 +9,7 @@ Components:
 - online_learning: オンライン学習パイプライン
 - monitoring: 継続的評価と監視
 - safety: 安全機構とフォールバック
+- adaptive_feature_selector: 適応型特徴量選択
 - operations: スケーラビリティと運用性
 """
 
@@ -16,6 +17,14 @@ from .concept_drift import *
 from .config import SACConfig
 from .explainability import *
 from .monitoring import *
+from .adaptive_feature_selector import (
+    AdaptiveFeatureSelector,
+    AdaptiveFeatureConfig,
+    FeatureSelectionMethod,
+    MarketCondition,
+    FeatureImportance,
+    FeatureSelectionResult
+)
 
 __version__ = "1.0.0"
 __all__ = [
@@ -43,4 +52,11 @@ __all__ = [
     "SystemMetrics",
     "EvaluationMetrics",
     "AlertType",
+    # Adaptive Feature Selection
+    "AdaptiveFeatureSelector",
+    "AdaptiveFeatureConfig",
+    "FeatureSelectionMethod",
+    "MarketCondition",
+    "FeatureImportance",
+    "FeatureSelectionResult",
 ]
