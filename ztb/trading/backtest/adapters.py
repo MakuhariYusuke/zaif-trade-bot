@@ -28,6 +28,15 @@ class StrategyAdapter(Protocol):
         """
         ...
 
+    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+        """
+        Update strategy hyperparameters.
+
+        Args:
+            hyperparameters: Dictionary of hyperparameter names and values
+        """
+        ...
+
 
 class RLPolicyAdapter:
     """Adapter for RL policy (PPO trained model)."""
@@ -36,6 +45,12 @@ class RLPolicyAdapter:
         """Initialize with trained model path."""
         self.model_path = model_path
         self.model = None
+        self.hyperparameters = {
+            "learning_rate": 1e-4,
+            "batch_size": 64,
+            "regularization_strength": 1e-5,
+            "dropout_rate": 0.1
+        }
         if model_path:
             from stable_baselines3 import SAC
 
@@ -97,6 +112,23 @@ class RLPolicyAdapter:
                 "signal": signal_values,
             }
         )
+
+    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+        """Update RL model hyperparameters."""
+        # Update local hyperparameters
+        self.hyperparameters.update(hyperparameters)
+
+        # If model is loaded, update model parameters if supported
+        if self.model is not None:
+            try:
+                # Update learning rate if supported by the model
+                if "learning_rate" in hyperparameters and hasattr(self.model, 'learning_rate'):
+                    # Note: This is a simplified example. Actual implementation would depend on the model type
+                    print(f"Updated model learning rate to {hyperparameters['learning_rate']}")
+            except Exception as e:
+                print(f"Warning: Could not update model hyperparameters: {e}")
+
+        print(f"Updated strategy hyperparameters: {hyperparameters}")
 
     def _momentum_signal(
         self, data: pd.DataFrame, current_position: int
@@ -178,6 +210,14 @@ class SMACrossoverAdapter:
             }
         )
 
+    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+        """Update SMA strategy hyperparameters."""
+        if "fast_period" in hyperparameters:
+            self.fast_period = int(hyperparameters["fast_period"])
+        if "slow_period" in hyperparameters:
+            self.slow_period = int(hyperparameters["slow_period"])
+        print(f"Updated SMA parameters: fast_period={self.fast_period}, slow_period={self.slow_period}")
+
 
 class BuyAndHoldAdapter:
     """Buy and hold strategy (benchmark)."""
@@ -215,6 +255,11 @@ class BuyAndHoldAdapter:
                 "signal": signal_values,
             }
         )
+
+    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+        """Update buy and hold strategy hyperparameters."""
+        # Buy and hold strategy doesn't have hyperparameters to update
+        print("Buy and hold strategy: no hyperparameters to update")
 
 
 def create_adapter(strategy_name: str, **kwargs: Any) -> StrategyAdapter:

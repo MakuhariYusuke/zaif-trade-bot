@@ -18,8 +18,8 @@ from sklearn.preprocessing import StandardScaler
 from scipy import stats
 from scipy.spatial.distance import jensenshannon
 
-from ..online_learning.online_learning_pipeline import OnlineLearningPipeline
-from ..monitoring.continuous_evaluation import ContinuousEvaluationManager
+from .online_learning.pipeline import OnlineLearningPipeline
+from .monitoring.evaluation_manager import ContinuousEvaluationManager
 
 
 logger = logging.getLogger(__name__)

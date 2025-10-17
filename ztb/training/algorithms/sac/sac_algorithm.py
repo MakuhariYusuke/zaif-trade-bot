@@ -35,6 +35,8 @@ from ztb.optimization.model_compression import (
     KnowledgeDistillationCompressor,
     create_compression_pipeline
 )
+from ztb.adaptation.explainability.analyzer import ExplainabilityAnalyzer
+from ztb.adaptation.explainability.config import ExplainabilityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,21 @@ DEFAULT_SAC_CONFIG = {
     "distillation_temperature": 2.0,  # 蒸留温度
     "distillation_alpha": 0.5,  # 蒸留損失の重み
     "compressed_model_path": None,  # 圧縮モデルの保存パス
+    
+    # 説明可能性設定
+    "explainability_enabled": False,  # 説明可能性機能を有効にするか
+    "shap_enabled": True,  # SHAP分析を使用するか
+    "shap_max_evals": 1000,  # SHAPの最大評価数
+    "shap_batch_size": 50,  # SHAPのバッチサイズ
+    "plot_format": "png",  # プロットのフォーマット ("png", "svg", "pdf")
+    "plot_dpi": 150,  # プロットのDPI
+    "explanation_cache_enabled": True,  # 説明結果のキャッシュを有効にするか
+    "cache_ttl_seconds": 3600,  # キャッシュのTTL（秒）
+    "natural_language_enabled": True,  # 自然言語説明を有効にするか
+    "market_context_analysis": True,  # 市場文脈分析を有効にするか
+    "risk_warnings": True,  # リスク警告を有効にするか
+    "report_generation": True,  # レポート生成を有効にするか
+    "report_format": "html",  # レポートフォーマット ("html", "json")
 }
 
 
@@ -129,6 +146,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         """SACAlgorithmを初期化。"""
         self._model: Optional[BaseAlgorithm] = None
         self.compression_manager: Optional[ModelCompressionManager] = None
+        self.explainability_analyzer: Optional[ExplainabilityAnalyzer] = None
         logger.info("SACAlgorithm initialized")
     
     @property
@@ -481,6 +499,10 @@ class SACAlgorithm(BaseRLAlgorithm):
                 f"batch_size={config['batch_size']}, ent_coef={config.get('ent_coef', 'auto')}"
             )
         
+        # 説明可能性アナライザーの初期化
+        if config.get("explainability_enabled", False):
+            self._initialize_explainability_analyzer(config)
+        
         return self._model
     
     def _apply_transfer_learning(self, model: BaseAlgorithm, config: Dict[str, Any]) -> None:
@@ -820,3 +842,121 @@ class SACAlgorithm(BaseRLAlgorithm):
         model = SAC.load(load_path, env=env)
         logger.info(f"SAC model loaded from {load_path}")
         return model
+    
+    def _initialize_explainability_analyzer(self, config: Dict[str, Any]) -> None:
+        """
+        説明可能性アナライザーを初期化。
+        
+        Args:
+            config: 説明可能性設定を含む設定辞書
+        """
+        try:
+            # 説明可能性設定の作成
+            explainability_config = ExplainabilityConfig(
+                enabled=config.get("explainability_enabled", True),
+                explanation_method=config.get("explanation_method", "shap"),
+                shap_max_evals=config.get("shap_max_evals", 1000),
+                shap_batch_size=config.get("shap_batch_size", 50),
+                generate_natural_language=config.get("natural_language_enabled", True),
+                enable_visualization=config.get("enable_visualization", True),
+                plot_format=config.get("plot_format", "png"),
+                cache_explanations=config.get("explanation_cache_enabled", True),
+                cache_ttl_seconds=config.get("cache_ttl_seconds", 3600),
+                generate_reports=config.get("report_generation", True),
+            )
+            
+            # 説明可能性アナライザーの作成
+            self.explainability_analyzer = ExplainabilityAnalyzer(explainability_config)
+            
+            logger.info("Explainability analyzer initialized for SAC algorithm")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize explainability analyzer: {e}")
+            self.explainability_analyzer = None
+    
+    def explain_decision(
+        self,
+        observation: Any,
+        action: Optional[Any] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        モデルの決定を説明。
+        
+        Args:
+            observation: 観測データ
+            action: 実行された行動（Optional）
+            context: 追加の文脈情報（Optional）
+            
+        Returns:
+            説明結果の辞書、またはNone（説明可能性が無効の場合）
+        """
+        if self.explainability_analyzer is None or self._model is None:
+            logger.warning("Explainability analyzer or model not initialized")
+            return None
+        
+        try:
+            # 説明結果の生成
+            explanation_result = self.explainability_analyzer.explain_prediction(
+                model=self._model,
+                input_data=observation,
+                prediction=action
+            )
+            
+            # 辞書形式に変換して返す
+            return explanation_result.to_dict()
+            
+        except Exception as e:
+            logger.error(f"Failed to explain decision: {e}")
+            return None
+    
+    def generate_explanation_report(
+        self,
+        observations: Any,
+        actions: Optional[Any] = None,
+        output_path: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        説明レポートを生成。
+        
+        Args:
+            observations: 観測データのバッチ
+            actions: 対応する行動のバッチ（Optional）
+            output_path: レポート出力パス（Optional）
+            
+        Returns:
+            レポートファイルのパス、またはNone
+        """
+        if self.explainability_analyzer is None or self._model is None:
+            logger.warning("Explainability analyzer or model not initialized")
+            return None
+        
+        try:
+            # 複数の観測データに対して説明を生成
+            explanations = []
+            
+            # observationsが単一の観測かバッチかを判定
+            if isinstance(observations, (list, tuple)) and len(observations) > 0:
+                obs_list = observations
+            else:
+                obs_list = [observations]
+            
+            # 各観測に対して説明を生成
+            for i, obs in enumerate(obs_list):
+                action = actions[i] if actions is not None and i < len(actions) else None
+                explanation = self.explainability_analyzer.explain_prediction(
+                    model=self._model,
+                    input_data=obs,
+                    prediction=action
+                )
+                explanations.append(explanation)
+            
+            # レポートを生成
+            return self.explainability_analyzer.generate_explanation_report(
+                explanations=explanations,
+                output_path=output_path
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to generate explanation report: {e}")
+            return None

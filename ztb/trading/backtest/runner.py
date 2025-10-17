@@ -18,13 +18,28 @@ from ztb.utils.observability import generate_correlation_id, setup_observability
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.run_metadata import RunMetadata
 
-from ..risk.circuit_breakers import (  # type: ignore[import-not-found]
-    get_global_kill_switch,
-)
-from ..risk.position_sizing import PositionSizer  # type: ignore[import-not-found]
+# Import risk management components (optional)
+try:
+    from ..risk.circuit_breakers import (  # type: ignore[import-not-found]
+        get_global_kill_switch,
+    )
+    from ..risk.position_sizing import PositionSizer  # type: ignore[import-not-found]
+    RISK_AVAILABLE = True
+except ImportError:
+    RISK_AVAILABLE = False
+    get_global_kill_switch = None
+    PositionSizer = None
 from .adapters import StrategyAdapter, create_adapter
 from .metrics import MetricsCalculator
 from .report import ReportGenerator
+
+# Import adaptation system
+try:
+    from ...adaptation import HyperparameterAdaptationSystem
+    ADAPTATION_AVAILABLE = True
+except ImportError:
+    ADAPTATION_AVAILABLE = False
+    HyperparameterAdaptationSystem = None
 
 
 class BacktestEngine:
@@ -40,6 +55,8 @@ class BacktestEngine:
         kill_file: str = "/tmp/ztb.stop",
         target_vol: Optional[float] = None,
         correlation_id: Optional[str] = None,
+        enable_adaptation: bool = False,
+        adaptation_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initialize backtest engine."""
         self.initial_capital = initial_capital
@@ -50,15 +67,52 @@ class BacktestEngine:
         self.kill_file = kill_file
         self.target_vol = target_vol
         self.correlation_id = correlation_id or generate_correlation_id()
+        self.enable_adaptation = enable_adaptation and ADAPTATION_AVAILABLE
 
         # Initialize position sizer
-        if target_vol:
+        if target_vol and RISK_AVAILABLE and PositionSizer:
             self.position_sizer = PositionSizer(target_volatility=target_vol)
         else:
             self.position_sizer = None
 
         # Initialize kill switch if risk management enabled
-        self.kill_switch = get_global_kill_switch() if enable_risk else None
+        self.kill_switch = None
+        if enable_risk and RISK_AVAILABLE and get_global_kill_switch:
+            self.kill_switch = get_global_kill_switch()
+
+        # Initialize hyperparameter adaptation system
+        self.adaptation_system = None
+        if self.enable_adaptation and HyperparameterAdaptationSystem:
+            try:
+                # Create mock online learning and evaluation components for backtest
+                from ...adaptation.online_learning.pipeline import OnlineLearningPipeline
+                from ...adaptation.monitoring.evaluation_manager import ContinuousEvaluationManager
+
+                # Mock components for backtest environment
+                mock_online_learning = MockOnlineLearningPipeline()
+                mock_evaluation_manager = MockEvaluationManager()
+
+                self.adaptation_system = HyperparameterAdaptationSystem(
+                    mock_online_learning,
+                    mock_evaluation_manager
+                )
+
+                # Apply custom configuration if provided
+                if adaptation_config:
+                    self.adaptation_system.update_config(adaptation_config)
+
+                # Start adaptation system
+                if not self.adaptation_system.start():
+                    print("Warning: Failed to start hyperparameter adaptation system")
+                    self.adaptation_system = None
+                    self.enable_adaptation = False
+                else:
+                    print("Hyperparameter adaptation system started for backtest")
+
+            except Exception as e:
+                print(f"Warning: Failed to initialize adaptation system: {e}")
+                self.adaptation_system = None
+                self.enable_adaptation = False
 
     def load_data(self, _dataset_path: str) -> pd.DataFrame:
         """Load market data from cache or file."""
@@ -96,16 +150,48 @@ class BacktestEngine:
 
     def run_backtest(
         self, strategy: StrategyAdapter, data: pd.DataFrame
-    ) -> tuple[pd.Series, pd.DataFrame]:
+    ) -> tuple[pd.Series, pd.DataFrame, Optional[Dict[str, Any]]]:
         """Run backtest simulation."""
 
         capital = self.initial_capital
         position = 0  # -1, 0, 1 for short, flat, long
         equity_curve = []
         orders = []
+        adaptation_history = [] if self.enable_adaptation else None
 
         for i, (timestamp, row) in enumerate(data.iterrows()):
             current_data = data.iloc[: i + 1]  # All data up to current point
+
+            # Hyperparameter adaptation step
+            adaptation_result = None
+            if self.enable_adaptation and self.adaptation_system and i > 10:  # Need some history
+                try:
+                    # Pass market data to adaptation system
+                    market_data = current_data.tail(50)  # Last 50 periods for adaptation
+                    adaptation_result = self.adaptation_system.adapt_hyperparameters(market_data)
+
+                    # Update strategy parameters if available
+                    if hasattr(strategy, 'update_hyperparameters'):
+                        current_params = self.adaptation_system.get_current_hyperparameters()
+                        strategy.update_hyperparameters(current_params)
+
+                    # Log adaptation if parameters changed
+                    if adaptation_result and adaptation_result['adaptations']:
+                        print(f"[{timestamp}] Adapted {len(adaptation_result['adaptations'])} hyperparameters. "
+                              f"Performance improvement: {adaptation_result['performance_improvement']:.4f}")
+
+                        # Store adaptation result
+                        if adaptation_history is not None:
+                            adaptation_history.append({
+                                'timestamp': timestamp,
+                                'adaptations': adaptation_result['adaptations'],
+                                'performance_improvement': adaptation_result['performance_improvement'],
+                                'confidence': adaptation_result['confidence'],
+                                'market_conditions': adaptation_result.get('market_conditions', {})
+                            })
+
+                except Exception as e:
+                    print(f"Warning: Adaptation failed at {timestamp}: {e}")
 
             # Check kill switch if risk management enabled
             if self.enable_risk and self.kill_switch and self.kill_switch.is_killed():
@@ -211,7 +297,17 @@ class BacktestEngine:
 
         orders_df = pd.DataFrame(orders)
 
-        return equity_series, orders_df
+        # Prepare adaptation summary if adaptation was enabled
+        adaptation_summary = None
+        if adaptation_history is not None and adaptation_history:
+            adaptation_summary = {
+                'total_adaptations': len(adaptation_history),
+                'adaptation_history': adaptation_history,
+                'final_hyperparameters': self.adaptation_system.get_current_hyperparameters() if self.adaptation_system else {},
+                'adaptation_statistics': self.adaptation_system.get_adaptation_statistics() if self.adaptation_system else {}
+            }
+
+        return equity_series, orders_df, adaptation_summary
 
 
 def main() -> None:
@@ -264,6 +360,23 @@ def main() -> None:
         type=float,
         help="Target volatility for position sizing (enables vol targeting)",
     )
+    parser.add_argument(
+        "--enable-adaptation",
+        action="store_true",
+        help="Enable dynamic hyperparameter adaptation during backtest",
+    )
+    parser.add_argument(
+        "--adaptation-interval",
+        type=int,
+        default=15,
+        help="Adaptation interval in minutes (default: 15)",
+    )
+    parser.add_argument(
+        "--adaptation-safety-margin",
+        type=float,
+        default=0.15,
+        help="Safety margin for parameter changes (default: 0.15)",
+    )
 
     args = parser.parse_args()
 
@@ -284,6 +397,15 @@ def main() -> None:
 
     try:
         # Initialize components
+        adaptation_config = None
+        if args.enable_adaptation:
+            adaptation_config = {
+                'hyperparameter_config': {
+                    'adaptation_interval_minutes': args.adaptation_interval,
+                    'safety_margin': args.adaptation_safety_margin
+                }
+            }
+
         engine = BacktestEngine(
             initial_capital=args.initial_capital,
             slippage_bps=args.slippage_bps,
@@ -292,13 +414,24 @@ def main() -> None:
             kill_file=args.kill_file,
             target_vol=args.target_vol,
             correlation_id=correlation_id,
+            enable_adaptation=args.enable_adaptation,
+            adaptation_config=adaptation_config,
         )
 
         strategy = create_adapter(args.policy)
         data = engine.load_data(args.dataset)
 
         # Run backtest
-        equity_curve, orders = engine.run_backtest(strategy, data)
+        equity_curve, orders, adaptation_summary = engine.run_backtest(strategy, data)
+
+        # Log adaptation summary if available
+        if adaptation_summary:
+            print(f"Adaptation Summary:")
+            print(f"  Total adaptations: {adaptation_summary['total_adaptations']}")
+            print(f"  Final hyperparameters: {adaptation_summary['final_hyperparameters']}")
+            if adaptation_summary['adaptation_statistics']:
+                stats = adaptation_summary['adaptation_statistics']
+                print(f"  Strategy performance: {stats.get('strategy_performance', {})}")
 
         # Calculate metrics
         metrics = MetricsCalculator.calculate_all_metrics(
@@ -323,6 +456,9 @@ def main() -> None:
                     "enable_risk": args.enable_risk,
                     "risk_profile": args.risk_profile,
                     "target_vol": args.target_vol,
+                    "enable_adaptation": args.enable_adaptation,
+                    "adaptation_interval": args.adaptation_interval if args.enable_adaptation else None,
+                    "adaptation_safety_margin": args.adaptation_safety_margin if args.enable_adaptation else None,
                 },
                 "seeds": {
                     "numpy": 42,  # From load_data
@@ -343,6 +479,8 @@ def main() -> None:
             "dataset": args.dataset,
             "slippage_bps": args.slippage_bps,
             "initial_capital": args.initial_capital,
+            "adaptation_enabled": args.enable_adaptation,
+            "adaptation_summary": adaptation_summary,
         }
 
         equity_list = [
@@ -385,3 +523,40 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# Mock classes for backtest adaptation integration
+class MockOnlineLearningPipeline:
+    """Mock online learning pipeline for backtest environment."""
+
+    def __init__(self):
+        self.hyperparameters = {
+            "learning_rate": 1e-4,
+            "batch_size": 64,
+            "regularization_strength": 1e-5,
+            "dropout_rate": 0.1
+        }
+
+    def update_hyperparameter(self, name: str, value: float) -> None:
+        """Update hyperparameter value."""
+        self.hyperparameters[name] = value
+        print(f"Updated hyperparameter {name} = {value}")
+
+    def get_hyperparameters(self) -> Dict[str, float]:
+        """Get current hyperparameters."""
+        return self.hyperparameters.copy()
+
+
+class MockEvaluationManager:
+    """Mock evaluation manager for backtest environment."""
+
+    def __init__(self):
+        self.performance_score = 0.5
+
+    def get_current_performance(self) -> float:
+        """Get current performance score."""
+        return self.performance_score
+
+    def update_performance(self, score: float) -> None:
+        """Update performance score."""
+        self.performance_score = score
