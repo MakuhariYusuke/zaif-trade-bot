@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.3.0] - 2025-10-17
 
 ### Added
+- **モデル圧縮実装 (Model Compression)**: SAC v421取引AIへの計算効率化機能
+  - 包括的なモデル圧縮モジュール (`ztb/optimization/model_compression.py`)
+  - 量子化圧縮 (QuantizationCompressor: FP32→FP16/INT8動的/静的/混合精度)
+  - プルーニング圧縮 (PruningCompressor: L1/L2/構造的プルーニング)
+  - 知識蒸留圧縮 (KnowledgeDistillationCompressor: 教師-生徒モデル学習)
+  - 統合圧縮マネージャー (ModelCompressionManager: 複数手法の統一インターフェース)
+  - SACアルゴリズム統合 (圧縮設定検証、自動適用、教師モデル処理)
+  - 設定パラメータ拡張 (compression_enabled, compression_techniques, 手法別パラメータ)
+  - 26個の単体テスト (各圧縮手法、統合マネージャー、設定検証)
+  - 13個の統合テスト (SACアルゴリズムとの完全統合検証)
+  - 圧縮統計レポート機能 (サイズ削減率、精度維持率、処理時間)
+
 - **マルチモーダル学習実装 (Phase 1 & 2)**: SAC v421取引AIへのマルチモーダル統合
   - 価格データ(156特徴量) + テキスト(ニュース感情) + 数値(経済指標)の統合
   - 拡張可能なモジュール構造 (`ztb/multimodal/`) の構築
