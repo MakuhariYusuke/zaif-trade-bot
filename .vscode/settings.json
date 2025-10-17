@@ -3,6 +3,8 @@
         "/.*/": true
     },
     "chatgpt.openOnStartup": true,
-    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.defaultInterpreterPath": "c:\\Users\\Admin\\dev\\zaif-trade-bot\\venv311\\python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python-envs.defaultEnvManager": "venv",
     "python-envs.pythonProjects": []
 }

@@ -18,6 +18,7 @@ class UnifiedAlgorithm(Enum):
     ITERATIVE = "iterative"
     ENSEMBLE = "ensemble"
     CURRICULUM = "curriculum"
+    SELF_SUPERVISED = "self_supervised"
 
 
 @dataclass
