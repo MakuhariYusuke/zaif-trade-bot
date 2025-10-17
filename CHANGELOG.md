@@ -40,7 +40,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - バッチ処理最適化 (BatchProcessor for efficient inference)
   - メモリ監視システム (MemoryManager with history tracking)
 
-- **SAC v421適応機能強化**: オンライン学習、継続評価、説明性、安全機構の実装
+- **SAC v421適応機能強化**: オンライン学習、継続評価、説明性、安全機構、適応型特徴量選択の実装
+  - **オンライン学習パイプライン**: コンセプトドリフト検知統合の動的学習システム
+    - オンライン学習マネージャー (OnlineLearningPipeline: 動的バッチ学習、適応型学習率)
+    - コンセプトドリフト検知統合 (ConceptDriftManager: Kolmogorov-Smirnov, ADWIN, DDM, EDDM)
+    - 動的特徴量適応 (DynamicFeatureAdapter: 特徴量重要度ベースの適応)
+    - 学習状態管理 (LearningStateManager: 学習履歴、適応メトリクス追跡)
+    - 設定駆動型アーキテクチャ (OnlineLearningConfig: 学習パラメータ、適応閾値)
+    - 包括的なテストスイート (単体テスト8個、統合テスト6個)
+
+  - **適応型特徴量選択システム**: 市場条件に応じた動的特徴量重み付けと選択
+    - 適応型特徴量選択マネージャー (AdaptiveFeatureSelector: 多手法統合特徴量選択)
+      - 重要度ベース選択 (Random Forestベースの特徴量重要度)
+      - 相関ベース選択 (ターゲット相関 + 多重共線性チェック)
+      - 相互情報量ベース選択 (Mutual Information特徴量選択)
+      - 市場条件ベース選択 (トレンド/レンジ/ボラティリティ適応)
+    - 市場条件評価 (MarketCondition: トレンド/レンジ/高ボラティリティ/低ボラティリティ)
+    - 動的適応アルゴリズム (60分間隔の自動特徴量再選択)
+    - 統合選択システム (複数手法の重み付き統合)
+    - 包括的なテストスイート (単体テスト12個、統合テスト6個)
   - **オンライン学習パイプライン**: コンセプトドリフト検知統合の動的学習システム
     - オンライン学習マネージャー (OnlineLearningPipeline: 動的バッチ学習、適応型学習率)
     - コンセプトドリフト検知統合 (ConceptDriftManager: Kolmogorov-Smirnov, ADWIN, DDM, EDDM)
