@@ -38,6 +38,11 @@ from ztb.utils.performance_profiler import PerformanceProfiler
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.parallel_experiments import ParallelExperimentConfig
 
+# Import quantization and compression utilities
+from ztb.training.quantization.quantizer import SACQuantizer, QuantizationPipeline
+from ztb.training.distillation.distiller import SACDistiller, DistillationPipeline
+from ztb.training.compression.compressor import CompositeCompressor
+
 
 class UnifiedTrainer:
     """

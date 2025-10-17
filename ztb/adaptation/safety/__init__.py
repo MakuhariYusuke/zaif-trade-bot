@@ -23,7 +23,7 @@ Legacy Features:
 
 from ..monitoring.safety import SafetyManager
 from .config import SafetyConfig
-from .types import SafetyLevel, FallbackStrategy, CircuitBreakerState
+from .types import SafetyLevel, FallbackStrategy, CircuitBreakerState, FallbackStatus
 
 # New SAC v421 Safety Components
 from .fallback_manager import FallbackManager, FallbackConfig
@@ -34,6 +34,7 @@ from .types import (
     SafetyEvent,
     SafetyAction,
     AnomalyType,
+    AnomalyDetection,
     FallbackMode,
     RecoveryStatus,
     RecoveryStrategy
@@ -46,6 +47,7 @@ __all__ = [
     "SafetyLevel",
     "FallbackStrategy",
     "CircuitBreakerState",
+    "FallbackStatus",
 
     # New SAC v421 Components
     "FallbackManager",
@@ -63,6 +65,7 @@ __all__ = [
     "SafetyEvent",
     "SafetyAction",
     "AnomalyType",
+    "AnomalyDetection",
     "FallbackMode",
     "RecoveryStatus",
     "RecoveryStrategy",
