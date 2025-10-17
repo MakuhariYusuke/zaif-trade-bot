@@ -65,6 +65,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - 設定管理 (ExplainabilityConfig: SHAPパラメータ、キャッシュ設定)
     - 包括的なテストスイート (単体テスト6個、統合テスト5個)
 
+  - **安全メカニズムとフォールバックシステム**: 包括的な異常検知と自動回復システム
+    - 異常検知マネージャー (AnomalyDetectionManager: 統計的/MLベース異常検知)
+      - 統計的手法 (Z-score, IQR分析)
+      - 機械学習手法 (孤立森、One-Class SVM)
+      - リアルタイム異常スコアリングとアラート
+    - フォールバックマネージャー (FallbackManager: 多層フォールバック戦略)
+      - 保守的モード (取引サイズ/レバレッジ削減)
+      - 遮断器モード (取引一時停止)
+      - 段階的劣化モード (容量段階的削減)
+      - 緊急シャットダウンモード (完全停止)
+    - リカバリーマネージャー (RecoveryManager: 自動システム回復)
+      - 段階的回復 (Gradual Recovery)
+      - ロールバック回復 (Rollback Recovery)
+      - コールドスタート回復 (Cold Start Recovery)
+      - 安定性検証と自動再試行
+    - 統合安全マネージャー (IntegratedSafetyManager: 安全コンポーネント統制)
+      - 自動異常対応とフォールバック起動
+      - 統合監視と正常性チェック
+      - 安全イベント追跡とレポート生成
+      - クロスコンポーネント連携
+    - 包括的なテストスイート (単体テスト15個、統合テスト8個)
+
 ### Changed
 - Enhanced project structure with dedicated multimodal learning module
 - Updated requirements with PyTorch 2.5.1, PyYAML 6.0.2 for multimodal support
