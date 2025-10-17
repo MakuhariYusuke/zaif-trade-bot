@@ -135,6 +135,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.2.1] - 2025-10-17
 
+## [4.3.1] - 2025-10-17
+
+### Added
+- 単体テストの追加とテスト整備:
+  - `ztb/training/quantization/test_quantization.py` (量子化モジュール単体テスト)
+  - `ztb/training/distillation/test_distillation.py` (蒸留モジュール単体テスト)
+  - `ztb/training/compression/test_composite_compressor.py` (コンポジット圧縮パイプライン単体テスト)
+
+### Changed
+- バグ修正:
+  - `ztb/training/quantization/quantizer.py` と `ztb/training/distillation/distiller.py` の初期化時の設定マージ処理を強化（部分的なユーザ設定で KeyError が発生する問題を修正）。
+
+### Notes
+- 開発環境に以下の依存を追加してテストを実行しました: `pytest`, `torch`, `scipy`。
+- PyTorch の量子化 API はバージョン依存が大きいため、CI 環境でのバージョン固定を推奨します。
+
+
 ### Added
 - Added comprehensive unit tests for `DataGenerator` class in `test_data_generation.py` covering synthetic data generation, caching, validation, and error handling.
 - Added comprehensive unit tests for `TaLibWrapper` class in `test_talib_wrapper.py` covering technical indicators, input validation, and caching.
