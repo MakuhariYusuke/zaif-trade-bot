@@ -135,9 +135,10 @@ class BaseAlgorithmTrainer(ABC):
 class SACTrainer(BaseAlgorithmTrainer):
     """SAC algorithm trainer with enhanced UI and monitoring."""
 
-    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None):
+    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None, gradient_accumulation_steps: int = 1):
         super().__init__(config, logger)
         self.model = None
+        self.gradient_accumulation_steps = gradient_accumulation_steps
         self.training_stats = {}
 
     def validate_config(self) -> bool:
@@ -224,7 +225,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                 tau=sac_config.get('tau', 0.005),
                 gamma=sac_config.get('gamma', 0.99),
                 train_freq=sac_config.get('train_freq', 1),
-                gradient_steps=sac_config.get('gradient_steps', 1),
+                gradient_steps=self.gradient_accumulation_steps,  # Use gradient accumulation
                 ent_coef=sac_config.get('ent_coef', 0.01),
                 target_update_interval=sac_config.get('target_update_interval', 1),
                 target_entropy=sac_config.get('target_entropy', -1.0),
@@ -320,6 +321,10 @@ class SACTrainer(BaseAlgorithmTrainer):
 
 class PPOTrainer(BaseAlgorithmTrainer):
     """PPO algorithm trainer (placeholder for future implementation)."""
+
+    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None, gradient_accumulation_steps: int = 1):
+        super().__init__(config, logger)
+        self.gradient_accumulation_steps = gradient_accumulation_steps
 
     def validate_config(self) -> bool:
         """Validate PPO configuration."""
@@ -485,14 +490,19 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         }
 
 
-def create_algorithm_trainer(algorithm: str, config: Dict[str, Any], logger: Optional[logging.Logger] = None) -> BaseAlgorithmTrainer:
+def create_algorithm_trainer(
+    algorithm: str, 
+    config: Dict[str, Any], 
+    logger: Optional[logging.Logger] = None,
+    gradient_accumulation_steps: int = 1
+) -> BaseAlgorithmTrainer:
     """Factory function to create algorithm-specific trainer."""
     algorithm = algorithm.lower()
 
     if algorithm == "sac":
-        return SACTrainer(config, logger)
+        return SACTrainer(config, logger, gradient_accumulation_steps)
     elif algorithm == "ppo":
-        return PPOTrainer(config, logger)
+        return PPOTrainer(config, logger, gradient_accumulation_steps)
     elif algorithm == "self_supervised":
         return SelfSupervisedTrainer(config, logger)
     else:
