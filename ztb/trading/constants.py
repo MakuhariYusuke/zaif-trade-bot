@@ -26,8 +26,8 @@ MULTIPLIER_INDEX_SELL = 1
 MULTIPLIER_INDEX_HOLD = 2
 
 # SAC continuous action discretization thresholds
-SAC_CONTINUOUS_THRESHOLD = 0.33  # Threshold for converting continuous actions to discrete
-SAC_CONTINUOUS_THRESHOLD_NEG = -0.33  # Negative threshold for SELL action
+SAC_CONTINUOUS_THRESHOLD = 0.3333  # Threshold for converting continuous actions to discrete
+SAC_CONTINUOUS_THRESHOLD_NEG = -0.3333  # Negative threshold for SELL action
 
 
 def get_action_name(action: int) -> str:

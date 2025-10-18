@@ -8,12 +8,11 @@ including risk metrics, temporal analysis, and market condition analysis.
 """
 
 import json
-import sys
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from ztb.metrics.metrics import (
     calculate_all_metrics,
@@ -27,6 +26,8 @@ from ztb.utils.data_utils import load_csv_data
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import PerformanceMonitor
 from ztb.data.btc_data_augmentation import BTCBiasDetector
+
+TRADING_DAYS_PER_YEAR = 252
 
 logger = get_logger(__name__)
 
@@ -129,9 +130,9 @@ class BacktestAnalyzer:
 
         # シャープレシオ（無リスク金利を0%として）
         risk_free_rate = 0.0
-        excess_returns = daily_returns - risk_free_rate / 252  # 日次無リスク金利
+        excess_returns = daily_returns - risk_free_rate / TRADING_DAYS_PER_YEAR  # 日次無リスク金利
         if np.std(excess_returns) > 0:
-            sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
+            sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
         else:
             sharpe_ratio = 0.0
 
@@ -141,12 +142,12 @@ class BacktestAnalyzer:
         max_drawdown = np.min(drawdown)
 
         # ボラティリティ（年率化）
-        volatility = np.std(daily_returns) * np.sqrt(252)
+        volatility = np.std(daily_returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
 
         # ソルティーノレシオ
         downside_returns = daily_returns[daily_returns < 0]
         if len(downside_returns) > 0 and np.std(downside_returns) > 0:
-            sortino_ratio = np.mean(daily_returns) / np.std(downside_returns) * np.sqrt(252)
+            sortino_ratio = np.mean(daily_returns) / np.std(downside_returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
         else:
             sortino_ratio = 0.0
 
