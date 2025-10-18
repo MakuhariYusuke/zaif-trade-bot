@@ -1,0 +1,18 @@
+{
+  "total_periods": 4981,
+  "regime_distribution": {
+    "sideways": 1.0
+  },
+  "volatility_distribution": {
+    "low": 0.047580807066854046,
+    "medium": 0.011644248142943184,
+    "high": 0.05320216823930938,
+    "very_low": 0.7793615739811283,
+    "very_high": 0.1082112025697651
+  },
+  "avg_trend_strength": 0.001115884796338258,
+  "avg_confidence": 0.5220638426018872,
+  "regime_transitions": {
+    "sideways_to_sideways": 4980
+  }
+}
