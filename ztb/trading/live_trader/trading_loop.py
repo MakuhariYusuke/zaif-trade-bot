@@ -5,7 +5,6 @@ import time
 from typing import TYPE_CHECKING
 
 import numpy as np
-import requests
 
 from ztb.trading.constants import ACTION_HOLD
 from ztb.utils.logging_utils import get_logger
@@ -44,47 +43,22 @@ class TradingLoop:
                 try:
                     # Get current price
                     try:
-                        current_price = self.live_trader._get_current_price_sync()
-                        
-                        # Validate price data
-                        if not isinstance(current_price, (int, float)) or not np.isfinite(current_price):
-                            raise ValueError(f"Invalid price format: {current_price} (type: {type(current_price)})")
-                        
-                        # Check for reasonable price range (BTC/JPY should be between ¥1M and ¥100M)
-                        if not (1000000 <= current_price <= 100000000):
-                            logger.warning(f"Price outside expected range: ¥{current_price:,.0f} (expected: ¥1M-¥100M)")
-                        
+                        current_price = self.live_trader._get_current_price()
                         logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
                     except Exception as e:
                         logger.error(f"Failed to get current price: {e}")
-                        # Log detailed traceback for debugging
-                        import traceback
-                        logger.debug(f"Price fetch traceback: {traceback.format_exc()}")
-                        
-                        # Handle specific error types
-                        if isinstance(e, (requests.exceptions.Timeout, requests.exceptions.ConnectionError)):
-                            logger.warning(f"Network error during price fetch: {type(e).__name__}")
-                            consecutive_errors += 1
-                        elif isinstance(e, requests.exceptions.HTTPError):
-                            logger.warning(f"HTTP error during price fetch: {e}")
-                            consecutive_errors += 1
-                        else:
-                            logger.error(f"Unexpected error during price fetch: {type(e).__name__}")
-                            consecutive_errors += 1
-                        
                         if self.live_trader._last_valid_price > 0:
                             current_price = self.live_trader._last_valid_price
-                            logger.warning(f"Using last valid price: ¥{current_price:,.0f} (iteration #{iteration_count})")
-                            # Reset consecutive errors if we have fallback price
-                            consecutive_errors = 0
+                            logger.warning(f"Using last valid price: ¥{current_price:,.0f}")
                         else:
-                            logger.critical("CRITICAL: No valid price available, terminating trading loop")
-                            logger.critical(f"Failed iterations: {iteration_count}, Consecutive errors: {consecutive_errors}")
-                            # Log detailed error context
-                            import traceback
-                            logger.error(f"Full error traceback: {traceback.format_exc()}")
-                            self.live_trader._send_notification("🚨 CRITICAL: Trading Stopped", f"Unable to obtain price data after {consecutive_errors} consecutive failures. Manual intervention required.", "error")
-                            break
+                            logger.error("No valid price available, skipping iteration")
+                            consecutive_errors += 1
+                            if consecutive_errors >= max_consecutive_errors:
+                                logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
+                                self.live_trader._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
+                                break
+                            time.sleep(60)
+                            continue
 
                     # Reset consecutive error counter on successful price fetch
                     consecutive_errors = 0
@@ -166,27 +140,16 @@ class TradingLoop:
             wait_time = 1 if self.live_trader.dry_run else 60
             time.sleep(wait_time)
 
-        # Final report with enhanced statistics
+        # Final report
         total_pnl = self.live_trader.total_pnl
         trades_count = self.live_trader.trades_count
-        final_position = self.live_trader.position
-        total_iterations = iteration_count
-        uptime_hours = (datetime.now() - start_time).total_seconds() / 3600
 
-        logger.info(f"🏁 Trading loop completed after {duration_hours:.2f} hours")
-        logger.info(f"   Total iterations: {total_iterations}")
+        logger.info(f"🏁 Trading loop completed after {duration_hours} hours")
         logger.info(f"   Total PnL: ¥{total_pnl:,.2f}")
         logger.info(f"   Total trades: {trades_count}")
-        logger.info(f"   Final position: {final_position:.4f} BTC")
-        logger.info(f"   Average iterations per hour: {total_iterations/uptime_hours:.1f}")
-        logger.info(f"   Trading efficiency: {trades_count/total_iterations*100:.1f}% action rate")
 
         self.live_trader._send_notification(
             "🏁 Trading Session Complete",
-            f"Duration: {duration_hours:.2f} hours ({total_iterations} iterations)\n"
-            f"Total PnL: ¥{total_pnl:,.2f}\n"
-            f"Trades: {trades_count} (avg: {trades_count/total_iterations*100:.1f}% action rate)\n"
-            f"Final Position: {final_position:.4f} BTC\n"
-            f"Performance: {total_iterations/uptime_hours:.1f} iter/hr",
+            f"Duration: {duration_hours} hours\nTotal PnL: ¥{total_pnl:,.2f}\nTrades: {trades_count}\nFinal Position: {self.live_trader.position:.4f} BTC",
             "success"
         )

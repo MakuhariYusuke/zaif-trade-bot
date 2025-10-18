@@ -13,6 +13,7 @@ import yaml
 # テスト対象のインポート
 from ztb.multimodal.core.encoders import PriceEncoder, TextEncoder, EconomicEncoder
 from ztb.multimodal.config import MultimodalConfig
+from ztb.multimodal.training.trainers.multimodal_trainer import MultimodalSACTrainer
 
 
 class TestPriceEncoder(unittest.TestCase):
@@ -230,6 +231,58 @@ class TestMultimodalConfig(unittest.TestCase):
         # クリーンアップ
         del os.environ['TEST_NEWSAPI_KEY']
         del os.environ['TEST_FRED_KEY']
+
+
+class TestMultimodalSACTrainer(unittest.TestCase):
+    """MultimodalSACTrainerのテスト"""
+
+    def setUp(self):
+        # マルチモーダル設定
+        self.multimodal_config = MultimodalConfig()
+        self.multimodal_config.model.price_feature_dim = 156
+        self.multimodal_config.features.embedding_dim = 768
+        self.multimodal_config.model.economic_feature_dim = 10
+        self.multimodal_config.model.action_dim = 3
+        self.multimodal_config.model.attention_dim = 256
+        self.multimodal_config.model.num_heads = 8
+
+        # SAC設定
+        self.sac_config = {
+            'learning_rate': 0.001,
+            'batch_size': 64,
+            'gamma': 0.99,
+            'tau': 0.005,
+            'alpha': 0.2
+        }
+
+        # 環境設定
+        self.env_config = {
+            'observation_space': {'shape': (156,)},
+            'action_space': {'n': 3}
+        }
+
+        self.trainer = MultimodalSACTrainer(
+            multimodal_config=self.multimodal_config,
+            sac_config=self.sac_config,
+            env_config=self.env_config
+        )
+
+    def test_initialization(self):
+        """初期化テスト"""
+        self.assertIsInstance(self.trainer.multimodal_config, MultimodalConfig)
+        self.assertEqual(self.trainer.sac_config, self.sac_config)
+        self.assertEqual(self.trainer.env_config, self.env_config)
+        self.assertIsNotNone(self.trainer.multimodal_agent)
+        self.assertIsNone(self.trainer.data_loader)
+
+    def test_multimodal_agent_configuration(self):
+        """マルチモーダルエージェント設定テスト"""
+        agent = self.trainer.multimodal_agent
+
+        # 設定が正しく適用されていることを確認（feature_encoderを通じて）
+        self.assertEqual(agent.feature_encoder.price_feature_dim, 156)
+        self.assertEqual(agent.feature_encoder.text_embedding_dim, 768)
+        self.assertEqual(agent.feature_encoder.economic_feature_dim, 10)
 
 
 if __name__ == '__main__':

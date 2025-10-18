@@ -353,3 +353,255 @@ class TransformerPolicy(ActorCriticPolicy):
         kwargs['features_extractor_class'] = TransformerFeatureExtractor
 
         super().__init__(*args, **kwargs)
+
+
+class DepthwiseSeparableConv1d(nn.Module):
+    """
+    Depthwise Separable Convolution for efficient 1D convolution.
+    Reduces parameters while maintaining representational power.
+    """
+
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride: int = 1, padding: int = 0):
+        super().__init__()
+        self.depthwise = nn.Conv1d(in_channels, in_channels, kernel_size, stride, padding, groups=in_channels)
+        self.pointwise = nn.Conv1d(in_channels, out_channels, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        return x
+
+
+class EfficientAttention(nn.Module):
+    """
+    Efficient attention mechanism using Linformer/Performer approach.
+    Reduces complexity from O(n^2) to O(n) or O(n log n).
+    """
+
+    def __init__(self, embed_dim: int, num_heads: int, seq_len: int, method: str = "linformer"):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.head_dim = embed_dim // num_heads
+        self.method = method
+
+        if method == "linformer":
+            # Linformer: project to lower dimension
+            self.proj_k = nn.Linear(seq_len, seq_len // 4)
+            self.proj_v = nn.Linear(seq_len, seq_len // 4)
+        elif method == "performer":
+            # Performer: use random features
+            self.random_features = nn.Linear(seq_len, seq_len // 2)
+
+        self.q_proj = nn.Linear(embed_dim, embed_dim)
+        self.k_proj = nn.Linear(embed_dim, embed_dim)
+        self.v_proj = nn.Linear(embed_dim, embed_dim)
+        self.out_proj = nn.Linear(embed_dim, embed_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        batch_size, seq_len, embed_dim = x.shape
+
+        # Linear projections
+        q = self.q_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+
+        if self.method == "linformer":
+            # Apply dimension reduction
+            k = self.proj_k(k.transpose(-2, -1)).transpose(-2, -1)
+            v = self.proj_v(v.transpose(-2, -1)).transpose(-2, -1)
+
+        # Efficient attention computation
+        attn_weights = torch.matmul(q, k.transpose(-2, -1)) / (self.head_dim ** 0.5)
+
+        if self.method == "performer":
+            # Apply random features for O(n) complexity
+            attn_weights = self.random_features(attn_weights.transpose(-2, -1)).transpose(-2, -1)
+
+        attn_weights = F.softmax(attn_weights, dim=-1)
+        attn_output = torch.matmul(attn_weights, v)
+
+        # Reshape and project
+        attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, embed_dim)
+        return self.out_proj(attn_output)
+
+
+class DynamicNetwork(nn.Module):
+    """
+    Dynamic network that adjusts computation based on input complexity.
+    Uses conditional computation to skip unnecessary operations.
+    """
+
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int):
+        super().__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+
+        # Complexity estimator
+        self.complexity_estimator = nn.Sequential(
+            nn.Linear(input_dim, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1),
+            nn.Sigmoid()
+        )
+
+        # Main processing layers
+        self.main_layers = nn.ModuleList([
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim)
+        ])
+
+        # Lightweight layers for simple inputs
+        self.lightweight_layers = nn.ModuleList([
+            nn.Linear(input_dim, output_dim)
+        ])
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Flatten input for complexity estimation and linear layers
+        batch_size = x.size(0)
+        x_flat = x.view(batch_size, -1)
+        
+        # Estimate input complexity
+        complexity = self.complexity_estimator(x_flat)  # Use flattened input
+
+        # Conditional computation
+        if complexity.mean() > 0.5:  # Complex input
+            x_out = x_flat
+            for layer in self.main_layers:
+                x_out = layer(x_out)
+            x = x_out
+        else:  # Simple input
+            x_out = x_flat
+            for layer in self.lightweight_layers:
+                x_out = layer(x_out)
+            x = x_out
+
+        return x
+
+
+class EfficientFeatureExtractor(BaseFeaturesExtractor):
+    """
+    Efficient feature extractor combining multiple optimization techniques:
+    - Depthwise separable convolutions
+    - Efficient attention (Linformer/Performer)
+    - Dynamic networks with conditional computation
+    """
+
+    def __init__(
+        self,
+        observation_space,
+        features_dim: int = 256,
+        use_depthwise_conv: bool = True,
+        use_efficient_attention: bool = True,
+        use_dynamic_network: bool = True,
+        attention_method: str = "linformer",
+        sequence_length: int = 10,
+    ):
+        super().__init__(observation_space, features_dim)
+
+        self.use_depthwise_conv = use_depthwise_conv
+        self.use_efficient_attention = use_efficient_attention
+        self.use_dynamic_network = use_dynamic_network
+        self.sequence_length = sequence_length
+
+        input_dim = observation_space.shape[0]
+
+        # Depthwise separable convolution layers
+        if use_depthwise_conv:
+            self.conv_layers = nn.Sequential(
+                DepthwiseSeparableConv1d(input_dim, 64, kernel_size=3, padding=1),
+                nn.ReLU(),
+                DepthwiseSeparableConv1d(64, 128, kernel_size=3, padding=1),
+                nn.ReLU(),
+                nn.AdaptiveAvgPool1d(sequence_length)
+            )
+            conv_output_dim = 128
+        else:
+            self.conv_layers = nn.Sequential(
+                nn.Conv1d(input_dim, 64, kernel_size=3, padding=1),
+                nn.ReLU(),
+                nn.Conv1d(64, 128, kernel_size=3, padding=1),
+                nn.ReLU(),
+                nn.AdaptiveAvgPool1d(sequence_length)
+            )
+            conv_output_dim = 128
+
+        # Efficient attention layer
+        if use_efficient_attention:
+            self.attention = EfficientAttention(
+                embed_dim=conv_output_dim,
+                num_heads=8,
+                seq_len=sequence_length,
+                method=attention_method
+            )
+            attention_output_dim = conv_output_dim
+        else:
+            self.attention = nn.MultiheadAttention(
+                embed_dim=conv_output_dim,
+                num_heads=8,
+                batch_first=True
+            )
+            attention_output_dim = conv_output_dim
+
+        # Dynamic network
+        if use_dynamic_network:
+            self.dynamic_net = DynamicNetwork(
+                input_dim=attention_output_dim * sequence_length,
+                hidden_dim=256,
+                output_dim=features_dim
+            )
+        else:
+            self.dynamic_net = nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(attention_output_dim * sequence_length, 256),
+                nn.ReLU(),
+                nn.Linear(256, features_dim)
+            )
+
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        # Reshape for convolution (batch, channels, seq_len)
+        x = observations.unsqueeze(1)  # Add channel dimension
+
+        # Apply convolution
+        x = self.conv_layers(x)
+
+        # Reshape for attention (batch, seq_len, channels)
+        x = x.transpose(1, 2)
+
+        # Apply attention
+        if hasattr(self.attention, 'forward'):
+            if isinstance(self.attention, EfficientAttention):
+                x = self.attention(x)
+            else:
+                # Standard multihead attention
+                x, _ = self.attention(x, x, x)
+
+        # Apply dynamic network
+        x = self.dynamic_net(x)
+        return x
+
+
+class EfficientSACPolicy(ActorCriticPolicy):
+    """
+    SAC policy with efficient network architectures.
+    """
+
+    def __init__(self, *args, **kwargs):
+        # Extract custom kwargs
+        efficient_kwargs = {
+            'use_depthwise_conv': kwargs.pop('use_depthwise_conv', True),
+            'use_efficient_attention': kwargs.pop('use_efficient_attention', True),
+            'use_dynamic_network': kwargs.pop('use_dynamic_network', True),
+            'attention_method': kwargs.pop('attention_method', 'linformer'),
+            'sequence_length': kwargs.pop('sequence_length', 10),
+        }
+
+        # Set features extractor
+        kwargs['features_extractor_class'] = EfficientFeatureExtractor
+        kwargs['features_extractor_kwargs'] = efficient_kwargs
+
+        super().__init__(*args, **kwargs)
