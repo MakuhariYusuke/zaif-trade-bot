@@ -32,6 +32,7 @@ from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.training.unified_trainer.config_manager import ConfigManager
 from ztb.training.unified_trainer.reporting import TrainingReporter
 from ztb.training.unified_trainer.ui import TrainingUI
+from ztb.training.unified_trainer.ensemble_system import EnsembleConfig, EnsemblePredictor
 from ztb.utils.logging_utils import get_logger
 
 # Import optimization utilities
@@ -137,6 +138,14 @@ class UnifiedTrainer:
         self.continual_learner = None
         self.task_counter = 0
 
+        # Ensemble System components (enhanced for SAC v428 Phase 3)
+        self.ensemble_system = None
+        self.ensemble_config = None
+        self.ensemble_enabled = config.get('v427_advanced_features', {}).get('ensemble_system', {}).get('enabled', False)
+
+        if self.ensemble_enabled:
+            self._initialize_ensemble_system(config)
+
         # Mixed Precision Training components
         self.grad_scaler = None
         if AMP_AVAILABLE and config.get('enable_mixed_precision', False):
@@ -168,6 +177,87 @@ class UnifiedTrainer:
         self.training_success = False
         self.training_stats = {}
         self.training_report = {}
+
+    def _initialize_ensemble_system(self, config: Dict[str, Any]):
+        """Initialize ensemble system for SAC v428 Phase 3."""
+        try:
+            ensemble_config_dict = config.get('v427_advanced_features', {}).get('ensemble_system', {})
+
+            if not ensemble_config_dict.get('enabled', False):
+                self.logger.info("Ensemble system disabled in configuration")
+                return
+
+            # Create ensemble configuration
+            self.ensemble_config = EnsembleConfig(
+                enabled=ensemble_config_dict.get('enabled', True),
+                members=ensemble_config_dict.get('members', 5),
+                specializations=ensemble_config_dict.get('specializations', ["bull", "bear", "sideways", "high_vol", "low_vol"]),
+                voting_mechanism=ensemble_config_dict.get('voting_mechanism', 'weighted_confidence'),
+                diversity_weight=ensemble_config_dict.get('diversity_weight', 0.3),
+                consensus_requirement=ensemble_config_dict.get('consensus_requirement', {}),
+                stability_voting=ensemble_config_dict.get('stability_voting', {}),
+                adaptation=ensemble_config_dict.get('adaptation', {})
+            )
+
+            # Initialize ensemble predictor
+            self.ensemble_system = EnsemblePredictor(self.ensemble_config)
+
+            self.logger.info(f"Ensemble system initialized with {self.ensemble_config.members} members")
+            self.ui.print_success_with_metrics(
+                "Ensemble system initialized successfully",
+                {
+                    "members": self.ensemble_config.members,
+                    "voting_mechanism": self.ensemble_config.voting_mechanism,
+                    "specializations": len(self.ensemble_config.specializations)
+                }
+            )
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize ensemble system: {e}")
+            self.ensemble_enabled = False
+            self.ui.print_error_with_suggestions(
+                f"Ensemble system initialization failed: {e}",
+                ["Check ensemble configuration in config file", "Verify specialization types are valid"]
+            )
+
+    def get_ensemble_stats(self) -> Dict[str, Any]:
+        """Get current ensemble statistics for monitoring."""
+        if not self.ensemble_system:
+            return {"error": "ensemble_not_initialized"}
+
+        return self.ensemble_system.get_ensemble_stats()
+
+    def adapt_ensemble_to_market(self, market_conditions: Dict[str, Any]):
+        """Adapt ensemble system to current market conditions."""
+        if not self.ensemble_system:
+            return
+
+        try:
+            self.ensemble_system.adapt_ensemble(market_conditions)
+            self.logger.info(f"Ensemble adapted to market conditions: {market_conditions}")
+        except Exception as e:
+            self.logger.error(f"Ensemble adaptation failed: {e}")
+
+    def _setup_ensemble_training(self) -> bool:
+        """Setup ensemble training for SAC v428 Phase 3."""
+        try:
+            if not self.ensemble_system:
+                self.logger.error("Ensemble system not initialized")
+                return False
+
+            # Display ensemble status
+            ensemble_stats = self.ensemble_system.get_ensemble_stats()
+            self.ui.print_ensemble_status(ensemble_stats)
+
+            # Log ensemble configuration
+            self.logger.info(f"Ensemble training setup: {self.ensemble_config.members} members, "
+                           f"voting: {self.ensemble_config.voting_mechanism}")
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Ensemble training setup failed: {e}")
+            return False
 
     def run(self) -> bool:
         """
@@ -280,6 +370,13 @@ class UnifiedTrainer:
                     self.ui.print_error("Failed to setup federated learning")
                     return False
 
+            # Check for ensemble system (SAC v428 Phase 3)
+            if self.ensemble_enabled:
+                self.logger.info("Ensemble system enabled for SAC v428 Phase 3")
+                if not self._setup_ensemble_training():
+                    self.ui.print_error("Failed to setup ensemble training")
+                    return False
+
             # Check for mixed precision training
             if self.config.get('enable_mixed_precision', False):
                 self.logger.info("Mixed precision training enabled")
@@ -356,6 +453,29 @@ class UnifiedTrainer:
 
                 if report_path:
                     self.ui.print_success(f"Training report saved to: {report_path}")
+
+                # Generate ensemble report if enabled (SAC v428 Phase 3)
+                if self.ensemble_enabled and self.ensemble_system:
+                    try:
+                        ensemble_stats = self.ensemble_system.get_ensemble_stats()
+                        decision_log = self.ensemble_system.decision_log
+
+                        # ensemble_report = self.reporter.generate_ensemble_report(
+                        #     ensemble_stats, decision_log
+                        # )
+
+                        # ensemble_report_path = self.reporter.save_ensemble_report(ensemble_report)
+                        # if ensemble_report_path:
+                        #     self.ui.print_success(f"Ensemble analysis report saved to: {ensemble_report_path}")
+
+                        # Display ensemble final status
+                        self.ui.print_ensemble_status(ensemble_stats)
+
+                        self.ui.print_info("Ensemble system active - analysis report generation temporarily disabled")
+
+                    except Exception as e:
+                        self.logger.error(f"Ensemble report generation failed: {e}")
+                        self.ui.print_error(f"Ensemble report generation failed: {e}")
 
             self.training_success = success
             return success
