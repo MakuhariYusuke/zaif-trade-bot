@@ -368,5 +368,49 @@ class TestResourceMonitor(unittest.TestCase):
         self.assertIsNone(metrics.gpu_memory_mb)
 
 
+class TestOnlineLearningSACTrainer(unittest.TestCase):
+    """OnlineLearningSACTrainerのテスト"""
+
+    def setUp(self):
+        from ztb.adaptation.online_learning.trainer import OnlineLearningSACTrainer
+
+        self.online_config = OnlineLearningConfig()
+        self.online_config.batch_size = 16
+        self.online_config.max_memory_samples = 100
+
+        self.sac_config = {
+            'learning_rate': 0.001,
+            'batch_size': 64,
+            'gamma': 0.99,
+            'tau': 0.005,
+            'alpha': 0.2
+        }
+
+        self.env_config = {
+            'observation_space': {'shape': (10,)},
+            'action_space': {'n': 3}
+        }
+
+        self.trainer = OnlineLearningSACTrainer(
+            online_config=self.online_config,
+            sac_config=self.sac_config,
+            env_config=self.env_config
+        )
+
+    def tearDown(self):
+        # オンライン学習がアクティブな場合は停止
+        if self.trainer.is_online_learning_active:
+            self.trainer.stop_online_learning()
+
+    def test_initialization(self):
+        """初期化テスト"""
+        self.assertIsInstance(self.trainer.online_config, OnlineLearningConfig)
+        self.assertEqual(self.trainer.sac_config, self.sac_config)
+        self.assertEqual(self.trainer.env_config, self.env_config)
+        self.assertFalse(self.trainer.is_online_learning_active)
+        self.assertIsNone(self.trainer.online_thread)
+        self.assertIsNone(self.trainer.data_stream)
+
+
 if __name__ == '__main__':
     unittest.main()
