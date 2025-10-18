@@ -18,6 +18,9 @@ class SingleEpisodeResultDict(TypedDict):
     pnls: List[float]
     actions: List[int]
     states: List[Any]
+    portfolio_history: List[float]
+    price_history: List[float]
+    timestamps: List[Any]
 
 
 class EvaluationResult(TypedDict, total=False):
@@ -68,6 +71,12 @@ class EvaluationResult(TypedDict, total=False):
     pnls: List[float]
     actions: List[int]
     states: List[Any]
+    action_history: List[int]
+    portfolio_history: List[float]
+    price_history: List[float]
+    timestamps: List[Any]
+    trade_pnls: List[float]
+    continuous_action_stats: Dict[str, Any]
 
     # Model info
     model_path: str

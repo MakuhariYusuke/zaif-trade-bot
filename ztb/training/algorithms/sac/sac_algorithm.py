@@ -79,6 +79,13 @@ DEFAULT_SAC_CONFIG = {
     "transformer_d_ff": 512,  # Transformerフィードフォワード次元
     "network_dropout": 0.1,  # ネットワークドロップアウト
     
+    # 効率的ネットワーク設定
+    "use_efficient_network": False,  # 効率的ネットワークを使用するか
+    "use_depthwise_conv": True,  # 深度分離畳み込みを使用するか
+    "use_efficient_attention": True,  # 効率的アテンションを使用するか
+    "use_dynamic_network": True,  # 動的ネットワークを使用するか
+    "attention_method": "linformer",  # アテンション方法 ("linformer", "performer")
+    
     # 転移学習設定
     "transfer_learning_enabled": False,  # 転移学習を使用するか
     "pretrained_model_path": None,  # 事前学習済みモデルのパス
@@ -207,6 +214,19 @@ class SACAlgorithm(BaseRLAlgorithm):
                     "sequence_length": sequence_length,
                 }
             })
+        elif network_type == "efficient":
+            # Import efficient network classes
+            from ztb.training.models.advanced_networks import EfficientSACPolicy
+            policy_kwargs.update({
+                "features_extractor_class": EfficientSACPolicy,
+                "features_extractor_kwargs": {
+                    "use_depthwise_conv": raw_kwargs.get("use_depthwise_conv", True),
+                    "use_efficient_attention": raw_kwargs.get("use_efficient_attention", True),
+                    "use_dynamic_network": raw_kwargs.get("use_dynamic_network", True),
+                    "attention_method": raw_kwargs.get("attention_method", "linformer"),
+                    "sequence_length": sequence_length,
+                }
+            })
         # For MLP, use default policy_kwargs
 
         # Handle activation function
@@ -289,8 +309,8 @@ class SACAlgorithm(BaseRLAlgorithm):
 
         # ネットワークタイプの検証
         network_type = config.get("network_type", "mlp")
-        if network_type not in ["mlp", "lstm", "transformer"]:
-            raise ValueError(f"Unsupported network_type: {network_type}. Must be one of: mlp, lstm, transformer")
+        if network_type not in ["mlp", "lstm", "transformer", "efficient"]:
+            raise ValueError(f"Unsupported network_type: {network_type}. Must be one of: mlp, lstm, transformer, efficient")
 
         # LSTM/Transformer固有のパラメータ検証
         if network_type == "lstm":

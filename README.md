@@ -193,6 +193,14 @@ pip install -e .[dev]
 
 ## 🧪 Testing & Quality
 
+### Test Coverage
+- **Unit Tests**: Comprehensive unit test suite covering all core components
+- **Integration Tests**: End-to-end testing of complete workflows
+- **Trainer Tests**: Specialized tests for SAC trainers including:
+  - `OnlineLearningSACTrainer`: Real-time adaptation and streaming learning
+  - `MultimodalSACTrainer`: Multi-modal feature integration (price, text, economic data)
+- **Coverage Target**: >80% code coverage maintained
+
 ### Run Tests
 ```bash
 # Unit tests with coverage
@@ -200,6 +208,21 @@ pytest tests/unit/ -v --cov=ztb --cov-report=html
 
 # Integration tests
 pytest tests/integration/ -v
+
+# Trainer-specific tests
+pytest ztb/adaptation/online_learning/tests.py::TestOnlineLearningSACTrainer -v
+pytest tests/test_multimodal_core.py::TestMultimodalSACTrainer -v
+
+# Reward Function & Parameter Tuning Tests
+pytest ztb/tests/test_advanced_features.py::TestContinualLearning -v
+pytest ztb/tests/test_advanced_features.py::TestContinualLearningIntegration -v
+
+# Parameter sweep tests (SAC baseline tuning)
+python -m ztb.training.unified_trainer.trainer --config configs/sac_v420_baseline.json
+python -m ztb.training.unified_trainer.trainer --config configs/sac_v420_lr_sweep_0001.json
+python -m ztb.training.unified_trainer.trainer --config configs/sac_v420_lr_sweep_0003.json
+python -m ztb.training.unified_trainer.trainer --config configs/sac_v420_lr_sweep_0010.json
+python -m ztb.training.unified_trainer.trainer --config configs/sac_v420_buffer_sweep_200k.json
 
 # All tests
 pytest
@@ -261,6 +284,25 @@ This project implements multiple security measures:
 - **Health Checks**: System health monitoring and alerting
 - **TensorBoard Integration**: Training visualization and monitoring
 
+## 📚 Documentation
+
+### Analysis Reports
+- **[SAC v424 Deep Analysis Report](docs/SAC_V424_DEEP_ANALYSIS_REPORT.md)**: Comprehensive analysis revealing critical strategy weaknesses including 67% SELL bias, market non-correlation (0.019), and robustness collapse (0.262 score)
+- **[SAC v425 Improvement Plan](docs/SAC_V425_IMPROVEMENT_PLAN.md)**: 5-phase improvement strategy leveraging 85% existing systems to address fundamental issues over 10-15 days
+
+### Key Findings
+- **SELL Bias Overlearning**: Training 26.8% → Test 67% indicates data leakage or reward design flaws
+- **Market Disconnection**: Price correlation 0.019, β-value 0.017 shows strategy ignores BTC price movements
+- **Adaptation Failure**: Learning efficiency 0.000, adaptation ratio -1.755 demonstrates inability to learn
+- **Robustness Breakdown**: Score 0.262 with 0.000 regime consistency across market conditions
+
+### Improvement Strategy
+- **Data Foundation**: BTCDataAugmentor for balanced market condition datasets (50k samples)
+- **Feature Engineering**: Correlation-aware features for market connectivity
+- **Adaptive Rewards**: Dynamic penalty adjustment based on action distribution
+- **Curriculum Learning V2**: 4-stage progressive learning (bias awareness → correlation optimization → scalping)
+- **Comprehensive Validation**: Enhanced analyze_backtest.py with correlation, stress testing, and walk-forward analysis
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -309,3 +351,196 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **⚠️ Disclaimer**: This software is for educational and research purposes. Cryptocurrency trading involves significant risk. Always test thoroughly and never risk more than you can afford to lose.
+
+## 🔍 Advanced ML Features for SAC v421
+
+SAC v421 introduces cutting-edge machine learning capabilities for enhanced trading intelligence and data quality management.
+
+### Anomaly Detection System
+Comprehensive data quality monitoring and outlier detection for robust trading signals.
+
+**Key Components:**
+- **Statistical Methods**: Z-score, IQR, MAD-based anomaly detection
+- **Machine Learning**: Isolation Forest, Elliptic Envelope algorithms
+- **Neural Networks**: Autoencoder-based unsupervised anomaly detection
+- **Voting System**: Multi-method consensus for high-confidence anomaly detection
+
+**Usage:**
+```python
+from ztb.data.anomaly_detection import ComprehensiveAnomalyDetector
+
+detector = ComprehensiveAnomalyDetector(
+    statistical_methods=['zscore', 'iqr'],
+    ml_methods=['isolation_forest'],
+    voting_threshold=0.5
+)
+
+# Fit on training data
+detector.fit_ml_detectors(training_data)
+
+# Detect anomalies
+is_anomaly, results = detector.detect_anomalies(new_data)
+```
+
+### Meta Learning for Rapid Adaptation
+MAML and Reptile algorithms for quick adaptation to new market conditions.
+
+**Key Features:**
+- **MAML**: Model-Agnostic Meta-Learning for few-shot adaptation
+- **Reptile**: First-order meta-learning for efficient knowledge transfer
+- **Market-Specific Adaptation**: Specialized models for different exchanges
+- **Cross-Market Knowledge**: Transfer learning between correlated markets
+
+**Usage:**
+```python
+from ztb.adaptation.meta_learning import MarketMetaLearner
+
+meta_learner = MarketMetaLearner(state_dim=10, action_dim=4)
+
+# Add market data
+meta_learner.add_market_data('BTC_JPY', states, actions, rewards, next_states, dones)
+
+# Train meta-learner
+history = meta_learner.train_on_markets(num_epochs=100)
+
+# Adapt to new market
+adapted_model = meta_learner.adapt_to_market('ETH_JPY', market_data)
+```
+
+### Federated Learning with Privacy
+Privacy-preserving distributed training across multiple exchanges and data sources.
+
+**Key Features:**
+- **FedAvg Algorithm**: Federated Averaging with differential privacy
+- **Privacy Protection**: Opacus integration for ε-differential privacy
+- **Market-Based Federation**: Exchange-specific model training
+- **Cross-Market Aggregation**: Knowledge synthesis across privacy boundaries
+
+**Usage:**
+```python
+from ztb.training.federated_learning import MarketFederatedLearner, FederatedConfig
+
+# Configure federated learning
+market_configs = {
+    'exchange_A': FederatedConfig(num_clients=5, enable_privacy=True),
+    'exchange_B': FederatedConfig(num_clients=3, enable_privacy=True)
+}
+
+federated_learner = MarketFederatedLearner(base_model, market_configs)
+
+# Add clients with private data
+federated_learner.add_market_client('exchange_A', client_data_loader)
+
+# Train federated models
+results = federated_learner.train_all_markets(loss_fn)
+
+# Aggregate cross-market knowledge
+global_model = federated_learner.aggregate_cross_market_knowledge()
+```
+
+### Unified Integration
+All advanced features are seamlessly integrated into the UnifiedTrainer.
+
+**Configuration:**
+```json
+{
+  "enable_anomaly_detection": true,
+  "anomaly_statistical_methods": ["zscore", "iqr"],
+  "anomaly_ml_methods": ["isolation_forest"],
+  "enable_anomaly_autoencoder": false,
+  "anomaly_voting_threshold": 0.5,
+
+  "enable_meta_learning": true,
+  "meta_algorithm": "maml",
+  "meta_batch_size": 4,
+
+  "enable_federated": true,
+  "federated_markets": true,
+  "markets": ["exchange_A", "exchange_B"],
+  "num_clients": 5,
+  "federated_rounds": 10,
+  "enable_privacy": true,
+  "privacy_budget": 1.0
+}
+```
+
+**Training with Advanced Features:**
+```bash
+# Enable all advanced features
+python -m ztb.training.unified_trainer.trainer \\
+  --config config/advanced_sac_v421.yaml \\
+  --enable_anomaly_detection \\
+  --enable_meta_learning \\
+  --enable_federated \\
+  --federated_markets
+```
+
+## 📚 Continual Learning for Knowledge Accumulation
+Long-term knowledge accumulation and catastrophic forgetting prevention for sustained trading performance.
+
+### Key Techniques
+- **EWC (Elastic Weight Consolidation)**: Protects important parameters from being overwritten
+- **Rehearsal Methods**: Maintains past knowledge through data replay
+- **Progressive Networks**: Expands network capacity for new tasks while preserving old knowledge
+
+### Usage
+```python
+from ztb.adaptation.continual_learning import ContinualLearner, ContinualLearningConfig
+
+config = ContinualLearningConfig(
+    method='ewc',
+    ewc_lambda=0.1,
+    max_tasks_in_memory=5
+)
+
+continual_learner = ContinualLearner(model, config)
+
+# Learn new task while preserving previous knowledge
+stats = continual_learner.learn_task(task_data, loss_fn, optimizer)
+```
+
+### Configuration
+```json
+{
+  "enable_continual_learning": true,
+  "continual_method": "ewc",
+  "continual_ewc_lambda": 0.1,
+  "continual_buffer_size": 1000,
+  "continual_max_tasks": 5
+}
+```
+
+## ### SAC Parameter Tuning
+
+For systematic parameter optimization before implementing advanced features:
+
+```bash
+# Run complete parameter tuning suite (learning rate, buffer size, batch size, etc.)
+python scripts/run_sac_v420_parameter_tuning.py
+
+# Or use the batch file on Windows
+./run_sac_v420_tuning.bat
+
+# Analyze tuning results and get recommendations
+python scripts/analyze_sac_v420_tuning_results.py
+```
+
+**Tuning Features:**
+- **Short Test Runs**: 1k-5k steps for efficient parameter validation
+- **Comprehensive Sweeps**: Learning rate, buffer size, batch size, entropy, reward scale, gamma
+- **Automated Analysis**: Performance comparison and optimal parameter recommendations
+- **Results Storage**: Structured results in `results/sac_v420_tuning/`
+
+### Individual Parameter Tests
+
+Test specific parameters with individual config files:
+
+```bash
+# Test learning rates
+python -m ztb.training.unified_trainer.main configs/sac_v420_lr_sweep_0.0001_1k.json
+python -m ztb.training.unified_trainer.main configs/sac_v420_lr_sweep_0.001_1k.json
+
+# Test buffer sizes
+python -m ztb.training.unified_trainer.main configs/sac_v420_buffer_sweep_100k_1k.json
+python -m ztb.training.unified_trainer.main configs/sac_v420_buffer_sweep_200k_1k.json
+```
