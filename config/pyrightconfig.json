@@ -1,21 +1,19 @@
 {
-  "include": ["ztb/"],
   "exclude": [
     "ztb/__pycache__",
     "ztb/**/*.pyc",
     "ztb/node_modules",
-    "ztb/*.ts",
-    "ztb/**/*.ts"
   ],
   "pythonVersion": "3.11",
   "typeCheckingMode": "strict",
+
   "reportMissingImports": true,
-  "reportMissingTypeStubs": false,
-  "reportUnknownMemberType": false,
-  "reportUnknownVariableType": false,
-  "reportUnknownArgumentType": false,
-  "reportUnknownParameterType": false,
-  "reportUnknownLambdaType": false,
+  "reportMissingTypeStubs": true,
+  "reportUnknownMemberType": true,
+  "reportUnknownVariableType": true,
+  "reportUnknownArgumentType": true,
+  "reportUnknownParameterType": true,
+  "reportUnknownLambdaType": true,
   "reportMissingParameterType": true,
   "reportMissingTypeArgument": true,
   "reportInvalidTypeVarUse": true,
@@ -30,5 +28,13 @@
   "reportInvalidStubStatement": true,
   "reportIncompleteStub": true,
   "reportUnsupportedDunderAll": true,
-  "reportUnusedCallResult": false
+  "reportUnusedCallResult": false,
+
+  "reportUnusedClass": "error",
+  "reportUnusedImport": "error",
+  "reportUnusedFunction": "error",
+  "reportUnusedVariable": "error",
+
+  "reportIncompatibleMethodOverride": true,
+  "reportIncompatibleVariableOverride": true,
 }

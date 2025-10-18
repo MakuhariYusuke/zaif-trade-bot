@@ -11,7 +11,9 @@ import sys
 import os
 
 # Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+sys.path.insert(0, project_root)
 
 def run_backtest(model_path, data_path, output_path=None):
     """Run backtest for a given model and data"""
@@ -19,68 +21,35 @@ def run_backtest(model_path, data_path, output_path=None):
         from stable_baselines3 import SAC
         import gymnasium as gym
         import numpy as np
+        from ztb.trading.environment.constants import continuous_to_discrete_action
+        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+        from ztb.trading.environment.utils.config import EnvironmentConfig
 
         # Load data
         df = pd.read_csv(data_path)
         print(f"Loaded data: {len(df)} rows")
 
-        # Simple feature engineering - just use OHLCV
-        features = ['open', 'high', 'low', 'close', 'volume']
-        df_features = df[features].copy()
-        df_features = df_features.fillna(method='ffill').fillna(0)
-        print(f"Using features: {features}")
+        # Create environment config similar to training
+        env_config_dict = {
+            "initial_portfolio_value": 1000000.0,
+            "transaction_cost": 0.001,
+            "max_position_size": 1.0,
+            "enable_action_masking": False,
+            "use_continuous_actions": True,
+            "use_standardized_observations": True,
+            "random_start": False,  # For backtesting, start from beginning
+            "curriculum_stage": "baseline",
+            "continuous_to_discrete_threshold": 0.1
+        }
+        env_config = EnvironmentConfig.from_dict(env_config_dict)
+
+        # Create HeavyTradingEnv for backtesting
+        env = HeavyTradingEnv(df=df, config=env_config)
+        print(f"Created HeavyTradingEnv with {len(env.features)} features")
 
         # Load model
         model = SAC.load(model_path)
         print(f"Loaded model: {model_path}")
-
-        # Create simple environment
-        class SimpleTradingEnv(gym.Env):
-            def __init__(self, data):
-                super().__init__()
-                self.data = data
-                self.current_step = 0
-                self.action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
-                self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(len(features),), dtype=np.float32)
-                self.position = 0
-                self.entry_price = 0
-                self.total_pnl = 0
-
-            def reset(self, seed=None, options=None):
-                self.current_step = 0
-                self.position = 0
-                self.entry_price = 0
-                self.total_pnl = 0
-                return self._get_obs(), {}
-
-            def _get_obs(self):
-                return self.data.iloc[self.current_step].values.astype(np.float32)
-
-            def step(self, action):
-                current_price = self.data.iloc[self.current_step]['close']
-                reward = 0
-
-                # Simple trading logic
-                if action[0] > 0.1 and self.position == 0:  # Buy
-                    self.position = 1
-                    self.entry_price = current_price
-                elif action[0] < -0.1 and self.position == 1:  # Sell
-                    pnl = current_price - self.entry_price
-                    self.total_pnl += pnl
-                    reward = pnl
-                    self.position = 0
-                    self.entry_price = 0
-
-                self.current_step += 1
-                done = self.current_step >= len(self.data) - 1
-
-                return self._get_obs(), reward, done, False, {
-                    'position': self.position,
-                    'entry_price': self.entry_price,
-                    'pnl': self.total_pnl
-                }
-
-        env = SimpleTradingEnv(df_features)
 
         # Run backtest
         obs, info = env.reset()
@@ -89,22 +58,28 @@ def run_backtest(model_path, data_path, output_path=None):
         trades = []
         step = 0
 
-        while not done and step < len(df_features) - 1:
+        while not done and step < len(df) - 1:
             action, _ = model.predict(obs, deterministic=True)
+            if step < 5:  # Debug first 5 steps
+                print(f"Debug: Step {step}, Obs shape: {obs.shape}, Action: {action}")
             obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
             total_reward += reward
             step += 1
 
-            # Record trade if position changed
-            if info.get('position') != 0 or (step > 0 and info.get('pnl', 0) != 0):
+            # Record trade if position changed or pnl occurred
+            if (info.get('position', 0) != 0 or
+                (hasattr(env, 'position_manager') and env.position_manager.get_position_info()['trades_count'] > 0) or
+                info.get('pnl', 0) != 0):
                 trade_info = {
                     'step': step,
                     'action': action.tolist() if hasattr(action, 'tolist') else action,
+                    'discrete_action': info.get('discrete_action', 0),
                     'reward': float(reward),
                     'position': float(info.get('position', 0)),
                     'entry_price': float(info.get('entry_price', 0)),
-                    'pnl': float(info.get('pnl', 0))
+                    'pnl': float(info.get('pnl', 0)),
+                    'portfolio_value': float(info.get('portfolio_value', env.initial_portfolio_value))
                 }
                 trades.append(trade_info)
 

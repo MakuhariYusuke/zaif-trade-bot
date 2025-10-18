@@ -16,7 +16,7 @@ from .data_loader import (
     detect_outliers_zscore,
 )
 from .stream_buffer import BufferStats, StreamBuffer
-from .streaming_pipeline import PipelineStats, StreamingPipeline
+from .btc_data_augmentation import BTCDataAugmentor, BTCBiasDetector
 
 # 新しいデータ処理モジュール
 from .data_augmentation import DataAugmentation
@@ -40,6 +40,10 @@ __all__ = [
     "MarketDataBatch",
     "StreamingPipeline",
     "PipelineStats",
+
+    # BTCデータ拡張機能
+    "BTCDataAugmentor",
+    "BTCBiasDetector",
 
     # 新しいデータ処理機能
     'DataAugmentation',

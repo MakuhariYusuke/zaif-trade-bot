@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, SAC
+from stable_baselines3.common.base_class import BaseAlgorithm
 from torch.utils.tensorboard import SummaryWriter
 
 from ztb.evaluation.evaluator.types import EvaluationResult, ModelConfigDict, SingleEpisodeResultDict
@@ -24,6 +25,7 @@ from ztb.metrics.metrics import (
     p_mean_method,
 )
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.logging_utils import get_logger
@@ -35,12 +37,17 @@ try:
     WALKFORWARD_AVAILABLE = True
 except ImportError:
     WALKFORWARD_AVAILABLE = False
+    WalkforwardAnalyzer = None
 
-try:
-    from scripts.validation.stress_test import StressTestAnalyzer
-    STRESS_TEST_AVAILABLE = True
-except ImportError:
-    STRESS_TEST_AVAILABLE = False
+# Temporarily disable stress test due to pandas version issue
+# try:
+#     from scripts.validation.stress_test import StressTestAnalyzer
+#     STRESS_TEST_AVAILABLE = True
+# except ImportError:
+#     STRESS_TEST_AVAILABLE = False
+#     StressTestAnalyzer = None
+STRESS_TEST_AVAILABLE = False
+StressTestAnalyzer = None
 
 logger = get_logger(__name__)
 
@@ -49,7 +56,7 @@ class TradingEvaluator:
     """取引モデルの評価クラス"""
 
     writer: Any  # TensorBoard SummaryWriter
-    model: Optional[PPO]
+    model: Optional[BaseAlgorithm]
     df: Optional[pd.DataFrame]
 
     def __init__(
@@ -123,8 +130,9 @@ class TradingEvaluator:
             return None
 
         try:
-            model = PPO.load(str(self.model_path))
-            logger.info(f"Model loaded from {self.model_path}")
+            # Use BaseAlgorithm.load to support any SB3 algorithm (PPO, SAC, etc.)
+            model = BaseAlgorithm.load(str(self.model_path))
+            logger.info(f"Model loaded from {self.model_path} (type={type(model).__name__})")
             return model
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
@@ -132,18 +140,9 @@ class TradingEvaluator:
 
     def _create_env(self) -> HeavyTradingEnv:
         """環境の作成"""
-        from ztb.trading.environment.utils.config import EnvironmentConfig
-
-        config = EnvironmentConfig(
-            max_steps=self.config["max_steps_per_episode"],
-            initial_balance=10000.0,
-            transaction_cost=0.0005,
-        )
-
-        return HeavyTradingEnv(
-            df=self.df,
-            config=config,
-        )
+        # 既存の EnvironmentConfig を活用
+        env_config = EnvironmentConfig.from_dict(self.config.get("env_config", {}))
+        return HeavyTradingEnv(df=self.df, config=env_config)
 
     def evaluate_model(self) -> EvaluationResult:
         """
@@ -169,7 +168,15 @@ class TradingEvaluator:
 
     def _evaluate_single_episode(self) -> SingleEpisodeResultDict:
         """単一エピソードの評価"""
-        obs, _ = self.env.reset()
+        # Reset environment. Different envs may return obs or (obs, info)
+        reset_result = self.env.reset()
+        if isinstance(reset_result, tuple) and len(reset_result) >= 1:
+            obs = reset_result[0]
+            # try to get reset info if available
+            reset_info = reset_result[1] if len(reset_result) > 1 else {}
+        else:
+            obs = reset_result
+            reset_info = {}
         done = False
         total_reward = 0.0
 
@@ -178,22 +185,73 @@ class TradingEvaluator:
         pnls = []
         actions = []
         states = []
+        portfolio_values = []
+        price_history = []
+        timestamps = []
 
         while not done:
             if self.config.get("save_states", False):
-                states.append(obs.copy())
+                # obs may be numpy array or pd.Series
+                try:
+                    states.append(obs.copy())
+                except Exception:
+                    states.append(np.asarray(obs))
 
             if self.model is None:
                 logger.error("Model not loaded")
                 break
 
-            action, _ = self.model.predict(obs, deterministic=self.config["deterministic"])
-            obs, reward, done, truncated, info = self.env.step(action)
+            # Predict action using SB3 model (may return scalar, array, or dict depending on policy)
+            raw_action, _ = self.model.predict(obs, deterministic=self.config["deterministic"])
+            # Normalize action to a scalar/compatible form for env.step
+            action = self._normalize_action(raw_action)
+
+            step_result = self.env.step(action)
+            # step may return (obs, reward, done, info) or (obs, reward, terminated, truncated, info)
+            if len(step_result) == 5:
+                obs, reward, terminated, truncated, info = step_result
+                done = bool(terminated or truncated)
+            else:
+                obs, reward, done, info = step_result
+                truncated = False
 
             rewards.append(float(reward))
             positions.append(float(info.get("position", 0.0)))
             pnls.append(float(info.get("pnl", 0.0)))
-            actions.append(int(action))
+            # store action as int when possible, otherwise raw
+            try:
+                actions.append(int(action))
+            except Exception:
+                actions.append(action)
+
+            # Record timestamp for this step if available
+            ts = info.get("timestamp") if isinstance(info, dict) else None
+            if ts is None:
+                # fallback: use env.current_step index to map to df if present
+                try:
+                    idx = getattr(self.env, "current_step", None)
+                    if idx is not None and self.df is not None and idx < len(self.df):
+                        ts = self.df.iloc[idx].get("timestamp") if "timestamp" in self.df.columns else self.df.index[idx]
+                except Exception:
+                    ts = None
+            timestamps.append(ts)
+
+            # Collect portfolio value and price if available in info
+            portfolio_values.append(float(info.get("portfolio_value", np.nan)))
+            price = info.get("price") if isinstance(info, dict) else None
+            if price is None:
+                try:
+                    idx = getattr(self.env, "current_step", None)
+                    if idx is not None and self.df is not None and idx < len(self.df):
+                        price = float(self.df.iloc[idx].get("close") if "close" in self.df.columns else self.df.iloc[idx].iat[0])
+                except Exception:
+                    price = np.nan
+            price_history.append(float(price) if price is not None else np.nan)
+
+            # attach timestamp to states list only if save_states is enabled
+            if self.config.get("save_states", False):
+                # keep small representation
+                states[-1] = {"obs": states[-1], "timestamp": ts}
             total_reward += reward
 
             if done or truncated:
@@ -205,7 +263,46 @@ class TradingEvaluator:
             "pnls": pnls,
             "actions": actions,
             "states": states,
+            "portfolio_history": portfolio_values,
+            "price_history": price_history,
+            "timestamps": timestamps,
         }
+
+    def _normalize_action(self, raw_action) -> int | float:
+        """Normalize model output to a scalar or discrete action suitable for env.step.
+
+        - If action is a numpy array with shape (n,) and env expects discrete index, map using argmax
+        - If action is a float-like, return scalar
+        - If action is already int, return as-is
+        """
+        # If action is array-like
+        try:
+            if isinstance(raw_action, (list, tuple)):
+                raw = np.asarray(raw_action)
+            else:
+                raw = raw_action
+
+            # numpy array with multiple outputs
+            if isinstance(raw, np.ndarray):
+                if raw.size == 1:
+                    return float(raw.reshape(-1)[0])
+                # If env expects discrete index, choose argmax
+                return int(np.argmax(raw))
+
+            # scalar-like
+            if isinstance(raw, (float, int, np.floating, np.integer)):
+                return float(raw) if isinstance(raw, (float, np.floating)) else int(raw)
+
+        except Exception:
+            pass
+
+        # Fallback: return raw_action as int or float
+        if isinstance(raw_action, (int, float)):
+            return raw_action
+        elif isinstance(raw_action, (list, tuple)) and len(raw_action) == 1:
+            return raw_action[0]
+        else:
+            return 0  # Default action
 
     def _aggregate_results(self, results: List[SingleEpisodeResultDict]) -> EvaluationResult:
         """結果を集計"""
@@ -220,6 +317,33 @@ class TradingEvaluator:
         metrics = calculate_all_metrics(pnl_returns)
 
         total_trades = len([a for result in results for a in result["actions"] if a != 0])  # Non-hold actions
+
+        # Flatten action history and compute streaks for BUY(1)/SELL(2)
+        action_history = [a for result in results for a in result.get("actions", [])]
+        def compute_streaks(actions_list, target):
+            max_streak = 0
+            streaks = []
+            cur = 0
+            for a in actions_list:
+                if a == target:
+                    cur += 1
+                else:
+                    if cur > 0:
+                        streaks.append(cur)
+                    max_streak = max(max_streak, cur)
+                    cur = 0
+            if cur > 0:
+                streaks.append(cur)
+                max_streak = max(max_streak, cur)
+            avg_streak = float(np.mean(streaks)) if streaks else 0.0
+            return {
+                'max': int(max_streak),
+                'avg': float(avg_streak),
+                'count': len(streaks)
+            }
+
+        buy_streaks = compute_streaks(action_history, 1)
+        sell_streaks = compute_streaks(action_history, 2)
 
         # Extract timestamps for seasonality analysis
         timestamps = []
@@ -245,7 +369,7 @@ class TradingEvaluator:
 
         # Perform walk-forward analysis if available and we have enough data
         walkforward_results = {}
-        if WALKFORWARD_AVAILABLE and len(pnl_returns) >= 100:  # Need substantial data
+        if WALKFORWARD_AVAILABLE and WalkforwardAnalyzer is not None and len(pnl_returns) >= 100:  # Need substantial data
             try:
                 analyzer = WalkforwardAnalyzer()
                 # Create synthetic time series for walk-forward analysis
@@ -264,7 +388,7 @@ class TradingEvaluator:
 
         # Perform stress test analysis if available
         stress_test_results = {}
-        if STRESS_TEST_AVAILABLE and len(pnl_returns) >= 50:
+        if STRESS_TEST_AVAILABLE and StressTestAnalyzer is not None and len(pnl_returns) >= 50:
             try:
                 analyzer = StressTestAnalyzer()
                 # Run basic stress tests on the returns
@@ -278,6 +402,25 @@ class TradingEvaluator:
             except Exception as e:
                 logger.warning(f"Could not perform stress test analysis: {e}")
                 stress_test_results = {'available': False, 'error': str(e)}
+
+        # Prepare trade pnls (attempt to collect per-trade pnl if available in results)
+        trade_pnls = []
+        for res in results:
+            # If environment reported per-step 'pnls' we can aggregate contiguous non-zero pnls as trades
+            pnls = res.get('pnls', [])
+            # simple heuristic: non-zero pnls indicate trades
+            trade_pnls.extend([p for p in pnls if p != 0])
+
+        continuous_action_stats = {
+            'action_streaks': {
+                'max_buy_streak': buy_streaks['max'],
+                'avg_buy_streak': buy_streaks['avg'],
+                'buy_streak_count': buy_streaks['count'],
+                'max_sell_streak': sell_streaks['max'],
+                'avg_sell_streak': sell_streaks['avg'],
+                'sell_streak_count': sell_streaks['count'],
+            }
+        }
 
         return {
             "total_return": metrics["total_return"],
@@ -302,6 +445,13 @@ class TradingEvaluator:
             "pnls": all_pnls,
             "actions": [a for result in results for a in result["actions"]],
             "states": [s for result in results for s in result["states"]],
+            # compatibility with analyze_backtest.py expectations
+            "action_history": action_history,
+            "portfolio_history": [v for result in results for v in result.get('portfolio_history', [])],
+            "price_history": [v for result in results for v in result.get('price_history', [])],
+            "timestamps": [t for result in results for t in result.get('timestamps', [])],
+            "trade_pnls": trade_pnls,
+            "continuous_action_stats": continuous_action_stats,
             "model_path": str(self.model_path),
             "evaluation_config": self.config,
         }

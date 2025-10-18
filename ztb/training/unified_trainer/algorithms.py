@@ -21,6 +21,13 @@ from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.trading.environment.components.memory_manager import MemoryManager
 from ztb.multimodal.pretraining import SelfSupervisedTrainer as SSPTrainer
 from ztb.multimodal.pretraining.config import get_config as get_ssp_config
+from ztb.trading.environment.constants import continuous_to_discrete_action
+
+# Import multimodal and online learning trainers
+from ztb.multimodal.training.trainers.multimodal_trainer import MultimodalSACTrainer
+from ztb.adaptation.online_learning.trainer import OnlineLearningSACTrainer
+from ztb.multimodal.config import MultimodalConfig
+from ztb.adaptation.online_learning.config import OnlineLearningConfig
 
 # Import distributed training utilities
 from ztb.training.distributed.distributed_training import (
@@ -531,5 +538,25 @@ def create_algorithm_trainer(
         return PPOTrainer(config, logger, gradient_accumulation_steps)
     elif algorithm == "self_supervised":
         return SelfSupervisedTrainer(config, logger)
+    elif algorithm == "multimodal":
+        # Create multimodal config from unified config
+        multimodal_config = MultimodalConfig(
+            price_feature_dim=config.get('price_feature_dim', 156),
+            text_embedding_dim=config.get('text_embedding_dim', 768),
+            economic_feature_dim=config.get('economic_feature_dim', 10),
+            action_dim=config.get('action_dim', 3),
+            hidden_dim=config.get('multimodal_hidden_dim', 256),
+            num_heads=config.get('multimodal_num_heads', 8)
+        )
+        return MultimodalSACTrainer(multimodal_config, config, config.get('env_config', {}))
+    elif algorithm == "online_learning":
+        # Create online learning config from unified config
+        online_config = OnlineLearningConfig(
+            learning_mode=config.get('online_learning_mode', 'incremental'),
+            batch_size=config.get('online_batch_size', 32),
+            max_memory_samples=config.get('online_memory_samples', 10000),
+            adaptation_trigger_threshold=config.get('online_adaptation_threshold', 0.1)
+        )
+        return OnlineLearningSACTrainer(online_config, config, config.get('env_config', {}))
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}")
