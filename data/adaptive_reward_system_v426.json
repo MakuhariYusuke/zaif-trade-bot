@@ -1,0 +1,159 @@
+{
+  "version": "v426",
+  "phase": 3,
+  "description": "Adaptive Reward System for SAC v426",
+  "curriculum_stages": {
+    "cost_aware": {
+      "config": {
+        "base_penalty": -0.001,
+        "correlation_bonus": 0.01,
+        "regime_multiplier": 1.0,
+        "volatility_penalty": -0.005
+      },
+      "reward_stats": {
+        "mean": 0.0002694387588217917,
+        "std": 0.026914717059735953,
+        "min": -0.04002994801390468,
+        "max": 0.03734008260732457,
+        "positive_ratio": 0.4435564435564436
+      },
+      "regime_stats": {
+        "sideways": {
+          "mean": 0.0005889050488760168,
+          "count": 143
+        },
+        "high_volatility": {
+          "mean": -4.620330909899184e-05,
+          "count": 143
+        },
+        "moderate_bear": {
+          "mean": -0.0009342173484251336,
+          "count": 143
+        },
+        "moderate_bull": {
+          "mean": 0.0012119747804018673,
+          "count": 143
+        },
+        "low_volatility": {
+          "mean": 0.0015108285464712926,
+          "count": 143
+        },
+        "strong_bull": {
+          "mean": 0.00519003340803657,
+          "count": 143
+        },
+        "strong_bear": {
+          "mean": -0.0056352498145090845,
+          "count": 143
+        }
+      }
+    },
+    "strong_penalty": {
+      "config": {
+        "base_penalty": -0.01,
+        "correlation_bonus": 0.05,
+        "regime_multiplier": 2.0,
+        "volatility_penalty": -0.02
+      },
+      "reward_stats": {
+        "mean": -0.018698219804389477,
+        "std": 0.061573618360406576,
+        "min": -0.1452994801390468,
+        "max": 0.0884008260732457,
+        "positive_ratio": 0.3226773226773227
+      },
+      "regime_stats": {
+        "sideways": {
+          "mean": -0.013439620839911156,
+          "count": 143
+        },
+        "high_volatility": {
+          "mean": -0.00923825686721369,
+          "count": 143
+        },
+        "moderate_bear": {
+          "mean": -0.03455895670103456,
+          "count": 143
+        },
+        "moderate_bull": {
+          "mean": -0.007432699748428877,
+          "count": 143
+        },
+        "low_volatility": {
+          "mean": -0.012884721528294067,
+          "count": 143
+        },
+        "strong_bull": {
+          "mean": 0.004802431982463617,
+          "count": 143
+        },
+        "strong_bear": {
+          "mean": -0.05813571492830762,
+          "count": 143
+        }
+      }
+    },
+    "correlation_focused": {
+      "config": {
+        "base_penalty": -0.005,
+        "correlation_bonus": 0.1,
+        "regime_multiplier": 1.5,
+        "volatility_penalty": -0.01
+      },
+      "reward_stats": {
+        "mean": -0.0035453317045862115,
+        "std": 0.08090500948176095,
+        "min": -0.1691992202085702,
+        "max": 0.15135123910986856,
+        "positive_ratio": 0.4435564435564436
+      },
+      "regime_stats": {
+        "sideways": {
+          "mean": -0.0027888018892373617,
+          "count": 143
+        },
+        "high_volatility": {
+          "mean": -0.0028171755106107385,
+          "count": 143
+        },
+        "moderate_bear": {
+          "mean": -0.025572700785817564,
+          "count": 143
+        },
+        "moderate_bull": {
+          "mean": 0.015431369957776272,
+          "count": 143
+        },
+        "low_volatility": {
+          "mean": 0.004478861763502963,
+          "count": 143
+        },
+        "strong_bull": {
+          "mean": 0.03917043119047864,
+          "count": 143
+        },
+        "strong_bear": {
+          "mean": -0.052719306658195686,
+          "count": 143
+        }
+      }
+    }
+  },
+  "optimized_config": {
+    "optimized_parameters": {
+      "base_penalty": -0.005,
+      "correlation_bonus": 0.2,
+      "regime_multiplier": 2.5,
+      "volatility_penalty": -0.005
+    },
+    "best_correlation_score": 0.0014486528215476874,
+    "optimization_method": "grid_search",
+    "sample_size": 1000
+  },
+  "created_at": "2025-10-18T19:14:04.909734",
+  "target_improvement": {
+    "from_adaptability": 0.262,
+    "target_adaptability": 0.8,
+    "correlation_target": 0.1
+  }
+}
