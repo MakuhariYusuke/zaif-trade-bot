@@ -13,19 +13,23 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ztb.training.config_manager import ConfigManager
-
+from ztb.training.core.config_manager import ConfigManager
+from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
+from ztb.training.unified_trainer.reporting import TrainingReporter
+from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class PPOAlgorithmTrainer:
+class PPOAlgorithmTrainer(EnsembleMixin):
     """
     Handles PPO algorithm training with various configurations.
     """
 
-    def __init__(self, config_manager: ConfigManager, progress_bar_enabled: bool = False) -> None:
+    def __init__(
+        self, config_manager: ConfigManager, progress_bar_enabled: bool = False
+    ) -> None:
         """
         Initialize PPO trainer.
 
@@ -33,6 +37,7 @@ class PPOAlgorithmTrainer:
             config_manager: ConfigManager instance
             progress_bar_enabled: Whether progress bar is enabled
         """
+        super().__init__()
         self.config_manager = config_manager
         self.progress_bar_enabled = progress_bar_enabled
         self.logger = get_logger(__name__)
@@ -73,10 +78,15 @@ class PPOAlgorithmTrainer:
             """トップレベル（lagrange_プレフィックス）とlagrange_constraintの両方をチェック"""
             # lagrange_プレフィックス付きキーを優先、次にlagrange_constraint内、最後にデフォルト
             prefixed_key = f"lagrange_{key}"
-            return config.get(prefixed_key, lagrange_config.get(key, LAGRANGE_DEFAULTS.get(key, default)))
+            return config.get(
+                prefixed_key,
+                lagrange_config.get(key, LAGRANGE_DEFAULTS.get(key, default)),
+            )
 
         # enable_lagrangeは特別扱い（プレフィックスなしとlagrange_constraint.enabledの両方をチェック）
-        enable_lagrange = config.get("enable_lagrange", lagrange_config.get("enabled", True))
+        enable_lagrange = config.get(
+            "enable_lagrange", lagrange_config.get("enabled", True)
+        )
 
         if not enable_lagrange:
             return None
@@ -89,7 +99,9 @@ class PPOAlgorithmTrainer:
             "warmup_steps": get_lagrange_param("warmup_steps"),
         }
 
-    def _create_ppo_trainer(self, unified_config: Dict[str, Any], enable_sell_mitigation: bool = False) -> Any:
+    def _create_ppo_trainer(
+        self, unified_config: Dict[str, Any], enable_sell_mitigation: bool = False
+    ) -> Any:
         """
         Create appropriate PPO trainer instance.
 
@@ -119,14 +131,21 @@ class PPOAlgorithmTrainer:
                 enable_probes=unified_config.get("enable_probes", False),
                 enable_weights=unified_config.get("enable_weights", False),
                 enable_pan=unified_config.get("enable_pan", True),
-                enable_target_entropy=unified_config.get("enable_target_entropy", False),
-                enable_stratified_sampling=unified_config.get("enable_stratified_sampling", False),
+                enable_target_entropy=unified_config.get(
+                    "enable_target_entropy", False
+                ),
+                enable_stratified_sampling=unified_config.get(
+                    "enable_stratified_sampling", False
+                ),
                 allow_reverse=unified_config.get("allow_reverse", False),
                 probe_csv_path=unified_config.get("probe_csv_path"),
                 lagrange_params=lagrange_params,
             )
 
-            from ztb.training.experiments.sell_mitigation_ppo_trainer import SELLBiasMitigationPPOTrainer
+            from ztb.training.experiments.sell_mitigation_ppo_trainer import (
+                SELLBiasMitigationPPOTrainer,
+            )
+
             return SELLBiasMitigationPPOTrainer(params=mitigation_params)
         else:
             # Import TrainerParams for standard PPO
@@ -141,9 +160,12 @@ class PPOAlgorithmTrainer:
             )
 
             from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
+
             return PPOTrainer(params=trainer_params)
 
-    def _save_model_and_schema(self, model: Any, unified_config: Dict[str, Any]) -> None:
+    def _save_model_and_schema(
+        self, model: Any, unified_config: Dict[str, Any]
+    ) -> None:
         """
         Save trained model and schema.
 
@@ -157,7 +179,7 @@ class PPOAlgorithmTrainer:
         # Save model
         model_dir = Path(unified_config.get("model_dir", "models"))
         model_dir.mkdir(exist_ok=True)
-        session_id = unified_config.get('session_id', 'ppo_session')
+        session_id = unified_config.get("session_id", "ppo_session")
         model_path = model_dir / f"{session_id}.zip"
 
         # Clear memory before saving large model
@@ -178,7 +200,9 @@ class PPOAlgorithmTrainer:
         # Save model schema
         self._save_model_schema(session_id, model_dir)
 
-    def _save_model_schema(self, session_id: str, model_dir: Path, df: Optional[Any] = None) -> None:
+    def _save_model_schema(
+        self, session_id: str, model_dir: Path, df: Optional[Any] = None
+    ) -> None:
         """
         Save model schema using FeatureSchemaManager.
 
@@ -188,10 +212,11 @@ class PPOAlgorithmTrainer:
             df: Optional DataFrame
         """
         try:
+            import numpy as np
+            import pandas as pd
+
             from ztb.training.core.feature_schema_manager import FeatureSchemaManager
             from ztb.utils.data_utils import load_csv_data_optimized
-            import pandas as pd
-            import numpy as np
 
             # Load DataFrame if not provided
             if df is None:
@@ -203,14 +228,18 @@ class PPOAlgorithmTrainer:
 
             # Auto-detect feature columns (exclude meta columns)
             exclude_cols = {
-                "ts", "timestamp", "exchange", "pair",
-                "episode_id", "side", "source"
+                "ts",
+                "timestamp",
+                "exchange",
+                "pair",
+                "episode_id",
+                "side",
+                "source",
             }
             feature_columns = [
                 col
                 for col in df.columns
-                if col not in exclude_cols
-                and pd.api.types.is_numeric_dtype(df[col])
+                if col not in exclude_cols and pd.api.types.is_numeric_dtype(df[col])
             ]
 
             # Calculate scaler data
@@ -222,29 +251,25 @@ class PPOAlgorithmTrainer:
 
             # Save schema using FeatureSchemaManager
             schema_manager = FeatureSchemaManager(
-                model_name=session_id,
-                models_dir=Path(model_dir)
+                model_name=session_id, models_dir=Path(model_dir)
             )
 
             schema_hash = schema_manager.save_schema(
                 features=feature_columns,
                 config=self.config_manager.config,
-                scaler_data=scaler_data
+                scaler_data=scaler_data,
             )
 
             self.logger.info(
                 f"✅ Model schema saved: {len(feature_columns)} features, "
                 f"hash: {schema_hash[:16]}..."
             )
-            self.logger.info(
-                f"   Schema directory: {model_dir}/schemas/{session_id}/"
-            )
+            self.logger.info(f"   Schema directory: {model_dir}/schemas/{session_id}/")
 
         except Exception as e:
             # Non-fatal: Log warning but don't fail training
             self.logger.warning(
-                f"Failed to save model schema (non-fatal): {e}",
-                exc_info=True
+                f"Failed to save model schema (non-fatal): {e}", exc_info=True
             )
 
     def train(self, unified_config: Dict[str, Any]) -> Any:
@@ -257,6 +282,9 @@ class PPOAlgorithmTrainer:
         Returns:
             Trained model
         """
+        # Initialize ensemble if enabled
+        self.initialize_ensemble(unified_config)
+
         # Set up memory optimization
         self._setup_memory_optimization(unified_config)
 
@@ -266,9 +294,13 @@ class PPOAlgorithmTrainer:
         if enable_sell_mitigation:
             self.logger.info("SELL bias mitigation enabled - using enhanced trainer")
             try:
-                from ztb.training.experiments.sell_mitigation_ppo_trainer import SELLBiasMitigationPPOTrainer
+                from ztb.training.experiments.sell_mitigation_ppo_trainer import (
+                    SELLBiasMitigationPPOTrainer,
+                )
             except ImportError as e:
-                self.logger.warning(f"SELL mitigation trainer not available: {e}. Falling back to standard PPO.")
+                self.logger.warning(
+                    f"SELL mitigation trainer not available: {e}. Falling back to standard PPO."
+                )
                 enable_sell_mitigation = False
 
         # Create trainer
@@ -277,32 +309,59 @@ class PPOAlgorithmTrainer:
         # Memory optimization: Periodic cleanup during training
         if unified_config.get("aggressive_memory_management", False):
             import atexit
+
             atexit.register(gc.collect)
 
         try:
             # Log training start with structured info
-            self.logger.info("Starting PPO training", extra={
-                "algorithm": "ppo",
-                "session_id": unified_config.get("session_id", "ppo_session"),
-                "total_timesteps": unified_config.get("total_timesteps"),
-                "enable_sell_mitigation": enable_sell_mitigation,
-                "memory_optimization": self.config_manager.get_memory_optimization_config(),
-            })
+            self.logger.info(
+                "Starting PPO training",
+                extra={
+                    "algorithm": "ppo",
+                    "session_id": unified_config.get("session_id", "ppo_session"),
+                    "total_timesteps": unified_config.get("total_timesteps"),
+                    "enable_sell_mitigation": enable_sell_mitigation,
+                    "memory_optimization": self.config_manager.get_memory_optimization_config(),
+                },
+            )
 
-            model = trainer.train(session_id=unified_config.get("session_id", "ppo_session"))
+            model = trainer.train(
+                session_id=unified_config.get("session_id", "ppo_session")
+            )
+
+            # Generate ensemble report if enabled
+            if self.ensemble_enabled:
+                try:
+                    reporter = TrainingReporter()
+                    ui = TrainingUI()
+                    ensemble_report_path = self.generate_ensemble_report(reporter, ui)
+                    if ensemble_report_path:
+                        self.logger.info(
+                            f"Ensemble report generated: {ensemble_report_path}"
+                        )
+                        self.print_ensemble_status(ui)
+                except Exception as e:
+                    self.logger.error(f"Ensemble report generation failed: {e}")
 
             # Log training completion
-            self.logger.info("PPO training completed successfully", extra={
-                "session_id": unified_config.get("session_id", "ppo_session"),
-                "model_saved": model is not None,
-            })
+            self.logger.info(
+                "PPO training completed successfully",
+                extra={
+                    "session_id": unified_config.get("session_id", "ppo_session"),
+                    "model_saved": model is not None,
+                },
+            )
 
         except Exception as e:
-            self.logger.error("PPO training failed", extra={
-                "session_id": unified_config.get("session_id", "ppo_session"),
-                "error": str(e),
-                "error_type": type(e).__name__,
-            }, exc_info=True)
+            self.logger.error(
+                "PPO training failed",
+                extra={
+                    "session_id": unified_config.get("session_id", "ppo_session"),
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
             raise
         finally:
             # Aggressive memory cleanup

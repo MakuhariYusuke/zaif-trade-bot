@@ -17,7 +17,7 @@ class BaseMLAlgorithmTrainer:
     Handles base ML algorithm training.
     """
 
-    def __init__(self, config_manager: 'ConfigManager') -> None:
+    def __init__(self, config_manager: "ConfigManager") -> None:
         """
         Initialize base ML trainer.
 
@@ -37,7 +37,9 @@ class BaseMLAlgorithmTrainer:
         Returns:
             Training result
         """
-        from ztb.training.entrypoints.base_ml_reinforcement import MLReinforcementExperiment
+        from ztb.training.entrypoints.base_ml_reinforcement import (
+            MLReinforcementExperiment,
+        )
 
         experiment = MLReinforcementExperiment(
             unified_config, total_steps=unified_config.get("total_steps", 1000)

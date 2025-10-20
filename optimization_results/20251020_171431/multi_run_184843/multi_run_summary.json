@@ -1,0 +1,156 @@
+{
+  "num_runs": 2,
+  "n_trials_per_run": 2,
+  "all_runs": [
+    {
+      "best_params": {
+        "learning_rate": 0.0005208940898617552,
+        "batch_size": 64,
+        "buffer_size": 500000,
+        "gamma": 0.905905495107972,
+        "tau": 0.003433806313396666,
+        "ent_coef": 0.018725026656287728
+      },
+      "best_score": -999.0,
+      "optimization_time": 184.94407153129578,
+      "run_index": 0,
+      "timestamp": "2025-10-20T18:51:48.358515"
+    },
+    {
+      "best_params": {
+        "learning_rate": 0.004163196942927351,
+        "batch_size": 512,
+        "buffer_size": 50000,
+        "gamma": 0.9471500691182652,
+        "tau": 0.009026268176031266,
+        "ent_coef": 0.0016340427039647477
+      },
+      "best_score": -999.0,
+      "optimization_time": 180.81641674041748,
+      "run_index": 1,
+      "timestamp": "2025-10-20T18:54:49.185688"
+    }
+  ],
+  "best_overall": {
+    "score": -999.0,
+    "params": {
+      "learning_rate": 0.0005208940898617552,
+      "batch_size": 64,
+      "buffer_size": 500000,
+      "gamma": 0.905905495107972,
+      "tau": 0.003433806313396666,
+      "ent_coef": 0.018725026656287728
+    },
+    "run_index": 0
+  },
+  "analysis": {
+    "score_statistics": {
+      "mean": -999.0,
+      "std": 0.0,
+      "min": -999.0,
+      "max": -999.0,
+      "median": -999.0
+    },
+    "parameter_distributions": {
+      "batch_size": {
+        "mean": 288.0,
+        "std": 224.0,
+        "min": 64.0,
+        "max": 512.0,
+        "values": [
+          64,
+          512
+        ]
+      },
+      "tau": {
+        "mean": 0.006230037244713966,
+        "std": 0.0027962309313173004,
+        "min": 0.003433806313396666,
+        "max": 0.009026268176031266,
+        "values": [
+          0.003433806313396666,
+          0.009026268176031266
+        ]
+      },
+      "learning_rate": {
+        "mean": 0.002342045516394553,
+        "std": 0.0018211514265327978,
+        "min": 0.0005208940898617552,
+        "max": 0.004163196942927351,
+        "values": [
+          0.0005208940898617552,
+          0.004163196942927351
+        ]
+      },
+      "buffer_size": {
+        "mean": 275000.0,
+        "std": 225000.0,
+        "min": 50000.0,
+        "max": 500000.0,
+        "values": [
+          500000,
+          50000
+        ]
+      },
+      "ent_coef": {
+        "mean": 0.010179534680126237,
+        "std": 0.008545491976161489,
+        "min": 0.0016340427039647477,
+        "max": 0.018725026656287728,
+        "values": [
+          0.018725026656287728,
+          0.0016340427039647477
+        ]
+      },
+      "gamma": {
+        "mean": 0.9265277821131186,
+        "std": 0.020622287005146567,
+        "min": 0.905905495107972,
+        "max": 0.9471500691182652,
+        "values": [
+          0.905905495107972,
+          0.9471500691182652
+        ]
+      }
+    },
+    "consistency_analysis": {
+      "batch_size": {
+        "coefficient_of_variation": 0.7777777777777778,
+        "consistency_level": "low",
+        "value_range": 448.0,
+        "relative_range": 1.5555555555555556
+      },
+      "tau": {
+        "coefficient_of_variation": 0.44883053206300394,
+        "consistency_level": "low",
+        "value_range": 0.005592461862634601,
+        "relative_range": 0.8976610641260079
+      },
+      "learning_rate": {
+        "coefficient_of_variation": 0.7775901082129085,
+        "consistency_level": "low",
+        "value_range": 0.0036423028530655956,
+        "relative_range": 1.555180216425817
+      },
+      "buffer_size": {
+        "coefficient_of_variation": 0.8181818181818182,
+        "consistency_level": "low",
+        "value_range": 450000.0,
+        "relative_range": 1.6363636363636365
+      },
+      "ent_coef": {
+        "coefficient_of_variation": 0.8394776622594615,
+        "consistency_level": "low",
+        "value_range": 0.01709098395232298,
+        "relative_range": 1.6789553245189235
+      },
+      "gamma": {
+        "coefficient_of_variation": 0.022257602419771604,
+        "consistency_level": "high",
+        "value_range": 0.041244574010293134,
+        "relative_range": 0.04451520483954321
+      }
+    }
+  },
+  "timestamp": "2025-10-20T18:54:49.188687"
+}

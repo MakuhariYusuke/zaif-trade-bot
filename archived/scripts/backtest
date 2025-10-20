@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""
+Create mock backtest data for SAC v428 Phase 2 analysis testing
+"""
+import json
+from datetime import datetime
+
+import numpy as np
+
+
+def create_mock_backtest_data():
+    """Create mock backtest data with required fields for BacktestAnalyzer"""
+
+    # Generate mock portfolio history
+    np.random.seed(42)  # For reproducible results
+    initial_portfolio = 200000.0
+    steps = 5000
+
+    # Create realistic portfolio value changes
+    returns = np.random.normal(
+        0.0001, 0.01, steps
+    )  # Small positive drift with volatility
+    portfolio_values = [initial_portfolio]
+
+    for ret in returns:
+        new_value = portfolio_values[-1] * (1 + ret)
+        portfolio_values.append(new_value)
+
+    final_portfolio = portfolio_values[-1]
+
+    # Create mock actions and rewards
+    actions = []
+    rewards = []
+    positions = []
+
+    for i in range(steps):
+        # Mix of buy, sell, hold actions
+        action = np.random.choice([-1, 0, 1], p=[0.3, 0.4, 0.3])
+        actions.append(action)
+
+        # Position based on action
+        if action == 1:  # Buy
+            position = min(1.0, positions[-1] + 0.1 if positions else 0.1)
+        elif action == -1:  # Sell
+            position = max(0.0, positions[-1] - 0.1 if positions else 0.0)
+        else:  # Hold
+            position = positions[-1] if positions else 0.0
+        positions.append(position)
+
+        # Reward based on portfolio change
+        reward = np.random.normal(0, 0.1)
+        rewards.append(reward)
+
+    # Create mock backtest data structure
+    mock_data = {
+        "total_steps": steps,
+        "initial_portfolio": initial_portfolio,
+        "final_portfolio": final_portfolio,
+        "portfolio_history": portfolio_values,
+        "actions": actions,
+        "rewards": rewards,
+        "positions": positions,
+        "timestamp": datetime.now().isoformat(),
+        "model_name": "sac_v428_position_optimized",
+        "config": {
+            "algorithm": "sac",
+            "total_timesteps": 5000,
+            "environment": {
+                "initial_balance": initial_portfolio,
+                "transaction_cost": 0.00001,
+            },
+        },
+        "performance_metrics": {
+            "total_return": (final_portfolio - initial_portfolio) / initial_portfolio,
+            "sharpe_ratio": 0.15,
+            "max_drawdown": -0.05,
+            "win_rate": 0.52,
+            "volatility": 0.02,
+        },
+    }
+
+    # Convert numpy types to Python native types
+    mock_data["total_steps"] = int(mock_data["total_steps"])
+    mock_data["initial_portfolio"] = float(mock_data["initial_portfolio"])
+    mock_data["final_portfolio"] = float(mock_data["final_portfolio"])
+    mock_data["portfolio_history"] = [float(x) for x in mock_data["portfolio_history"]]
+    mock_data["actions"] = [int(x) for x in mock_data["actions"]]
+    mock_data["rewards"] = [float(x) for x in mock_data["rewards"]]
+    mock_data["positions"] = [float(x) for x in mock_data["positions"]]
+
+    return mock_data
+
+
+def main():
+    print("🧪 Creating mock backtest data for SAC v428 Phase 2 analysis")
+
+    mock_data = create_mock_backtest_data()
+
+    # Save mock data
+    output_path = "results/sac_v428_mock_backtest.json"
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(mock_data, f, indent=2, ensure_ascii=False)
+
+    print(f"✅ Mock backtest data saved to: {output_path}")
+    print(f"   - Total steps: {mock_data['total_steps']}")
+    print(".2f")
+    print(".2f")
+    print(".3f")
+
+
+if __name__ == "__main__":
+    main()

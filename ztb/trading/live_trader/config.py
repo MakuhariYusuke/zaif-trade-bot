@@ -160,9 +160,7 @@ def _start_health_server(
     if not options.enable_health_check:
         return None
     if not flask_available:
-        logger.warning(
-            "Health check endpoint requested but Flask is not installed."
-        )
+        logger.warning("Health check endpoint requested but Flask is not installed.")
         return None
 
     health_app = Flask(__name__)  # type: ignore[name-defined]
@@ -215,8 +213,12 @@ class TradingConfig:
             "fallback_price": self._get_float("ZTB_FALLBACK_PRICE", 5000000.0),
             "price_min": self._get_int("ZTB_PRICE_MIN", 1000000),
             "price_max": self._get_int("ZTB_PRICE_MAX", 50000000),
-            "price_change_threshold": self._get_float("ZTB_PRICE_CHANGE_THRESHOLD", 0.20),
-            "continuous_to_discrete_threshold": self._get_float("ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD", 0.33),
+            "price_change_threshold": self._get_float(
+                "ZTB_PRICE_CHANGE_THRESHOLD", 0.20
+            ),
+            "continuous_to_discrete_threshold": self._get_float(
+                "ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD", 0.33
+            ),
         }
 
     def _get_float(self, key: str, default: float) -> float:

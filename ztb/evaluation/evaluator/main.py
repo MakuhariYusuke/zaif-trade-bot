@@ -4,9 +4,6 @@ Main entry point for Trading Evaluator.
 """
 
 import argparse
-import sys
-from pathlib import Path
-from typing import Any, Dict
 
 from ztb.evaluation.evaluator.evaluator import TradingEvaluator
 from ztb.utils.errors import safe_operation
@@ -15,10 +12,8 @@ from ztb.utils.errors import safe_operation
 def main() -> None:
     """メイン関数"""
     safe_operation(
-        _main_impl,
-        logger=None,  # Will be configured inside
-        context="Model evaluation execution"
-    )
+        _main_impl, logger=None, context="Model evaluation execution"
+    )  # Will be configured inside
 
 
 def _main_impl(logger) -> None:
@@ -86,7 +81,8 @@ def _main_impl(logger) -> None:
             # Save results if requested
             if args.output:
                 import json
-                with open(args.output, 'w') as f:
+
+                with open(args.output, "w") as f:
                     json.dump(stats, f, indent=2, default=str)
                 print(f"\nResults saved to {args.output}")
 

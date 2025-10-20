@@ -2,7 +2,8 @@
 Trade execution management for live trading bot.
 """
 import logging
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Dict, Protocol
+
 import numpy as np
 
 from ztb.trading.environment.constants import continuous_to_discrete_action
@@ -40,7 +41,7 @@ class TradeExecutor:
         config: Dict[str, Any],
         trade_executor: TradeExecutorProtocol,
         position_manager: PositionManagerProtocol,
-        is_sac: bool = False
+        is_sac: bool = False,
     ) -> None:
         self.config = config
         self.trade_executor = trade_executor

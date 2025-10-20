@@ -5,11 +5,12 @@ This module provides gradient accumulation functionality to enable training
 with effectively larger batch sizes on limited GPU memory.
 """
 
-import torch
-import torch.nn as nn
-from typing import Dict, List, Optional, Callable, Any
 import logging
 from contextlib import contextmanager
+from typing import Any, Callable, Dict, Optional
+
+import torch
+import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class GradientAccumulator:
         clip_grad_norm: Optional[float] = None,
         clip_grad_value: Optional[float] = None,
         mixed_precision: bool = False,
-        scaler: Optional[torch.cuda.amp.GradScaler] = None
+        scaler: Optional[torch.cuda.amp.GradScaler] = None,
     ):
         """
         Initialize gradient accumulator.
@@ -59,7 +60,7 @@ class GradientAccumulator:
         self,
         loss: torch.Tensor,
         optimizer: torch.optim.Optimizer,
-        scheduler: Optional[Any] = None
+        scheduler: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Perform one accumulation step.
@@ -90,10 +91,10 @@ class GradientAccumulator:
         self.step_count += 1
 
         step_info = {
-            'step_loss': loss_value,
-            'accumulated_loss': self.accumulated_loss,
-            'step_count': self.step_count,
-            'should_update': should_update_now
+            "step_loss": loss_value,
+            "accumulated_loss": self.accumulated_loss,
+            "step_count": self.step_count,
+            "should_update": should_update_now,
         }
 
         # Update parameters if accumulation is complete
@@ -104,9 +105,7 @@ class GradientAccumulator:
         return step_info
 
     def _update_parameters(
-        self,
-        optimizer: torch.optim.Optimizer,
-        scheduler: Optional[Any] = None
+        self, optimizer: torch.optim.Optimizer, scheduler: Optional[Any] = None
     ):
         """Update model parameters after gradient accumulation."""
         # Clip gradients if specified
@@ -114,24 +113,24 @@ class GradientAccumulator:
             if self.mixed_precision and self.scaler is not None:
                 self.scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(
-                [p for group in optimizer.param_groups for p in group['params']],
-                self.clip_grad_norm
+                [p for group in optimizer.param_groups for p in group["params"]],
+                self.clip_grad_norm,
             )
 
         if self.clip_grad_value is not None:
             if self.mixed_precision and self.scaler is not None:
                 self.scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_value_(
-                [p for group in optimizer.param_groups for p in group['params']],
-                self.clip_grad_value
+                [p for group in optimizer.param_groups for p in group["params"]],
+                self.clip_grad_value,
             )
 
         if self.clip_grad_value is not None:
             if self.mixed_precision and self.scaler is not None:
                 self.scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_value_(
-                [p for group in optimizer.param_groups for p in group['params']],
-                self.clip_grad_value
+                [p for group in optimizer.param_groups for p in group["params"]],
+                self.clip_grad_value,
             )
 
         # Update parameters
@@ -143,7 +142,7 @@ class GradientAccumulator:
 
         # Update learning rate scheduler
         if scheduler is not None:
-            if hasattr(scheduler, 'step'):
+            if hasattr(scheduler, "step"):
                 scheduler.step()
 
         # Zero gradients
@@ -156,8 +155,8 @@ class GradientAccumulator:
     def _get_update_info(self) -> Dict[str, Any]:
         """Get information about the parameter update."""
         return {
-            'parameters_updated': True,
-            'accumulation_steps_completed': self.accumulation_steps
+            "parameters_updated": True,
+            "accumulation_steps_completed": self.accumulation_steps,
         }
 
     def reset(self):
@@ -167,9 +166,7 @@ class GradientAccumulator:
 
     @contextmanager
     def accumulation_context(
-        self,
-        optimizer: torch.optim.Optimizer,
-        scheduler: Optional[Any] = None
+        self, optimizer: torch.optim.Optimizer, scheduler: Optional[Any] = None
     ):
         """
         Context manager for gradient accumulation.
@@ -192,8 +189,10 @@ class GradientAccumulator:
         finally:
             # Ensure final update if accumulation cycle is incomplete
             if self.step_count > 0:
-                logger.warning(f"Gradient accumulation incomplete ({self.step_count}/{self.accumulation_steps}). "
-                             "Completing current accumulation cycle.")
+                logger.warning(
+                    f"Gradient accumulation incomplete ({self.step_count}/{self.accumulation_steps}). "
+                    "Completing current accumulation cycle."
+                )
                 # Add dummy losses to complete the cycle
                 remaining_steps = self.accumulation_steps - self.step_count
                 for _ in range(remaining_steps):
@@ -213,7 +212,7 @@ class GradientAccumulationTrainer:
         accumulation_steps: int = 1,
         clip_grad_norm: Optional[float] = None,
         mixed_precision: bool = False,
-        device: str = 'cpu'
+        device: str = "cpu",
     ):
         """
         Initialize gradient accumulation trainer.
@@ -233,21 +232,25 @@ class GradientAccumulationTrainer:
 
         # Setup mixed precision
         self.mixed_precision = mixed_precision
-        self.scaler = torch.cuda.amp.GradScaler() if mixed_precision and device.startswith('cuda') else None
+        self.scaler = (
+            torch.cuda.amp.GradScaler()
+            if mixed_precision and device.startswith("cuda")
+            else None
+        )
 
         # Setup gradient accumulator
         self.accumulator = GradientAccumulator(
             accumulation_steps=accumulation_steps,
             clip_grad_norm=clip_grad_norm,
             mixed_precision=mixed_precision,
-            scaler=self.scaler
+            scaler=self.scaler,
         )
 
     def training_step(
         self,
         batch: Any,
         loss_fn: Callable[[Any, Any], torch.Tensor],
-        scheduler: Optional[Any] = None
+        scheduler: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Perform one training step with gradient accumulation.
@@ -261,10 +264,10 @@ class GradientAccumulationTrainer:
             Training step information
         """
         # Move batch to device
-        if hasattr(batch, 'to'):
+        if hasattr(batch, "to"):
             batch = batch.to(self.device)
         elif isinstance(batch, (list, tuple)):
-            batch = [b.to(self.device) if hasattr(b, 'to') else b for b in batch]
+            batch = [b.to(self.device) if hasattr(b, "to") else b for b in batch]
 
         # Forward pass
         with torch.cuda.amp.autocast(enabled=self.mixed_precision):
@@ -275,11 +278,11 @@ class GradientAccumulationTrainer:
         step_info = self.accumulator.accumulate_step(loss, self.optimizer, scheduler)
 
         return {
-            'loss': step_info['step_loss'],
-            'accumulated_loss': step_info['accumulated_loss'],
-            'step_count': step_info['step_count'],
-            'parameters_updated': step_info.get('parameters_updated', False),
-            'effective_batch_size': len(batch) * self.accumulation_steps
+            "loss": step_info["step_loss"],
+            "accumulated_loss": step_info["accumulated_loss"],
+            "step_count": step_info["step_count"],
+            "parameters_updated": step_info.get("parameters_updated", False),
+            "effective_batch_size": len(batch) * self.accumulation_steps,
         }
 
     def get_effective_batch_size(self, actual_batch_size: int) -> int:
@@ -296,7 +299,7 @@ def create_gradient_accumulator(
     accumulation_steps: int = 4,
     clip_grad_norm: float = 1.0,
     mixed_precision: bool = False,
-    device: str = 'cpu'
+    device: str = "cpu",
 ) -> GradientAccumulator:
     """
     Create gradient accumulator with sensible defaults.
@@ -311,21 +314,19 @@ def create_gradient_accumulator(
         Configured GradientAccumulator
     """
     scaler = None
-    if mixed_precision and device.startswith('cuda'):
+    if mixed_precision and device.startswith("cuda"):
         scaler = torch.cuda.amp.GradScaler()
 
     return GradientAccumulator(
         accumulation_steps=accumulation_steps,
         clip_grad_norm=clip_grad_norm,
         mixed_precision=mixed_precision,
-        scaler=scaler
+        scaler=scaler,
     )
 
 
 def effective_batch_size_info(
-    actual_batch_size: int,
-    accumulation_steps: int,
-    num_epochs: int = 1
+    actual_batch_size: int, accumulation_steps: int, num_epochs: int = 1
 ) -> Dict[str, Any]:
     """
     Get information about effective batch size and training implications.
@@ -341,15 +342,15 @@ def effective_batch_size_info(
     effective_batch = actual_batch_size * accumulation_steps
 
     return {
-        'actual_batch_size': actual_batch_size,
-        'accumulation_steps': accumulation_steps,
-        'effective_batch_size': effective_batch,
-        'gradient_updates_per_epoch': actual_batch_size,  # One update per accumulation cycle
-        'memory_efficiency': f"{accumulation_steps}x larger effective batch with same memory",
-        'training_notes': [
+        "actual_batch_size": actual_batch_size,
+        "accumulation_steps": accumulation_steps,
+        "effective_batch_size": effective_batch,
+        "gradient_updates_per_epoch": actual_batch_size,  # One update per accumulation cycle
+        "memory_efficiency": f"{accumulation_steps}x larger effective batch with same memory",
+        "training_notes": [
             f"Effective batch size: {effective_batch}",
             f"Gradient updates per epoch: {actual_batch_size}",
             "Loss values are normalized by accumulation_steps",
-            "Learning rate may need adjustment for larger effective batch"
-        ]
+            "Learning rate may need adjustment for larger effective batch",
+        ],
     }

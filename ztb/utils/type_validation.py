@@ -6,7 +6,8 @@ helping catch type-related issues during execution rather than just at static an
 """
 
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Type, Union, get_origin, get_args
+from typing import Any, Callable, Dict, Optional, Type, Union, get_args, get_origin
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -20,7 +21,9 @@ class TypeValidator:
     """
 
     @staticmethod
-    def validate_type(value: Any, expected_type: Type[Any], name: str = "value") -> None:
+    def validate_type(
+        value: Any, expected_type: Type[Any], name: str = "value"
+    ) -> None:
         """
         Validate that a value matches the expected type at runtime.
 
@@ -62,14 +65,16 @@ class TypeValidator:
         # Handle None
         if value is None:
             return expected_type is type(None) or (
-                hasattr(expected_type, '__args__') and
-                type(None) in getattr(expected_type, '__args__', ())
+                hasattr(expected_type, "__args__")
+                and type(None) in getattr(expected_type, "__args__", ())
             )
 
         # Handle Union types
         origin = get_origin(expected_type)
         if origin is Union:
-            return any(TypeValidator._check_type(value, arg) for arg in get_args(expected_type))
+            return any(
+                TypeValidator._check_type(value, arg) for arg in get_args(expected_type)
+            )
 
         # Handle generic types
         if origin is not None:
@@ -80,7 +85,7 @@ class TypeValidator:
             args = get_args(expected_type)
             if origin is NDArray and args:
                 dtype_arg = args[0]
-                if hasattr(dtype_arg, '__origin__'):
+                if hasattr(dtype_arg, "__origin__"):
                     # Handle np.floating[Any], np.integer[Any], etc.
                     dtype_origin = get_origin(dtype_arg)
                     if dtype_origin in (np.floating, np.integer):
@@ -100,7 +105,7 @@ class TypeValidator:
     def validate_array_shape(
         array: NDArray[np.floating[Any]],
         expected_shape: Optional[tuple[int, ...]] = None,
-        name: str = "array"
+        name: str = "array",
     ) -> None:
         """
         Validate numpy array shape.
@@ -122,7 +127,7 @@ class TypeValidator:
     def validate_array_dtype(
         array: NDArray[np.floating[Any]],
         expected_dtype: Optional[np.dtype[np.floating[Any]]] = None,
-        name: str = "array"
+        name: str = "array",
     ) -> None:
         """
         Validate numpy array dtype.
@@ -136,9 +141,7 @@ class TypeValidator:
             TypeError: If dtype doesn't match
         """
         if expected_dtype is not None and array.dtype != expected_dtype:
-            raise TypeError(
-                f"{name} dtype must be {expected_dtype}, got {array.dtype}"
-            )
+            raise TypeError(f"{name} dtype must be {expected_dtype}, got {array.dtype}")
 
 
 def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -169,6 +172,7 @@ def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
                 except TypeError as e:
                     # Log warning but don't fail - for development use
                     import logging
+
                     logger = logging.getLogger(__name__)
                     logger.warning(f"Type check failed for {func.__name__}: {e}")
 
@@ -176,14 +180,15 @@ def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
         result = func(*args, **kwargs)
 
         # Validate return value
-        if 'return' in annotations:
-            expected_return_type = annotations['return']
+        if "return" in annotations:
+            expected_return_type = annotations["return"]
             try:
                 TypeValidator.validate_type(
                     result, expected_return_type, "return value"
                 )
             except TypeError as e:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Return type check failed for {func.__name__}: {e}")
 
@@ -203,17 +208,17 @@ def validate_environment_config(config: Dict[str, Any]) -> None:
     Raises:
         ValueError: If configuration is invalid
     """
-    required_keys = ['reward_scaling', 'transaction_cost', 'max_position_size']
+    required_keys = ["reward_scaling", "transaction_cost", "max_position_size"]
     for key in required_keys:
         if key not in config:
             raise ValueError(f"Missing required config key: {key}")
 
     # Validate types
-    if not isinstance(config.get('reward_scaling', 1.0), (int, float)):
+    if not isinstance(config.get("reward_scaling", 1.0), (int, float)):
         raise ValueError("reward_scaling must be numeric")
-    if not isinstance(config.get('transaction_cost', 0.0), (int, float)):
+    if not isinstance(config.get("transaction_cost", 0.0), (int, float)):
         raise ValueError("transaction_cost must be numeric")
-    if not isinstance(config.get('max_position_size', 1.0), (int, float)):
+    if not isinstance(config.get("max_position_size", 1.0), (int, float)):
         raise ValueError("max_position_size must be numeric")
 
 
@@ -227,17 +232,17 @@ def validate_training_config(config: Dict[str, Any]) -> None:
     Raises:
         ValueError: If configuration is invalid
     """
-    required_keys = ['learning_rate', 'batch_size', 'total_timesteps']
+    required_keys = ["learning_rate", "batch_size", "total_timesteps"]
     for key in required_keys:
         if key not in config:
             raise ValueError(f"Missing required training config key: {key}")
 
     # Validate ranges
-    if not (0 < config.get('learning_rate', 0) < 1):
+    if not (0 < config.get("learning_rate", 0) < 1):
         raise ValueError("learning_rate must be between 0 and 1")
-    if config.get('batch_size', 0) <= 0:
+    if config.get("batch_size", 0) <= 0:
         raise ValueError("batch_size must be positive")
-    if config.get('total_timesteps', 0) <= 0:
+    if config.get("total_timesteps", 0) <= 0:
         raise ValueError("total_timesteps must be positive")
 
 
@@ -251,10 +256,10 @@ def validate_feature_config(config: Dict[str, Any]) -> None:
     Raises:
         ValueError: If configuration is invalid
     """
-    if 'features' not in config:
+    if "features" not in config:
         raise ValueError("Missing required feature config key: features")
 
-    features = config['features']
+    features = config["features"]
     if not isinstance(features, list):
         raise ValueError("features must be a list")
 
@@ -265,9 +270,9 @@ def validate_feature_config(config: Dict[str, Any]) -> None:
     for feature in features:
         if not isinstance(feature, dict):
             raise ValueError("Each feature must be a dictionary")
-        if 'name' not in feature:
+        if "name" not in feature:
             raise ValueError("Each feature must have a 'name' field")
-        if 'type' not in feature:
+        if "type" not in feature:
             raise ValueError("Each feature must have a 'type' field")
 
 
@@ -281,15 +286,15 @@ def validate_trading_config(config: Dict[str, Any]) -> None:
     Raises:
         ValueError: If configuration is invalid
     """
-    required_keys = ['pair', 'timeframe', 'initial_balance']
+    required_keys = ["pair", "timeframe", "initial_balance"]
     for key in required_keys:
         if key not in config:
             raise ValueError(f"Missing required trading config key: {key}")
 
-    if config.get('initial_balance', 0) <= 0:
+    if config.get("initial_balance", 0) <= 0:
         raise ValueError("initial_balance must be positive")
 
-    if config.get('max_position_size', 0) <= 0:
+    if config.get("max_position_size", 0) <= 0:
         raise ValueError("max_position_size must be positive")
 
 
@@ -303,15 +308,15 @@ def validate_model_config(config: Dict[str, Any]) -> None:
     Raises:
         ValueError: If configuration is invalid
     """
-    required_keys = ['policy', 'learning_rate', 'batch_size']
+    required_keys = ["policy", "learning_rate", "batch_size"]
     for key in required_keys:
         if key not in config:
             raise ValueError(f"Missing required model config key: {key}")
 
-    if not (0 < config.get('learning_rate', 0) < 1):
+    if not (0 < config.get("learning_rate", 0) < 1):
         raise ValueError("learning_rate must be between 0 and 1")
 
-    if config.get('batch_size', 0) <= 0:
+    if config.get("batch_size", 0) <= 0:
         raise ValueError("batch_size must be positive")
 
 

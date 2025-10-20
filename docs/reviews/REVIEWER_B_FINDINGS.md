@@ -63,7 +63,7 @@ if action == 1:  # BUY
         # ✅ Calculate BEFORE overwriting entry_price
         old_entry_price = self.entry_price
         realized_pnl_value = (old_entry_price - current_price) * abs(size)
-        
+
         # Now safe to update position state
         self.entry_price = current_price
         self.current_position = "long"
@@ -84,7 +84,7 @@ if action == 1:  # BUY
 def _update_position(self, action: int, current_price: float) -> float:
     size = self.portfolio_value * 0.01 / current_price
     realized_pnl = 0.0
-    
+
     if action == 1:  # BUY
         if self.current_position == "short":
             # Close short → immediately open long
@@ -99,7 +99,7 @@ def _update_position(self, action: int, current_price: float) -> float:
             self.current_position = "long"
             self.position_size = size
         # ❌ MISSING: elif self.current_position == "long": do nothing or add to position
-    
+
     elif action == 2:  # SELL
         if self.current_position == "long":
             # Close long → immediately open short
@@ -114,7 +114,7 @@ def _update_position(self, action: int, current_price: float) -> float:
             self.current_position = "short"
             self.position_size = -size
         # ❌ MISSING: elif self.current_position == "short": do nothing or add to position
-    
+
     # Action 0 (HOLD) does nothing
     return realized_pnl
 ```
@@ -159,14 +159,14 @@ def _update_position(self, action: int, current_price: float) -> float:
             get_current_price=lambda: current_price,
             get_portfolio_value=lambda: self.portfolio_value
         )
-    
+
     # Sync state to PositionManager
     self._position_manager.position = self.position_size
     self._position_manager.entry_price = self.entry_price if self.current_position != "flat" else 0.0
-    
+
     # Execute action using proven logic
     realized_pnl = self._position_manager.execute_action(action, current_price, self.portfolio_value)
-    
+
     # Sync state back from PositionManager
     self.position_size = self._position_manager.position
     self.entry_price = self._position_manager.entry_price
@@ -175,7 +175,7 @@ def _update_position(self, action: int, current_price: float) -> float:
         "short" if self.position_size < 0 else
         "flat"
     )
-    
+
     return realized_pnl
 ```
 
@@ -200,7 +200,7 @@ if action == 1:  # BUY
         realized_pnl_value = (self.entry_price - current_price) * abs(size)
         self.entry_price = current_price  # ❌ Bug #25
         self.current_position = "long"  # ❌ Bug #26
-        
+
 # position_manager.py - correct logic
 if action == 1:  # BUY
     if self.position < 0:  # Short position
@@ -223,15 +223,15 @@ There are comprehensive tests for PositionManager PnL calculations, but **zero**
 def test_live_trader_pnl_calculation():
     """Regression test for Bug #25: Live trading PnL calculation."""
     trader = LiveTrader(config)
-    
+
     # Open short at 100.0
     trader._update_position(action=2, current_price=100.0)
     assert trader.current_position == "short"
     assert trader.entry_price == 100.0
-    
+
     # Close short (BUY) at 95.0 → Should profit
     realized_pnl = trader._update_position(action=1, current_price=95.0)
-    
+
     # ✅ Should profit: (100.0 - 95.0) * size = +5.0 * size
     # ❌ Bug #25: realized_pnl = 0.0 (FAIL)
     assert realized_pnl > 0, "Closing profitable short should yield positive PnL"
@@ -239,14 +239,14 @@ def test_live_trader_pnl_calculation():
 def test_live_trader_position_closure():
     """Regression test for Bug #26: Live trading can't go flat."""
     trader = LiveTrader(config)
-    
+
     # Open long at 100.0
     trader._update_position(action=1, current_price=100.0)
     assert trader.current_position == "long"
-    
+
     # Close long (SELL) at 105.0
     trader._update_position(action=2, current_price=105.0)
-    
+
     # ✅ Should be flat after closing
     # ❌ Bug #26: current_position = "short" (FAIL)
     assert trader.current_position == "flat", "Closing position should go flat, not reverse"
@@ -266,18 +266,18 @@ No validation that PnL calculations make sense:
 ```python
 def _update_position(self, action: int, current_price: float) -> float:
     # ... position logic ...
-    
+
     # ✅ Validate PnL before returning
     if not np.isfinite(realized_pnl):
         self.logger.error(f"Invalid PnL calculation: {realized_pnl}")
         realized_pnl = 0.0
-    
+
     if abs(realized_pnl) > self.portfolio_value * 10:  # Sanity check
         self.logger.warning(
             f"Suspiciously large PnL: {realized_pnl:.2f} "
             f"(portfolio: {self.portfolio_value:.2f})"
         )
-    
+
     return realized_pnl
 ```
 
@@ -325,7 +325,7 @@ Make PositionManager the universal position management component:
 class HeavyTradingEnv:
     def __init__(self):
         self.position_manager = PositionManager(...)
-    
+
     def step(self, action):
         trade_pnl = self.position_manager.execute_action(...)
         # ... reward calculation ...
@@ -334,7 +334,7 @@ class HeavyTradingEnv:
 class LiveTrader:
     def __init__(self):
         self.position_manager = PositionManager(...)
-    
+
     def _update_position(self, action, price):
         return self.position_manager.execute_action(...)
 
@@ -367,11 +367,11 @@ Comprehensive regression test suite for all trading surfaces:
 def test_pnl_calculation_consistency(trading_surface):
     """All trading surfaces must calculate PnL identically."""
     surface = create_trading_surface(trading_surface)
-    
+
     # Scenario: Short at 100, close at 95
     surface.open_position(action=2, price=100.0)  # Short
     realized_pnl = surface.close_position(action=1, price=95.0)  # Close
-    
+
     # All surfaces must agree on PnL
     expected_pnl = (100.0 - 95.0) * position_size
     assert abs(realized_pnl - expected_pnl) < 1e-6
@@ -388,18 +388,18 @@ Add comprehensive validation layer:
 ```python
 class LiveTradingValidator:
     """Validate all live trading operations before execution."""
-    
+
     def validate_pnl(self, realized_pnl: float, portfolio_value: float):
         """Ensure PnL calculation is sane."""
         if not np.isfinite(realized_pnl):
             raise ValueError(f"Invalid PnL: {realized_pnl}")
-        
+
         if abs(realized_pnl) > portfolio_value * 10:
             raise ValueError(
                 f"PnL {realized_pnl:.2f} exceeds 10x portfolio "
                 f"{portfolio_value:.2f} - likely calculation bug"
             )
-    
+
     def validate_position_state(self, position_size: float, current_position: str):
         """Ensure position state is consistent."""
         if position_size > 0 and current_position != "long":

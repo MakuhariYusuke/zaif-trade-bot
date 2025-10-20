@@ -9,21 +9,21 @@ This module contains comprehensive tests for all compression techniques:
 - Integration with SAC models
 """
 
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
 import torch
 import torch.nn as nn
-from unittest.mock import Mock, patch
-import tempfile
-import os
-from pathlib import Path
 
 from ztb.optimization.model_compression import (
-    QuantizationCompressor,
-    PruningCompressor,
+    BaseCompressionTechnique,
     KnowledgeDistillationCompressor,
     ModelCompressionManager,
+    PruningCompressor,
+    QuantizationCompressor,
     create_compression_pipeline,
-    BaseCompressionTechnique
 )
 
 
@@ -193,7 +193,9 @@ class TestKnowledgeDistillationCompressor:
         compressor = KnowledgeDistillationCompressor()
 
         # Apply compression
-        compressed_model = compressor.compress(student_model, teacher_model=teacher_model)
+        compressed_model = compressor.compress(
+            student_model, teacher_model=teacher_model
+        )
 
         # Check that models were set
         assert compressor.teacher_model is teacher_model
@@ -229,7 +231,9 @@ class TestKnowledgeDistillationCompressor:
         criterion = nn.CrossEntropyLoss()
 
         # Calculate distillation loss
-        loss = compressor.get_distillation_loss(student_logits, teacher_logits, targets, criterion)
+        loss = compressor.get_distillation_loss(
+            student_logits, teacher_logits, targets, criterion
+        )
 
         # Check that loss is reasonable
         assert isinstance(loss, torch.Tensor)
@@ -321,7 +325,7 @@ class TestModelCompressionManager:
         assert report["total_techniques_applied"] == 1
         assert "quantization" in report["techniques"]
 
-    @patch('torch.save')
+    @patch("torch.save")
     def test_save_compressed_model(self, mock_save):
         """Test saving compressed model."""
         manager = ModelCompressionManager()
@@ -335,19 +339,19 @@ class TestModelCompressionManager:
             # Check that torch.save was called
             mock_save.assert_called_once()
 
-    @patch('torch.load')
+    @patch("torch.load")
     def test_load_compressed_model(self, mock_load):
         """Test loading compressed model."""
         manager = ModelCompressionManager()
 
         # Mock the loaded checkpoint
         mock_checkpoint = {
-            'model_state_dict': {'dummy': 'state'},
-            'compression_stats': {'test': 'stats'}
+            "model_state_dict": {"dummy": "state"},
+            "compression_stats": {"test": "stats"},
         }
         mock_load.return_value = mock_checkpoint
 
-        with patch.object(SimpleTestModel, 'load_state_dict') as mock_load_state:
+        with patch.object(SimpleTestModel, "load_state_dict") as mock_load_state:
             with tempfile.TemporaryDirectory() as temp_dir:
                 load_path = Path(temp_dir) / "compressed_model.pth"
 
@@ -355,10 +359,12 @@ class TestModelCompressionManager:
 
                 # Check that model was created and state dict was loaded
                 assert isinstance(loaded_model, SimpleTestModel)
-                mock_load_state.assert_called_once_with(mock_checkpoint['model_state_dict'])
+                mock_load_state.assert_called_once_with(
+                    mock_checkpoint["model_state_dict"]
+                )
 
                 # Check that compression stats were loaded
-                assert manager.compression_stats == mock_checkpoint['compression_stats']
+                assert manager.compression_stats == mock_checkpoint["compression_stats"]
 
 
 class TestCompressionPipeline:
@@ -367,10 +373,7 @@ class TestCompressionPipeline:
     def test_create_quantization_pipeline(self):
         """Test creating quantization pipeline."""
         config = {
-            "quantization": {
-                "type": "quantization",
-                "quantization_type": "dynamic"
-            }
+            "quantization": {"type": "quantization", "quantization_type": "dynamic"}
         }
 
         manager = create_compression_pipeline(config)
@@ -385,7 +388,7 @@ class TestCompressionPipeline:
             "pruning": {
                 "type": "pruning",
                 "pruning_type": "l1_unstructured",
-                "amount": 0.3
+                "amount": 0.3,
             }
         }
 
@@ -398,31 +401,26 @@ class TestCompressionPipeline:
     def test_create_distillation_pipeline(self):
         """Test creating distillation pipeline."""
         config = {
-            "distillation": {
-                "type": "distillation",
-                "temperature": 2.5,
-                "alpha": 0.6
-            }
+            "distillation": {"type": "distillation", "temperature": 2.5, "alpha": 0.6}
         }
 
         manager = create_compression_pipeline(config)
 
         assert isinstance(manager, ModelCompressionManager)
         assert "distillation" in manager.compressors
-        assert isinstance(manager.compressors["distillation"], KnowledgeDistillationCompressor)
+        assert isinstance(
+            manager.compressors["distillation"], KnowledgeDistillationCompressor
+        )
 
     def test_create_mixed_pipeline(self):
         """Test creating mixed compression pipeline."""
         config = {
-            "quantization": {
-                "type": "quantization",
-                "quantization_type": "dynamic"
-            },
+            "quantization": {"type": "quantization", "quantization_type": "dynamic"},
             "pruning": {
                 "type": "pruning",
                 "pruning_type": "l1_unstructured",
-                "amount": 0.2
-            }
+                "amount": 0.2,
+            },
         }
 
         manager = create_compression_pipeline(config)
@@ -434,11 +432,7 @@ class TestCompressionPipeline:
 
     def test_create_pipeline_invalid_type(self):
         """Test creating pipeline with invalid compression type."""
-        config = {
-            "invalid": {
-                "type": "invalid_type"
-            }
-        }
+        config = {"invalid": {"type": "invalid_type"}}
 
         # Should not raise error, just skip invalid types
         manager = create_compression_pipeline(config)
@@ -459,9 +453,9 @@ class TestBaseCompressionTechnique:
     def test_abstract_methods(self):
         """Test that abstract methods are defined."""
         # This is more of a documentation test - the abstract methods should exist
-        assert hasattr(BaseCompressionTechnique, 'compress')
-        assert hasattr(BaseCompressionTechnique, 'decompress')
-        assert hasattr(BaseCompressionTechnique, 'get_compression_stats')
+        assert hasattr(BaseCompressionTechnique, "compress")
+        assert hasattr(BaseCompressionTechnique, "decompress")
+        assert hasattr(BaseCompressionTechnique, "get_compression_stats")
 
 
 if __name__ == "__main__":

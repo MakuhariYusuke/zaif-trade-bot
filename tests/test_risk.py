@@ -82,8 +82,8 @@ class TestRiskRuleEngine:
     def test_check_position_limits_fail(self):
         """Test position limits check fails."""
         result, message = self.engine.check_position_size(
-            position_notional=120000  # Above 100k limit
-        )
+            position_notional=120000
+        )  # Above 100k limit
 
         assert result is False
         assert "Position size exceeds limit" in message

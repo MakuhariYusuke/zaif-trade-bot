@@ -18,6 +18,9 @@ def compute_cci(df: pd.DataFrame, period: int = 20) -> pd.Series:
     close = df["close"]
 
     result = TaLibWrapper.cci(
-        high.values.astype(np.float64), low.values.astype(np.float64), close.values.astype(np.float64), period
+        high.values.astype(np.float64),
+        low.values.astype(np.float64),
+        close.values.astype(np.float64),
+        period,
     )
     return pd.Series(result, index=df.index)

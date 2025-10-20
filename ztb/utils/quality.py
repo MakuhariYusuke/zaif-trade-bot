@@ -69,9 +69,9 @@ class QualityGates:
                 corr_short = abs(short_data.iloc[:, 0].corr(short_data.iloc[:, 1]))
                 results["corr_short"] = corr_short
             else:
-                results["corr_short"] = (
-                    corr_long  # Fallback to long if insufficient data
-                )
+                results[
+                    "corr_short"
+                ] = corr_long  # Fallback to long if insufficient data
 
             # Correlation pass: either short or long meets threshold
             results["correlation_pass"] = (

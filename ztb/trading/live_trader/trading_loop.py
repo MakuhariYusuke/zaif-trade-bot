@@ -1,7 +1,7 @@
 """Trading loop implementation for live trading."""
 
-from datetime import datetime, timedelta
 import time
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class TradingLoop:
     """Handles the main trading loop execution for live trading."""
 
-    def __init__(self, live_trader: 'LiveTrader'):
+    def __init__(self, live_trader: "LiveTrader"):
         """Initialize trading loop with reference to live trader."""
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
@@ -44,18 +44,28 @@ class TradingLoop:
                     # Get current price
                     try:
                         current_price = self.live_trader._get_current_price()
-                        logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
+                        logger.info(
+                            f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}"
+                        )
                     except Exception as e:
                         logger.error(f"Failed to get current price: {e}")
                         if self.live_trader._last_valid_price > 0:
                             current_price = self.live_trader._last_valid_price
-                            logger.warning(f"Using last valid price: ¥{current_price:,.0f}")
+                            logger.warning(
+                                f"Using last valid price: ¥{current_price:,.0f}"
+                            )
                         else:
                             logger.error("No valid price available, skipping iteration")
                             consecutive_errors += 1
                             if consecutive_errors >= max_consecutive_errors:
-                                logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
-                                self.live_trader._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
+                                logger.critical(
+                                    f"Too many consecutive errors ({consecutive_errors}), stopping trading loop"
+                                )
+                                self.live_trader._send_notification(
+                                    "🚨 CRITICAL: Trading Stopped",
+                                    f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.",
+                                    "error",
+                                )
                                 break
                             time.sleep(60)
                             continue
@@ -85,7 +95,9 @@ class TradingLoop:
                     logger.debug("Predicting action...")
                     try:
                         action = self.live_trader._predict_action(features)
-                        action_name = self.live_trader.ACTION_NAMES.get(action, f"UNKNOWN({action})")
+                        action_name = self.live_trader.ACTION_NAMES.get(
+                            action, f"UNKNOWN({action})"
+                        )
                         logger.debug(f"Predicted action: {action_name}")
                     except Exception as e:
                         logger.error(f"Failed to predict action: {e}")
@@ -94,7 +106,9 @@ class TradingLoop:
 
                     # Validate position before executing action
                     if not (-1 <= self.live_trader.position <= 1):
-                        logger.error(f"Invalid position detected: {self.live_trader.position}, resetting to 0")
+                        logger.error(
+                            f"Invalid position detected: {self.live_trader.position}, resetting to 0"
+                        )
                         self.live_trader.position = 0.0
 
                     # Execute action
@@ -112,7 +126,7 @@ class TradingLoop:
                         self.live_trader._send_notification(
                             f"📊 Trading Update #{iteration_count}",
                             f"Price: ¥{current_price:,.0f}\nAction: {action_name}\nPnL: ¥{pnl:,.2f}\nPosition: {self.live_trader.position:.4f} BTC",
-                            "info" if action == ACTION_HOLD else "success"
+                            "info" if action == ACTION_HOLD else "success",
                         )
                         logger.debug("Notification sent for iteration")
 
@@ -123,17 +137,30 @@ class TradingLoop:
                         logger.warning(f"Failed to perform periodic cleanup: {e}")
 
                 except Exception as e:
-                    logger.error(f"❌ Critical error in trading loop iteration {iteration_count}: {e}")
+                    logger.error(
+                        f"❌ Critical error in trading loop iteration {iteration_count}: {e}"
+                    )
                     import traceback
+
                     logger.error(f"Traceback: {traceback.format_exc()}")
                     print(f"Traceback: {traceback.format_exc()}")
                     consecutive_errors += 1
 
-                    self.live_trader._send_notification("⚠️ Trading Error", f"Critical error in iteration {iteration_count}: {e}", "error")
+                    self.live_trader._send_notification(
+                        "⚠️ Trading Error",
+                        f"Critical error in iteration {iteration_count}: {e}",
+                        "error",
+                    )
 
                     if consecutive_errors >= max_consecutive_errors:
-                        logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
-                        self.live_trader._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
+                        logger.critical(
+                            f"Too many consecutive errors ({consecutive_errors}), stopping trading loop"
+                        )
+                        self.live_trader._send_notification(
+                            "🚨 CRITICAL: Trading Stopped",
+                            f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.",
+                            "error",
+                        )
                         break
 
             # Wait before next iteration (1 minute in live mode, 1 second in dry-run)
@@ -151,5 +178,5 @@ class TradingLoop:
         self.live_trader._send_notification(
             "🏁 Trading Session Complete",
             f"Duration: {duration_hours} hours\nTotal PnL: ¥{total_pnl:,.2f}\nTrades: {trades_count}\nFinal Position: {self.live_trader.position:.4f} BTC",
-            "success"
+            "success",
         )

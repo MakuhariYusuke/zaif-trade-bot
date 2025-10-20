@@ -3,18 +3,15 @@ Integration Test for Continuous Evaluation Manager
 継続的評価マネージャーの統合テスト
 """
 
-import unittest
 import time
-from unittest.mock import Mock, patch
+import unittest
 from datetime import datetime, timedelta
+from unittest.mock import Mock, patch
 
 from ztb.adaptation import (
     ContinuousEvaluationManager,
     ContinuousMonitoringConfig,
     EvaluationResult,
-    MonitoringAlert,
-    AlertType,
-    AlertLevel
 )
 from ztb.adaptation.monitoring.config import AlertThreshold
 
@@ -31,17 +28,17 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
 
         # モックの設定
         self.mock_monitor.get_latest_metrics.return_value = {
-            'win_rate': Mock(name='win_rate', value=0.55),
-            'precision': Mock(name='precision', value=0.60),
-            'sharpe_ratio': Mock(name='sharpe_ratio', value=1.2),
-            'max_drawdown': Mock(name='max_drawdown', value=0.15),
+            "win_rate": Mock(name="win_rate", value=0.55),
+            "precision": Mock(name="precision", value=0.60),
+            "sharpe_ratio": Mock(name="sharpe_ratio", value=1.2),
+            "max_drawdown": Mock(name="max_drawdown", value=0.15),
         }
 
         self.mock_safety_manager.get_safety_status.return_value = Mock(
             overall_safety_level=Mock(value="HIGH"),
             active_anomalies=[],  # 空のリスト
-            recent_checks=[],     # 空のリスト
-            system_health_score=0.85
+            recent_checks=[],  # 空のリスト
+            system_health_score=0.85,
         )
 
         self.mock_drift_manager.detect_drift.return_value = []  # 空のリスト
@@ -52,7 +49,7 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
         manager = ContinuousEvaluationManager(
             monitor=self.mock_monitor,
             safety_manager=self.mock_safety_manager,
-            drift_manager=self.mock_drift_manager
+            drift_manager=self.mock_drift_manager,
         )
 
         # 評価実行
@@ -73,7 +70,7 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
         manager = ContinuousEvaluationManager(
             monitor=self.mock_monitor,
             safety_manager=self.mock_safety_manager,
-            drift_manager=self.mock_drift_manager
+            drift_manager=self.mock_drift_manager,
         )
 
         # 短い間隔でテスト
@@ -100,11 +97,12 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
         manager = ContinuousEvaluationManager(
             monitor=self.mock_monitor,
             safety_manager=self.mock_safety_manager,
-            drift_manager=self.mock_drift_manager
+            drift_manager=self.mock_drift_manager,
         )
 
         # アラートコールバックの設定
         alerts_received = []
+
         def alert_callback(alert):
             alerts_received.append(alert)
 
@@ -113,12 +111,8 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
         # 低パフォーマンスの評価結果を追加
         low_perf_result = EvaluationResult(
             timestamp=datetime.now(),
-            performance_metrics=Mock(
-                accuracy=0.35,
-                sharpe_ratio=0.8,
-                max_drawdown=0.3
-            ),
-            overall_score=0.4
+            performance_metrics=Mock(accuracy=0.35, sharpe_ratio=0.8, max_drawdown=0.3),
+            overall_score=0.4,
         )
         manager.evaluation_history.append(low_perf_result)
 
@@ -134,7 +128,7 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
         manager = ContinuousEvaluationManager(
             monitor=self.mock_monitor,
             safety_manager=self.mock_safety_manager,
-            drift_manager=self.mock_drift_manager
+            drift_manager=self.mock_drift_manager,
         )
 
         # 複数の評価結果を追加
@@ -142,7 +136,7 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
             result = EvaluationResult(
                 timestamp=datetime.now() - timedelta(hours=i),
                 overall_score=0.7 + i * 0.05,
-                drift_detected=i % 2 == 0
+                drift_detected=i % 2 == 0,
             )
             manager.evaluation_history.append(result)
 
@@ -150,26 +144,25 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
         summary = manager.get_evaluation_summary(hours=24)
 
         # サマリーの検証
-        self.assertIn('total_evaluations', summary)
-        self.assertIn('average_score', summary)
-        self.assertIn('drift_rate', summary)
-        self.assertEqual(summary['total_evaluations'], 5)
+        self.assertIn("total_evaluations", summary)
+        self.assertIn("average_score", summary)
+        self.assertIn("drift_rate", summary)
+        self.assertEqual(summary["total_evaluations"], 5)
 
     def test_system_health_monitoring(self):
         """システム健全性監視テスト"""
         manager = ContinuousEvaluationManager(
             monitor=self.mock_monitor,
             safety_manager=self.mock_safety_manager,
-            drift_manager=self.mock_drift_manager
+            drift_manager=self.mock_drift_manager,
         )
 
         # システムメトリクス収集をシミュレート
-        with patch('psutil.cpu_percent', return_value=45.5), \
-             patch('psutil.virtual_memory') as mock_memory, \
-             patch('psutil.disk_usage') as mock_disk, \
-             patch('psutil.net_connections', return_value=[Mock()] * 10), \
-             patch('threading.active_count', return_value=8):
-
+        with patch("psutil.cpu_percent", return_value=45.5), patch(
+            "psutil.virtual_memory"
+        ) as mock_memory, patch("psutil.disk_usage") as mock_disk, patch(
+            "psutil.net_connections", return_value=[Mock()] * 10
+        ), patch("threading.active_count", return_value=8):
             mock_memory.return_value = Mock(percent=67.8)
             mock_disk.return_value = Mock(percent=23.4)
 
@@ -206,8 +199,10 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
 
         # 設定値の検証
         self.assertEqual(config.evaluation.evaluation_interval_seconds, 60)
-        self.assertEqual(config.alerts.alert_levels[AlertThreshold.LOW]['enabled'], True)
+        self.assertEqual(
+            config.alerts.alert_levels[AlertThreshold.LOW]["enabled"], True
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

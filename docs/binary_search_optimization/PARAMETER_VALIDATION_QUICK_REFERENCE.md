@@ -57,20 +57,20 @@ python -c "import numpy; print('numpy version:', numpy.__version__)"
    # Phase 1: 20k粗選別
    python -m ztb.training.binary_search.batch_size_optimized \
      --mode binary --max_iterations 3 --timesteps 20000
-   
+
    # 📊 結果を確認して Phase 2 の範囲を決定
    # 結果ファイル: binary_search_results/batch_size_history.json
    # チェック項目: 最終iterationのimprovement値を確認
    #   - improvement ≥10 → 高信頼度: 最適値のみ再検証
    #   - improvement 5-10 → 中信頼度: 最適値±1段階を再検証
    #   - improvement <5 → 低信頼度: より広い範囲で再検証
-   
+
    # Phase 2: 50k精査 (例: 中信頼度の場合)
    python -m ztb.training.binary_search.batch_size_optimized \
      --mode binary --max_iterations 2 --timesteps 50000 \
      --search_range 16,32,64
    ```
-   
+
    **📖 詳細な判断基準は下記「Phase 1→Phase 2 移行ガイド」参照**
 
 2. **learning_rate** (優先度: 🔴 High)
@@ -78,7 +78,7 @@ python -c "import numpy; print('numpy version:', numpy.__version__)"
    # Phase 1: 10k粗選別
    python -m ztb.training.binary_search.learning_rate_optimized \
      --mode binary --max_iterations 4 --timesteps 10000
-   
+
    # Phase 2: 50k精査
    python -m ztb.training.binary_search.learning_rate_optimized \
      --mode binary --max_iterations 2 --timesteps 50000
@@ -90,7 +90,7 @@ python -c "import numpy; print('numpy version:', numpy.__version__)"
    # Seed 1
    python -m ztb.training.binary_search.max_grad_norm_optimized \
      --mode binary --max_iterations 3 --timesteps 30000 --seed 42
-   
+
    # Seed 2
    python -m ztb.training.binary_search.max_grad_norm_optimized \
      --mode binary --max_iterations 3 --timesteps 30000 --seed 123
@@ -249,7 +249,7 @@ python -m ztb.training.binary_search.batch_size_optimized \
   --search_range 16,32,64
 ```
 
-**💡 ヒント**: 
+**💡 ヒント**:
 - TensorBoard (`tensorboard --logdir tensorboard/binary_search/`) で複数候補のスコア推移を比較
 - 収束の安定性も判断材料に含める
 - 時間がある場合、低信頼度でも広範囲検証を推奨

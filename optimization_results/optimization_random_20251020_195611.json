@@ -1,0 +1,17 @@
+{
+  "method": "random",
+  "best_params": {
+    "learning_rate": 0.00031338154036015723,
+    "batch_size": "128",
+    "gamma": 0.9905284481074993
+  },
+  "best_score": -7.507023114377842e-07,
+  "optimization_time": 1.0214967727661133,
+  "n_trials": 10,
+  "convergence_info": {
+    "method": "random_search",
+    "n_trials": 10
+  },
+  "cross_validation_scores": [],
+  "timestamp": "20251020_195611"
+}

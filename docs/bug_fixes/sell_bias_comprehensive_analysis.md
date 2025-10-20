@@ -21,7 +21,7 @@ PPOモデルが極端な報酬設定(`has_position_sell_reward: 20.0`, `no_posit
 1. **診断ツール作成** ✓
    - `ztb/utils/diagnostics/action_diagnostics.py`
    - マスク適用前後のlogits/probs、temperature、エントロピー、KL、lossを可視化
-   
+
 2. **強制アクションテスト作成** ✓
    - `tests/unit/environment/test_forced_actions.py`
    - 既知価格列でBUY→SELL実行時のPnL/fee/在庫を理論値と突合
@@ -36,7 +36,7 @@ PPOモデルが極端な報酬設定(`has_position_sell_reward: 20.0`, `no_posit
 ### Copilot分析に**欠けている視点**(追加)
 
 #### 1. **学習時と評価時のAction Mask不一致** 🔴 CRITICAL
-**状況**: 
+**状況**:
 - 学習時: 全アクション許可(mask未適用)
 - 評価時: mask適用でillegalアクション除外
 - 結果: 学習分布と評価分布が乖離 → deterministic選択が崩壊
@@ -108,7 +108,7 @@ PPOモデルが極端な報酬設定(`has_position_sell_reward: 20.0`, `no_posit
 #### 8. **SELLの意味論(スポット制約)** 🟢 INFO
 **前提**: スポット取引で空売り不可 → SELLはエグジット専用
 
-**重要**: 
+**重要**:
 - KPIは「保有時のSELL実行率」であり、絶対SELL率ではない
 - action maskで`position > 0`時のみSELL合法化が必須
 
@@ -344,5 +344,5 @@ PPOモデルが極端な報酬設定(`has_position_sell_reward: 20.0`, `no_posit
 
 ---
 
-**作成日**: 2025-10-06  
+**作成日**: 2025-10-06
 **ステータス**: 診断・計画フェーズ完了、実装フェーズ開始準備完了

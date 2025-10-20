@@ -6,7 +6,7 @@
 - 30,000ステップ目付近で学習が停止
 - メモリ関連のクラッシュと推測
 
-### 2. モデル学習の問題  
+### 2. モデル学習の問題
 - **学習時**: SELL率 26.9% (rollout統計)
 - **評価時**: SELL率 98.0% (決定的推論)
 - **根本原因**: Lagrange制約が学習中のみ適用され、モデル自体は学習できていない
@@ -36,7 +36,7 @@ policy_kwargs = dict(
 {
   "n_steps": 1024,     // 現状
   "batch_size": 64,    // 現状
-  
+
   // 最適化後
   "n_steps": 512,      // 半分に削減
   "batch_size": 32,    // 半分に削減
@@ -53,11 +53,11 @@ class HeavyTradingEnv:
     def __init__(self, df, config, ...):
         # メモリ効率の良いデータ型に変換
         self.df = df.copy()
-        
+
         # float64 → float32 変換
         float_cols = self.df.select_dtypes(include=['float64']).columns
         self.df[float_cols] = self.df[float_cols].astype('float32')
-        
+
         # 不要なカラムを削除
         essential_cols = ['close', 'open', 'high', 'low', 'volume', ...]
         self.df = self.df[essential_cols]
@@ -83,16 +83,16 @@ class LazyFeatureCalculator:
     def __init__(self, df_base):
         self.df_base = df_base  # 基本データのみ保持
         self._cache = {}
-        
+
     def get_features(self, step):
         if step not in self._cache:
             self._cache[step] = self._calculate_features(step)
-            
+
             # キャッシュサイズ制限
             if len(self._cache) > 1000:
                 oldest = min(self._cache.keys())
                 del self._cache[oldest]
-        
+
         return self._cache[step]
 ```
 
@@ -104,14 +104,14 @@ class LazyFeatureCalculator:
 def save_checkpoint(self, path):
     # モデルを圧縮保存
     import zipfile
-    
+
     temp_path = path + ".tmp"
     self.model.save(temp_path)
-    
+
     # 圧縮
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.write(temp_path)
-    
+
     os.remove(temp_path)
 ```
 
@@ -127,7 +127,7 @@ class CustomPPO(PPO):
         # Action entropy regularization
         action_probs = self.policy.get_distribution(obs).distribution.probs
         entropy = -(action_probs * torch.log(action_probs + 1e-8)).sum(-1).mean()
-        
+
         # Entropy bonus (diversity encouragement)
         policy_loss = policy_loss - 0.05 * entropy  # ent_coef を強化
 ```
@@ -200,20 +200,20 @@ import os
 def monitor_memory_usage():
     tracemalloc.start()
     process = psutil.Process(os.getpid())
-    
+
     # 学習前
     mem_before = process.memory_info().rss / 1024**2
-    
+
     # 学習実行
     model.learn(total_timesteps=10000)
-    
+
     # 学習後
     mem_after = process.memory_info().rss / 1024**2
     current, peak = tracemalloc.get_traced_memory()
-    
+
     print(f"メモリ使用量: {mem_after - mem_before:.2f} MB")
     print(f"ピークメモリ: {peak / 1024**2:.2f} MB")
-    
+
     tracemalloc.stop()
 ```
 
@@ -247,7 +247,7 @@ Lagrange制約は**学習プロセス**に適用されるもので、**学習済
 rollout_actions = model.collect_rollouts()  # ← Lagrange制約が適用
 sell_rate = calculate_sell_rate(rollout_actions)  # 26.9%
 
-# 評価時  
+# 評価時
 action = model.predict(obs, deterministic=True)  # ← 制約なし、純粋な推論
 # → モデルが実際に学習した行動: 98% SELL
 ```

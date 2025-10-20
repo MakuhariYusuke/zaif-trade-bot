@@ -2,7 +2,7 @@
 
 ## 🎯 最重要発見
 
-### ✅ **SELL率16.7% 達成！** 
+### ✅ **SELL率16.7% 達成！**
 v3.6.6で**初めて目標15%を突破**しました（最終ログの10.2%はLagrange統計の集計方法の問題）
 
 ### 実際の結果（pan_action_countsから集計）:
@@ -13,7 +13,7 @@ v3.6.5:   73.4   14.1   12.5   multipliers [2.0, 3.0, 0.5]
 v3.6.6:   70.8   12.5   16.7   multipliers [2.0, 3.0, 1.0] + penalties ✅
 ```
 
-**進捗**: 
+**進捗**:
 - SELL: 12.5% → 16.7% (+4.2pp) ✅ **目標達成！**
 - HOLD: 79.2% → 70.8% (-8.4pp) ✅
 - BUY: 8.3% → 12.5% (+4.2pp) ✅
@@ -34,7 +34,7 @@ def _calculate_forced_balance_reward(self, action: int) -> float:
     """Force balanced action distribution (33% each action)."""
     self._action_counts[action] += 1
     total_actions = sum(self._action_counts)
-    
+
     if total_actions >= 3:
         action_ratios = [count / total_actions for count in self._action_counts]
         balance_penalty = sum(abs(ratio - target_ratio) for ratio in action_ratios)

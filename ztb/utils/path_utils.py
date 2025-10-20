@@ -140,17 +140,91 @@ def get_models_dir(subdir: Optional[str] = None) -> Path:
     return ensure_dir(models_dir)
 
 
-def get_results_dir(subdir: Optional[str] = None) -> Path:
+def get_file_dir(file_path: str) -> Path:
     """
-    Get results directory path, optionally with subdirectory.
+    Get the directory containing a file.
+
+    Args:
+        file_path: Path to a file (can be relative or absolute)
+
+    Returns:
+        Directory containing the file
+    """
+    return Path(file_path).parent
+
+
+def resolve_path(path: str | Path) -> Path:
+    """
+    Resolve a path to its absolute, normalized form.
+
+    Args:
+        path: Path to resolve
+
+    Returns:
+        Resolved absolute path
+    """
+    return Path(path).resolve()
+
+
+def get_config_dir(subdir: Optional[str] = None) -> Path:
+    """
+    Get config directory path, optionally with subdirectory.
 
     Args:
         subdir: Optional subdirectory name
 
     Returns:
-        Results directory path
+        Config directory path
     """
-    results_dir = get_project_root() / "results"
+    config_dir = get_project_root() / "config"
     if subdir:
-        results_dir = results_dir / subdir
-    return ensure_dir(results_dir)
+        config_dir = config_dir / subdir
+    return ensure_dir(config_dir)
+
+
+def get_data_dir(subdir: Optional[str] = None) -> Path:
+    """
+    Get data directory path, optionally with subdirectory.
+
+    Args:
+        subdir: Optional subdirectory name
+
+    Returns:
+        Data directory path
+    """
+    data_dir = get_project_root() / "data"
+    if subdir:
+        data_dir = data_dir / subdir
+    return ensure_dir(data_dir)
+
+
+def get_logs_dir(subdir: Optional[str] = None) -> Path:
+    """
+    Get logs directory path, optionally with subdirectory.
+
+    Args:
+        subdir: Optional subdirectory name
+
+    Returns:
+        Logs directory path
+    """
+    logs_dir = get_project_root() / "logs"
+    if subdir:
+        logs_dir = logs_dir / subdir
+    return ensure_dir(logs_dir)
+
+
+def get_tensorboard_dir(subdir: Optional[str] = None) -> Path:
+    """
+    Get tensorboard directory path, optionally with subdirectory.
+
+    Args:
+        subdir: Optional subdirectory name
+
+    Returns:
+        Tensorboard directory path
+    """
+    tb_dir = get_project_root() / "tensorboard"
+    if subdir:
+        tb_dir = tb_dir / subdir
+    return ensure_dir(tb_dir)

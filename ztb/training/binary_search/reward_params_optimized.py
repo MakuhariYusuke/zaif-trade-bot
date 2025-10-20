@@ -41,6 +41,7 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
         # In practice, you might want to optimize combinations
         self.reward_multipliers = [float(value), float(value), float(value)]
         self.env_config.reward_profit_bonus_multipliers = list(self.reward_multipliers)
+
     def evaluate_result(
         self, callback: Any
     ) -> Tuple[float, Dict[str, Union[int, float]], Dict[str, Union[int, float]]]:

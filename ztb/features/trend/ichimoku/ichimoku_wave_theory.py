@@ -52,7 +52,7 @@ class IchimokuWaveTheory(BaseFeature):
         wave_direction = np.where(
             senkou_a > senkou_b,
             np.where(senkou_a_momentum > senkou_b_momentum, 1, 0.5),  # Strong bullish
-            np.where(senkou_b_momentum > senkou_a_momentum, -1, -0.5)  # Strong bearish
+            np.where(senkou_b_momentum > senkou_a_momentum, -1, -0.5),  # Strong bearish
         )
 
         # 3. Cloud wave amplitude (normalized thickness change)
@@ -85,9 +85,12 @@ class IchimokuWaveTheory(BaseFeature):
         wave_theory_score = wave_strength * wave_damping
 
         # Add convergence/divergence component
-        convergence_factor = np.where(span_divergence > 0.5, 0.2,
-                                    np.where(span_divergence < -0.5, -0.2, 0))
+        convergence_factor = np.where(
+            span_divergence > 0.5, 0.2, np.where(span_divergence < -0.5, -0.2, 0)
+        )
         wave_theory_score += convergence_factor
 
-        result_df = pd.DataFrame({"ichimoku_wave_theory": wave_theory_score}, index=df.index)
+        result_df = pd.DataFrame(
+            {"ichimoku_wave_theory": wave_theory_score}, index=df.index
+        )
         return result_df

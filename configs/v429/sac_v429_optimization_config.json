@@ -1,0 +1,107 @@
+{
+  "version": "v429",
+  "description": "SAC v429 Reward Function Optimization Configuration",
+
+  "optimization": {
+    "framework": "optuna",
+    "study_name": "sac_v429_reward_optimization",
+    "direction": "maximize",
+    "n_trials": 100,
+    "timeout": 3600,
+    "n_jobs": 4,
+    "sampler": "TPESampler",
+    "pruner": "MedianPruner"
+  },
+
+  "parameter_space": {
+    "reward_scale": {
+      "type": "loguniform",
+      "min": 10.0,
+      "max": 2000.0
+    },
+    "trading_bonus": {
+      "type": "loguniform",
+      "min": 0.0001,
+      "max": 0.1
+    },
+    "sell_penalty": {
+      "type": "uniform",
+      "min": -0.5,
+      "max": 0.5
+    },
+    "buy_bonus": {
+      "type": "uniform",
+      "min": -0.5,
+      "max": 0.5
+    },
+    "action_balance_weight": {
+      "type": "uniform",
+      "min": 0.0,
+      "max": 1.0
+    },
+    "hold_penalty": {
+      "type": "loguniform",
+      "min": 0.0001,
+      "max": 0.01
+    },
+    "risk_penalty": {
+      "type": "uniform",
+      "min": 0.0,
+      "max": 0.5
+    }
+  },
+
+  "constraints": {
+    "sell_ratio": {
+      "max": 0.4,
+      "weight": 10.0
+    },
+    "buy_ratio": {
+      "min": 0.2,
+      "max": 0.4,
+      "weight": 5.0
+    },
+    "hold_ratio": {
+      "min": 0.2,
+      "max": 0.4,
+      "weight": 5.0
+    }
+  },
+
+  "objectives": {
+    "primary": "sharpe_ratio",
+    "secondary": ["total_return", "max_drawdown"],
+    "weights": [1.0, 0.5, -0.3]
+  },
+
+  "cross_validation": {
+    "method": "time_series_split",
+    "n_splits": 5,
+    "test_size": 0.2,
+    "gap": 0
+  },
+
+  "evaluation": {
+    "short_backtest_steps": 10000,
+    "full_backtest_years": 2,
+    "metrics": [
+      "sharpe_ratio",
+      "total_return",
+      "max_drawdown",
+      "win_rate",
+      "profit_factor",
+      "action_distribution"
+    ]
+  },
+
+  "early_stopping": {
+    "enabled": true,
+    "patience": 20,
+    "min_delta": 0.001
+  },
+
+  "parallelization": {
+    "max_parallel_trials": 4,
+    "backend": "threading"
+  }
+}

@@ -3,16 +3,17 @@ Multimodal Learning Trainer for SAC v421
 マルチモーダル学習専用のトレーナー
 """
 
-import logging
-import torch
-import torch.nn as nn
-from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
-import numpy as np
+from typing import Any, Dict, Optional
 
-from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
-from ztb.multimodal.models.architectures.multimodal_architecture import MultiModalTradingAgent
+import numpy as np
+import torch
+
 from ztb.multimodal.config import MultimodalConfig
+from ztb.multimodal.models.architectures.multimodal_architecture import (
+    MultiModalTradingAgent,
+)
+from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -24,10 +25,12 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
     SACTrainerを拡張してマルチモーダル学習をサポート
     """
 
-    def __init__(self,
-                 multimodal_config: MultimodalConfig,
-                 sac_config: Dict[str, Any],
-                 env_config: Dict[str, Any]):
+    def __init__(
+        self,
+        multimodal_config: MultimodalConfig,
+        sac_config: Dict[str, Any],
+        env_config: Dict[str, Any],
+    ):
         # SACAlgorithmTrainerの初期化をスキップして直接初期化
         self.multimodal_config = multimodal_config
         self.sac_config = sac_config
@@ -36,12 +39,18 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
 
         # マルチモーダルモデル
         self.multimodal_agent = MultiModalTradingAgent(
-            price_feature_dim=getattr(multimodal_config.model, 'price_feature_dim', 156),
-            text_embedding_dim=getattr(multimodal_config.features, 'embedding_dim', 768),
-            economic_feature_dim=getattr(multimodal_config.model, 'economic_feature_dim', 10),
-            action_dim=getattr(multimodal_config.model, 'action_dim', 3),
-            hidden_dim=getattr(multimodal_config.model, 'attention_dim', 256),
-            num_heads=getattr(multimodal_config.model, 'num_heads', 8)
+            price_feature_dim=getattr(
+                multimodal_config.model, "price_feature_dim", 156
+            ),
+            text_embedding_dim=getattr(
+                multimodal_config.features, "embedding_dim", 768
+            ),
+            economic_feature_dim=getattr(
+                multimodal_config.model, "economic_feature_dim", 10
+            ),
+            action_dim=getattr(multimodal_config.model, "action_dim", 3),
+            hidden_dim=getattr(multimodal_config.model, "attention_dim", 256),
+            num_heads=getattr(multimodal_config.model, "num_heads", 8),
         )
 
         # データローダー（仮実装）
@@ -55,12 +64,14 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
 
         logger.info("Multimodal SAC Trainer initialized")
 
-    def train_multimodal(self,
-                        total_timesteps: int,
-                        price_data: torch.Tensor,
-                        text_data: torch.Tensor,
-                        economic_data: torch.Tensor,
-                        attention_mask: Optional[torch.Tensor] = None) -> Dict[str, Any]:
+    def train_multimodal(
+        self,
+        total_timesteps: int,
+        price_data: torch.Tensor,
+        text_data: torch.Tensor,
+        economic_data: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+    ) -> Dict[str, Any]:
         """
         マルチモーダル学習を実行
 
@@ -93,17 +104,19 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
         result = {
             **training_result,
             "multimodal_metrics": multimodal_metrics,
-            "training_type": "multimodal_sac"
+            "training_type": "multimodal_sac",
         }
 
         logger.info("Multimodal training completed")
         return result
 
-    def _compute_multimodal_metrics(self,
-                                   price_data: torch.Tensor,
-                                   text_data: torch.Tensor,
-                                   economic_data: torch.Tensor,
-                                   encoded_features: torch.Tensor) -> Dict[str, float]:
+    def _compute_multimodal_metrics(
+        self,
+        price_data: torch.Tensor,
+        text_data: torch.Tensor,
+        economic_data: torch.Tensor,
+        encoded_features: torch.Tensor,
+    ) -> Dict[str, float]:
         """マルチモーダル特有のメトリクスを計算"""
         metrics = {}
 
@@ -112,7 +125,9 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
             # 各モダリティの重要度を計算
             price_importance = self._compute_modality_importance(price_data, "price")
             text_importance = self._compute_modality_importance(text_data, "text")
-            economic_importance = self._compute_modality_importance(economic_data, "economic")
+            economic_importance = self._compute_modality_importance(
+                economic_data, "economic"
+            )
 
             metrics["price_importance"] = price_importance
             metrics["text_importance"] = text_importance
@@ -124,11 +139,15 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
             )
 
             # 特徴量エンコーディングの品質
-            metrics["encoding_quality"] = self._compute_encoding_quality(encoded_features)
+            metrics["encoding_quality"] = self._compute_encoding_quality(
+                encoded_features
+            )
 
         return metrics
 
-    def _compute_modality_importance(self, modality_data: torch.Tensor, modality_name: str) -> float:
+    def _compute_modality_importance(
+        self, modality_data: torch.Tensor, modality_name: str
+    ) -> float:
         """モダリティの重要度を計算"""
         # 簡易的な重要度計算（実際にはより洗練された方法を使用）
         if modality_data.numel() == 0:
@@ -138,10 +157,12 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
         importance = modality_data.var().item()
         return importance
 
-    def _compute_cross_modal_correlation(self,
-                                       price_data: torch.Tensor,
-                                       text_data: torch.Tensor,
-                                       economic_data: torch.Tensor) -> float:
+    def _compute_cross_modal_correlation(
+        self,
+        price_data: torch.Tensor,
+        text_data: torch.Tensor,
+        economic_data: torch.Tensor,
+    ) -> float:
         """クロスモーダル相関を計算"""
         # 簡易的な相関計算
         correlations = []
@@ -178,11 +199,13 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
         quality = min(avg_std / 10.0, 1.0)  # 経験的なスケーリング
         return quality
 
-    def evaluate_multimodal(self,
-                           price_data: torch.Tensor,
-                           text_data: torch.Tensor,
-                           economic_data: torch.Tensor,
-                           attention_mask: Optional[torch.Tensor] = None) -> Dict[str, Any]:
+    def evaluate_multimodal(
+        self,
+        price_data: torch.Tensor,
+        text_data: torch.Tensor,
+        economic_data: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+    ) -> Dict[str, Any]:
         """
         マルチモーダルモデルの評価
 
@@ -206,7 +229,9 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
             )
 
             # 行動選択
-            actions, log_probs = self.multimodal_agent.get_action(encoded_features, deterministic=True)
+            actions, log_probs = self.multimodal_agent.get_action(
+                encoded_features, deterministic=True
+            )
 
             # Q値計算
             q1, q2 = self.multimodal_agent.get_value(encoded_features, actions)
@@ -217,7 +242,7 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
                 "q_values_mean": (q1.mean() + q2.mean()).item() / 2,
                 "q_values_std": ((q1.std() + q2.std()) / 2).item(),
                 "log_probs_mean": log_probs.mean().item(),
-                "evaluation_timestamp": datetime.now().isoformat()
+                "evaluation_timestamp": datetime.now().isoformat(),
             }
 
         logger.info("Multimodal evaluation completed")
@@ -225,15 +250,18 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
 
     def save_multimodal_model(self, path: str) -> None:
         """マルチモーダルモデルを保存"""
-        torch.save({
-            'model_state_dict': self.multimodal_agent.state_dict(),
-            'config': self.multimodal_config,
-            'timestamp': datetime.now().isoformat()
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.multimodal_agent.state_dict(),
+                "config": self.multimodal_config,
+                "timestamp": datetime.now().isoformat(),
+            },
+            path,
+        )
         logger.info(f"Multimodal model saved to {path}")
 
     def load_multimodal_model(self, path: str) -> None:
         """マルチモーダルモデルを読み込み"""
         checkpoint = torch.load(path)
-        self.multimodal_agent.load_state_dict(checkpoint['model_state_dict'])
+        self.multimodal_agent.load_state_dict(checkpoint["model_state_dict"])
         logger.info(f"Multimodal model loaded from {path}")

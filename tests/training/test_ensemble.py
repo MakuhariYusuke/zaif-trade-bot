@@ -9,11 +9,10 @@ Tests cover:
 - Edge cases and robustness
 """
 
-import pytest
-import tempfile
-import os
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import numpy as np
+import pytest
 
 from ztb.training.ensemble import EnsemblePredictor, ModelConfig
 
@@ -44,8 +43,10 @@ class TestEnsemblePredictor:
 
         return [model1, model2, model3]
 
-    @patch('ztb.training.ensemble.PPO.load')
-    def test_initialization_success(self, mock_ppo_load, sample_model_configs, mock_models):
+    @patch("ztb.training.ensemble.PPO.load")
+    def test_initialization_success(
+        self, mock_ppo_load, sample_model_configs, mock_models
+    ):
         """Test successful ensemble initialization."""
         # Setup mock loading
         mock_ppo_load.side_effect = mock_models
@@ -57,12 +58,12 @@ class TestEnsemblePredictor:
         assert len(ensemble.feature_sets) == 3
 
         # Check weights are normalized (1.0 + 2.0 + 1.5 = 4.5)
-        expected_weights = [1.0/4.5, 2.0/4.5, 1.5/4.5]
+        expected_weights = [1.0 / 4.5, 2.0 / 4.5, 1.5 / 4.5]
         np.testing.assert_array_almost_equal(ensemble.weights, expected_weights)
 
         assert ensemble.feature_sets == ["basic", "enhanced", "full"]
 
-    @patch('ztb.training.ensemble.PPO.load')
+    @patch("ztb.training.ensemble.PPO.load")
     def test_initialization_partial_failure(self, mock_ppo_load, sample_model_configs):
         """Test ensemble initialization with some model loading failures."""
         # Make second model fail to load
@@ -88,10 +89,10 @@ class TestEnsemblePredictor:
         assert len(ensemble.weights) == 2
 
         # Weights should be normalized for remaining models
-        expected_weights = [1.0/2.5, 1.5/2.5]  # (1.0 + 1.5) = 2.5
+        expected_weights = [1.0 / 2.5, 1.5 / 2.5]  # (1.0 + 1.5) = 2.5
         np.testing.assert_array_almost_equal(ensemble.weights, expected_weights)
 
-    @patch('ztb.training.ensemble.PPO.load')
+    @patch("ztb.training.ensemble.PPO.load")
     def test_initialization_all_failures(self, mock_ppo_load, sample_model_configs):
         """Test ensemble initialization when all models fail to load."""
         mock_ppo_load.side_effect = FileNotFoundError("Model not found")
@@ -110,8 +111,10 @@ class TestEnsemblePredictor:
         with pytest.raises(ValueError, match="No models loaded in ensemble"):
             ensemble.predict(observation)
 
-    @patch('ztb.training.ensemble.PPO.load')
-    def test_predict_discrete_actions_weighted_voting(self, mock_ppo_load, sample_model_configs):
+    @patch("ztb.training.ensemble.PPO.load")
+    def test_predict_discrete_actions_weighted_voting(
+        self, mock_ppo_load, sample_model_configs
+    ):
         """Test prediction with discrete actions using weighted voting."""
         # Setup models with different predictions
         model1 = Mock()
@@ -139,8 +142,10 @@ class TestEnsemblePredictor:
         model2.predict.assert_called_once_with(observation, deterministic=True)
         model3.predict.assert_called_once_with(observation, deterministic=True)
 
-    @patch('ztb.training.ensemble.PPO.load')
-    def test_predict_continuous_actions_weighted_average(self, mock_ppo_load, sample_model_configs):
+    @patch("ztb.training.ensemble.PPO.load")
+    def test_predict_continuous_actions_weighted_average(
+        self, mock_ppo_load, sample_model_configs
+    ):
         """Test prediction with continuous actions using weighted averaging."""
         # Setup models with continuous predictions
         model1 = Mock()
@@ -163,7 +168,7 @@ class TestEnsemblePredictor:
         expected_action = np.array([14.5 / 4.5])
         np.testing.assert_array_almost_equal(action, expected_action)
 
-    @patch('ztb.training.ensemble.PPO.load')
+    @patch("ztb.training.ensemble.PPO.load")
     def test_predict_with_model_failures(self, mock_ppo_load, sample_model_configs):
         """Test prediction robustness when some models fail."""
         # Setup models where middle one fails
@@ -176,7 +181,16 @@ class TestEnsemblePredictor:
         def predict_side_effect(observation, deterministic=True):
             if model1.predict.call_count > 0 and not model1.predict.called:
                 pass  # model1 not called yet
-            elif len([call for call in model1.predict.call_args_list if call[0][0] is observation]) > 0:
+            elif (
+                len(
+                    [
+                        call
+                        for call in model1.predict.call_args_list
+                        if call[0][0] is observation
+                    ]
+                )
+                > 0
+            ):
                 return model1.predict.return_value
             else:
                 raise RuntimeError("Model prediction failed")
@@ -192,7 +206,7 @@ class TestEnsemblePredictor:
         assert action[0] == 2
         assert state is None
 
-    @patch('ztb.training.ensemble.PPO.load')
+    @patch("ztb.training.ensemble.PPO.load")
     def test_predict_all_models_fail(self, mock_ppo_load, sample_model_configs):
         """Test prediction fails when all models fail."""
         # All models fail during prediction
@@ -213,8 +227,10 @@ class TestEnsemblePredictor:
         with pytest.raises(ValueError, match="All 3 model predictions failed"):
             ensemble.predict(observation)
 
-    @patch('ztb.training.ensemble.PPO.load')
-    def test_predict_deterministic_parameter(self, mock_ppo_load, sample_model_configs, mock_models):
+    @patch("ztb.training.ensemble.PPO.load")
+    def test_predict_deterministic_parameter(
+        self, mock_ppo_load, sample_model_configs, mock_models
+    ):
         """Test deterministic parameter is passed to models."""
         mock_ppo_load.side_effect = mock_models
 
@@ -235,15 +251,19 @@ class TestEnsemblePredictor:
         for model in mock_models:
             model.predict.assert_called_with(observation, deterministic=False)
 
-    @patch('ztb.training.ensemble.PPO.load')
-    def test_get_action_probabilities_not_implemented(self, mock_ppo_load, sample_model_configs, mock_models):
+    @patch("ztb.training.ensemble.PPO.load")
+    def test_get_action_probabilities_not_implemented(
+        self, mock_ppo_load, sample_model_configs, mock_models
+    ):
         """Test get_action_probabilities method (currently not fully implemented)."""
         # Setup models with proper policy mocks
         for model in mock_models:
             model.policy = Mock()
             model.policy.obs_to_tensor.return_value = [Mock()]
             model.policy.return_value = (None, None, None)  # logits, values, entropy
-            model.policy.get_distribution.return_value = None  # No distribution available
+            model.policy.get_distribution.return_value = (
+                None  # No distribution available
+            )
 
         mock_ppo_load.side_effect = mock_models
 
@@ -276,7 +296,7 @@ class TestModelConfig:
         config: ModelConfig = {
             "path": "/path/to/model.zip",
             "weight": 1.5,
-            "feature_set": "enhanced"
+            "feature_set": "enhanced",
         }
 
         assert config["path"] == "/path/to/model.zip"

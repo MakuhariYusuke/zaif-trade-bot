@@ -115,7 +115,9 @@ class TestEnsemblePredictor:
 
     def test_predict_no_models_loaded(self):
         """Test prediction when no models are loaded."""
-        with pytest.raises(ValueError, match="At least one model configuration required"):
+        with pytest.raises(
+            ValueError, match="At least one model configuration required"
+        ):
             EnsemblePredictor([])
 
     def test_predict_all_models_fail(self):
@@ -258,9 +260,11 @@ class TestEnsemblePredictor:
             mock_distribution = Mock()
             mock_distribution.distribution = Mock()
             mock_distribution.distribution.probs = Mock()
-            mock_distribution.distribution.probs.detach.return_value.cpu.return_value.numpy.return_value = np.array([[0.1, 0.9]])
+            mock_distribution.distribution.probs.detach.return_value.cpu.return_value.numpy.return_value = np.array(
+                [[0.1, 0.9]]
+            )
             mock_model1.policy.get_distribution.return_value = mock_distribution
-            
+
             mock_model2 = Mock()
             mock_model2.policy = Mock()
             mock_model2.policy.obs_to_tensor.return_value = (Mock(),)
@@ -268,9 +272,11 @@ class TestEnsemblePredictor:
             mock_distribution2 = Mock()
             mock_distribution2.distribution = Mock()
             mock_distribution2.distribution.probs = Mock()
-            mock_distribution2.distribution.probs.detach.return_value.cpu.return_value.numpy.return_value = np.array([[0.3, 0.7]])
+            mock_distribution2.distribution.probs.detach.return_value.cpu.return_value.numpy.return_value = np.array(
+                [[0.3, 0.7]]
+            )
             mock_model2.policy.get_distribution.return_value = mock_distribution2
-            
+
             mock_load.side_effect = [mock_model1, mock_model2]
 
             predictor = EnsemblePredictor(model_configs)
@@ -286,7 +292,9 @@ class TestEnsemblePredictor:
 
     def test_empty_model_configs(self):
         """Test initialization with empty model configurations."""
-        with pytest.raises(ValueError, match="At least one model configuration required"):
+        with pytest.raises(
+            ValueError, match="At least one model configuration required"
+        ):
             EnsemblePredictor([])
 
     def test_model_loading_failure(self):
@@ -306,7 +314,7 @@ class TestEnsemblePredictor:
 class TestEnsembleTradingSystem:
     """Test cases for EnsembleTradingSystem class."""
 
-    @patch('ztb.training.ensemble.EnsemblePredictor')
+    @patch("ztb.training.ensemble.EnsemblePredictor")
     def test_init(self, mock_predictor_class):
         """Test EnsembleTradingSystem initialization."""
         mock_predictor = Mock()
@@ -320,18 +328,23 @@ class TestEnsembleTradingSystem:
         }
 
         from ztb.training.models.ensemble import EnsembleTradingSystem
-        system = EnsembleTradingSystem([
-            {"path": "model1.zip", "weight": 1.0},
-            {"path": "model2.zip", "weight": 2.0},
-        ])
+
+        system = EnsembleTradingSystem(
+            [
+                {"path": "model1.zip", "weight": 1.0},
+                {"path": "model2.zip", "weight": 2.0},
+            ]
+        )
 
         assert system.ensemble == mock_predictor
-        mock_predictor_class.assert_called_once_with([
-            {"path": "model1.zip", "weight": 1.0},
-            {"path": "model2.zip", "weight": 2.0},
-        ])
+        mock_predictor_class.assert_called_once_with(
+            [
+                {"path": "model1.zip", "weight": 1.0},
+                {"path": "model2.zip", "weight": 2.0},
+            ]
+        )
 
-    @patch('ztb.training.ensemble.EnsemblePredictor')
+    @patch("ztb.training.ensemble.EnsemblePredictor")
     def test_trade(self, mock_predictor_class):
         """Test trading execution."""
         mock_predictor = Mock()
@@ -340,9 +353,8 @@ class TestEnsembleTradingSystem:
         mock_predictor_class.return_value = mock_predictor
 
         from ztb.training.models.ensemble import EnsembleTradingSystem
-        system = EnsembleTradingSystem([
-            {"path": "model1.zip", "weight": 1.0}
-        ])
+
+        system = EnsembleTradingSystem([{"path": "model1.zip", "weight": 1.0}])
 
         observation = np.array([1.0, 2.0, 3.0])
         result = system.trade(observation)
@@ -354,4 +366,6 @@ class TestEnsembleTradingSystem:
         assert "action" in result
         assert "confidence" in result
         assert "risk_check_passed" in result
-        assert isinstance(result["action"], int)  # Action should be an integer (0, 1, or 2)
+        assert isinstance(
+            result["action"], int
+        )  # Action should be an integer (0, 1, or 2)

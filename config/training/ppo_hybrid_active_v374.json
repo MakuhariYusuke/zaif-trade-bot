@@ -2,16 +2,16 @@
   "session_id": "ppo_hybrid_active_v374",
   "algorithm": "ppo",
   "description": "Hybrid: Best settings from Exp1/4/5 - High LR + High Entropy + HOLD Penalty",
-  
+
   "comment_experiment": "Experiment 6: Hybrid combination of best HOLD reduction strategies",
   "comment_strategy": "learning_rate=0.0005 (Exp5) + ent_coef=0.1 (Exp4) + hold_penalty=0.005 (Exp1)",
   "comment_target": "HOLD <45%, Reward >-150, Active trading >50%",
-  
+
   "max_features": 60,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": 500,
-  
+
   "ppo": {
     "learning_rate": 0.0005,
     "n_steps": 512,
@@ -32,7 +32,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -46,7 +46,7 @@
       "action_diversity_bonus": 0.01
     }
   },
-  
+
   "training": {
     "total_timesteps": 5000,
     "checkpoint_interval": 5000,
@@ -55,7 +55,7 @@
     "n_eval_episodes": 5,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -68,9 +68,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_changes": "Hybrid combination from experiments:",
   "changes": [
     "learning_rate: 0.0005 (from Exp5 - best HOLD reduction)",
@@ -79,7 +79,7 @@
     "consecutive_hold_penalty: 0.002 (from Exp1)",
     "trading_frequency_bonus: 0.05 (from Exp1)"
   ],
-  
+
   "expected_behavior": {
     "hold_rate_target": "<45%",
     "buy_sell_rate_target": ">55%",
@@ -87,6 +87,6 @@
     "exploration_level": "MAXIMUM (lr=0.0005, ent=0.1)",
     "trade_pattern": "Highly active, diverse, fast learning"
   },
-  
+
   "hypothesis": "Combining fast learning (Exp5) + high exploration (Exp4) + strong penalties (Exp1) will achieve both low HOLD and better reward than individual experiments"
 }

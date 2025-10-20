@@ -11,7 +11,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, cast, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union, cast
 
 # Add project root to path before importing ztb modules
 current = Path(__file__).resolve()
@@ -32,10 +32,12 @@ else:
     project_root = current.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.utils.path_utils import ensure_dir, get_project_root
+from ztb.utils.path_utils import ensure_dir
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 import numpy as np
 import pandas as pd
@@ -44,41 +46,43 @@ from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
+
 sys.path.insert(0, str(project_root))
 
+from ztb.inference.decode import InferenceConfig, decode_action
+from ztb.trading.env_config import TradingEnvConfig, get_trading_env_config
+from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
 from ztb.training.config.ppo_config import get_ppo_config
-from ztb.trading.env_config import get_trading_env_config, TradingEnvConfig
 from ztb.utils import DiscordNotifier
 from ztb.utils.data_utils import load_csv_data_optimized
 from ztb.utils.file_utils import safe_json_load
-from ztb.inference.decode import decode_action, InferenceConfig
-from ztb.trading.environment.constants import continuous_to_discrete_action
 
 
 def detect_algorithm(model_path: Path) -> str:
     """Detect the RL algorithm from model path or config.
-    
+
     Args:
         model_path: Path to the model file
-        
+
     Returns:
         Algorithm name ('ppo' or 'sac')
     """
     model_name = model_path.stem.lower()
-    
+
     # Check filename for algorithm hints
-    if 'sac' in model_name:
-        return 'sac'
-    elif 'ppo' in model_name:
-        return 'ppo'
-    
+    if "sac" in model_name:
+        return "sac"
+    elif "ppo" in model_name:
+        return "ppo"
+
     # Default to PPO for backward compatibility
-    return 'ppo'
+    return "ppo"
 
 
 class TradeDict(TypedDict):
     """Trade information dictionary."""
+
     step: int
     action: int
     prev_portfolio: float
@@ -91,6 +95,7 @@ class TradeDict(TypedDict):
 
 class EpisodeResultDict(TypedDict):
     """Episode result dictionary."""
+
     total_reward: float
     length: int
     trades: List[TradeDict]
@@ -100,9 +105,10 @@ class EpisodeResultDict(TypedDict):
 
 class TradingStatsDict(TypedDict, total=False):
     """Comprehensive trading statistics dictionary.
-    
+
     Contains all key performance metrics and risk measures for trading evaluation.
     """
+
     # Episode-level metrics
     episodes: int
     mean_reward: float
@@ -110,7 +116,7 @@ class TradingStatsDict(TypedDict, total=False):
     min_reward: float
     max_reward: float
     mean_length: float
-    
+
     # Trading performance metrics
     total_trades: int
     final_portfolio_value: float
@@ -119,17 +125,17 @@ class TradingStatsDict(TypedDict, total=False):
     avg_win: float
     avg_loss: float
     profit_factor: float
-    
+
     # Risk metrics
     max_drawdown: float
     sharpe_ratio: float
     sortino_ratio: float
     calmar_ratio: float
     volatility: float
-    
+
     # Action analysis
     action_distribution: Dict[int, int]
-    
+
     # Performance stability
     consistency_score: float
     best_episode_return: float
@@ -160,7 +166,9 @@ class PaperTrader:
         self.model: Optional[Union[MaskablePPO, SAC]] = None
         self.env: Optional[DummyVecEnv] = None
         self.episode_results: List[EpisodeResultDict] = []
-        self._normalization_stats: Optional[Any] = None  # Store loaded normalization stats
+        self._normalization_stats: Optional[
+            Any
+        ] = None  # Store loaded normalization stats
 
         self._setup_common_config()
 
@@ -181,7 +189,7 @@ class PaperTrader:
         print(f"DEBUG: Model observation space: {self.model.observation_space}")
 
         # Initialize schema attributes (only for PPO)
-        if self.algorithm == 'ppo':
+        if self.algorithm == "ppo":
             self._initialize_schema()
         else:
             # For SAC, skip schema validation
@@ -192,7 +200,7 @@ class PaperTrader:
             self.schema_hash = None
 
         # For SAC, disable correlation reduction to match model expectations
-        if self.algorithm == 'sac':
+        if self.algorithm == "sac":
             # Recreate environment without correlation reduction
             self.env = self._create_env_sac()
 
@@ -202,11 +210,15 @@ class PaperTrader:
         self.position: float = 0.0  # Current position size
 
         # Inference configuration (only for PPO)
-        if self.algorithm == 'ppo':
+        if self.algorithm == "ppo":
             self.inference_config: Optional[InferenceConfig] = InferenceConfig(
                 temperature=float(cast(float, self.config.get("temperature", 0.7))),
-                tiebreaker_tau=float(cast(float, self.config.get("tiebreaker_tau", 0.05))),
-                enable_tiebreaker=bool(cast(bool, self.config.get("enable_tiebreaker", True))),
+                tiebreaker_tau=float(
+                    cast(float, self.config.get("tiebreaker_tau", 0.05))
+                ),
+                enable_tiebreaker=bool(
+                    cast(bool, self.config.get("enable_tiebreaker", True))
+                ),
                 deterministic=bool(cast(bool, self.config.get("deterministic", False))),
             )
         else:
@@ -214,14 +226,16 @@ class PaperTrader:
 
     def _get_default_config(self) -> TradingEnvConfig:
         """Get default configuration for paper trading."""
-        return get_trading_env_config({
-            "reward_scaling": 1.0,  # Override for paper trading
-            "risk_free_rate": 0.0,
-            "initial_portfolio_value": 10000.0,
-            "verbose": 1,
-            "enable_correlation_reduction": False,  # Disable correlation reduction for SAC compatibility
-            "correlation_reduction": False,  # Also set the actual config key
-        })
+        return get_trading_env_config(
+            {
+                "reward_scaling": 1.0,  # Override for paper trading
+                "risk_free_rate": 0.0,
+                "initial_portfolio_value": 10000.0,
+                "verbose": 1,
+                "enable_correlation_reduction": False,  # Disable correlation reduction for SAC compatibility
+                "correlation_reduction": False,  # Also set the actual config key
+            }
+        )
 
     def _create_env(self) -> DummyVecEnv:
         """Create evaluation environment."""
@@ -239,7 +253,7 @@ class PaperTrader:
                 "verbose": self.config.get("verbose", 1),
             },
         )
-        
+
         # Store base environment reference for initial_portfolio_value access
         self._base_env = env
 
@@ -275,7 +289,7 @@ class PaperTrader:
         if expected_dim:
             env_kwargs["max_features"] = int(expected_dim)
         env = TradingEnvironment(**env_kwargs)
-        
+
         # Store base environment reference for initial_portfolio_value access
         self._base_env = env
 
@@ -283,11 +297,13 @@ class PaperTrader:
 
     def _load_model(self) -> None:
         """Load the trained model from checkpoint."""
-        self.logger.info(f"Loading {self.algorithm.upper()} model from {self.model_path}")
-        
-        if self.algorithm == 'ppo':
+        self.logger.info(
+            f"Loading {self.algorithm.upper()} model from {self.model_path}"
+        )
+
+        if self.algorithm == "ppo":
             self._load_ppo_model()
-        elif self.algorithm == 'sac':
+        elif self.algorithm == "sac":
             self._load_sac_model()
         else:
             raise ValueError(f"Unsupported algorithm: {self.algorithm}")
@@ -299,7 +315,9 @@ class PaperTrader:
 
         # Get policy_kwargs from config
         policy_kwargs_raw = self.config.get("policy_kwargs", {})
-        policy_kwargs: Dict[str, Any] = policy_kwargs_raw if isinstance(policy_kwargs_raw, dict) else {}
+        policy_kwargs: Dict[str, Any] = (
+            policy_kwargs_raw if isinstance(policy_kwargs_raw, dict) else {}
+        )
 
         # Get PPO config from common configuration
         ppo_config = get_ppo_config()
@@ -339,6 +357,7 @@ class PaperTrader:
             # Fallback to custom checkpoint loading (LZ4/ZSTD compressed)
             try:
                 import pickle
+
                 import lz4.frame
                 import zstandard as zstd
 
@@ -424,52 +443,51 @@ class PaperTrader:
 
             model_name = self.model_path.stem
             schema_manager = FeatureSchemaManager(model_name)
-            
+
             # Load schema metadata
             metadata = schema_manager.load_schema()
-            
+
             self.expected_features = metadata.num_features
             self.feature_names = metadata.feature_names
             self.schema_hash = metadata.schema_hash
             self.schema_available = True
-            
+
             self.logger.info("✅ Schema loaded for model: %s", model_name)
             self.logger.info("   Expected features: %d", self.expected_features)
             self.logger.info("   Schema hash: %s", self.schema_hash[:16])
             self.logger.info("   Created at: %s", metadata.created_at)
-            
+
             # Display feature list summary
             if self.feature_names:
                 self.logger.info("📋 Model feature requirements:")
                 self.logger.info("   Total: %d features", len(self.feature_names))
                 self.logger.info("   First 5: %s", self.feature_names[:5])
                 self.logger.info("   Last 5: %s", self.feature_names[-5:])
-            
+
         except FileNotFoundError:
             self.logger.warning(
                 "⚠️  No schema found for model %s. Feature validation disabled.",
-                self.model_path.stem
+                self.model_path.stem,
             )
         except Exception as e:
             self.logger.warning(
-                "⚠️  Failed to load schema for %s: %s",
-                self.model_path.stem,
-                str(e)
+                "⚠️  Failed to load schema for %s: %s", self.model_path.stem, str(e)
             )
 
     def _get_ppo_action(self, obs: Any) -> tuple:
         """Get action from PPO model using inference pipeline."""
         # Get legal actions mask for MaskablePPO
         action_masks = cast(
-            NDArray[np.bool_], cast(
-                TradingEnvironment, self.env.envs[0]
-            ).get_legal_actions()
+            NDArray[np.bool_],
+            cast(TradingEnvironment, self.env.envs[0]).get_legal_actions(),
         )
 
         # Get logits from policy network
         with torch.no_grad():
             obs_tensor = torch.from_numpy(obs).float()
-            features = self.model.policy.extract_features(obs_tensor, self.model.policy.features_extractor)  # type: ignore[union-attr]
+            features = self.model.policy.extract_features(
+                obs_tensor, self.model.policy.features_extractor
+            )  # type: ignore[union-attr]
             if self.model.policy.share_features_extractor:  # type: ignore[union-attr]
                 latent_pi, _ = self.model.policy.mlp_extractor(features)  # type: ignore[union-attr]
             else:
@@ -483,34 +501,34 @@ class PaperTrader:
             self.inference_config,
         )
         action = np.array([action])  # Wrap for env.step()
-        
+
         return action, decode_info
 
     def _get_sac_action(self, obs: Any) -> tuple:
         """Get action from SAC model."""
         # SAC uses continuous actions, convert to discrete
         action, _ = self.model.predict(obs, deterministic=True)  # type: ignore[union-attr]
-        
+
         # Convert continuous action to discrete (assuming 3 actions: HOLD, BUY, SELL)
         # SAC outputs continuous values, map to discrete actions
         if isinstance(action, np.ndarray) and action.ndim > 0:
             action_value = action[0] if action.shape[0] > 0 else action.item()
         else:
             action_value = action
-        
+
         # Map continuous action to discrete using centralized function
         discrete_action = continuous_to_discrete_action(action_value)
         action = np.array([discrete_action])
-        
+
         # Create decode_info for compatibility
         decode_info = {
-            'probabilities': [0.33, 0.33, 0.34],  # Placeholder
-            'top2_actions': [discrete_action, discrete_action],
-            'top2_probs': [1.0, 0.0],
-            'margin': 0.0,
-            'tiebreaker_activated': False
+            "probabilities": [0.33, 0.33, 0.34],  # Placeholder
+            "top2_actions": [discrete_action, discrete_action],
+            "top2_probs": [1.0, 0.0],
+            "margin": 0.0,
+            "tiebreaker_activated": False,
         }
-        
+
         return action, decode_info
 
     def _load_test_data(self) -> None:
@@ -526,21 +544,27 @@ class PaperTrader:
             if self.schema_available and self.expected_features is not None:
                 # Auto-detect feature columns (exclude meta columns)
                 exclude_cols = {
-                    "ts", "timestamp", "exchange", "pair", 
-                    "episode_id", "side", "source",
+                    "ts",
+                    "timestamp",
+                    "exchange",
+                    "pair",
+                    "episode_id",
+                    "side",
+                    "source",
                 }
                 feature_columns = [
-                    col for col in self.test_df.columns
+                    col
+                    for col in self.test_df.columns
                     if col not in exclude_cols
                     and pd.api.types.is_numeric_dtype(self.test_df[col])
                 ]
-                
+
                 if len(feature_columns) != self.expected_features:
                     self.logger.error(
                         "❌ Feature count mismatch! Dataset has %d features, "
                         "but schema expects %d",
                         len(feature_columns),
-                        self.expected_features
+                        self.expected_features,
                     )
                     raise ValueError(
                         f"Feature count mismatch: dataset={len(feature_columns)}, "
@@ -549,7 +573,7 @@ class PaperTrader:
                 else:
                     self.logger.info(
                         "✅ Feature count validated: %d features match schema",
-                        len(feature_columns)
+                        len(feature_columns),
                     )
         else:
             self.test_df = None
@@ -599,9 +623,9 @@ class PaperTrader:
             # Get action from model
             predict_obs = obs[0] if isinstance(obs, tuple) else obs
 
-            if self.algorithm == 'ppo':
+            if self.algorithm == "ppo":
                 action, decode_info = self._get_ppo_action(predict_obs)
-            elif self.algorithm == 'sac':
+            elif self.algorithm == "sac":
                 action, decode_info = self._get_sac_action(predict_obs)
             else:
                 raise ValueError(f"Unsupported algorithm: {self.algorithm}")
@@ -609,33 +633,38 @@ class PaperTrader:
             # Debug: Log action distribution for first few steps AND environment state
             if self.verbose and steps < 10:
                 env_obj = cast(TradingEnvironment, self.env.envs[0])
-                curriculum_stage = getattr(env_obj, 'curriculum_stage', 'UNKNOWN')
+                curriculum_stage = getattr(env_obj, "curriculum_stage", "UNKNOWN")
                 print(f"\n{'='*60}")
                 print(f"Step {steps} - Environment & Decode Diagnostics")
                 print(f"{'='*60}")
-                print(f"[Environment State]")
+                print("[Environment State]")
                 print(f"  Curriculum Stage: {curriculum_stage}")
                 print(f"  Current Position: {self.position:.3f}")
                 print(f"  Portfolio Value: ${self.portfolio_value:.2f}")
-                if self.algorithm == 'ppo':
+                if self.algorithm == "ppo":
                     action_masks = cast(
-                        NDArray[np.bool_], cast(
-                            TradingEnvironment, self.env.envs[0]
-                        ).get_legal_actions()
+                        NDArray[np.bool_],
+                        cast(TradingEnvironment, self.env.envs[0]).get_legal_actions(),
                     )
                     print(f"  Legal Actions Mask: {action_masks}")
-                print(f"\n[Decode Pipeline Results]")
+                print("\n[Decode Pipeline Results]")
                 action_idx = int(action[0])
-                action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(action_idx, f"UNKNOWN({action_idx})")
+                action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(
+                    action_idx, f"UNKNOWN({action_idx})"
+                )
                 print(f"  Action Selected: {action_idx} ({action_name})")
-                print(f"  Probabilities: HOLD={decode_info['probabilities'][0]:.4f}, "
-                      f"BUY={decode_info['probabilities'][1]:.4f}, "
-                      f"SELL={decode_info['probabilities'][2]:.4f}")
+                print(
+                    f"  Probabilities: HOLD={decode_info['probabilities'][0]:.4f}, "
+                    f"BUY={decode_info['probabilities'][1]:.4f}, "
+                    f"SELL={decode_info['probabilities'][2]:.4f}"
+                )
                 print(f"  Top2 Actions: {decode_info['top2_actions']} (indices)")
-                print(f"  Top2 Probs: [{decode_info['top2_probs'][0]:.4f}, {decode_info['top2_probs'][1]:.4f}]")
+                print(
+                    f"  Top2 Probs: [{decode_info['top2_probs'][0]:.4f}, {decode_info['top2_probs'][1]:.4f}]"
+                )
                 print(f"  Margin (p1-p2): {decode_info['margin']:.4f}")
                 print(f"  Tiebreaker Activated: {decode_info['tiebreaker_activated']}")
-                if decode_info.get('tiebreaker_reason'):
+                if decode_info.get("tiebreaker_reason"):
                     print(f"  Tiebreaker Reason: {decode_info['tiebreaker_reason']}")
                 print(f"{'='*60}")
 
@@ -672,7 +701,9 @@ class PaperTrader:
 
                 # Log detailed trade information with CORRECT discrete action mapping
                 action_idx = int(action[0])
-                action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(action_idx, f"UNKNOWN({action_idx})")
+                action_name = {0: "HOLD", 1: "BUY", 2: "SELL"}.get(
+                    action_idx, f"UNKNOWN({action_idx})"
+                )
                 self.logger.info(
                     f"Trade #{len(episode_trades)}: {action_name} (action_idx={action_idx}) | "
                     f"Position: {prev_position:.3f} -> {self.position:.3f} | "
@@ -706,7 +737,9 @@ class PaperTrader:
     ) -> TradingStatsDict:
         """Calculate comprehensive trading statistics."""
         # Get initial portfolio value from environment (not hardcoded)
-        initial_portfolio = float(getattr(self._base_env, 'initial_portfolio_value', 10000.0))
+        initial_portfolio = float(
+            getattr(self._base_env, "initial_portfolio_value", 10000.0)
+        )
 
         # Calculate average final portfolio across episodes
         if self.episode_results:
@@ -794,46 +827,50 @@ class PaperTrader:
         """Clean up resources to prevent memory leaks."""
         try:
             # Close environment
-            if hasattr(self, 'env') and self.env is not None:
+            if hasattr(self, "env") and self.env is not None:
                 # Close the underlying vectorized environment
-                if hasattr(self.env, 'close'):
+                if hasattr(self.env, "close"):
                     self.env.close()
                 # Clear the environment reference
                 self.env = None
                 self.logger.debug("PaperTrader environment closed")
-            
+
             # Clear model reference and break potential circular references
-            if hasattr(self, 'model') and self.model is not None:
+            if hasattr(self, "model") and self.model is not None:
                 # Clear model references to environment
-                if hasattr(self.model, 'env') and self.model.env is not None:
+                if hasattr(self.model, "env") and self.model.env is not None:
                     self.model.env = None
-                if hasattr(self.model, '_last_obs') and self.model._last_obs is not None:
+                if (
+                    hasattr(self.model, "_last_obs")
+                    and self.model._last_obs is not None
+                ):
                     self.model._last_obs = None
                 self.model = None
                 self.logger.debug("PaperTrader model references cleared")
-            
+
             # Clear data references
-            if hasattr(self, 'test_df'):
+            if hasattr(self, "test_df"):
                 self.test_df = None
-            
+
             # Clear episode results and trading history
-            if hasattr(self, 'episode_results'):
+            if hasattr(self, "episode_results"):
                 self.episode_results.clear()
-            
-            if hasattr(self, 'trades'):
+
+            if hasattr(self, "trades"):
                 self.trades.clear()
-            
+
             # Clear normalization stats
-            if hasattr(self, '_normalization_stats'):
+            if hasattr(self, "_normalization_stats"):
                 self._normalization_stats = None
-            
+
             # Clear inference config
-            if hasattr(self, 'inference_config'):
+            if hasattr(self, "inference_config"):
                 self.inference_config = None
-                
+
         except Exception as e:
             self.logger.warning(f"Error during PaperTrader cleanup: {e}")
             import traceback
+
             self.logger.debug(f"Cleanup traceback: {traceback.format_exc()}")
 
     def __del__(self) -> None:
@@ -946,7 +983,7 @@ def main() -> int:
             if trader.schema_available and trader.expected_features
             else "schema not available ⚠️"
         )
-        
+
         notifier.send_notification(
             title="📈 Paper Trading Started",
             message=f"Evaluating {trader.algorithm.upper()} model: {Path(args.model_path).name}",
@@ -1006,7 +1043,7 @@ def main() -> int:
 
         # Clean up resources even on failure
         try:
-            if 'trader' in locals() and trader is not None:
+            if "trader" in locals() and trader is not None:
                 trader.close()
         except NameError:
             pass  # trader was not defined yet

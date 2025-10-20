@@ -10,7 +10,13 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from ztb.trading.live.exchanges.base.broker_interfaces import Balance, IBroker, Order, Position
+
+from ztb.trading.live.exchanges.base.broker_interfaces import (
+    Balance,
+    IBroker,
+    Order,
+    Position,
+)
 from ztb.trading.live.orders.state import OrderStateMachine
 
 

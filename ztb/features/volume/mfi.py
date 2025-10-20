@@ -19,6 +19,10 @@ def compute_mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
     volume = df["volume"]
 
     result = TaLibWrapper.mfi(
-        high.values.astype(np.float64), low.values.astype(np.float64), close.values.astype(np.float64), volume.values.astype(np.float64), period
+        high.values.astype(np.float64),
+        low.values.astype(np.float64),
+        close.values.astype(np.float64),
+        volume.values.astype(np.float64),
+        period,
     )
     return pd.Series(result, index=df.index)

@@ -16,7 +16,7 @@ Two independent external AI coding agents reviewed the codebase simultaneously. 
 2. MaskablePPO inference breaks production/backtest due to `env=None`
 3. State synchronization incomplete for forced closes
 
-### Reviewer B Findings  
+### Reviewer B Findings
 **Focus:** Live trading position management and PnL accounting
 
 **Key Discoveries:**
@@ -81,7 +81,7 @@ Forced closes must update `_last_trade_step` to current step so risk guards cont
 if action == ACTION_SELL and self.position > 0:
     # Close long
     self.entry_price = current_price  # ⚠️ OVERWRITES BEFORE CALCULATION!
-    
+
     # Calculate PnL
     pnl = (current_price - self.entry_price) * abs(old_position)
     # ⚠️ Always 0 because entry_price == current_price!
@@ -116,7 +116,7 @@ Entry price is updated to current price BEFORE using it for PnL calculation, mak
 if action == ACTION_SELL and self.position > 0:
     # Close long...
     self.position = -self.config["max_position_size"]  # ⚠️ Always opens short!
-    
+
 elif action == ACTION_BUY and self.position < 0:
     # Close short...
     self.position = self.config["max_position_size"]  # ⚠️ Always opens long!
@@ -162,7 +162,7 @@ elif action == ACTION_BUY and self.position < 0:
 1. **Forced close synchronization incomplete**
    - Only syncs 5 properties, misses `_last_trade_step` and `_consecutive_trade_steps`
    - Pattern: Easy to miss attributes during manual sync
-   
+
 2. **Architectural suggestion**
    - Move sync into `PositionManager.close_position()`
    - Or expose read-only proxies
@@ -209,7 +209,7 @@ class LiveTrader:
         # Create lightweight env wrapper
         self.env = LiveTradingEnvWrapper(config)
         self.position_manager = self.env.position_manager
-        
+
     def execute_trade(self, action):
         # Reuse environment logic
         obs, reward, done, truncated, info = self.env.step(action)
@@ -268,7 +268,7 @@ Live trading has TWO critical bugs that make it completely unusable:
 
 **Impact:**
 - Emergency stop doesn't work
-- Loss limits don't work  
+- Loss limits don't work
 - Risk management non-functional
 - Infinite loss exposure
 
@@ -423,7 +423,7 @@ Both reviewers independently concluded:
 - Confirmed architectural issues independently
 - Provided complementary recommendations
 
-**Status:** 
+**Status:**
 - **Production deployment: BLOCKED** (live trading broken)
 - **Simulation/training: OK** (bugs in production paths only)
 - **Total bugs fixed: 26 across 6 review cycles**

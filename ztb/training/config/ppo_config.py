@@ -5,12 +5,12 @@ This module provides standardized PPO configurations to reduce duplication
 across training scripts and improve consistency.
 """
 
-from typing import Dict, Any, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict
 
 # Common constants used across training modules
-DEFAULT_REWARD_SCALING = 6.0     # Optimized value from hyperparameter search
+DEFAULT_REWARD_SCALING = 6.0  # Optimized value from hyperparameter search
 DEFAULT_TOTAL_TIMESTEPS = 1_000_000
-DEFAULT_INITIAL_PORTFOLIO_VALUE = 1_000_000.0 # in JPY
+DEFAULT_INITIAL_PORTFOLIO_VALUE = 1_000_000.0  # in JPY
 DEFAULT_TRAINING_STEPS = 100_000
 
 # === Long-Run Staging Configuration ===
@@ -18,22 +18,23 @@ DEFAULT_TRAINING_STEPS = 100_000
 # Default ratios optimized for 1M training, but work for any total_timesteps
 
 # Stage boundary ratios (as fraction of total_timesteps)
-STAGE_WARMUP_RATIO = 0.05        # 0-5%: Warmup (weights=1.0, λ=0)
-STAGE_TRANSITION_RATIO = 0.20    # 5-20%: Cosine warmup for weights/λ
-STAGE_MAIN_RATIO = 0.80          # 20-80%: Main training (standard settings)
-STAGE_FINAL_RATIO = 1.00         # 80-100%: Cosine annealing LR, early stop with 3 conditions
+STAGE_WARMUP_RATIO = 0.05  # 0-5%: Warmup (weights=1.0, λ=0)
+STAGE_TRANSITION_RATIO = 0.20  # 5-20%: Cosine warmup for weights/λ
+STAGE_MAIN_RATIO = 0.80  # 20-80%: Main training (standard settings)
+STAGE_FINAL_RATIO = 1.00  # 80-100%: Cosine annealing LR, early stop with 3 conditions
+
 
 # Helper functions to calculate stage boundaries based on total steps
 def get_stage_boundaries(total_timesteps: int) -> Dict[str, int]:
     """
     Calculate stage boundaries based on total training steps.
-    
+
     Args:
         total_timesteps: Total number of training steps
-        
+
     Returns:
         Dict with stage boundaries (warmup_end, transition_end, main_end, final_end)
-        
+
     Example:
         For 1M steps:
         - warmup_end: 50,000 (5%)
@@ -42,26 +43,32 @@ def get_stage_boundaries(total_timesteps: int) -> Dict[str, int]:
         - final_end: 1,000,000 (100%)
     """
     return {
-        'warmup_end': int(total_timesteps * STAGE_WARMUP_RATIO),
-        'transition_end': int(total_timesteps * STAGE_TRANSITION_RATIO),
-        'main_end': int(total_timesteps * STAGE_MAIN_RATIO),
-        'final_end': int(total_timesteps * STAGE_FINAL_RATIO),
+        "warmup_end": int(total_timesteps * STAGE_WARMUP_RATIO),
+        "transition_end": int(total_timesteps * STAGE_TRANSITION_RATIO),
+        "main_end": int(total_timesteps * STAGE_MAIN_RATIO),
+        "final_end": int(total_timesteps * STAGE_FINAL_RATIO),
     }
 
+
 # Checkpoint and evaluation (adaptive)
-CHECKPOINT_INTERVAL_RATIO = 0.025  # Save checkpoint every 2.5% of total steps (1M → 25k)
-ROLLING_OOS_STEPS = 500            # Paper trade 500 steps for rolling OOS eval (extended from 300)
+CHECKPOINT_INTERVAL_RATIO = (
+    0.025  # Save checkpoint every 2.5% of total steps (1M → 25k)
+)
+ROLLING_OOS_STEPS = (
+    500  # Paper trade 500 steps for rolling OOS eval (extended from 300)
+)
+
 
 def get_checkpoint_interval(total_timesteps: int) -> int:
     """
     Calculate checkpoint interval based on total training steps.
-    
+
     Args:
         total_timesteps: Total number of training steps
-        
+
     Returns:
         Checkpoint interval (typically 2.5% of total steps)
-        
+
     Example:
         - 1M steps → 25,000
         - 500k steps → 12,500
@@ -69,24 +76,26 @@ def get_checkpoint_interval(total_timesteps: int) -> int:
     """
     return int(total_timesteps * CHECKPOINT_INTERVAL_RATIO)
 
-# Monitoring thresholds (early stop conditions)
-MIN_LEGAL_SELL_RATE = 0.12              # legal_sell_rate < 0.12 for patience period → stop
-SELL_RATE_PATIENCE_RATIO = 0.005        # Patience as ratio of total steps (1M → 5k)
 
-GRAD_NORM_SELL_MIN = 1e-6               # grad_norm(SELL) ≈ 0 → stop (gradient collapse)
-SHARPE_PROXY_THRESHOLD = 0.0            # Sharpe_proxy ≤ 0 for patience evals → branch stop
-SHARPE_PATIENCE_EVALS = 2               # Patience for low Sharpe (in evaluation counts)
+# Monitoring thresholds (early stop conditions)
+MIN_LEGAL_SELL_RATE = 0.12  # legal_sell_rate < 0.12 for patience period → stop
+SELL_RATE_PATIENCE_RATIO = 0.005  # Patience as ratio of total steps (1M → 5k)
+
+GRAD_NORM_SELL_MIN = 1e-6  # grad_norm(SELL) ≈ 0 → stop (gradient collapse)
+SHARPE_PROXY_THRESHOLD = 0.0  # Sharpe_proxy ≤ 0 for patience evals → branch stop
+SHARPE_PATIENCE_EVALS = 2  # Patience for low Sharpe (in evaluation counts)
+
 
 def get_sell_rate_patience(total_timesteps: int) -> int:
     """
     Calculate patience steps for low sell rate based on total training steps.
-    
+
     Args:
         total_timesteps: Total number of training steps
-        
+
     Returns:
         Patience steps (typically 0.5% of total steps)
-        
+
     Example:
         - 1M steps → 5,000
         - 500k steps → 2,500
@@ -94,16 +103,17 @@ def get_sell_rate_patience(total_timesteps: int) -> int:
     """
     return int(total_timesteps * SELL_RATE_PATIENCE_RATIO)
 
+
 # KL divergence monitoring
-KL_VIOLATION_THRESHOLD = 0.5     # KL > 0.5 → potential policy collapse
-KL_CRITICAL_THRESHOLD = 1.0      # KL > 1.0 → critical, emergency entropy boost
+KL_VIOLATION_THRESHOLD = 0.5  # KL > 0.5 → potential policy collapse
+KL_CRITICAL_THRESHOLD = 1.0  # KL > 1.0 → critical, emergency entropy boost
 
 # Entropy target (H* = 0.7 * log(3) ≈ 0.769)
-TARGET_ENTROPY_RATIO = 0.7       # Target entropy as ratio of max entropy
-MAX_ENTROPY_3_ACTIONS = 1.0986   # log(3) for 3 actions (HOLD/BUY/SELL)
+TARGET_ENTROPY_RATIO = 0.7  # Target entropy as ratio of max entropy
+MAX_ENTROPY_3_ACTIONS = 1.0986  # log(3) for 3 actions (HOLD/BUY/SELL)
 
 # Environment configuration constants
-DEFAULT_RISK_FREE_RATE = 0.0    # Risk-free rate for Sharpe ratio calculation
+DEFAULT_RISK_FREE_RATE = 0.0  # Risk-free rate for Sharpe ratio calculation
 DEFAULT_STOP_LOSS_THRESHOLD = 0.05  # 5% stop-loss threshold
 DEFAULT_MAX_CONSECUTIVE_TRADES = 5  # Maximum number of consecutive trades
 DEFAULT_MIN_HOLDING_PERIOD = 3  # Minimum holding period between trades
@@ -128,6 +138,7 @@ DEFAULT_REWARD_CLIP_VALUE = 2.0
 
 class PPOConfig(TypedDict, total=False):
     """Type definition for PPO configuration."""
+
     # Core PPO parameters
     learning_rate: float
     n_steps: int
@@ -187,7 +198,6 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
     "sde_sample_freq": -1,
     "target_kl": None,
     "verbose": 1,
-
     # Trading-specific parameters
     "reward_scaling": DEFAULT_REWARD_SCALING,  # Optimized value from hyperparameter search
     "transaction_cost": 0.001,
@@ -195,16 +205,24 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
     "inventory_penalty_scale": 0.001,
     "trade_frequency_penalty": 0.0001,
     "total_timesteps": DEFAULT_TOTAL_TIMESTEPS,
-
     # Environment parameters
     "max_position_size": 1.0,
     "fee_model": "percentage",
     "fee_rate": 0.001,
     "features": [
-        "close", "volume", "returns", "sma_20", "sma_50", "rsi_14",
-        "macd", "bb_upper", "bb_lower", "atr_14", "stoch_k", "stoch_d"
+        "close",
+        "volume",
+        "returns",
+        "sma_20",
+        "sma_50",
+        "rsi_14",
+        "macd",
+        "bb_upper",
+        "bb_lower",
+        "atr_14",
+        "stoch_k",
+        "stoch_d",
     ],
-
     # Training parameters
     "data_path": None,
     "checkpoint_dir": None,
@@ -256,12 +274,14 @@ def get_conservative_ppo_config() -> PPOConfig:
             - Moderate entropy coefficient (0.01)
             - Lower max gradient norm (0.3)
     """
-    return get_ppo_config({
-        "learning_rate": 1e-4,
-        "clip_range": 0.1,
-        "ent_coef": 0.01,
-        "max_grad_norm": 0.3,
-    })
+    return get_ppo_config(
+        {
+            "learning_rate": 1e-4,
+            "clip_range": 0.1,
+            "ent_coef": 0.01,
+            "max_grad_norm": 0.3,
+        }
+    )
 
 
 def get_aggressive_ppo_config() -> PPOConfig:
@@ -280,9 +300,11 @@ def get_aggressive_ppo_config() -> PPOConfig:
             - Higher entropy coefficient (0.1)
             - Higher max gradient norm (1.0)
     """
-    return get_ppo_config({
-        "learning_rate": 1e-3,
-        "clip_range": 0.3,
-        "ent_coef": 0.1,
-        "max_grad_norm": 1.0,
-    })
+    return get_ppo_config(
+        {
+            "learning_rate": 1e-3,
+            "clip_range": 0.3,
+            "ent_coef": 0.1,
+            "max_grad_norm": 1.0,
+        }
+    )

@@ -19,27 +19,31 @@ __version__ = "1.0.0"
 __author__ = "AI Assistant"
 __description__ = "Multi-modal learning module for SAC v421 trading AI"
 
+# 設定管理
+from .config import MultimodalConfig
+
 # 主要コンポーネントのインポート
 from .core import *
 from .data import *
+from .evaluation import *
 from .features import *
 from .models import *
 from .training import *
-from .evaluation import *
 
-# 設定管理
-from .config import MultimodalConfig
 
 # デフォルト設定の読み込み
 def get_default_config() -> MultimodalConfig:
     """デフォルト設定を取得"""
     return MultimodalConfig.from_yaml("ztb/multimodal/config/default.yaml")
 
+
 # クイックスタート関数
-def create_multimodal_agent(price_dim: int = 156,
-                           text_dim: int = 768,
-                           economic_dim: int = 20,
-                           action_dim: int = 3):
+def create_multimodal_agent(
+    price_dim: int = 156,
+    text_dim: int = 768,
+    economic_dim: int = 20,
+    action_dim: int = 3,
+):
     """
     マルチモーダルSACエージェントを簡単に作成
 
@@ -58,10 +62,11 @@ def create_multimodal_agent(price_dim: int = 156,
         price_feature_dim=price_dim,
         text_embedding_dim=text_dim,
         economic_feature_dim=economic_dim,
-        action_dim=action_dim
+        action_dim=action_dim,
     )
 
     return agent
+
 
 def create_data_pipeline():
     """
@@ -76,31 +81,30 @@ def create_data_pipeline():
     data_manager = FreeDataSourceManager()
     preprocessor = MultiModalDataPreprocessor()
 
-    return {
-        'data_manager': data_manager,
-        'preprocessor': preprocessor
-    }
+    return {"data_manager": data_manager, "preprocessor": preprocessor}
+
 
 # バージョン情報
 def get_version_info():
     """バージョン情報を取得"""
     return {
-        'version': __version__,
-        'author': __author__,
-        'description': __description__,
-        'components': [
-            'core.encoders',
-            'core.attention',
-            'core.fusion',
-            'data.collectors',
-            'data.preprocessors',
-            'features.text',
-            'features.numeric',
-            'models.agents',
-            'training.trainers',
-            'evaluation.metrics'
-        ]
+        "version": __version__,
+        "author": __author__,
+        "description": __description__,
+        "components": [
+            "core.encoders",
+            "core.attention",
+            "core.fusion",
+            "data.collectors",
+            "data.preprocessors",
+            "features.text",
+            "features.numeric",
+            "models.agents",
+            "training.trainers",
+            "evaluation.metrics",
+        ],
     }
+
 
 # 初期化完了メッセージ
 print(f"🤖 MultiModal Learning Module v{__version__} initialized")

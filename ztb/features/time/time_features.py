@@ -177,7 +177,9 @@ def calculate_time_features_extended(df: pd.DataFrame) -> pd.DataFrame:
 
         # Calculate day of quarter (simplified approximation)
         month_in_quarter = result["time_month"] - quarter_start_month + 1
-        days_before_current_month = (month_in_quarter - 1) * 30.44  # Average days per month
+        days_before_current_month = (
+            month_in_quarter - 1
+        ) * 30.44  # Average days per month
         day_of_month = datetime_index.day
         day_of_quarter = days_before_current_month + day_of_month
 

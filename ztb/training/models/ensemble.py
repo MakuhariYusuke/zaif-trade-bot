@@ -23,6 +23,7 @@ class ModelConfig(TypedDict, total=False):
 
 class EnsembleInfoDict(TypedDict):
     """Ensemble information dictionary."""
+
     num_models: int
     model_paths: List[str]
     weights: List[float]
@@ -31,6 +32,7 @@ class EnsembleInfoDict(TypedDict):
 
 class RiskConfigDict(TypedDict, total=False):
     """Risk management configuration dictionary."""
+
     max_consecutive_losses: int
     daily_loss_limit: float
     circuit_breaker_threshold: float
@@ -39,12 +41,12 @@ class RiskConfigDict(TypedDict, total=False):
     max_order_size: float
 
 
+from typing import Any, Callable, Dict, Protocol
+
 import numpy as np
 from numpy.typing import NDArray
-from numpy.typing import NDArray
-from stable_baselines3 import PPO
 from sb3_contrib import MaskablePPO
-from typing import Protocol, Any, Dict, Callable
+from stable_baselines3 import PPO
 
 logger = get_logger(__name__)
 
@@ -53,14 +55,16 @@ logger = get_logger(__name__)
 class PredictorProtocol(Protocol):
     """Protocol for predictor implementations."""
 
-    def predict(self, observation: NDArray[np.float32], deterministic: bool = True) -> tuple[NDArray[np.float32], Any]:
+    def predict(
+        self, observation: NDArray[np.float32], deterministic: bool = True
+    ) -> tuple[NDArray[np.float32], Any]:
         """Make a prediction based on observation."""
         ...
 
 
 class ActionMaskProvider(Protocol):
     """Protocol for environments that can provide action masks."""
-    
+
     def get_action_masks(self) -> NDArray[np.bool_]:
         """Get current action masks."""
         ...
@@ -78,9 +82,11 @@ class EnsemblePredictor(PredictorProtocol):
     """Ensemble predictor combining multiple trained models."""
 
     def __init__(
-        self, 
+        self,
         model_configs: List[ModelConfig],
-        mask_provider: Optional[Callable[[NDArray[np.float32]], NDArray[np.bool_]]] = None
+        mask_provider: Optional[
+            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
+        ] = None,
     ):
         """
         Initialize ensemble predictor.
@@ -96,7 +102,7 @@ class EnsemblePredictor(PredictorProtocol):
         """
         if not model_configs:
             raise ValueError("At least one model configuration required")
-            
+
         self.model_configs = model_configs
         self.models: List[Union[MaskablePPO, PPO]] = []
         self.weights = []
@@ -118,13 +124,11 @@ class EnsemblePredictor(PredictorProtocol):
                 except:
                     model = PPO.load(model_path)  # type: ignore[arg-type]
                     logger.info(f"Loaded PPO model: {model_path}")
-                
+
                 self.models.append(model)
                 self.weights.append(weight)
                 self.feature_sets.append(feature_set)
-                logger.info(
-                    f"Model added: weight={weight}, feature_set={feature_set}"
-                )
+                logger.info(f"Model added: weight={weight}, feature_set={feature_set}")
             except Exception as e:
                 logger.error(f"Failed to load model {model_path}: {e}")
                 continue
@@ -136,7 +140,7 @@ class EnsemblePredictor(PredictorProtocol):
 
         if not self.models:
             raise RuntimeError("Failed to load any models")
-        
+
         # Validate mask_provider for MaskablePPO models - CRITICAL for prediction accuracy
         if self.has_maskable_ppo and mask_provider is None:
             raise ValueError(
@@ -184,18 +188,24 @@ class EnsemblePredictor(PredictorProtocol):
                     if self.mask_provider is not None:
                         action_masks = self.mask_provider(observation)
                         action, state = model.predict(
-                            observation, 
-                            action_masks=action_masks, 
-                            deterministic=deterministic
+                            observation,
+                            action_masks=action_masks,
+                            deterministic=deterministic,
                         )
                     else:
                         # No mask provider - prediction may be inaccurate
-                        action, state = model.predict(observation, deterministic=deterministic)
-                        logger.debug(f"MaskablePPO prediction without masks for model {i}")
+                        action, state = model.predict(
+                            observation, deterministic=deterministic
+                        )
+                        logger.debug(
+                            f"MaskablePPO prediction without masks for model {i}"
+                        )
                 else:
                     # Standard PPO prediction
-                    action, state = model.predict(observation, deterministic=deterministic)
-                
+                    action, state = model.predict(
+                        observation, deterministic=deterministic
+                    )
+
                 actions.append(action)
                 states.append(state)
             except Exception as e:
@@ -208,8 +218,10 @@ class EnsemblePredictor(PredictorProtocol):
             raise ValueError(f"All {len(self.models)} model predictions failed")
 
         if failed_models > 0:
-            logger.info(f"Ensemble prediction succeeded with {len(actions)}/{len(self.models)} models "
-                       f"({failed_models} failed)")
+            logger.info(
+                f"Ensemble prediction succeeded with {len(actions)}/{len(self.models)} models "
+                f"({failed_models} failed)"
+            )
 
         # Ensemble voting (weighted average for continuous actions)
         if actions[0].dtype in [np.float32, np.float64]:
@@ -299,7 +311,11 @@ class EnsemblePredictor(PredictorProtocol):
         return {
             "num_models": len(self.models),
             "model_paths": (
-                [path for config in self.model_configs if (path := config.get("path")) is not None]
+                [
+                    path
+                    for config in self.model_configs
+                    if (path := config.get("path")) is not None
+                ]
                 if hasattr(self, "model_configs")
                 else []
             ),
@@ -315,7 +331,9 @@ class EnsembleTradingSystem(TradingSystemProtocol):
         self,
         model_configs: List[ModelConfig],
         risk_configs: Optional[Dict[str, Any]] = None,
-        mask_provider: Optional[Callable[[NDArray[np.float32]], NDArray[np.bool_]]] = None,
+        mask_provider: Optional[
+            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
+        ] = None,
     ):
         """
         Initialize ensemble trading system.
@@ -375,7 +393,9 @@ class EnsembleTradingSystem(TradingSystemProtocol):
             return False
 
         # Check consecutive losses
-        if self.consecutive_losses >= self.risk_configs.get("max_consecutive_losses", 5):
+        if self.consecutive_losses >= self.risk_configs.get(
+            "max_consecutive_losses", 5
+        ):
             logger.warning(
                 f"Consecutive losses limit reached ({self.consecutive_losses}) - stopping trading"
             )
@@ -511,9 +531,11 @@ class EnsemblePredictorLegacy(PredictorProtocol):
     """Legacy ensemble predictor combining multiple trained models."""
 
     def __init__(
-        self, 
+        self,
         model_configs: List[Dict[str, Any]],
-        mask_provider: Optional[Callable[[NDArray[np.float32]], NDArray[np.bool_]]] = None
+        mask_provider: Optional[
+            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
+        ] = None,
     ):
         """
         Initialize ensemble predictor.
@@ -539,7 +561,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
                     model: Union[MaskablePPO, PPO] = MaskablePPO.load(model_path)  # type: ignore[arg-type]
                 except:
                     model = PPO.load(model_path)  # type: ignore[arg-type]
-                
+
                 self.models.append(model)
                 self.weights.append(weight)
                 self.feature_sets.append(feature_set)
@@ -589,15 +611,21 @@ class EnsemblePredictorLegacy(PredictorProtocol):
             try:
                 # Handle MaskablePPO with action masks
                 if isinstance(model, MaskablePPO):
-                    action_masks = self.mask_provider(observation) if self.mask_provider is not None else None
+                    action_masks = (
+                        self.mask_provider(observation)
+                        if self.mask_provider is not None
+                        else None
+                    )
                     action, state = model.predict(
                         observation,
                         action_masks=action_masks,
-                        deterministic=deterministic
+                        deterministic=deterministic,
                     )
                 else:
-                    action, state = model.predict(observation, deterministic=deterministic)
-                
+                    action, state = model.predict(
+                        observation, deterministic=deterministic
+                    )
+
                 actions.append(action)
                 states.append(state)
             except Exception as e:
@@ -692,7 +720,11 @@ class EnsemblePredictorLegacy(PredictorProtocol):
         return {
             "num_models": len(self.models),
             "model_paths": (
-                [path for config in self.model_configs if (path := config.get("path")) is not None]
+                [
+                    path
+                    for config in self.model_configs
+                    if (path := config.get("path")) is not None
+                ]
                 if hasattr(self, "model_configs")
                 else []
             ),
@@ -708,7 +740,9 @@ class EnsembleTradingSystemLegacy:
         self,
         model_configs: List[Dict[str, Any]],
         risk_configs: Optional[Dict[str, Any]] = None,
-        mask_provider: Optional[Callable[[NDArray[np.float32]], NDArray[np.bool_]]] = None,
+        mask_provider: Optional[
+            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
+        ] = None,
     ):
         """
         Initialize ensemble trading system.
@@ -720,7 +754,9 @@ class EnsembleTradingSystemLegacy:
                            Required if any model in the ensemble is MaskablePPO.
                            Signature: (observation) -> action_masks
         """
-        self.ensemble = EnsemblePredictorLegacy(model_configs, mask_provider=mask_provider)
+        self.ensemble = EnsemblePredictorLegacy(
+            model_configs, mask_provider=mask_provider
+        )
         self.risk_configs = risk_configs or self._get_default_risk_configs()
 
         # Risk management state
@@ -768,7 +804,9 @@ class EnsembleTradingSystemLegacy:
             return False
 
         # Check consecutive losses
-        if self.consecutive_losses >= self.risk_configs.get("max_consecutive_losses", 5):
+        if self.consecutive_losses >= self.risk_configs.get(
+            "max_consecutive_losses", 5
+        ):
             logger.warning(
                 f"Consecutive losses limit reached ({self.consecutive_losses}) - stopping trading"
             )

@@ -17,8 +17,8 @@ class TestDetectOutliersIQR:
     def test_detect_outliers_iqr_with_outliers(self):
         """Test outlier detection with clear outliers."""
         data = pd.DataFrame(
-            {"value": [1, 2, 3, 4, 5, 6, 7, 8, 9, 100]}  # 100 is outlier
-        )
+            {"value": [1, 2, 3, 4, 5, 6, 7, 8, 9, 100]}
+        )  # 100 is outlier
         outliers, _, _ = detect_outliers_iqr(data, "value")
 
         assert len(outliers) == 1
@@ -47,8 +47,8 @@ class TestDetectOutliersZscore:
     def test_detect_outliers_zscore_with_outliers(self):
         """Test z-score outlier detection with outliers."""
         data = pd.DataFrame(
-            {"value": [1, 2, 3, 4, 5, 6, 7, 8, 9, 100]}  # 100 is outlier
-        )
+            {"value": [1, 2, 3, 4, 5, 6, 7, 8, 9, 100]}
+        )  # 100 is outlier
         outliers = detect_outliers_zscore(data, "value", threshold=2)
 
         assert len(outliers) == 1

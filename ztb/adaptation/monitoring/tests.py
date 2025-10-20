@@ -3,18 +3,26 @@ Unit tests for Continuous Evaluation and Monitoring System
 リアルタイム監視とアラートシステムのテスト
 """
 
-import unittest
 import time
+import unittest
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock, call
-import numpy as np
+from unittest.mock import MagicMock
 
-from ztb.adaptation.monitoring.monitor import (
-    PerformanceMonitor, MetricsCollector, AlertManager, DashboardGenerator, ReportGenerator
-)
 from ztb.adaptation.monitoring.config import MonitoringConfig
+from ztb.adaptation.monitoring.monitor import (
+    AlertManager,
+    DashboardGenerator,
+    MetricsCollector,
+    PerformanceMonitor,
+    ReportGenerator,
+)
 from ztb.adaptation.monitoring.types import (
-    MetricType, MetricValue, AlertLevel, AlertStatus, AlertCondition, Alert
+    Alert,
+    AlertCondition,
+    AlertLevel,
+    AlertStatus,
+    MetricType,
+    MetricValue,
 )
 
 
@@ -27,7 +35,10 @@ class TestMetricsCollector(unittest.TestCase):
         self.collector = MetricsCollector(self.config)
 
     def tearDown(self):
-        if hasattr(self.collector, 'collection_thread') and self.collector.collection_thread:
+        if (
+            hasattr(self.collector, "collection_thread")
+            and self.collector.collection_thread
+        ):
             self.collector.stop_collection()
 
     def test_initialization(self):
@@ -39,7 +50,9 @@ class TestMetricsCollector(unittest.TestCase):
     def test_manual_metric_storage(self):
         """手動メトリクス保存テスト"""
         timestamp = datetime.now()
-        self.collector._store_metric("test_metric", 42.0, MetricType.PERFORMANCE, timestamp)
+        self.collector._store_metric(
+            "test_metric", 42.0, MetricType.PERFORMANCE, timestamp
+        )
 
         self.assertIn("test_metric", self.collector.metrics_buffer)
         self.assertEqual(len(self.collector.metrics_buffer["test_metric"]), 1)
@@ -57,7 +70,9 @@ class TestMetricsCollector(unittest.TestCase):
         # 過去のメトリクスを保存
         for i in range(3):
             timestamp = base_time - timedelta(hours=i)
-            self.collector._store_metric("test_metric", float(i), MetricType.PERFORMANCE, timestamp)
+            self.collector._store_metric(
+                "test_metric", float(i), MetricType.PERFORMANCE, timestamp
+            )
 
         # すべての履歴取得（24時間）
         history = self.collector.get_metric_history("test_metric", hours=24)
@@ -95,17 +110,21 @@ class TestMetricsCollector(unittest.TestCase):
 
         # 古いメトリクス（2日前）
         old_timestamp = base_time - timedelta(days=2)
-        self.collector._store_metric("test_metric", 1.0, MetricType.PERFORMANCE, old_timestamp)
+        self.collector._store_metric(
+            "test_metric", 1.0, MetricType.PERFORMANCE, old_timestamp
+        )
 
         # 新しいメトリクス
         new_timestamp = base_time
-        self.collector._store_metric("test_metric", 2.0, MetricType.PERFORMANCE, new_timestamp)
+        self.collector._store_metric(
+            "test_metric", 2.0, MetricType.PERFORMANCE, new_timestamp
+        )
 
         # クリーンアップ実行
         self.collector._cleanup_old_metrics()
 
         # 古いメトリクスのみが削除されていることを確認
-        history = self.collector.get_metric_history("test_metric", hours=24*7)
+        history = self.collector.get_metric_history("test_metric", hours=24 * 7)
         self.assertEqual(len(history), 1)
         self.assertEqual(history[0].value, 2.0)
 
@@ -126,7 +145,7 @@ class TestAlertManager(unittest.TestCase):
             duration_seconds=60,
             cooldown_seconds=300,
             alert_level=AlertLevel.WARNING,
-            description="Test alert"
+            description="Test alert",
         )
 
         # 条件を満たす値
@@ -144,7 +163,7 @@ class TestAlertManager(unittest.TestCase):
             duration_seconds=60,
             cooldown_seconds=300,
             alert_level=AlertLevel.WARNING,
-            description="Test alert"
+            description="Test alert",
         )
 
         self.config.alert_conditions = [condition]
@@ -155,7 +174,7 @@ class TestAlertManager(unittest.TestCase):
                 name="test_metric",
                 value=15.0,
                 timestamp=datetime.now(),
-                metric_type=MetricType.PERFORMANCE
+                metric_type=MetricType.PERFORMANCE,
             )
         }
 
@@ -195,7 +214,7 @@ class TestAlertManager(unittest.TestCase):
             duration_seconds=60,
             cooldown_seconds=1,  # 1秒に設定
             alert_level=AlertLevel.WARNING,
-            description="Test alert"
+            description="Test alert",
         )
 
         self.config.alert_conditions = [condition]
@@ -206,7 +225,7 @@ class TestAlertManager(unittest.TestCase):
                 name="test_metric",
                 value=15.0,
                 timestamp=datetime.now(),
-                metric_type=MetricType.PERFORMANCE
+                metric_type=MetricType.PERFORMANCE,
             )
         }
 
@@ -242,7 +261,7 @@ class TestAlertManager(unittest.TestCase):
             duration_seconds=60,
             cooldown_seconds=300,
             alert_level=AlertLevel.WARNING,
-            description="Test alert"
+            description="Test alert",
         )
 
         self.config.alert_conditions = [condition]
@@ -253,7 +272,7 @@ class TestAlertManager(unittest.TestCase):
                 name="test_metric",
                 value=15.0,
                 timestamp=datetime.now(),
-                metric_type=MetricType.PERFORMANCE
+                metric_type=MetricType.PERFORMANCE,
             )
         }
 
@@ -276,13 +295,22 @@ class TestDashboardGenerator(unittest.TestCase):
         # モックメトリクス収集器
         mock_collector = MagicMock()
         mock_collector.get_latest_metrics.return_value = {
-            "win_rate": MetricValue("win_rate", 0.55, datetime.now(), MetricType.PERFORMANCE),
-            "total_pnl": MetricValue("total_pnl", 1250.75, datetime.now(), MetricType.PERFORMANCE)
+            "win_rate": MetricValue(
+                "win_rate", 0.55, datetime.now(), MetricType.PERFORMANCE
+            ),
+            "total_pnl": MetricValue(
+                "total_pnl", 1250.75, datetime.now(), MetricType.PERFORMANCE
+            ),
         }
 
         mock_collector.get_metric_history.return_value = [
-            MetricValue("win_rate", 0.50, datetime.now() - timedelta(hours=1), MetricType.PERFORMANCE),
-            MetricValue("win_rate", 0.55, datetime.now(), MetricType.PERFORMANCE)
+            MetricValue(
+                "win_rate",
+                0.50,
+                datetime.now() - timedelta(hours=1),
+                MetricType.PERFORMANCE,
+            ),
+            MetricValue("win_rate", 0.55, datetime.now(), MetricType.PERFORMANCE),
         ]
 
         # モックアラートマネージャー
@@ -297,7 +325,7 @@ class TestDashboardGenerator(unittest.TestCase):
                     duration_seconds=60,
                     cooldown_seconds=300,
                     alert_level=AlertLevel.WARNING,
-                    description="Test"
+                    description="Test",
                 ),
                 current_value=0.35,
                 threshold=0.4,
@@ -307,14 +335,16 @@ class TestDashboardGenerator(unittest.TestCase):
                 resolved_at=None,
                 acknowledged_at=None,
                 description="Win rate alert",
-                context={"metric_value": 0.35, "threshold": 0.4}
+                context={"metric_value": 0.35, "threshold": 0.4},
             )
         ]
 
         mock_alert_manager.get_alert_history.return_value = []
 
         # ダッシュボードデータ生成
-        dashboard_data = self.generator.generate_dashboard_data(mock_collector, mock_alert_manager)
+        dashboard_data = self.generator.generate_dashboard_data(
+            mock_collector, mock_alert_manager
+        )
 
         # 検証
         self.assertIsNotNone(dashboard_data.timestamp)
@@ -334,7 +364,10 @@ class TestPerformanceMonitor(unittest.TestCase):
         self.monitor = PerformanceMonitor(self.config)
 
     def tearDown(self):
-        if hasattr(self.monitor, 'metrics_collector') and self.monitor.metrics_collector.is_collecting:
+        if (
+            hasattr(self.monitor, "metrics_collector")
+            and self.monitor.metrics_collector.is_collecting
+        ):
             self.monitor.stop_monitoring()
 
     def test_initialization(self):
@@ -349,6 +382,7 @@ class TestPerformanceMonitor(unittest.TestCase):
 
     def test_custom_metric_collector(self):
         """カスタムメトリクス収集器テスト"""
+
         def custom_func():
             return 42.0
 
@@ -373,7 +407,7 @@ class TestPerformanceMonitor(unittest.TestCase):
             duration_seconds=60,
             cooldown_seconds=300,
             alert_level=AlertLevel.CRITICAL,
-            description="New test condition"
+            description="New test condition",
         )
 
         self.monitor.add_alert_condition(new_condition)
@@ -398,7 +432,7 @@ class TestPerformanceMonitor(unittest.TestCase):
             duration_seconds=60,
             cooldown_seconds=300,
             alert_level=AlertLevel.INFO,
-            description="Test notification"
+            description="Test notification",
         )
 
         self.config.alert_conditions = [condition]
@@ -406,7 +440,9 @@ class TestPerformanceMonitor(unittest.TestCase):
 
         # アラートチェック
         metrics = {
-            "test_metric": MetricValue("test_metric", 15.0, datetime.now(), MetricType.PERFORMANCE)
+            "test_metric": MetricValue(
+                "test_metric", 15.0, datetime.now(), MetricType.PERFORMANCE
+            )
         }
 
         self.monitor.alert_manager.check_alerts(metrics)
@@ -417,6 +453,7 @@ class TestPerformanceMonitor(unittest.TestCase):
         """監視ワークフローテスト"""
         # カスタムメトリクス収集器追加
         call_count = 0
+
         def dynamic_metric():
             nonlocal call_count
             call_count += 1
@@ -432,7 +469,7 @@ class TestPerformanceMonitor(unittest.TestCase):
             duration_seconds=60,
             cooldown_seconds=300,
             alert_level=AlertLevel.WARNING,
-            description="Dynamic metric alert"
+            description="Dynamic metric alert",
         )
         self.monitor.add_alert_condition(alert_condition)
 
@@ -478,5 +515,5 @@ class TestPerformanceMonitor(unittest.TestCase):
         self.assertIn("test_perf_metric", report.trends)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

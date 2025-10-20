@@ -6,6 +6,6 @@
 
 __version__ = "1.0.0"
 
-from .encoders import *
 from .attention import *
+from .encoders import *
 from .fusion import *

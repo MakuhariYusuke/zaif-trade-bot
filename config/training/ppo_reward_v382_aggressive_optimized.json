@@ -2,7 +2,7 @@
   "session_id": "ppo_reward_v382_aggressive_optimized",
   "algorithm": "ppo",
   "description": "Aggressive Optimized: v380 aggressive scaling (85%) + v379 market adaptation + binary search optimized hyperparameters",
-  
+
   "comment_strategy": "積極的統合戦略 - v380の積極性85% + v379の市場適応 + 二分探索最適化",
   "comment_use_case": "v381で取引活動が不足している場合に使用 - よりアグレッシブな設定",
   "comment_components": [
@@ -11,18 +11,18 @@
     "✅ Optimized: batch_size=256, learning_rate=0.007503, max_grad_norm=5.05, n_steps=1024",
     "✅ Lagrange: r_target=0.175, tolerance=0.042625, eta=0.062875, lambda_max=3.875, warmup=3874"
   ],
-  
+
   "comment_reward_balance": "v380の強度を85%採用 - hold_penalty: 0.05→0.0425, profit_multiplier: 5.0→4.25, trading_bonus: 0.3→0.255",
   "comment_expected_behavior": "期待されるHOLD率: 30-40%, 積極的取引活動, SELL暴走リスクは中程度",
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
   "data_rows_limit": null,
-  
+
   "ppo": {
     "comment_note": "v381_revisedの知見: target_kl/vf_coef/clip_rangeに問題あり",
     "learning_rate": 0.007503,
@@ -48,7 +48,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -61,23 +61,23 @@
       "consecutive_hold_penalty": 0.0255,
       "consecutive_hold_exponential": true,
       "consecutive_hold_threshold": 3,
-      
+
       "comment_trading_incentives": "v380の85%強度",
       "trading_frequency_bonus": 0.255,
       "profit_reward_multiplier": 4.25,
       "action_diversity_bonus": 0.085,
       "successful_trade_bonus": 0.85,
-      
+
       "comment_dynamic_adaptation": "v379の市場適応型機能を完全採用",
       "volatility_adjusted_penalty": true,
       "trend_adjusted_bonus": true,
       "range_market_hold_tolerance": 0.5,
-      
+
       "comment_opportunity_cost": "v380から85%採用",
       "hold_opportunity_cost": 0.017
     }
   },
-  
+
   "training": {
     "total_timesteps": 100000,
     "checkpoint_interval": 5000,
@@ -87,7 +87,7 @@
     "reward_scaling": 0.1,
     "progress_bar": false
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -101,7 +101,7 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "comment_lagrange_source": "ppo_100k_optimized.json - 二分探索最適化結果を完全採用",
   "lagrange": {
     "r_target": 0.175,
@@ -110,9 +110,9 @@
     "lambda_max": 3.875,
     "warmup_steps": 3874
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_comparison_with_v381": {
     "v381_hybrid": {
       "hold_penalty": "0.035 * volatility",
@@ -131,7 +131,7 @@
       "use_case": "取引活動促進、v381で不足の場合"
     }
   },
-  
+
   "comment_usage": [
     "前提条件: v381を先に試して、取引活動が不足していることを確認してから使用",
     "",

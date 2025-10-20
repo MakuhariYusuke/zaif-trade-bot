@@ -6,10 +6,11 @@ Centralizing constants improves maintainability and reduces errors.
 """
 
 from ztb.trading.constants import (
-    ACTION_HOLD,
     ACTION_BUY,
+    ACTION_HOLD,
     ACTION_SELL,
     SAC_CONTINUOUS_THRESHOLD,
+    SAC_CONTINUOUS_THRESHOLD_NEG,
 )
 
 # ============================================================================
@@ -35,6 +36,7 @@ CONTINUOUS_ACTION_DIM = 1  # Single continuous value
 # Thresholds for converting continuous actions to discrete
 # If continuous action is in [-threshold, threshold], it's HOLD
 CONTINUOUS_TO_DISCRETE_THRESHOLD = SAC_CONTINUOUS_THRESHOLD
+CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG = SAC_CONTINUOUS_THRESHOLD_NEG
 
 
 # ============================================================================
@@ -43,22 +45,22 @@ CONTINUOUS_TO_DISCRETE_THRESHOLD = SAC_CONTINUOUS_THRESHOLD
 
 # Default transaction costs
 DEFAULT_TRANSACTION_COST = 0.001  # 0.1% (10 basis points)
-DEFAULT_BUY_FEE_RATE = 0.001     # 0.1%
-DEFAULT_SELL_FEE_RATE = 0.001    # 0.1%
+DEFAULT_BUY_FEE_RATE = 0.001  # 0.1%
+DEFAULT_SELL_FEE_RATE = 0.001  # 0.1%
 
 # Exchange-specific transaction costs
 EXCHANGE_FEES = {
     "coincheck": {
-        "buy": 0.0,      # 0% taker fee
-        "sell": 0.0,     # 0% taker fee
+        "buy": 0.0,  # 0% taker fee
+        "sell": 0.0,  # 0% taker fee
     },
     "bitflyer": {
-        "buy": 0.001,    # 0.1%
-        "sell": 0.001,   # 0.1%
+        "buy": 0.001,  # 0.1%
+        "sell": 0.001,  # 0.1%
     },
     "binance": {
-        "buy": 0.001,    # 0.1%
-        "sell": 0.001,   # 0.1%
+        "buy": 0.001,  # 0.1%
+        "sell": 0.001,  # 0.1%
     },
 }
 
@@ -71,15 +73,15 @@ HFT_TRANSACTION_COST = 0.002  # 0.2% for aggressive strategies
 # ============================================================================
 
 # Default balance and position limits
-DEFAULT_INITIAL_BALANCE = 200000    # JPY
-DEFAULT_MAX_POSITION_SIZE = 0.01    # 1% of balance per trade
+DEFAULT_INITIAL_BALANCE = 200000  # JPY
+DEFAULT_MAX_POSITION_SIZE = 0.01  # 1% of balance per trade
 
 # Action history tracking
 DEFAULT_MAX_ACTION_HISTORY = 256
 MAX_ACTION_HISTORY_LARGE = 512
 
 # Holding period constraints
-DEFAULT_MIN_HOLDING_PERIOD = 0      # No restriction
+DEFAULT_MIN_HOLDING_PERIOD = 0  # No restriction
 RECOMMENDED_MIN_HOLDING_PERIOD = 3  # Prevent rapid flip-flopping
 
 # Volatility and correlation thresholds
@@ -130,8 +132,8 @@ MODERATE_RANGE_MARKET_HOLD_TOLERANCE = 0.5
 # ============================================================================
 
 # Target SELL rate for Lagrange constraint
-DEFAULT_LAGRANGE_R_TARGET = 0.175    # 17.5% SELL actions
-MIN_SELL_RATE = 0.15                 # Minimum 15% SELL actions
+DEFAULT_LAGRANGE_R_TARGET = 0.175  # 17.5% SELL actions
+MIN_SELL_RATE = 0.15  # Minimum 15% SELL actions
 
 # Lagrange multiplier parameters
 DEFAULT_LAGRANGE_TOLERANCE = 0.042625
@@ -148,12 +150,12 @@ DEFAULT_LAGRANGE_ETA_LR = 0.001
 # Hold restriction levels
 HOLD_RESTRICTION_NONE = "none"
 HOLD_RESTRICTION_LIMITED_20 = "limited_20"  # Max 20% HOLD
-HOLD_RESTRICTION_FORBIDDEN = "forbidden"    # No HOLD allowed
+HOLD_RESTRICTION_FORBIDDEN = "forbidden"  # No HOLD allowed
 
 # Diversity thresholds (minimum percentage for each action)
-MIN_DIVERSITY_THRESHOLD_STRICT = 0.4   # 40% each BUY/SELL
+MIN_DIVERSITY_THRESHOLD_STRICT = 0.4  # 40% each BUY/SELL
 MIN_DIVERSITY_THRESHOLD_MODERATE = 0.3  # 30% each action
-MIN_DIVERSITY_THRESHOLD_RELAXED = 0.2   # 20% active trading
+MIN_DIVERSITY_THRESHOLD_RELAXED = 0.2  # 20% active trading
 
 # Consecutive action penalties for curriculum
 CONSECUTIVE_ACTION_PENALTY_STRONG = 0.01
@@ -220,13 +222,14 @@ OBJECT_LEAK_THRESHOLD = 10000
 # Utility Functions
 # ============================================================================
 
+
 def get_action_name(action: int) -> str:
     """
     Get human-readable name for action.
-    
+
     Args:
         action: Action index (0=HOLD, 1=BUY, 2=SELL)
-        
+
     Returns:
         Action name string
     """
@@ -235,10 +238,14 @@ def get_action_name(action: int) -> str:
     return f"UNKNOWN_ACTION_{action}"
 
 
-def continuous_to_discrete_action(continuous_action: float, threshold: float = CONTINUOUS_TO_DISCRETE_THRESHOLD) -> int:
+def continuous_to_discrete_action(
+    continuous_action: float,
+    threshold: float = CONTINUOUS_TO_DISCRETE_THRESHOLD,
+    negative_threshold: float = CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG,
+) -> int:
     """
     Convert continuous action [-1, 1] to discrete action.
-    
+
     Args:
         continuous_action: Continuous action value
             - < -threshold: SELL
@@ -247,13 +254,13 @@ def continuous_to_discrete_action(continuous_action: float, threshold: float = C
         threshold: Threshold for action conversion (default: CONTINUOUS_TO_DISCRETE_THRESHOLD)
             - Lower threshold = more BUY/SELL actions, less HOLD
             - Higher threshold = more HOLD actions, less BUY/SELL
-            
+
     Returns:
         Discrete action (0=HOLD, 1=BUY, 2=SELL)
     """
     if continuous_action > threshold:
         return ACTION_BUY
-    elif continuous_action < -threshold:
+    elif continuous_action < negative_threshold:
         return ACTION_SELL
     else:
         return ACTION_HOLD
@@ -262,10 +269,10 @@ def continuous_to_discrete_action(continuous_action: float, threshold: float = C
 def discrete_to_continuous_action(discrete_action: int) -> float:
     """
     Convert discrete action to continuous action.
-    
+
     Args:
         discrete_action: Discrete action (0=HOLD, 1=BUY, 2=SELL)
-        
+
     Returns:
         Continuous action value in [-1, 1]
     """

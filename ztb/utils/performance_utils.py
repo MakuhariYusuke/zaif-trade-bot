@@ -9,17 +9,19 @@ import logging
 import time
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar
+
 import psutil
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 # GPU monitoring (optional)
 try:
     import torch  # type: ignore[import-untyped]
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -36,6 +38,7 @@ def timed(func: F) -> F:
     Returns:
         Wrapped function that logs execution time
     """
+
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.perf_counter()
@@ -46,6 +49,7 @@ def timed(func: F) -> F:
             end_time = time.perf_counter()
             duration = end_time - start_time
             logger.debug(f"{func.__name__} took {duration:.4f}s")
+
     return wrapper  # type: ignore[return-value]
 
 
@@ -59,6 +63,7 @@ def timed_with_memory(func: F) -> F:
     Returns:
         Wrapped function that logs execution time and memory delta
     """
+
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         process = psutil.Process()
@@ -79,6 +84,7 @@ def timed_with_memory(func: F) -> F:
                 f"{func.__name__}: {duration:.4f}s, "
                 f"memory delta: {memory_delta / 1024 / 1024:+.1f}MB"
             )
+
     return wrapper  # type: ignore[return-value]
 
 
@@ -121,7 +127,12 @@ class PerformanceMonitor:
 
         # GPU memory monitoring
         gpu_memory_info = ""
-        if TORCH_AVAILABLE and torch is not None and torch.cuda.is_available() and self.start_gpu_memory is not None:
+        if (
+            TORCH_AVAILABLE
+            and torch is not None
+            and torch.cuda.is_available()
+            and self.start_gpu_memory is not None
+        ):
             try:
                 end_gpu_memory = torch.cuda.memory_allocated()
                 gpu_memory_delta = end_gpu_memory - self.start_gpu_memory
@@ -132,14 +143,12 @@ class PerformanceMonitor:
         logger.log(
             self.log_level,
             f"{self.name}: {duration:.4f}s, "
-            f"CPU memory: {memory_delta / 1024 / 1024:+.1f}MB{gpu_memory_info}"
+            f"CPU memory: {memory_delta / 1024 / 1024:+.1f}MB{gpu_memory_info}",
         )
 
 
 def profile_function(
-    func: F,
-    sample_rate: float = 1.0,
-    log_threshold: float = 0.1
+    func: F, sample_rate: float = 1.0, log_threshold: float = 0.1
 ) -> F:
     """
     Decorator that profiles function execution with sampling.

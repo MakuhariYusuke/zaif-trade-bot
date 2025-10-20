@@ -12,10 +12,10 @@ from typing import Dict, List, cast
 
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
+
 from ztb.training.policies.policy_utils import predict_with_masks
 
 # プロジェクトルートをパスに追加
@@ -94,7 +94,9 @@ def evaluate_policy(
             # Predict action (using predict_with_masks for MaskablePPO support)
             # Note: VecEnv doesn't provide direct access to underlying env for masks
             # This is a limitation of the permutation importance test setup
-            action, _ = predict_with_masks(model, obs.astype(np.float32), env=None, deterministic=True)
+            action, _ = predict_with_masks(
+                model, obs.astype(np.float32), env=None, deterministic=True
+            )
             obs, reward, done, info = env.step(action)
 
             episode_reward += reward[0]
@@ -209,7 +211,9 @@ def main() -> None:
     # all_features = manager.list()  # Not used
 
     # 特徴量計算
-    df_with_features = cast(pd.DataFrame, manager.compute_features_batch(df, return_timing=False))
+    df_with_features = cast(
+        pd.DataFrame, manager.compute_features_batch(df, return_timing=False)
+    )
 
     # 特徴量列取得
     exclude_cols = ["ts", "exchange", "pair", "episode_id"]

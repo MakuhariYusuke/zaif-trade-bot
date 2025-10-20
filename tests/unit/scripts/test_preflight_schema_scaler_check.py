@@ -6,10 +6,9 @@ Tests the validation logic for feature schema, normalization stats,
 and config fingerprint files.
 """
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -38,15 +37,18 @@ def temp_model_dir(tmp_path):
 def mock_feature_schema(temp_model_dir):
     """Create a mock feature schema file."""
     import pandas as pd
+
     from ztb.utils.feature_schema import FeaturesSchema
 
     # Create a mock DataFrame
-    df = pd.DataFrame({
-        "feature1": [0.5] * 10,
-        "feature2": [1.0] * 10,
-        "feature3": [-0.5] * 10,
-        "ts": range(10),  # Meta column
-    })
+    df = pd.DataFrame(
+        {
+            "feature1": [0.5] * 10,
+            "feature2": [1.0] * 10,
+            "feature3": [-0.5] * 10,
+            "ts": range(10),  # Meta column
+        }
+    )
 
     # Use from_dataframe factory method
     schema = FeaturesSchema.from_dataframe(
@@ -225,28 +227,36 @@ class TestCompareWithTraining:
         """Test comparison when test data file missing."""
         test_path = temp_model_dir / "nonexistent.csv"
 
-        success, message = compare_with_training(temp_model_dir, test_data_path=test_path)
+        success, message = compare_with_training(
+            temp_model_dir, test_data_path=test_path
+        )
 
         assert success is True
         assert "ℹ️" in message
         assert "not provided" in message
 
-    def test_comparison_success(self, temp_model_dir, mock_normalization_stats, tmp_path):
+    def test_comparison_success(
+        self, temp_model_dir, mock_normalization_stats, tmp_path
+    ):
         """Test successful train/test comparison."""
         import pandas as pd
 
         # Create test data with similar stats
-        test_data = pd.DataFrame({
-            "feature1": np.random.normal(0.5, 0.1, 100),
-            "feature2": np.random.normal(1.0, 0.2, 100),
-            "feature3": np.random.normal(-0.5, 0.3, 100),
-            "ts": range(100),  # Meta column
-        })
+        test_data = pd.DataFrame(
+            {
+                "feature1": np.random.normal(0.5, 0.1, 100),
+                "feature2": np.random.normal(1.0, 0.2, 100),
+                "feature3": np.random.normal(-0.5, 0.3, 100),
+                "ts": range(100),  # Meta column
+            }
+        )
 
         test_path = tmp_path / "test_data.csv"
         test_data.to_csv(test_path, index=False)
 
-        success, message = compare_with_training(temp_model_dir, test_data_path=test_path)
+        success, message = compare_with_training(
+            temp_model_dir, test_data_path=test_path
+        )
 
         assert success is True
         assert "✅" in message or "⚠️" in message
@@ -260,39 +270,45 @@ class TestCompareWithTraining:
         import pandas as pd
 
         # Create test data with very different stats
-        test_data = pd.DataFrame({
-            "feature1": np.random.normal(5.0, 1.0, 100),  # Very different
-            "feature2": np.random.normal(10.0, 2.0, 100),  # Very different
-            "feature3": np.random.normal(-5.0, 3.0, 100),  # Very different
-            "ts": range(100),
-        })
+        test_data = pd.DataFrame(
+            {
+                "feature1": np.random.normal(5.0, 1.0, 100),  # Very different
+                "feature2": np.random.normal(10.0, 2.0, 100),  # Very different
+                "feature3": np.random.normal(-5.0, 3.0, 100),  # Very different
+                "ts": range(100),
+            }
+        )
 
         test_path = tmp_path / "test_data.csv"
         test_data.to_csv(test_path, index=False)
 
-        success, message = compare_with_training(temp_model_dir, test_data_path=test_path)
+        success, message = compare_with_training(
+            temp_model_dir, test_data_path=test_path
+        )
 
         assert success is True  # Still succeeds but with warning
         assert "⚠️" in message
         assert "Large train/test difference" in message
 
-    def test_feature_mismatch(
-        self, temp_model_dir, mock_normalization_stats, tmp_path
-    ):
+    def test_feature_mismatch(self, temp_model_dir, mock_normalization_stats, tmp_path):
         """Test comparison with feature mismatch."""
         import pandas as pd
 
         # Create test data with different features
-        test_data = pd.DataFrame({
-            "feature1": np.random.normal(0.5, 0.1, 100),
-            "feature4": np.random.normal(1.0, 0.2, 100),  # Wrong feature name
-            "ts": range(100),
-        })
+        test_data = pd.DataFrame(
+            {
+                "feature1": np.random.normal(0.5, 0.1, 100),
+                "feature4": np.random.normal(1.0, 0.2, 100),  # Wrong feature name
+                "ts": range(100),
+            }
+        )
 
         test_path = tmp_path / "test_data.csv"
         test_data.to_csv(test_path, index=False)
 
-        success, message = compare_with_training(temp_model_dir, test_data_path=test_path)
+        success, message = compare_with_training(
+            temp_model_dir, test_data_path=test_path
+        )
 
         assert success is False
         assert "❌" in message
@@ -338,12 +354,16 @@ class TestMainFunction:
 
         assert exit_code == 1
 
-    def test_non_strict_mode(self, temp_model_dir, mock_feature_schema, mock_normalization_stats):
+    def test_non_strict_mode(
+        self, temp_model_dir, mock_feature_schema, mock_normalization_stats
+    ):
         """Test main in non-strict mode."""
         from preflight_schema_scaler_check import main
 
         # Missing config fingerprint, but non-strict should pass
-        with patch("sys.argv", ["script", "--model-dir", str(temp_model_dir), "--no-strict"]):
+        with patch(
+            "sys.argv", ["script", "--model-dir", str(temp_model_dir), "--no-strict"]
+        ):
             exit_code = main()
 
         assert exit_code == 0

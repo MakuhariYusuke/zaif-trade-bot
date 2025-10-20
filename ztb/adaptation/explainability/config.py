@@ -4,12 +4,13 @@ Configuration for Explainability Module
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
 from enum import Enum
+from typing import Dict
 
 
 class ExplanationMethod(Enum):
     """説明手法"""
+
     SHAP = "shap"
     LIME = "lime"
     INTEGRATED_GRADIENTS = "integrated_gradients"
@@ -18,8 +19,9 @@ class ExplanationMethod(Enum):
 
 class ExplanationScope(Enum):
     """説明範囲"""
+
     GLOBAL = "global"  # 全体的な特徴量重要度
-    LOCAL = "local"    # 個別予測の説明
+    LOCAL = "local"  # 個別予測の説明
     COHORT = "cohort"  # グループベースの説明
 
 
@@ -66,7 +68,10 @@ class ExplainabilityConfig:
         if self.shap_max_evals <= 0:
             raise ValueError("shap_max_evals must be positive")
 
-        if self.explanation_confidence_threshold < 0 or self.explanation_confidence_threshold > 1:
+        if (
+            self.explanation_confidence_threshold < 0
+            or self.explanation_confidence_threshold > 1
+        ):
             raise ValueError("explanation_confidence_threshold must be between 0 and 1")
 
         # デフォルトの特徴量名マッピングを設定
@@ -85,7 +90,7 @@ class ExplainabilityConfig:
             "ichimoku_tenkan": "一目均衡表転換線",
             "ichimoku_kijun": "一目均衡表基準線",
             "supertrend": "スーパートレンド",
-            "williams_r": "ウィリアムズ%R"
+            "williams_r": "ウィリアムズ%R",
         }
 
         self.feature_categories = {
@@ -98,5 +103,5 @@ class ExplainabilityConfig:
             "ichimoku_tenkan": "一目均衡表",
             "ichimoku_kijun": "一目均衡表",
             "supertrend": "トレンド指標",
-            "williams_r": "オシレーター"
+            "williams_r": "オシレーター",
         }

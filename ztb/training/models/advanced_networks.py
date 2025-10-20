@@ -7,7 +7,7 @@ for improved temporal pattern recognition in trading environments.
 """
 
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -60,7 +60,7 @@ class LSTMFeatureExtractor(BaseFeaturesExtractor):
             num_layers=lstm_layers,
             dropout=dropout if lstm_layers > 1 else 0,
             batch_first=True,
-            bidirectional=False
+            bidirectional=False,
         )
 
         # Output layers
@@ -79,9 +79,9 @@ class LSTMFeatureExtractor(BaseFeaturesExtractor):
                 nn.init.zeros_(module.bias)
         elif isinstance(module, nn.LSTM):
             for name, param in module.named_parameters():
-                if 'weight' in name:
+                if "weight" in name:
                     nn.init.xavier_uniform_(param)
-                elif 'bias' in name:
+                elif "bias" in name:
                     nn.init.zeros_(param)
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
@@ -129,13 +129,15 @@ class PositionalEncoding(nn.Module):
         # Create positional encoding matrix
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
+        )
 
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
 
-        self.register_buffer('pe', pe)
+        self.register_buffer("pe", pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -147,7 +149,7 @@ class PositionalEncoding(nn.Module):
         Returns:
             Tensor with positional encoding added
         """
-        return x + self.pe[:, :x.size(1)]
+        return x + self.pe[:, : x.size(1)]
 
 
 class TransformerBlock(nn.Module):
@@ -157,7 +159,9 @@ class TransformerBlock(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, d_ff: int, dropout: float = 0.1):
         super().__init__()
-        self.attention = nn.MultiheadAttention(d_model, n_heads, dropout=dropout, batch_first=True)
+        self.attention = nn.MultiheadAttention(
+            d_model, n_heads, dropout=dropout, batch_first=True
+        )
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
 
@@ -166,10 +170,12 @@ class TransformerBlock(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(d_ff, d_model),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
 
-    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Forward pass through transformer block.
 
@@ -236,10 +242,9 @@ class TransformerFeatureExtractor(BaseFeaturesExtractor):
         self.positional_encoding = PositionalEncoding(d_model, sequence_length)
 
         # Transformer layers
-        self.transformer_layers = nn.ModuleList([
-            TransformerBlock(d_model, n_heads, d_ff, dropout)
-            for _ in range(n_layers)
-        ])
+        self.transformer_layers = nn.ModuleList(
+            [TransformerBlock(d_model, n_heads, d_ff, dropout) for _ in range(n_layers)]
+        )
 
         # Output layers
         self.dropout = nn.Dropout(dropout)
@@ -301,24 +306,24 @@ class LSTMPolicy(ActorCriticPolicy):
     def __init__(self, *args, **kwargs):
         # Extract LSTM-specific parameters
         lstm_kwargs = {}
-        lstm_params = ['lstm_hidden_size', 'lstm_layers', 'dropout', 'sequence_length']
+        lstm_params = ["lstm_hidden_size", "lstm_layers", "dropout", "sequence_length"]
         for param in lstm_params:
             if param in kwargs:
                 lstm_kwargs[param] = kwargs.pop(param)
 
         # Set default values if not provided
-        lstm_kwargs.setdefault('lstm_hidden_size', 128)
-        lstm_kwargs.setdefault('lstm_layers', 2)
-        lstm_kwargs.setdefault('dropout', 0.1)
-        lstm_kwargs.setdefault('sequence_length', 10)
+        lstm_kwargs.setdefault("lstm_hidden_size", 128)
+        lstm_kwargs.setdefault("lstm_layers", 2)
+        lstm_kwargs.setdefault("dropout", 0.1)
+        lstm_kwargs.setdefault("sequence_length", 10)
 
         # Configure features_extractor_kwargs
-        if 'features_extractor_kwargs' not in kwargs:
-            kwargs['features_extractor_kwargs'] = {}
-        kwargs['features_extractor_kwargs'].update(lstm_kwargs)
+        if "features_extractor_kwargs" not in kwargs:
+            kwargs["features_extractor_kwargs"] = {}
+        kwargs["features_extractor_kwargs"].update(lstm_kwargs)
 
         # Set features extractor class
-        kwargs['features_extractor_class'] = LSTMFeatureExtractor
+        kwargs["features_extractor_class"] = LSTMFeatureExtractor
 
         super().__init__(*args, **kwargs)
 
@@ -331,26 +336,33 @@ class TransformerPolicy(ActorCriticPolicy):
     def __init__(self, *args, **kwargs):
         # Extract Transformer-specific parameters
         transformer_kwargs = {}
-        transformer_params = ['d_model', 'n_heads', 'n_layers', 'd_ff', 'dropout', 'sequence_length']
+        transformer_params = [
+            "d_model",
+            "n_heads",
+            "n_layers",
+            "d_ff",
+            "dropout",
+            "sequence_length",
+        ]
         for param in transformer_params:
             if param in kwargs:
                 transformer_kwargs[param] = kwargs.pop(param)
 
         # Set default values if not provided
-        transformer_kwargs.setdefault('d_model', 128)
-        transformer_kwargs.setdefault('n_heads', 8)
-        transformer_kwargs.setdefault('n_layers', 4)
-        transformer_kwargs.setdefault('d_ff', 512)
-        transformer_kwargs.setdefault('dropout', 0.1)
-        transformer_kwargs.setdefault('sequence_length', 10)
+        transformer_kwargs.setdefault("d_model", 128)
+        transformer_kwargs.setdefault("n_heads", 8)
+        transformer_kwargs.setdefault("n_layers", 4)
+        transformer_kwargs.setdefault("d_ff", 512)
+        transformer_kwargs.setdefault("dropout", 0.1)
+        transformer_kwargs.setdefault("sequence_length", 10)
 
         # Configure features_extractor_kwargs
-        if 'features_extractor_kwargs' not in kwargs:
-            kwargs['features_extractor_kwargs'] = {}
-        kwargs['features_extractor_kwargs'].update(transformer_kwargs)
+        if "features_extractor_kwargs" not in kwargs:
+            kwargs["features_extractor_kwargs"] = {}
+        kwargs["features_extractor_kwargs"].update(transformer_kwargs)
 
         # Set features extractor class
-        kwargs['features_extractor_class'] = TransformerFeatureExtractor
+        kwargs["features_extractor_class"] = TransformerFeatureExtractor
 
         super().__init__(*args, **kwargs)
 
@@ -361,9 +373,18 @@ class DepthwiseSeparableConv1d(nn.Module):
     Reduces parameters while maintaining representational power.
     """
 
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride: int = 1, padding: int = 0):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+    ):
         super().__init__()
-        self.depthwise = nn.Conv1d(in_channels, in_channels, kernel_size, stride, padding, groups=in_channels)
+        self.depthwise = nn.Conv1d(
+            in_channels, in_channels, kernel_size, stride, padding, groups=in_channels
+        )
         self.pointwise = nn.Conv1d(in_channels, out_channels, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -378,7 +399,9 @@ class EfficientAttention(nn.Module):
     Reduces complexity from O(n^2) to O(n) or O(n log n).
     """
 
-    def __init__(self, embed_dim: int, num_heads: int, seq_len: int, method: str = "linformer"):
+    def __init__(
+        self, embed_dim: int, num_heads: int, seq_len: int, method: str = "linformer"
+    ):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -402,9 +425,21 @@ class EfficientAttention(nn.Module):
         batch_size, seq_len, embed_dim = x.shape
 
         # Linear projections
-        q = self.q_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.k_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        v = self.v_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        q = (
+            self.q_proj(x)
+            .view(batch_size, seq_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        k = (
+            self.k_proj(x)
+            .view(batch_size, seq_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        v = (
+            self.v_proj(x)
+            .view(batch_size, seq_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
 
         if self.method == "linformer":
             # Apply dimension reduction
@@ -412,17 +447,23 @@ class EfficientAttention(nn.Module):
             v = self.proj_v(v.transpose(-2, -1)).transpose(-2, -1)
 
         # Efficient attention computation
-        attn_weights = torch.matmul(q, k.transpose(-2, -1)) / (self.head_dim ** 0.5)
+        attn_weights = torch.matmul(q, k.transpose(-2, -1)) / (self.head_dim**0.5)
 
         if self.method == "performer":
             # Apply random features for O(n) complexity
-            attn_weights = self.random_features(attn_weights.transpose(-2, -1)).transpose(-2, -1)
+            attn_weights = self.random_features(
+                attn_weights.transpose(-2, -1)
+            ).transpose(-2, -1)
 
         attn_weights = F.softmax(attn_weights, dim=-1)
         attn_output = torch.matmul(attn_weights, v)
 
         # Reshape and project
-        attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, embed_dim)
+        attn_output = (
+            attn_output.transpose(1, 2)
+            .contiguous()
+            .view(batch_size, seq_len, embed_dim)
+        )
         return self.out_proj(attn_output)
 
 
@@ -440,31 +481,28 @@ class DynamicNetwork(nn.Module):
 
         # Complexity estimator
         self.complexity_estimator = nn.Sequential(
-            nn.Linear(input_dim, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1),
-            nn.Sigmoid()
+            nn.Linear(input_dim, 32), nn.ReLU(), nn.Linear(32, 1), nn.Sigmoid()
         )
 
         # Main processing layers
-        self.main_layers = nn.ModuleList([
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim)
-        ])
+        self.main_layers = nn.ModuleList(
+            [
+                nn.Linear(input_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, output_dim),
+            ]
+        )
 
         # Lightweight layers for simple inputs
-        self.lightweight_layers = nn.ModuleList([
-            nn.Linear(input_dim, output_dim)
-        ])
+        self.lightweight_layers = nn.ModuleList([nn.Linear(input_dim, output_dim)])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Flatten input for complexity estimation and linear layers
         batch_size = x.size(0)
         x_flat = x.view(batch_size, -1)
-        
+
         # Estimate input complexity
         complexity = self.complexity_estimator(x_flat)  # Use flattened input
 
@@ -517,7 +555,7 @@ class EfficientFeatureExtractor(BaseFeaturesExtractor):
                 nn.ReLU(),
                 DepthwiseSeparableConv1d(64, 128, kernel_size=3, padding=1),
                 nn.ReLU(),
-                nn.AdaptiveAvgPool1d(sequence_length)
+                nn.AdaptiveAvgPool1d(sequence_length),
             )
             conv_output_dim = 128
         else:
@@ -526,7 +564,7 @@ class EfficientFeatureExtractor(BaseFeaturesExtractor):
                 nn.ReLU(),
                 nn.Conv1d(64, 128, kernel_size=3, padding=1),
                 nn.ReLU(),
-                nn.AdaptiveAvgPool1d(sequence_length)
+                nn.AdaptiveAvgPool1d(sequence_length),
             )
             conv_output_dim = 128
 
@@ -536,14 +574,12 @@ class EfficientFeatureExtractor(BaseFeaturesExtractor):
                 embed_dim=conv_output_dim,
                 num_heads=8,
                 seq_len=sequence_length,
-                method=attention_method
+                method=attention_method,
             )
             attention_output_dim = conv_output_dim
         else:
             self.attention = nn.MultiheadAttention(
-                embed_dim=conv_output_dim,
-                num_heads=8,
-                batch_first=True
+                embed_dim=conv_output_dim, num_heads=8, batch_first=True
             )
             attention_output_dim = conv_output_dim
 
@@ -552,14 +588,14 @@ class EfficientFeatureExtractor(BaseFeaturesExtractor):
             self.dynamic_net = DynamicNetwork(
                 input_dim=attention_output_dim * sequence_length,
                 hidden_dim=256,
-                output_dim=features_dim
+                output_dim=features_dim,
             )
         else:
             self.dynamic_net = nn.Sequential(
                 nn.Flatten(),
                 nn.Linear(attention_output_dim * sequence_length, 256),
                 nn.ReLU(),
-                nn.Linear(256, features_dim)
+                nn.Linear(256, features_dim),
             )
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
@@ -573,7 +609,7 @@ class EfficientFeatureExtractor(BaseFeaturesExtractor):
         x = x.transpose(1, 2)
 
         # Apply attention
-        if hasattr(self.attention, 'forward'):
+        if hasattr(self.attention, "forward"):
             if isinstance(self.attention, EfficientAttention):
                 x = self.attention(x)
             else:
@@ -593,15 +629,15 @@ class EfficientSACPolicy(ActorCriticPolicy):
     def __init__(self, *args, **kwargs):
         # Extract custom kwargs
         efficient_kwargs = {
-            'use_depthwise_conv': kwargs.pop('use_depthwise_conv', True),
-            'use_efficient_attention': kwargs.pop('use_efficient_attention', True),
-            'use_dynamic_network': kwargs.pop('use_dynamic_network', True),
-            'attention_method': kwargs.pop('attention_method', 'linformer'),
-            'sequence_length': kwargs.pop('sequence_length', 10),
+            "use_depthwise_conv": kwargs.pop("use_depthwise_conv", True),
+            "use_efficient_attention": kwargs.pop("use_efficient_attention", True),
+            "use_dynamic_network": kwargs.pop("use_dynamic_network", True),
+            "attention_method": kwargs.pop("attention_method", "linformer"),
+            "sequence_length": kwargs.pop("sequence_length", 10),
         }
 
         # Set features extractor
-        kwargs['features_extractor_class'] = EfficientFeatureExtractor
-        kwargs['features_extractor_kwargs'] = efficient_kwargs
+        kwargs["features_extractor_class"] = EfficientFeatureExtractor
+        kwargs["features_extractor_kwargs"] = efficient_kwargs
 
         super().__init__(*args, **kwargs)

@@ -52,15 +52,22 @@ class IchimokuCloudExpansion(BaseFeature):
         expansion_momentum = thickness_change_rate.rolling(10).mean()
 
         # 3. Cloud stability (consistency of thickness)
-        thickness_volatility = cloud_thickness.rolling(20).std() / (cloud_thickness.rolling(20).mean() + 0.001)
+        thickness_volatility = cloud_thickness.rolling(20).std() / (
+            cloud_thickness.rolling(20).mean() + 0.001
+        )
         cloud_stability = 1 - np.clip(thickness_volatility, 0, 1)
 
         # 4. Expansion/contraction classification
-        expansion_threshold = cloud_thickness.rolling(20).mean() * 0.02  # 2% of average thickness
+        expansion_threshold = (
+            cloud_thickness.rolling(20).mean() * 0.02
+        )  # 2% of average thickness
 
         expansion_signal = np.where(
-            thickness_change_rate > expansion_threshold, 1,  # Expanding
-            np.where(thickness_change_rate < -expansion_threshold, -1, 0)  # Contracting
+            thickness_change_rate > expansion_threshold,
+            1,  # Expanding
+            np.where(
+                thickness_change_rate < -expansion_threshold, -1, 0
+            ),  # Contracting
         )
 
         # 5. Cloud breathing pattern (cyclical expansion/contraction)
@@ -69,14 +76,17 @@ class IchimokuCloudExpansion(BaseFeature):
         thickness_ma20 = cloud_thickness.rolling(20).mean()
 
         breathing_phase = np.where(
-            thickness_ma5 > thickness_ma20, 1,  # Expansion phase
-            np.where(thickness_ma5 < thickness_ma20, -1, 0)  # Contraction phase
+            thickness_ma5 > thickness_ma20,
+            1,  # Expansion phase
+            np.where(thickness_ma5 < thickness_ma20, -1, 0),  # Contraction phase
         )
 
         # 6. Cloud expansion strength
         avg_thickness = cloud_thickness.rolling(20).mean()
         expansion_strength = thickness_change_rate / (avg_thickness + 0.001)
-        expansion_strength_norm = np.clip(expansion_strength * 10, -2, 2)  # Scale and clip
+        expansion_strength_norm = np.clip(
+            expansion_strength * 10, -2, 2
+        )  # Scale and clip
 
         # 7. Cloud expansion trend
         expansion_trend = expansion_signal.rolling(10).mean()  # Smoothed trend
@@ -84,15 +94,17 @@ class IchimokuCloudExpansion(BaseFeature):
         # 8. Composite cloud expansion score
         # Combine all expansion metrics
         expansion_score = (
-            0.3 * expansion_signal +           # Current expansion/contraction
-            0.2 * breathing_phase +            # Breathing phase
-            0.2 * expansion_strength_norm +    # Strength of expansion
-            0.2 * expansion_trend +            # Trend direction
-            0.1 * cloud_stability              # Stability factor
+            0.3 * expansion_signal
+            + 0.2 * breathing_phase  # Current expansion/contraction
+            + 0.2 * expansion_strength_norm  # Breathing phase
+            + 0.2 * expansion_trend  # Strength of expansion
+            + 0.1 * cloud_stability  # Trend direction  # Stability factor
         )
 
         # Normalize to -1 to 1 scale
         cloud_expansion_score = np.clip(expansion_score, -1, 1)
 
-        result_df = pd.DataFrame({"ichimoku_cloud_expansion": cloud_expansion_score}, index=df.index)
+        result_df = pd.DataFrame(
+            {"ichimoku_cloud_expansion": cloud_expansion_score}, index=df.index
+        )
         return result_df

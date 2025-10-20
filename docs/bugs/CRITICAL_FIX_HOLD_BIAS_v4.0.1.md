@@ -1,7 +1,7 @@
 # 🔧 CRITICAL FIX: HOLD偏重問題の根本修正
 
-**作成日**: 2025-10-10  
-**対象バージョン**: v4.0.1  
+**作成日**: 2025-10-10
+**対象バージョン**: v4.0.1
 **修正範囲**: schema_env_factory.py, heavy_env/core.py, action_validator.py, position_manager.py, config.py
 
 ---
@@ -98,7 +98,7 @@ if position <= 0:
 
 ### 1. schema_env_factory.py: 訓練時設定の適用
 
-**ファイル**: `ztb/trading/environment/schema_env_factory.py`  
+**ファイル**: `ztb/trading/environment/schema_env_factory.py`
 **Lines**: 34-51
 
 ```python
@@ -109,11 +109,11 @@ if training_env_config_raw:
     # 辞書をコピーして変更（元のmetadataを保護）
     training_env_config = training_env_config_raw.copy()
     logger.info(f"Applying training environment config: {training_env_config}")
-    
+
     # initial_balance → initial_portfolio_value に変換
     if "initial_balance" in training_env_config:
         training_env_config["initial_portfolio_value"] = training_env_config.pop("initial_balance")
-    
+
     # 訓練時設定を適用
     env_config.update(training_env_config)
 else:
@@ -134,7 +134,7 @@ env_config.update({
 
 ### 2. heavy_env/core.py: transaction_cost保護
 
-**ファイル**: `ztb/trading/environment/heavy_env/core.py`  
+**ファイル**: `ztb/trading/environment/heavy_env/core.py`
 **Lines**: 222-231
 
 ```python
@@ -158,7 +158,7 @@ else:
 
 ### 3. config.py: 現実的なデフォルト値
 
-**ファイル**: `ztb/trading/environment/utils/config.py`  
+**ファイル**: `ztb/trading/environment/utils/config.py`
 **Lines**: 98-105
 
 ```python
@@ -177,7 +177,7 @@ initial_portfolio_value: float = 200_000.0
 
 ### 4. action_validator.py: 少額取引対応
 
-**ファイル**: `ztb/trading/environment/components/action_validator.py`  
+**ファイル**: `ztb/trading/environment/components/action_validator.py`
 **Lines**: 89-118
 
 ```python
@@ -185,11 +185,11 @@ initial_portfolio_value: float = 200_000.0
 if position <= 0:
     # 理想的な購入コスト（フルサイズ）
     ideal_buy_cost = position_size * current_price * (1 + transaction_cost)
-    
+
     # 🔧 少額取引対応: 利用可能資金の90%以上あれば取引可能とする
     affordable_size = portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
     min_trade_size = 0.0001  # 最小取引単位 (0.01 mBTC, 約1,800円相当)
-    
+
     # 条件: 理想サイズが買えるか、または最小単位以上が買える
     if portfolio_value >= ideal_buy_cost or affordable_size >= min_trade_size:
         legal[1] = 1
@@ -202,7 +202,7 @@ if position <= 0:
 
 ### 5. position_manager.py: 資金制約対応
 
-**ファイル**: `ztb/trading/environment/components/position_manager.py`  
+**ファイル**: `ztb/trading/environment/components/position_manager.py`
 **Lines**: 128-187
 
 ```python
@@ -210,24 +210,24 @@ if position <= 0:
 def open_position(self, direction: int, current_step: int) -> float:
     current_price = self._get_price()
     max_position_size = getattr(self.config, "max_position_size", 1.0)
-    
+
     # 🔧 少額取引対応: 利用可能資金に基づいてポジションサイズを調整
     initial_portfolio = getattr(self.config, "initial_portfolio_value", 200000.0)
     available_funds = initial_portfolio + self.realized_pnl
     transaction_cost = float(self.config.transaction_cost)
-    
+
     # 実際に購入可能なサイズ（利用可能資金の90%まで）
     affordable_funds = available_funds * 0.9
     affordable_size = affordable_funds / (current_price * (1 + transaction_cost))
-    
+
     # 実際のポジションサイズ: 小さい方を採用
     actual_position_size = min(max_position_size, affordable_size)
-    
+
     # 最小取引単位チェック (0.0001 BTC)
     min_trade_size = 0.0001
     if actual_position_size < min_trade_size:
         actual_position_size = min_trade_size  # 最小単位で取引試行
-    
+
     # ...実際のポジション作成処理
 ```
 
@@ -284,7 +284,7 @@ Trades/Episode:    4.0
   "session_id": "ppo_realistic_v400",
   "algorithm": "ppo",
   "description": "v400: 現実的なBitcoin取引設定 - 価格18M円を考慮した資金・ポジションサイズ",
-  
+
   "environment": {
     "transaction_cost": 0.0,
     "max_position_size": 0.01,           // 0.01 BTC (180,000円相当)
@@ -295,7 +295,7 @@ Trades/Episode:    4.0
     "allow_reverse": false,
     "enforce_reverse_cooldown": true
   },
-  
+
   "reward": {
     "hold_penalty_weight": 0.03,         // HOLD偏重防止
     "profit_reward_multiplier": 10.0,    // 利益を重視
@@ -403,7 +403,7 @@ Trades/Episode:    4.0
 
 ---
 
-**修正者**: GitHub Copilot  
-**承認者**: MakuhariYusuke  
-**関連Issue**: #HOLD_BIAS, #BUG_51_REALISTIC_TRADING  
+**修正者**: GitHub Copilot
+**承認者**: MakuhariYusuke
+**関連Issue**: #HOLD_BIAS, #BUG_51_REALISTIC_TRADING
 **Pull Request**: (作成予定)

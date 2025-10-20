@@ -94,13 +94,15 @@ class ActionValidator:
         if position <= 0:
             # 理想的な購入コスト（フルサイズ）
             ideal_buy_cost = position_size * current_price * (1 + transaction_cost)
-            
+
             # 🔧 少額取引対応: 利用可能資金の90%以上あれば取引可能とする
             # これにより、資金がmax_position_size分に満たなくても、
             # 持っている資金の範囲内で取引できるようになる
-            affordable_size = portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
+            affordable_size = (
+                portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
+            )
             min_trade_size = 0.0001  # 最小取引単位 (0.01 mBTC, 約1,800円相当)
-            
+
             # 条件: 理想サイズが買えるか、または最小単位以上が買える
             if portfolio_value >= ideal_buy_cost or affordable_size >= min_trade_size:
                 legal[1] = 1
@@ -111,11 +113,11 @@ class ActionValidator:
         if position >= 0:
             # ショートポジションを開く場合、ポジションサイズ分の価値が必要
             ideal_sell_value = position_size * current_price
-            
+
             # 🔧 少額取引対応: BUYと同様に柔軟に判定
             affordable_size = portfolio_value * 0.9 / current_price
             min_trade_size = 0.0001  # 最小取引単位
-            
+
             if portfolio_value >= ideal_sell_value or affordable_size >= min_trade_size:
                 legal[2] = 1
 
@@ -136,7 +138,7 @@ class ActionValidator:
         if price_array is not None and price_array.size > current_step:
             return float(price_array[current_step])
 
-        if df is not None and hasattr(df, 'iloc'):
+        if df is not None and hasattr(df, "iloc"):
             try:
                 row = df.iloc[current_step]
                 for column in ("price", "close", "adj_close", "open"):

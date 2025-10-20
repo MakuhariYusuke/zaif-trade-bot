@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Train multiple PPO ensemble models with predefined hyperparameters."""
 
 from __future__ import annotations

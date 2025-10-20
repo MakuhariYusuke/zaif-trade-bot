@@ -8,29 +8,29 @@ import dataclasses
 from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from ztb.features.curated_features import get_feature_set
+from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
 from ztb.training.config.ppo_config import (
-    DEFAULT_REWARD_SCALING,
-    DEFAULT_RISK_FREE_RATE,
-    DEFAULT_STOP_LOSS_THRESHOLD,
     DEFAULT_MAX_CONSECUTIVE_TRADES,
     DEFAULT_MIN_HOLDING_PERIOD,
-    DEFAULT_REWARD_POSITION_SOFT_CAP,
-    DEFAULT_REWARD_POSITION_PENALTY_SCALE,
-    DEFAULT_REWARD_POSITION_PENALTY_EXPONENT,
-    DEFAULT_REWARD_INVENTORY_WINDOW,
-    DEFAULT_REWARD_INVENTORY_PENALTY_SCALE,
-    DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY,
-    DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE,
-    DEFAULT_REWARD_TRADE_COOLDOWN_STEPS,
-    DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY,
-    DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES,
-    DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY,
-    DEFAULT_REWARD_VOLATILITY_WINDOW,
-    DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE,
-    DEFAULT_REWARD_SHARPE_BONUS_SCALE,
     DEFAULT_REWARD_CLIP_VALUE,
+    DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY,
+    DEFAULT_REWARD_INVENTORY_PENALTY_SCALE,
+    DEFAULT_REWARD_INVENTORY_WINDOW,
+    DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES,
+    DEFAULT_REWARD_POSITION_PENALTY_EXPONENT,
+    DEFAULT_REWARD_POSITION_PENALTY_SCALE,
+    DEFAULT_REWARD_POSITION_SOFT_CAP,
+    DEFAULT_REWARD_SCALING,
+    DEFAULT_REWARD_SHARPE_BONUS_SCALE,
+    DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY,
+    DEFAULT_REWARD_TRADE_COOLDOWN_STEPS,
+    DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE,
+    DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY,
+    DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE,
+    DEFAULT_REWARD_VOLATILITY_WINDOW,
+    DEFAULT_RISK_FREE_RATE,
+    DEFAULT_STOP_LOSS_THRESHOLD,
 )
-from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -62,6 +62,13 @@ class RewardSettings(TypedDict, total=False):
     balance_penalty: float
     balance_penalty_tolerance: float
 
+    # Optimized reward function parameters
+    profit_weight: float
+    risk_weight: float
+    consistency_weight: float
+    ultra_profit_multiplier: float
+    ultra_risk_multiplier: float
+
 
 @dataclasses.dataclass
 class EnvironmentConfig:
@@ -74,7 +81,9 @@ class EnvironmentConfig:
     risk_free_rate: float = DEFAULT_RISK_FREE_RATE
     timeframe: str = "1m"
     feature_set: str = "full"
-    feature_names: Optional[List[str]] = None  # Explicit feature list (overrides feature_set)
+    feature_names: Optional[
+        List[str]
+    ] = None  # Explicit feature list (overrides feature_set)
     correlation_reduction: bool = True
     curriculum_stage: str = "forced_balance"
     feature_storage_dtype: str = "float16"
@@ -103,14 +112,14 @@ class EnvironmentConfig:
     reward_sharpe_bonus_scale: float = DEFAULT_REWARD_SHARPE_BONUS_SCALE
     reward_clip_value: float = DEFAULT_REWARD_CLIP_VALUE
     enable_forced_diversity: bool = False
-    
+
     # 🔧 CRITICAL FIX: 現実的な資金設定
     # Bitcoin価格 ≈ 18,000,000円 を考慮した設定
     # - 訓練用: 200,000円 (0.01 BTC程度購入可能、実口座の10-20倍で学習)
     # - 実取引用: 少額対応可能 (1 mBTC = 0.001 BTC ≈ 18,000円)
     # - 旧デフォルト: 1,000,000円では max_position_size=1.0 (1800万円) で取引不可能だった
     initial_portfolio_value: float = 200_000.0
-    
+
     reward_profit_bonus_multipliers: List[float] = dataclasses.field(
         default_factory=lambda: [1.0, 1.0, 0.8]
     )
@@ -122,20 +131,30 @@ class EnvironmentConfig:
     memory_logging_enabled: bool = False
     memory_log_interval_steps: Optional[int] = None
     max_action_history: int = 512
-    
+
     # Observation normalization
-    use_standardized_observations: bool = True  # Use StandardScaler for feature normalization
-    
+    use_standardized_observations: bool = (
+        True  # Use StandardScaler for feature normalization
+    )
+
     # Action space configuration
     use_continuous_actions: bool = False  # True for SAC, False for PPO
-    target_feature_count: Optional[int] = None  # Desired observation feature count when reducing correlations
-    enable_action_masking: bool = False   # Only for discrete actions (PPO)
-    continuous_to_discrete_threshold: float = SAC_CONTINUOUS_THRESHOLD  # Threshold for SAC continuous→discrete conversion
+    target_feature_count: Optional[
+        int
+    ] = None  # Desired observation feature count when reducing correlations
+    enable_action_masking: bool = False  # Only for discrete actions (PPO)
+    continuous_to_discrete_threshold: float = (
+        SAC_CONTINUOUS_THRESHOLD  # Threshold for SAC continuous→discrete conversion
+    )
 
     # Trading behavior settings
     allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
-    enforce_reverse_cooldown: bool = False  # If True, min_holding_period also applies to reversal entries
-    random_start: bool = False  # If True, episodes start at random positions in the data
+    enforce_reverse_cooldown: bool = (
+        False  # If True, min_holding_period also applies to reversal entries
+    )
+    random_start: bool = (
+        False  # If True, episodes start at random positions in the data
+    )
 
     @classmethod
     def from_dict(
@@ -163,9 +182,7 @@ class EnvironmentConfig:
                     "enable_action_masking",
                     "use_standardized_observations",
                     "correlation_reduction",
-                ] and not isinstance(
-                    value, bool
-                ):
+                ] and not isinstance(value, bool):
                     value = cls._as_bool(value)  # type: ignore[arg-type]
                 elif field.name in [
                     "max_consecutive_trades",
@@ -213,7 +230,9 @@ class EnvironmentConfig:
             try:
                 curated_features = get_feature_set("curated")
                 config_kwargs["feature_names"] = curated_features
-                logger.info(f"Applied curated feature set with {len(curated_features)} features")
+                logger.info(
+                    f"Applied curated feature set with {len(curated_features)} features"
+                )
             except Exception as e:
                 logger.warning(f"Failed to load curated features: {e}")
 

@@ -126,10 +126,10 @@ step_results=list(self.step_results)[-100:]  # deque→list変換
   - reward_history: deque(maxlen=512) ✅
   - position_history: deque(maxlen=512) ✅
   - portfolio_value_history: List（無制限） ❌
-  
+
 - ppo_trainer.py:
   - DataFrame: head().copy()で2倍メモリ使用 ❌
-  
+
 - base_ml_reinforcement.py:
   - step_results: List（無制限） ❌
 
@@ -142,10 +142,10 @@ step_results=list(self.step_results)[-100:]  # deque→list変換
   - reward_history: deque(maxlen=512) ✅
   - position_history: deque(maxlen=512) ✅
   - portfolio_value_history: deque(maxlen=512) ✅
-  
+
 - ppo_trainer.py:
   - DataFrame: iloc[:N]でビュー使用 ✅
-  
+
 - base_ml_reinforcement.py:
   - step_results: deque(maxlen=1000) ✅
 
@@ -348,6 +348,6 @@ print(f"Memory: {mem_mb:.1f} MB")
 2. 100k+ stepsでの安定性検証
 3. パフォーマンスベンチマーク
 
-**結論:** 
+**結論:**
 強化学習システム全体で十分なメモリ最適化を達成しました。
 これ以上の最適化は投資対効果が低くなるため、現状で運用推奨です。

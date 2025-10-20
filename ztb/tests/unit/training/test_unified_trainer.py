@@ -78,7 +78,9 @@ class TestConfigureProgressBar:
 
 class TestUnifiedTrainer:
     @patch("ztb.training.unified_trainer.safe_operation")
-    def test_train_fallback(self, mock_safe_operation: MagicMock, sample_config: dict[str, object]) -> None:
+    def test_train_fallback(
+        self, mock_safe_operation: MagicMock, sample_config: dict[str, object]
+    ) -> None:
         mock_safe_operation.return_value = "fallback"
         trainer = UnifiedTrainer(sample_config)
         assert trainer.train() == "fallback"
@@ -138,7 +140,10 @@ class TestUnifiedTrainer:
         sample_config: dict[str, object],
     ) -> None:
         mock_safe_operation.side_effect = lambda **kw: kw["operation"]()
-        mock_build.return_value = {"total_timesteps": 100, "ppo": {"total_timesteps": 100}}
+        mock_build.return_value = {
+            "total_timesteps": 100,
+            "ppo": {"total_timesteps": 100},
+        }
 
         trainer = UnifiedTrainer(sample_config, total_timesteps=512)
         trainer.train()
@@ -146,5 +151,3 @@ class TestUnifiedTrainer:
         unified_config = mock_algorithm_trainer.return_value.train.call_args.args[1]
         assert unified_config["total_timesteps"] == 512
         assert unified_config["ppo"]["total_timesteps"] == 512  # type: ignore[index]
-
-

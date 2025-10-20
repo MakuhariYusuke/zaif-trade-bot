@@ -11,9 +11,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("Chaikin_AD_Oscillator")
@@ -48,7 +49,7 @@ class ChaikinADOscillator(BaseFeature):
             df["high"].values.astype(np.float64),
             df["low"].values.astype(np.float64),
             df["close"].values.astype(np.float64),
-            df["volume"].values.astype(np.float64)
+            df["volume"].values.astype(np.float64),
         )
 
         # Calculate fast and slow EMAs of Chaikin AD
@@ -58,5 +59,7 @@ class ChaikinADOscillator(BaseFeature):
         # Chaikin AD Oscillator is the difference
         chaikin_ad_oscillator = fast_ema - slow_ema
 
-        result_df = pd.DataFrame({"chaikin_ad_oscillator": chaikin_ad_oscillator}, index=df.index)
+        result_df = pd.DataFrame(
+            {"chaikin_ad_oscillator": chaikin_ad_oscillator}, index=df.index
+        )
         return result_df

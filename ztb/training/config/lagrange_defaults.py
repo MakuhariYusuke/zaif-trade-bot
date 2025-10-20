@@ -8,7 +8,7 @@ scripts, and documentation.
 
 from __future__ import annotations
 
-from typing import Dict, Union, Optional
+from typing import Dict, Optional, Union
 
 Number = Union[int, float]
 
@@ -16,15 +16,17 @@ Number = Union[int, float]
 # - warmup_steps intentionally kept as ``int`` but stored in the dict as ``Number``
 #   to simplify type interactions with call-sites expecting numeric types.
 LAGRANGE_DEFAULTS: Dict[str, Number] = {
-    "r_target": 0.175,        # Target SELL rate (17.5%)
-    "tolerance": 0.042625,    # Deviation tolerance (~4.26%)
-    "eta": 0.062875,          # Dual ascent step size
-    "lambda_max": 3.875,      # Maximum dual variable value
-    "warmup_steps": 3_874,    # Steps before enforcing constraint strongly
+    "r_target": 0.175,  # Target SELL rate (17.5%)
+    "tolerance": 0.042625,  # Deviation tolerance (~4.26%)
+    "eta": 0.062875,  # Dual ascent step size
+    "lambda_max": 3.875,  # Maximum dual variable value
+    "warmup_steps": 3_874,  # Steps before enforcing constraint strongly
 }
 
 
-def apply_lagrange_overrides(overrides: Optional[Dict[str, Optional[Number]]] = None) -> Dict[str, Number]:
+def apply_lagrange_overrides(
+    overrides: Optional[Dict[str, Optional[Number]]] = None,
+) -> Dict[str, Number]:
     """Return defaults merged with any non-``None`` overrides.
 
     Args:

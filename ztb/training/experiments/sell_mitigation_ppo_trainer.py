@@ -13,25 +13,30 @@ Extends PPOTrainer with comprehensive action bias mitigation:
 
 from pathlib import Path
 from typing import Any, Dict, Optional
+
 import numpy as np
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
-from ztb.training.models.custom_ppo import CustomPPO
-from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
-from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
+from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
+from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
-from ztb.training.config.ppo_config import PPOConfig, DEFAULT_PPO_CONFIG
+from ztb.training.experiments.entropy_temperature import (
+    TargetEntropyController,
+)  # New: Target Entropy
+from ztb.training.models.custom_ppo import CustomPPO
+from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer  # New: PAN
 from ztb.training.optimization.lagrange_constraint import LagrangeConstraint
+from ztb.training.optimization.stratified_sampler import (
+    StratifiedSampler,
+)  # New: Stratified Sampling
 from ztb.training.utils.grad_probes import SELLGradientProbe, create_failsafe_dump
 from ztb.training.utils.weights import ActionWeightCalculator
-from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer  # New: PAN
-from ztb.training.experiments.entropy_temperature import TargetEntropyController  # New: Target Entropy
-from ztb.training.optimization.stratified_sampler import StratifiedSampler  # New: Stratified Sampling
-from ztb.utils.logging_utils import get_logger
 from ztb.utils.config import ZTBConfig
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -73,19 +78,19 @@ class SELLBiasMitigationCallback(BaseCallback):
             stats = self.probe.get_statistics()
             for key, value in stats.items():
                 self.logger.record(f"probe/{key}", value)
-        
+
         # New: Log PAN statistics
         if self.pan_normalizer is not None:
             stats = self.pan_normalizer.get_statistics()
             for key, value in stats.items():
                 self.logger.record(f"pan/{key}", value)
-        
+
         # New: Log Target Entropy statistics
         if self.entropy_controller is not None:
             stats = self.entropy_controller.get_statistics()
             for key, value in stats.items():
                 self.logger.record(f"entropy/{key}", value)
-        
+
         # New: Log Stratified Sampler statistics
         if self.stratified_sampler is not None:
             sampler_stats: Dict[str, Any] = self.stratified_sampler.get_statistics()
@@ -97,7 +102,7 @@ class SELLBiasMitigationCallback(BaseCallback):
                         for action in range(3):
                             self.logger.record(
                                 f"stratified/bucket_r{regime}_a{action}",
-                                int(bucket_counts[regime, action])
+                                int(bucket_counts[regime, action]),
                             )
 
         return True
@@ -152,7 +157,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         self.enable_target_entropy = params.enable_target_entropy
         self.enable_stratified_sampling = params.enable_stratified_sampling
         self.allow_reverse = params.allow_reverse
-        
+
         # Store Lagrange parameters for CustomPPO creation
         self.lagrange_params = params.lagrange_params or {}
 
@@ -167,10 +172,14 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
         if params.enable_lagrange:
             # ★ Lagrange is created by CustomPPO, just log here
-            logger.info("Lagrange constraint will be enabled in CustomPPO (r_target=15%, warmup=5k steps)")
+            logger.info(
+                "Lagrange constraint will be enabled in CustomPPO (r_target=15%, warmup=5k steps)"
+            )
 
         if params.enable_probes:
-            probe_path = params.probe_csv_path or f"{params.checkpoint_dir}/sell_probe.csv"
+            probe_path = (
+                params.probe_csv_path or f"{params.checkpoint_dir}/sell_probe.csv"
+            )
             self.probe = SELLGradientProbe(
                 grad_norm_threshold=1e-6,
                 advantage_threshold=0.0,
@@ -178,7 +187,9 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                 moving_window=50,
                 save_path=Path(probe_path),
             )
-            logger.info(f"Gradient probes enabled (failsafe after 200 unhealthy steps, CSV: {probe_path})")
+            logger.info(
+                f"Gradient probes enabled (failsafe after 200 unhealthy steps, CSV: {probe_path})"
+            )
 
         if params.enable_weights:
             self.weight_calc = ActionWeightCalculator(
@@ -190,35 +201,37 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                 kl_consecutive_max=3,
             )
             logger.info("Action weighting enabled (beta=3.0, ema_alpha=0.1)")
-        
+
         # New: Initialize PAN (Per-Action Advantage Normalization)
         if params.enable_pan:
             self.pan_normalizer = PerActionAdvantageNormalizer(
-                n_actions=3,  # HOLD, BUY, SELL
+                n_actions=3,
                 epsilon=1e-8,
-                min_samples_per_action=1
+                min_samples_per_action=1,  # HOLD, BUY, SELL
             )
             logger.info("PAN (Per-Action Advantage Normalization) enabled")
-        
+
         # New: Initialize Target Entropy Controller
         if params.enable_target_entropy:
             self.entropy_controller = TargetEntropyController(
                 n_actions=3,
                 target_entropy_ratio=0.7,  # 0.7 × log(3) ≈ 0.769
                 lr_temperature=3e-4,
-                initial_temperature=0.01
+                initial_temperature=0.01,
             )
             logger.info("Target Entropy Controller enabled (target=0.769)")
-        
+
         # New: Initialize Stratified Sampler
         if params.enable_stratified_sampling:
             self.stratified_sampler = StratifiedSampler(
                 n_actions=3,
                 regime_window=20,
                 regime_threshold=0.001,
-                min_samples_per_bucket=1
+                min_samples_per_bucket=1,
             )
-            logger.info("Stratified Mini-batch Sampler enabled (9 buckets: 3 regimes × 3 actions)")
+            logger.info(
+                "Stratified Mini-batch Sampler enabled (9 buckets: 3 regimes × 3 actions)"
+            )
 
         # Initialize model attribute
         self.model: Optional[CustomPPO] = None
@@ -231,8 +244,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         # Lagrange, PAN, and Entropy Controller are managed by CustomPPO
         lagrange = self.model.lagrange if self.model is not None else None
         pan_normalizer = self.model.pan_normalizer if self.model is not None else None
-        entropy_controller = self.model.entropy_controller if self.model is not None else None
-        stratified_sampler = self.model.stratified_sampler if self.model is not None else None
+        entropy_controller = (
+            self.model.entropy_controller if self.model is not None else None
+        )
+        stratified_sampler = (
+            self.model.stratified_sampler if self.model is not None else None
+        )
 
         mitigation_callback = SELLBiasMitigationCallback(
             lagrange=lagrange,
@@ -268,7 +285,9 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         logger.info(f"Weights: {'✅' if self.enable_weights else '❌'}")
         logger.info(f"PAN: {'✅' if self.enable_pan else '❌'}")
         logger.info(f"Target Entropy: {'✅' if self.enable_target_entropy else '❌'}")
-        logger.info(f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}")
+        logger.info(
+            f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}"
+        )
         logger.info(f"Data: {self.data_path}")  # type: ignore[attr-defined]
 
         try:
@@ -276,34 +295,39 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             if self.model is None:
                 # Load data
                 import pandas as pd
+
                 df_full = pd.read_csv(self.data_path)  # type: ignore[attr-defined]
-                
+
                 # ====================================================================
                 # UNIFIED MEMORY OPTIMIZATION (Bug #52 fix)
                 # ====================================================================
                 # Apply data_rows_limit if specified
                 # Priority: 1) Top-level config, 2) memory_optimization section
-                data_rows_limit = (
-                    self.config.get("data_rows_limit") or 
-                    (self.config.get("memory_optimization", {}) or {}).get("data_rows_limit")
-                )
-                
+                data_rows_limit = self.config.get("data_rows_limit") or (
+                    self.config.get("memory_optimization", {}) or {}
+                ).get("data_rows_limit")
+
                 if data_rows_limit and len(df_full) > data_rows_limit:
-                    logger.info(f"⚠️  MEMORY OPTIMIZATION: Limiting data from {len(df_full)} to {data_rows_limit} rows")
+                    logger.info(
+                        f"⚠️  MEMORY OPTIMIZATION: Limiting data from {len(df_full)} to {data_rows_limit} rows"
+                    )
                     # Memory optimized: Use iloc slice instead of copy
                     df = df_full.iloc[:data_rows_limit]
                     del df_full
                     import gc
+
                     gc.collect()
                 else:
                     df = df_full
-                
+
                 # Extract max_features from unified config structure
                 # Priority: 1) Top-level config, 2) memory_optimization section, 3) ppo section
                 max_features = (
-                    self.config.get("max_features") or
-                    (self.config.get("memory_optimization", {}) or {}).get("max_features") or
-                    (self.config.get("ppo", {}) or {}).get("max_features")
+                    self.config.get("max_features")
+                    or (self.config.get("memory_optimization", {}) or {}).get(
+                        "max_features"
+                    )
+                    or (self.config.get("ppo", {}) or {}).get("max_features")
                 )
 
                 # Create environment config with curriculum_stage and allow_reverse
@@ -318,11 +342,15 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     "reward_settings": self.config.get("reward_settings", {}),
                     # ★ BUG #52 FIX: Pass memory optimization settings (unified)
                     "max_features": max_features,
-                    "enable_correlation_reduction": self.config.get("enable_correlation_reduction", True),
+                    "enable_correlation_reduction": self.config.get(
+                        "enable_correlation_reduction", True
+                    ),
                 }
 
                 # Create environment with unified max_features
-                env = HeavyTradingEnv(df=df, config=env_config, max_features=max_features)
+                env = HeavyTradingEnv(
+                    df=df, config=env_config, max_features=max_features
+                )
 
                 # Wrap with ActionMasker for MaskablePPO
                 def mask_fn(env: Any) -> Any:
@@ -360,12 +388,22 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     # ★ Lagrange constraint parameters
                     enable_lagrange=self.enable_lagrange,
                     lagrange_target_action="SELL",
-                    lagrange_r_target=self.lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"]),
-                    lagrange_tolerance=self.lagrange_params.get("tolerance", LAGRANGE_DEFAULTS["tolerance"]),
-                    lagrange_eta=self.lagrange_params.get("eta", LAGRANGE_DEFAULTS["eta"]),
-                    lagrange_lambda_max=self.lagrange_params.get("lambda_max", LAGRANGE_DEFAULTS["lambda_max"]),
+                    lagrange_r_target=self.lagrange_params.get(
+                        "r_target", LAGRANGE_DEFAULTS["r_target"]
+                    ),
+                    lagrange_tolerance=self.lagrange_params.get(
+                        "tolerance", LAGRANGE_DEFAULTS["tolerance"]
+                    ),
+                    lagrange_eta=self.lagrange_params.get(
+                        "eta", LAGRANGE_DEFAULTS["eta"]
+                    ),
+                    lagrange_lambda_max=self.lagrange_params.get(
+                        "lambda_max", LAGRANGE_DEFAULTS["lambda_max"]
+                    ),
                     lagrange_warmup_steps=int(
-                        self.lagrange_params.get("warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"])
+                        self.lagrange_params.get(
+                            "warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"]
+                        )
                     ),
                     # ★ PAN/Entropy/Stratified parameters
                     pan_epsilon=1e-8,
@@ -373,7 +411,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     lr_temperature=3e-4,
                     initial_temperature=0.01,
                 )
-                
+
                 logger.info("CustomPPO model created with integrated mitigations")
 
             # Neutralize policy bias
@@ -388,8 +426,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             # Train the model
             total_timesteps = self.config.get("total_timesteps", 100000)
             logger.info("=" * 80)
-            logger.info(f"🚀 Starting model.learn() with total_timesteps={total_timesteps:,}")
-            logger.info(f"   Expected iterations: ~{total_timesteps // self.config.get('n_steps', 2048)}")
+            logger.info(
+                f"🚀 Starting model.learn() with total_timesteps={total_timesteps:,}"
+            )
+            logger.info(
+                f"   Expected iterations: ~{total_timesteps // self.config.get('n_steps', 2048)}"
+            )
             logger.info("=" * 80)
             self.model.learn(
                 total_timesteps=total_timesteps,
@@ -430,70 +472,107 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         """Perform final validation of SELL bias mitigation."""
         try:
             logger.info("Starting final validation...")
-            
+
             # ★ Get Lagrange from model (not self.lagrange which doesn't exist)
-            if self.model is None or not hasattr(self.model, 'lagrange') or self.model.lagrange is None:
+            if (
+                self.model is None
+                or not hasattr(self.model, "lagrange")
+                or self.model.lagrange is None
+            ):
                 logger.warning("Lagrange constraint not available for final validation")
                 return
 
             final_stats = self.model.lagrange.get_statistics()
-            
+
             # Calculate action distribution from legal actions
-            legal_sell_count = final_stats.get('legal_sell_count', 0)
-            total_legal_steps = final_stats.get('total_legal_steps', 0)
-            
+            legal_sell_count = final_stats.get("legal_sell_count", 0)
+            total_legal_steps = final_stats.get("total_legal_steps", 0)
+
             # Estimate HOLD/BUY from remaining steps (rough approximation)
             # Note: This is an estimate since we don't track HOLD/BUY separately in Lagrange
             non_sell_count = total_legal_steps - legal_sell_count
             # Assume roughly equal HOLD/BUY split for now (can be improved)
             estimated_hold = non_sell_count // 2
             estimated_buy = non_sell_count - estimated_hold
-            
+
             logger.info("=" * 80)
             logger.info("FINAL ACTION DISTRIBUTION:")
             logger.info("=" * 80)
             if total_legal_steps > 0:
-                sell_rate = final_stats.get('r_sell_mean', 0)
-                hold_rate = (estimated_hold / total_legal_steps) if total_legal_steps > 0 else 0
-                buy_rate = (estimated_buy / total_legal_steps) if total_legal_steps > 0 else 0
-                
-                logger.info(f"  HOLD: {hold_rate:6.1%} ({estimated_hold:4d} / {total_legal_steps})")
-                logger.info(f"  BUY:  {buy_rate:6.1%} ({estimated_buy:4d} / {total_legal_steps})")
-                logger.info(f"  SELL: {sell_rate:6.1%} ({legal_sell_count:4d} / {total_legal_steps})")
+                sell_rate = final_stats.get("r_sell_mean", 0)
+                hold_rate = (
+                    (estimated_hold / total_legal_steps) if total_legal_steps > 0 else 0
+                )
+                buy_rate = (
+                    (estimated_buy / total_legal_steps) if total_legal_steps > 0 else 0
+                )
+
+                logger.info(
+                    f"  HOLD: {hold_rate:6.1%} ({estimated_hold:4d} / {total_legal_steps})"
+                )
+                logger.info(
+                    f"  BUY:  {buy_rate:6.1%} ({estimated_buy:4d} / {total_legal_steps})"
+                )
+                logger.info(
+                    f"  SELL: {sell_rate:6.1%} ({legal_sell_count:4d} / {total_legal_steps})"
+                )
             else:
-                logger.warning("  No legal steps recorded - cannot calculate distribution")
+                logger.warning(
+                    "  No legal steps recorded - cannot calculate distribution"
+                )
             logger.info("=" * 80)
-            
+
             logger.info("Lagrange Statistics:")
             logger.info(f"  Lambda (final): {final_stats.get('lambda_dual', 0):.6f}")
-            logger.info(f"  Constraint Active: {final_stats.get('constraint_active', False)}")
-            logger.info(f"  Target SELL Rate: {self.config.get('lagrange_r_target', 0.33):.1%}")
-            
+            logger.info(
+                f"  Constraint Active: {final_stats.get('constraint_active', False)}"
+            )
+            logger.info(
+                f"  Target SELL Rate: {self.config.get('lagrange_r_target', 0.33):.1%}"
+            )
+
             # Log output paths (with safe fallbacks)
             logger.info("=" * 80)
             logger.info("OUTPUT PATHS:")
             logger.info("=" * 80)
-            model_path = getattr(self, 'model_save_path', self.config.get('model_save_path', ZTBConfig().get_model_path('ppo_balanced_mem_optimized.zip')))
-            checkpoint_path = getattr(self, 'checkpoint_dir', self.config.get('checkpoint_dir', 'checkpoints/ppo_balanced_mem_optimized'))
-            tensorboard_path = self.config.get('tensorboard_log', 'tensorboard')
+            model_path = getattr(
+                self,
+                "model_save_path",
+                self.config.get(
+                    "model_save_path",
+                    ZTBConfig().get_model_path("ppo_balanced_mem_optimized.zip"),
+                ),
+            )
+            checkpoint_path = getattr(
+                self,
+                "checkpoint_dir",
+                self.config.get(
+                    "checkpoint_dir", "checkpoints/ppo_balanced_mem_optimized"
+                ),
+            )
+            tensorboard_path = self.config.get("tensorboard_log", "tensorboard")
             logger.info(f"  Model:        {model_path}")
             logger.info(f"  Checkpoints:  {checkpoint_path}")
             logger.info(f"  TensorBoard:  {tensorboard_path}")
             logger.info("=" * 80)
 
             # Check if targets were met
-            sell_rate_ok = final_stats.get('r_sell_mean', 0) >= 0.15
-            lambda_bounded = abs(final_stats.get('lambda_dual', 0)) <= 1.0
+            sell_rate_ok = final_stats.get("r_sell_mean", 0) >= 0.15
+            lambda_bounded = abs(final_stats.get("lambda_dual", 0)) <= 1.0
 
             if sell_rate_ok and lambda_bounded:
                 logger.info("✅ SELL bias mitigation targets achieved")
             else:
                 logger.warning("⚠️  SELL bias mitigation targets not fully achieved")
                 if not sell_rate_ok:
-                    logger.warning(f"   - SELL rate below 15%: {final_stats.get('r_sell_mean', 0):.1%}")
+                    logger.warning(
+                        f"   - SELL rate below 15%: {final_stats.get('r_sell_mean', 0):.1%}"
+                    )
                 if not lambda_bounded:
-                    logger.warning(f"   - Lambda out of bounds: {final_stats.get('lambda_dual', 0):.6f}")
-            
+                    logger.warning(
+                        f"   - Lambda out of bounds: {final_stats.get('lambda_dual', 0):.6f}"
+                    )
+
             logger.info("✅ Final validation completed")
         except Exception as e:
             logger.warning(f"Final validation failed (non-critical): {e}")
@@ -555,7 +634,7 @@ def test_sell_mitigation_trainer() -> None:
 
     print("✅ SELL Bias Mitigation Trainer created successfully")
     # ★ NOTE: Lagrange is now in model, not trainer
-    print(f"   Lagrange: Integrated into CustomPPO")
+    print("   Lagrange: Integrated into CustomPPO")
     print(f"   Probes: {'✅' if trainer.probe else '❌'}")
     print(f"   Weights: {'✅' if trainer.weight_calc else '❌'}")
 

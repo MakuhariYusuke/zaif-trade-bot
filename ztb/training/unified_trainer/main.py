@@ -6,7 +6,7 @@ Main entry point for Unified Trainer.
 import argparse
 import sys
 
-from ztb.training.unified_trainer.config_manager import ConfigManager
+from ztb.config.manager import ConfigManager
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
 from ztb.utils.logging_utils import get_logger
 
@@ -15,7 +15,9 @@ def main() -> None:
     """Main entry point for unified training."""
     logger = get_logger(__name__)
 
-    parser = argparse.ArgumentParser(description="Unified Training Runner for Zaif Trade Bot")
+    parser = argparse.ArgumentParser(
+        description="Unified Training Runner for Zaif Trade Bot"
+    )
     parser.add_argument(
         "--config",
         required=True,
@@ -55,24 +57,25 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Load and validate configuration
-    config_manager = ConfigManager(logger)
-    config, is_valid, errors, warnings = config_manager.load_and_validate(args.config)
+    # Load and validate configuration using new ConfigManager
+    config_manager = ConfigManager.get_instance()
 
-    if not is_valid:
-        print("❌ Configuration validation failed:")
-        for error in errors:
-            print(f"  - {error}")
+    try:
+        if args.config:
+            config = config_manager.load_config(args.config)
+        else:
+            config = config_manager.load_config()
+
+        # Validate configuration
+        if not config_manager.validate_config(args.config if args.config else None):
+            print("❌ Configuration validation failed")
+            sys.exit(1)
+
+    except Exception as e:
+        print(f"❌ Failed to load configuration: {e}")
         sys.exit(1)
 
-    if warnings:
-        print("⚠️  Configuration warnings:")
-        for warning in warnings:
-            print(f"  - {warning}")
-
-    if config is None:
-        print("❌ Failed to load configuration")
-        sys.exit(1)
+    print("✅ Configuration loaded successfully")
 
     # Create and run trainer
     trainer = UnifiedTrainer(

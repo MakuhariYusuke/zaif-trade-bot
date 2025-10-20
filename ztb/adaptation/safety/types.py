@@ -3,13 +3,14 @@ Type definitions for Safety Mechanisms and Fallback
 """
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
+from enum import Enum
+from typing import Dict, List, Optional
 
 
 class SafetyLevel(Enum):
     """安全レベル"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -19,6 +20,7 @@ class SafetyLevel(Enum):
 
 class FallbackStrategy(Enum):
     """フォールバック戦略"""
+
     ROLLBACK_TO_PREVIOUS = "rollback_to_previous"
     SWITCH_TO_BASELINE = "switch_to_baseline"
     REDUCE_POSITION_SIZE = "reduce_position_size"
@@ -28,13 +30,15 @@ class FallbackStrategy(Enum):
 
 class CircuitBreakerState(Enum):
     """サーキットブレーカー状態"""
-    CLOSED = "closed"       # 正常動作
-    OPEN = "open"          # 遮断中
-    HALF_OPEN = "half_open" # テスト中
+
+    CLOSED = "closed"  # 正常動作
+    OPEN = "open"  # 遮断中
+    HALF_OPEN = "half_open"  # テスト中
 
 
 class DeploymentPhase(Enum):
     """デプロイメントフェーズ"""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
@@ -44,6 +48,7 @@ class DeploymentPhase(Enum):
 @dataclass
 class SafetyThreshold:
     """安全閾値"""
+
     metric_name: str
     threshold_value: float
     comparison: str  # "gt", "lt", "gte", "lte"
@@ -54,6 +59,7 @@ class SafetyThreshold:
 @dataclass
 class CircuitBreakerConfig:
     """サーキットブレーカー設定"""
+
     failure_threshold: int
     recovery_timeout_seconds: int
     monitoring_window_seconds: int
@@ -64,6 +70,7 @@ class CircuitBreakerConfig:
 @dataclass
 class CircuitBreaker:
     """サーキットブレーカー"""
+
     config: CircuitBreakerConfig
     state: CircuitBreakerState
     failure_count: int
@@ -75,6 +82,7 @@ class CircuitBreaker:
 @dataclass
 class FallbackAction:
     """フォールバックアクション"""
+
     strategy: FallbackStrategy
     trigger_conditions: List[SafetyThreshold]
     execution_order: int
@@ -85,6 +93,7 @@ class FallbackAction:
 
 class FallbackStatus(Enum):
     """フォールバック状態"""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     TRIGGERED = "triggered"
@@ -97,6 +106,7 @@ class FallbackStatus(Enum):
 @dataclass
 class DeploymentStage:
     """デプロイメントステージ"""
+
     phase: DeploymentPhase
     traffic_percentage: float
     duration_hours: int
@@ -107,6 +117,7 @@ class DeploymentStage:
 @dataclass
 class SafetyIncident:
     """安全インシデント"""
+
     id: str
     timestamp: datetime
     safety_level: SafetyLevel
@@ -122,6 +133,7 @@ class SafetyIncident:
 @dataclass
 class RiskAssessment:
     """リスク評価"""
+
     overall_risk_score: float
     risk_factors: Dict[str, float]
     mitigation_measures: List[str]
@@ -133,6 +145,7 @@ class RiskAssessment:
 @dataclass
 class AnomalyPattern:
     """異常パターン"""
+
     pattern_id: str
     description: str
     detection_method: str
@@ -144,6 +157,7 @@ class AnomalyPattern:
 
 class AnomalyType(Enum):
     """異常タイプ"""
+
     STATISTICAL_OUTLIER = "statistical_outlier"
     TREND_CHANGE = "trend_change"
     DISTRIBUTION_SHIFT = "distribution_shift"
@@ -155,6 +169,7 @@ class AnomalyType(Enum):
 @dataclass
 class AnomalyDetection:
     """異常検知結果"""
+
     anomaly_type: AnomalyType
     confidence: float
     severity: SafetyLevel
@@ -166,6 +181,7 @@ class AnomalyDetection:
 
 class RecoveryStatus(Enum):
     """リカバリー状態"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     SUCCESSFUL = "successful"
@@ -175,6 +191,7 @@ class RecoveryStatus(Enum):
 
 class RecoveryStrategy(Enum):
     """リカバリ戦略"""
+
     GRADUAL_RECOVERY = "gradual_recovery"
     IMMEDIATE_RECOVERY = "immediate_recovery"
     CONSERVATIVE_RECOVERY = "conservative_recovery"
@@ -183,6 +200,7 @@ class RecoveryStrategy(Enum):
 
 class SafetyEvent(Enum):
     """安全イベント"""
+
     ANOMALY_DETECTED = "anomaly_detected"
     THRESHOLD_EXCEEDED = "threshold_exceeded"
     SYSTEM_DEGRADED = "system_degraded"
@@ -192,6 +210,7 @@ class SafetyEvent(Enum):
 
 class SafetyAction(Enum):
     """安全アクション"""
+
     MONITOR = "monitor"
     ALERT = "alert"
     REDUCE_RISK = "reduce_risk"
@@ -202,6 +221,7 @@ class SafetyAction(Enum):
 
 class FallbackMode(Enum):
     """フォールバックモード"""
+
     AUTOMATIC = "automatic"
     MANUAL = "manual"
     GRADUAL = "gradual"
@@ -211,6 +231,7 @@ class FallbackMode(Enum):
 @dataclass
 class SafetyMetrics:
     """安全メトリクス"""
+
     circuit_breakers_active: int
     incidents_last_24h: int
     fallback_activations: int

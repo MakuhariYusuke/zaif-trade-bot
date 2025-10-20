@@ -5,13 +5,14 @@ Test suite for Federated Learning and Mixed Precision Training in UnifiedTrainer
 
 import sys
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
+
 import torch
 import torch.nn as nn
-sys.path.append('.')
+
+sys.path.append(".")
 
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
-from ztb.training.unified_trainer.config import UnifiedTrainerConfig, UnifiedAlgorithm
 
 
 class TestFederatedMixedPrecision(unittest.TestCase):
@@ -20,37 +21,43 @@ class TestFederatedMixedPrecision(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.base_config = {
-            'algorithm': 'ppo',
-            'total_timesteps': 1000,
-            'model_name': 'test_model'
+            "algorithm": "ppo",
+            "total_timesteps": 1000,
+            "model_name": "test_model",
         }
 
     def test_federated_learning_config(self):
         """Test federated learning configuration setup."""
         config = self.base_config.copy()
-        config.update({
-            'enable_federated': True,
-            'num_clients': 3,
-            'federated_rounds': 5,
-            'privacy_budget': 1.0,
-            'client_fraction': 0.8
-        })
+        config.update(
+            {
+                "enable_federated": True,
+                "num_clients": 3,
+                "federated_rounds": 5,
+                "privacy_budget": 1.0,
+                "client_fraction": 0.8,
+            }
+        )
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
         # Check if federated components are initialized
-        self.assertEqual(len(trainer.federated_clients), 0)  # Not initialized until _setup_federated_learning
+        self.assertEqual(
+            len(trainer.federated_clients), 0
+        )  # Not initialized until _setup_federated_learning
         self.assertIsNone(trainer.global_model_state)
 
     def test_mixed_precision_config(self):
         """Test mixed precision training configuration setup."""
         config = self.base_config.copy()
-        config.update({
-            'enable_mixed_precision': True,
-            'precision': 'fp16',
-            'gradient_scaling': True,
-            'gradient_clip_norm': 1.0
-        })
+        config.update(
+            {
+                "enable_mixed_precision": True,
+                "precision": "fp16",
+                "gradient_scaling": True,
+                "gradient_clip_norm": 1.0,
+            }
+        )
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
@@ -61,14 +68,11 @@ class TestFederatedMixedPrecision(unittest.TestCase):
             # On CPU, GradScaler might not be initialized
             pass
 
-    @patch('ztb.training.unified_trainer.trainer.OPACUS_AVAILABLE', True)
+    @patch("ztb.training.unified_trainer.trainer.OPACUS_AVAILABLE", True)
     def test_setup_federated_learning_success(self):
         """Test successful federated learning setup."""
         config = self.base_config.copy()
-        config.update({
-            'enable_federated': True,
-            'num_clients': 2
-        })
+        config.update({"enable_federated": True, "num_clients": 2})
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
@@ -79,16 +83,13 @@ class TestFederatedMixedPrecision(unittest.TestCase):
 
         # Check client configurations
         for i, client_config in enumerate(trainer.federated_clients):
-            self.assertEqual(client_config['client_id'], i)
+            self.assertEqual(client_config["client_id"], i)
 
-    @patch('ztb.training.unified_trainer.trainer.OPACUS_AVAILABLE', False)
+    @patch("ztb.training.unified_trainer.trainer.OPACUS_AVAILABLE", False)
     def test_setup_federated_learning_without_opacus(self):
         """Test federated learning setup without Opacus (warning logged)."""
         config = self.base_config.copy()
-        config.update({
-            'enable_federated': True,
-            'num_clients': 2
-        })
+        config.update({"enable_federated": True, "num_clients": 2})
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
@@ -97,15 +98,15 @@ class TestFederatedMixedPrecision(unittest.TestCase):
         self.assertTrue(success)
         self.assertEqual(len(trainer.federated_clients), 2)
 
-    @patch('ztb.training.unified_trainer.trainer.AMP_AVAILABLE')
-    @patch('torch.cuda.is_available')
+    @patch("ztb.training.unified_trainer.trainer.AMP_AVAILABLE")
+    @patch("torch.cuda.is_available")
     def test_setup_mixed_precision_success(self, mock_cuda, mock_amp):
         """Test successful mixed precision setup."""
         mock_amp.return_value = True
         mock_cuda.return_value = True
-        
+
         config = self.base_config.copy()
-        config['enable_mixed_precision'] = True
+        config["enable_mixed_precision"] = True
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
@@ -113,11 +114,11 @@ class TestFederatedMixedPrecision(unittest.TestCase):
         self.assertTrue(success)
         self.assertIsNotNone(trainer.grad_scaler)
 
-    @patch('ztb.training.unified_trainer.trainer.AMP_AVAILABLE', False)
+    @patch("ztb.training.unified_trainer.trainer.AMP_AVAILABLE", False)
     def test_setup_mixed_precision_without_amp(self):
         """Test mixed precision setup failure without AMP."""
         config = self.base_config.copy()
-        config['enable_mixed_precision'] = True
+        config["enable_mixed_precision"] = True
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
@@ -130,28 +131,28 @@ class TestFederatedMixedPrecision(unittest.TestCase):
 
         # Mock client updates (simple tensors)
         client_updates = [
-            {'param1': torch.tensor([1.0, 2.0]), 'param2': torch.tensor([3.0])},
-            {'param1': torch.tensor([3.0, 4.0]), 'param2': torch.tensor([5.0])},
+            {"param1": torch.tensor([1.0, 2.0]), "param2": torch.tensor([3.0])},
+            {"param1": torch.tensor([3.0, 4.0]), "param2": torch.tensor([5.0])},
         ]
 
         averaged = trainer._federated_average(client_updates)
 
         # Check averaged values
         expected_param1 = torch.tensor([2.0, 3.0])  # Average of [1,2] and [3,4]
-        expected_param2 = torch.tensor([4.0])       # Average of [3] and [5]
+        expected_param2 = torch.tensor([4.0])  # Average of [3] and [5]
 
-        self.assertTrue(torch.allclose(averaged['param1'], expected_param1))
-        self.assertTrue(torch.allclose(averaged['param2'], expected_param2))
+        self.assertTrue(torch.allclose(averaged["param1"], expected_param1))
+        self.assertTrue(torch.allclose(averaged["param2"], expected_param2))
 
-    @patch('ztb.training.unified_trainer.trainer.AMP_AVAILABLE')
-    @patch('torch.cuda.is_available')
+    @patch("ztb.training.unified_trainer.trainer.AMP_AVAILABLE")
+    @patch("torch.cuda.is_available")
     def test_apply_mixed_precision_with_scaler(self, mock_cuda, mock_amp):
         """Test mixed precision loss scaling."""
         mock_amp.return_value = True
         mock_cuda.return_value = True
-        
+
         config = self.base_config.copy()
-        config['enable_mixed_precision'] = True
+        config["enable_mixed_precision"] = True
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
@@ -171,7 +172,7 @@ class TestFederatedMixedPrecision(unittest.TestCase):
     def test_step_optimizer_with_scaler(self):
         """Test optimizer step with gradient scaler."""
         config = self.base_config.copy()
-        config['enable_mixed_precision'] = True
+        config["enable_mixed_precision"] = True
 
         trainer = UnifiedTrainer(config, dry_run=True)
 
@@ -186,5 +187,5 @@ class TestFederatedMixedPrecision(unittest.TestCase):
             self.fail(f"Optimizer step failed: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

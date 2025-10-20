@@ -5,7 +5,7 @@ Tests for ADX feature implementation.
 import numpy as np
 import pandas as pd
 
-from ztb.features.trend.adx import compute_adx, compute_plus_di, compute_minus_di
+from ztb.features.trend.adx import compute_adx, compute_minus_di, compute_plus_di
 
 
 class TestADX:
@@ -33,8 +33,12 @@ class TestADX:
 
         # Check output shape
         assert len(adx_result) == len(df), "ADX output length should match input"
-        assert len(plus_di_result) == len(df), "Plus DI output length should match input"
-        assert len(minus_di_result) == len(df), "Minus DI output length should match input"
+        assert len(plus_di_result) == len(
+            df
+        ), "Plus DI output length should match input"
+        assert len(minus_di_result) == len(
+            df
+        ), "Minus DI output length should match input"
 
         # Check for reasonable values (ADX typically 0-100)
         adx_values = adx_result.dropna()
@@ -56,8 +60,12 @@ class TestADX:
 
         # Should still produce output, but values might be NaN
         assert len(adx_result) == len(df), "ADX output length should match input"
-        assert len(plus_di_result) == len(df), "Plus DI output length should match input"
-        assert len(minus_di_result) == len(df), "Minus DI output length should match input"
+        assert len(plus_di_result) == len(
+            df
+        ), "Plus DI output length should match input"
+        assert len(minus_di_result) == len(
+            df
+        ), "Minus DI output length should match input"
 
     def test_adx_edge_cases(self):
         """Test ADX with edge cases."""
@@ -72,7 +80,7 @@ class TestADX:
         assert len(adx_result) == len(df)
         assert len(plus_di_result) == len(df)
         assert len(minus_di_result) == len(df)
-        
+
         # ADX should be low or NaN in flat market
         adx_values = adx_result.dropna()
         if len(adx_values) > 0:
@@ -99,5 +107,9 @@ class TestADX:
 
         # Check that we have some non-NaN values
         assert not adx_result.isnull().all(), "ADX should have some valid values"
-        assert not plus_di_result.isnull().all(), "Plus DI should have some valid values"
-        assert not minus_di_result.isnull().all(), "Minus DI should have some valid values"
+        assert (
+            not plus_di_result.isnull().all()
+        ), "Plus DI should have some valid values"
+        assert (
+            not minus_di_result.isnull().all()
+        ), "Minus DI should have some valid values"

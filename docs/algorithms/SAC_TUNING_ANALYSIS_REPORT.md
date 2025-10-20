@@ -81,7 +81,7 @@
 ### 4. gamma (割引率) の影響
 - **v395b**: gamma=0.95（低め）
   - Critic Loss の初期値は高いが、改善傾向
-  
+
 - **v395c**: gamma=0.98（中間）
   - Critic Loss が完全に発散
 
@@ -144,7 +144,7 @@
 
 ## 🚨 Lessons Learned
 
-1. **target_entropyは手動設定が必須**: 
+1. **target_entropyは手動設定が必須**:
    - "auto"だと探索が強すぎる（特に低次元の行動空間）
    - 連続行動dim=1では-0.5が適切
 

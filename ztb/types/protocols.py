@@ -6,13 +6,16 @@ of key components in the trading system.
 """
 
 from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
+
 import pandas as pd
 
 
 class TradingEnvironment(Protocol):
     """Protocol for trading environments."""
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None) -> Tuple[Any, Dict[str, Any]]:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
+    ) -> Tuple[Any, Dict[str, Any]]:
         """Reset the environment to initial state."""
         ...
 
@@ -20,7 +23,7 @@ class TradingEnvironment(Protocol):
         """Execute one step in the environment."""
         ...
 
-    def render(self, mode: str = 'human') -> Optional[Any]:
+    def render(self, mode: str = "human") -> Optional[Any]:
         """Render the environment."""
         ...
 

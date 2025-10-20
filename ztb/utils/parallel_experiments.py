@@ -70,9 +70,9 @@ class ParallelExperimentRunner:
 
         # GPUリソース監視 - 遅延評価で効率化
         self._gpu_available: Optional[bool] = None  # キャッシュ用
-        self._gpu_stats_cache: Optional[Dict[str, Dict[str, float]]] = (
-            None  # GPU統計キャッシュ
-        )
+        self._gpu_stats_cache: Optional[
+            Dict[str, Dict[str, float]]
+        ] = None  # GPU統計キャッシュ
         self._gpu_cache_time: float = 0.0  # キャッシュ時間
         self._gpu_cache_ttl: float = 5.0  # キャッシュ有効期間（秒）
 
@@ -230,8 +230,8 @@ class ParallelExperimentRunner:
                 # リソースチェック - 制限を超えている場合
                 if not self._check_resource_limits():
                     self.shared_logger.warning(
-                        f"Resource limits exceeded during batch execution, "
-                        f"forcing checkpoint saves for running experiments"
+                        "Resource limits exceeded during batch execution, "
+                        "forcing checkpoint saves for running experiments"
                     )
                     # 実行中のプロセスにチェックポイント保存シグナルを送る
                     self._force_checkpoint_save(active_processes)

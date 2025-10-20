@@ -11,12 +11,10 @@ Attention Model Training for Adaptive Feature Selection
 """
 
 import gc
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -24,7 +22,6 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.memory.dtypes import optimize_dtypes
 from ztb.utils.path_utils import ensure_dir
 
 logger = get_logger(__name__)
@@ -55,11 +52,13 @@ class FeatureAttentionLayer(nn.Module):
         """
         # Query, Key, Value
         Q = self.query_proj(x)  # (batch, hidden)
-        K = self.key_proj(x)    # (batch, hidden)
+        K = self.key_proj(x)  # (batch, hidden)
         V = self.value_proj(x)  # (batch, hidden)
 
         # Attention scores
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / (self.n_features ** 0.5)  # (batch, batch)
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / (
+            self.n_features**0.5
+        )  # (batch, batch)
         attention_weights = F.softmax(scores, dim=-1)  # (batch, batch)
 
         # Apply attention
@@ -76,7 +75,9 @@ class FeatureAttentionLayer(nn.Module):
 class AttentionTrainingDataset(Dataset):
     """注意モデルトレーニング用データセット"""
 
-    def __init__(self, feature_data: np.ndarray, rewards: np.ndarray, regimes: np.ndarray):
+    def __init__(
+        self, feature_data: np.ndarray, rewards: np.ndarray, regimes: np.ndarray
+    ):
         """
         Args:
             feature_data: 特徴量データ (n_samples, n_features)
@@ -145,13 +146,12 @@ class AttentionTrainer:
         self.reward_buffer: List[float] = []
         self.regime_buffer: List[int] = []
 
-        logger.info(f"Initialized AttentionTrainer with {n_features} features, hidden_dim={hidden_dim}")
+        logger.info(
+            f"Initialized AttentionTrainer with {n_features} features, hidden_dim={hidden_dim}"
+        )
 
     def add_training_sample(
-        self,
-        features: np.ndarray,
-        reward: float,
-        regime: Union[str, int]
+        self, features: np.ndarray, reward: float, regime: Union[str, int]
     ) -> None:
         """
         トレーニングサンプルを追加
@@ -182,7 +182,7 @@ class AttentionTrainer:
                 "trending": 0,
                 "ranging": 1,
                 "high_volatility": 2,
-                "low_volatility": 3
+                "low_volatility": 3,
             }
             regime_int = regime_map.get(regime, 0)
         else:
@@ -197,7 +197,9 @@ class AttentionTrainer:
     def prepare_dataset(self) -> Optional[AttentionTrainingDataset]:
         """トレーニングデータセットを作成"""
         if not self.has_enough_data():
-            logger.warning(f"Insufficient training data: {len(self.feature_buffer)} samples")
+            logger.warning(
+                f"Insufficient training data: {len(self.feature_buffer)} samples"
+            )
             return None
 
         try:
@@ -242,7 +244,13 @@ class AttentionTrainer:
             n_batches += 1
 
             # メモリ解放
-            del batch_features, batch_rewards, batch_regimes, attention_weights, predicted_rewards
+            del (
+                batch_features,
+                batch_rewards,
+                batch_regimes,
+                attention_weights,
+                predicted_rewards,
+            )
             if n_batches % 10 == 0:
                 gc.collect()
 
@@ -265,7 +273,13 @@ class AttentionTrainer:
                 n_batches += 1
 
                 # メモリ解放
-                del batch_features, batch_rewards, batch_regimes, attention_weights, predicted_rewards
+                del (
+                    batch_features,
+                    batch_rewards,
+                    batch_regimes,
+                    attention_weights,
+                    predicted_rewards,
+                )
 
         avg_loss = val_loss / max(n_batches, 1)
         return {"val_loss": avg_loss, "n_batches": n_batches}
@@ -289,20 +303,23 @@ class AttentionTrainer:
         n_train = len(dataset) - n_val
 
         train_dataset, val_dataset = torch.utils.data.random_split(
-            dataset, [n_train, n_val],
-            generator=torch.Generator().manual_seed(42)
+            dataset, [n_train, n_val], generator=torch.Generator().manual_seed(42)
         )
 
         # データローダー
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        train_loader = DataLoader(
+            train_dataset, batch_size=self.batch_size, shuffle=True
+        )
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
 
         # トレーニングループ
-        best_val_loss = float('inf')
+        best_val_loss = float("inf")
         patience_counter = 0
         best_model_state = None
 
-        logger.info(f"Starting training for {self.max_epochs} epochs with {n_train} train, {n_val} val samples")
+        logger.info(
+            f"Starting training for {self.max_epochs} epochs with {n_train} train, {n_val} val samples"
+        )
 
         for epoch in range(self.max_epochs):
             # トレーニング
@@ -312,11 +329,7 @@ class AttentionTrainer:
             val_metrics = self.validate(val_loader)
 
             # 履歴記録
-            epoch_metrics = {
-                "epoch": epoch + 1,
-                **train_metrics,
-                **val_metrics
-            }
+            epoch_metrics = {"epoch": epoch + 1, **train_metrics, **val_metrics}
             self.training_history.append(epoch_metrics)
 
             logger.info(
@@ -326,8 +339,8 @@ class AttentionTrainer:
             )
 
             # 早期停止判定
-            if val_metrics['val_loss'] < best_val_loss:
-                best_val_loss = val_metrics['val_loss']
+            if val_metrics["val_loss"] < best_val_loss:
+                best_val_loss = val_metrics["val_loss"]
                 patience_counter = 0
                 best_model_state = self.model.state_dict().copy()
             else:
@@ -339,7 +352,9 @@ class AttentionTrainer:
 
             # メモリログ
             if self.memory_manager and epoch % 5 == 0:
-                self.memory_manager.log_memory_usage(f"attention_trainer_epoch_{epoch + 1}")
+                self.memory_manager.log_memory_usage(
+                    f"attention_trainer_epoch_{epoch + 1}"
+                )
 
         # 最良モデルを復元
         if best_model_state is not None:
@@ -347,13 +362,16 @@ class AttentionTrainer:
 
         # モデル保存
         if self.model_save_path:
-            torch.save({
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'training_history': self.training_history,
-                'n_features': self.n_features,
-                'hidden_dim': self.hidden_dim,
-            }, self.model_save_path)
+            torch.save(
+                {
+                    "model_state_dict": self.model.state_dict(),
+                    "optimizer_state_dict": self.optimizer.state_dict(),
+                    "training_history": self.training_history,
+                    "n_features": self.n_features,
+                    "hidden_dim": self.hidden_dim,
+                },
+                self.model_save_path,
+            )
             logger.info(f"Model saved to {self.model_save_path}")
 
         final_metrics = self.training_history[-1] if self.training_history else {}
@@ -361,7 +379,7 @@ class AttentionTrainer:
             "success": True,
             "final_metrics": final_metrics,
             "training_history": self.training_history,
-            "best_val_loss": best_val_loss
+            "best_val_loss": best_val_loss,
         }
 
     def get_attention_weights(self, features: np.ndarray) -> np.ndarray:
@@ -376,7 +394,9 @@ class AttentionTrainer:
         """
         self.model.eval()
         with torch.no_grad():
-            features_tensor = torch.FloatTensor(features).unsqueeze(0)  # (1, n_features)
+            features_tensor = torch.FloatTensor(features).unsqueeze(
+                0
+            )  # (1, n_features)
             weights = self.model(features_tensor).squeeze(0).numpy()  # (n_features,)
 
         return weights
@@ -393,9 +413,9 @@ class AttentionTrainer:
         """
         try:
             checkpoint = torch.load(model_path)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            self.training_history = checkpoint.get('training_history', [])
+            self.model.load_state_dict(checkpoint["model_state_dict"])
+            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            self.training_history = checkpoint.get("training_history", [])
             logger.info(f"Model loaded from {model_path}")
             return True
         except Exception as e:
@@ -404,9 +424,7 @@ class AttentionTrainer:
 
 
 def create_attention_trainer(
-    n_features: int,
-    config: Optional[Dict[str, Any]] = None,
-    memory_manager=None
+    n_features: int, config: Optional[Dict[str, Any]] = None, memory_manager=None
 ) -> AttentionTrainer:
     """
     注意モデルトレーナーを作成
@@ -424,11 +442,11 @@ def create_attention_trainer(
 
     return AttentionTrainer(
         n_features=n_features,
-        hidden_dim=config.get('hidden_dim', 64),
-        learning_rate=config.get('learning_rate', 1e-4),
-        batch_size=config.get('batch_size', 32),
-        max_epochs=config.get('max_epochs', 50),
-        patience=config.get('patience', 10),
-        model_save_path=config.get('model_save_path'),
+        hidden_dim=config.get("hidden_dim", 64),
+        learning_rate=config.get("learning_rate", 1e-4),
+        batch_size=config.get("batch_size", 32),
+        max_epochs=config.get("max_epochs", 50),
+        patience=config.get("patience", 10),
+        model_save_path=config.get("model_save_path"),
         memory_manager=memory_manager,
     )

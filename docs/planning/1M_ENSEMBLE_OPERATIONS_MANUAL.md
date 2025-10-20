@@ -1,7 +1,7 @@
 # 1M学習アンサンブル運用マニュアル
 
-**目的**: CustomPPO横展開完了後、1M学習×アンサンブルで儲かるモデルを探す  
-**中間目標**: 反復学習に最適な設定を見つけ、学習バッチを回す  
+**目的**: CustomPPO横展開完了後、1M学習×アンサンブルで儲かるモデルを探す
+**中間目標**: 反復学習に最適な設定を見つけ、学習バッチを回す
 **作成日**: 2025年10月7日
 
 ---
@@ -11,8 +11,8 @@
 ### 前提条件
 
 ✅ CustomPPO横展開完了
-✅ PAN/Target Entropy/Reverse-as-Close実装済み  
-✅ データ準備完了: `ml-dataset-enhanced.csv`  
+✅ PAN/Target Entropy/Reverse-as-Close実装済み
+✅ データ準備完了: `ml-dataset-enhanced.csv`
 ✅ 既存のアンサンブル実装: `ztb/training/ensemble.py`
 
 ### Step 1: プレフライト・ゲート
@@ -27,7 +27,7 @@ python scripts/preflight_schema_scaler_check.py \
 **期待結果**:
 ```
 ✅ Feature schema valid
-✅ Scaler statistics valid  
+✅ Scaler statistics valid
 ✅ Config fingerprint valid
 ```
 
@@ -75,7 +75,7 @@ CustomPPOの設定を活かしつつ、以下の軸で多様化:
 
 **必須**:
 - `legal_sell_rate` (移動平均)
-- `grad_norm(SELL)` 
+- `grad_norm(SELL)`
 - `adv_mean(SELL)`
 - `entropy` (target達成率)
 - `KL violations`
@@ -331,6 +331,6 @@ python run_smoke_test.py --config smoke_test_10k_ensemble_A.json
 
 ---
 
-**作成者**: GitHub Copilot  
-**最終更新**: 2025年10月7日  
+**作成者**: GitHub Copilot
+**最終更新**: 2025年10月7日
 **ステータス**: 運用準備完了

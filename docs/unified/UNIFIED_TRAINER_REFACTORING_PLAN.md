@@ -63,19 +63,19 @@ ztb/training/
 ```python
 class ConfigBuilder:
     """設定構築の統一インターフェース"""
-    
+
     @staticmethod
     def build_memory_optimization_config(config: dict) -> dict:
         """メモリ最適化設定を構築"""
-        
+
     @staticmethod
     def build_environment_config(config: dict) -> dict:
         """環境設定を構築"""
-        
+
     @staticmethod
     def build_ppo_config(config: dict) -> dict:
         """PPO設定を構築"""
-        
+
     @staticmethod
     def build_unified_config(config: dict) -> dict:
         """統合設定を構築"""
@@ -95,7 +95,7 @@ class ConfigBuilder:
 ```python
 class PPOAlgorithm(BaseRLAlgorithm):
     """PPO実装（完全版）"""
-    
+
     def train_full(
         self,
         config: dict,
@@ -105,7 +105,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
     ) -> BaseAlgorithm:
         """
         完全なPPO訓練パイプライン。
-        
+
         既存の_train_ppo()のロジックを統合。
         - チェックポイント管理
         - TensorBoardログ
@@ -124,37 +124,37 @@ class PPOAlgorithm(BaseRLAlgorithm):
 class UnifiedTrainer:
     """
     統一訓練インターフェース。
-    
+
     全てのアルゴリズムをAlgorithmFactoryで管理。
     設定構築はConfigBuilderに委譲。
     """
-    
+
     def __init__(self, config: dict, **kwargs):
         self.config = config
         self.config_builder = ConfigBuilder()
-        
+
         # 🆕 アルゴリズムを動的に選択
         algorithm_name = config.get("algorithm", "ppo")
         self.algorithm = AlgorithmFactory.create(algorithm_name)
-    
+
     def train(self) -> TrainingResult:
         """訓練実行（薄いラッパー）"""
         # 設定構築
         unified_config = self.config_builder.build_unified_config(self.config)
-        
+
         # アルゴリズムに委譲
         if self.algorithm.algorithm_name == "ppo":
             return self._train_with_algorithm(unified_config)
         # 他のアルゴリズムも同様
-    
+
     def _train_with_algorithm(self, config: dict) -> TrainingResult:
         """アルゴリズムを使用した訓練"""
         # 環境作成
         env = self._create_environment(config)
-        
+
         # モデル作成
         model = self.algorithm.create_model(env, config)
-        
+
         # 訓練実行
         return self.algorithm.train(model, config["total_timesteps"])
 ```
@@ -218,7 +218,7 @@ unified_trainer.py: 200行以下
   - AlgorithmFactory使用
   - 薄いラッパー層
   - 設定構築はConfigBuilderに委譲
-  
+
 algorithms/ppo/: PPOロジック集約
 core/config_builder.py: 設定構築統一
 ```

@@ -1,0 +1,2651 @@
+{
+  "stage": "balanced_transition",
+  "best_parameters": {
+    "balance_penalty_tolerance": 0.10135888262994393,
+    "balance_penalty": 9.178427923671412,
+    "hold_penalty_rate": 0.0020351081655726752,
+    "trading_bonus_multiplier": 4.485146035654435,
+    "trading_bonus": 0.08209449045343148,
+    "profit_weight": 0.19031403184821324,
+    "risk_weight": 0.3208167220426478,
+    "consistency_weight": 0.5562047043056546
+  },
+  "best_scores": {
+    "profit": -0.0024774412164265402,
+    "sharpe": -0.7487068886514632,
+    "win_rate": 0.5678,
+    "consistency": 0.9996475011672523,
+    "max_drawdown": -0.13475874849802214,
+    "volatility": -0.03992985004864567,
+    "profit_factor": 2.9998528852105317,
+    "calmar_ratio": -0.024666925222613684,
+    "sortino_ratio": 0.003411629386423624,
+    "recovery_factor": -0.024666925222613684
+  },
+  "objectives": [
+    "profit",
+    "sharpe",
+    "win_rate",
+    "consistency"
+  ],
+  "constraints": {},
+  "optimization_time": 179.6792175769806,
+  "convergence_info": {
+    "n_trials": 100,
+    "best_trial_number": 55,
+    "study_best_value": 0.03467301938298403,
+    "study_best_params": {
+      "balance_penalty_tolerance": 0.10135888262994393,
+      "balance_penalty": 9.178427923671412,
+      "hold_penalty_rate": 0.0020351081655726752,
+      "trading_bonus_multiplier": 4.485146035654435,
+      "trading_bonus": 0.08209449045343148,
+      "profit_weight": 0.19031403184821324,
+      "risk_weight": 0.3208167220426478,
+      "consistency_weight": 0.5562047043056546
+    }
+  },
+  "optimization_history": [
+    {
+      "trial_number": 0,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08116262258099886,
+        "balance_penalty": 19.063571821788408,
+        "hold_penalty_rate": 0.029106359131330698,
+        "trading_bonus_multiplier": 3.3946339367881464,
+        "trading_bonus": 0.0020513382630874496,
+        "profit_weight": 0.39638958863878504,
+        "risk_weight": 0.21035886311957896,
+        "consistency_weight": 1.745734676972377
+      },
+      "scores": {
+        "profit": 0.003588616255701199,
+        "sharpe": -0.7841450631181714,
+        "win_rate": 0.226925,
+        "consistency": 0.9996484102262279,
+        "max_drawdown": -0.15064424335532983,
+        "volatility": -0.04046529574070455,
+        "profit_factor": 0.43121968141692796,
+        "calmar_ratio": 0.00828100089661465,
+        "sortino_ratio": -0.002832625395070911,
+        "recovery_factor": 0.00828100089661465
+      },
+      "timestamp": "2025-10-19T04:28:52.801952"
+    },
+    {
+      "trial_number": 1,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12421185223120967,
+        "balance_penalty": 14.453378978124864,
+        "hold_penalty_rate": 0.0010994335574766201,
+        "trading_bonus_multiplier": 4.879639408647977,
+        "trading_bonus": 0.04622589001020832,
+        "profit_weight": 0.5034443102887247,
+        "risk_weight": 0.4454674376934912,
+        "consistency_weight": 0.4484685687215243
+      },
+      "scores": {
+        "profit": -0.001953590892451451,
+        "sharpe": -0.7110424061461879,
+        "win_rate": 0.5709,
+        "consistency": 0.9996551967824279,
+        "max_drawdown": -0.12998539419213453,
+        "volatility": -0.03914840639534918,
+        "profit_factor": 2.6126413767157306,
+        "calmar_ratio": 0.01405998556052224,
+        "sortino_ratio": -0.030375422032773675,
+        "recovery_factor": 0.01405998556052224
+      },
+      "timestamp": "2025-10-19T04:28:54.494057"
+    },
+    {
+      "trial_number": 2,
+      "parameters": {
+        "balance_penalty_tolerance": 0.06780602616231217,
+        "balance_penalty": 10.97037220101252,
+        "hold_penalty_rate": 0.007309539835912915,
+        "trading_bonus_multiplier": 2.1649165607921677,
+        "trading_bonus": 0.01673808578875214,
+        "profit_weight": 0.3650383352388795,
+        "risk_weight": 0.6550748322169144,
+        "consistency_weight": 0.7960875022580142
+      },
+      "scores": {
+        "profit": -0.012083523347506064,
+        "sharpe": -0.7740743815535712,
+        "win_rate": 0.437025,
+        "consistency": 0.9996561338008342,
+        "max_drawdown": -0.12887823069292392,
+        "volatility": -0.03934580471834151,
+        "profit_factor": 1.0596968235437236,
+        "calmar_ratio": 0.18488992169350218,
+        "sortino_ratio": -0.020190976793583,
+        "recovery_factor": 0.18488992169350218
+      },
+      "timestamp": "2025-10-19T04:28:56.266272"
+    },
+    {
+      "trial_number": 3,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09665329700123683,
+        "balance_penalty": 15.918343266467259,
+        "hold_penalty_rate": 0.002508115686045232,
+        "trading_bonus_multiplier": 3.0569377536544464,
+        "trading_bonus": 0.015304852121831466,
+        "profit_weight": 0.18825578416799568,
+        "risk_weight": 1.254335218612733,
+        "consistency_weight": 0.4239958350058539
+      },
+      "scores": {
+        "profit": 0.010457890170671863,
+        "sharpe": -0.7390213030035075,
+        "win_rate": 0.507475,
+        "consistency": 0.9996409648742557,
+        "max_drawdown": -0.14070334009718163,
+        "volatility": -0.040709355499591864,
+        "profit_factor": 1.4608016889698094,
+        "calmar_ratio": 0.11115805021978241,
+        "sortino_ratio": 0.0016119265950715455,
+        "recovery_factor": 0.11115805021978241
+      },
+      "timestamp": "2025-10-19T04:28:57.939563"
+    },
+    {
+      "trial_number": 4,
+      "parameters": {
+        "balance_penalty_tolerance": 0.02235980266720311,
+        "balance_penalty": 19.02882520781333,
+        "hold_penalty_rate": 0.08536189862866832,
+        "trading_bonus_multiplier": 4.233589392465845,
+        "trading_bonus": 0.0040665633135147945,
+        "profit_weight": 0.2855770166121293,
+        "risk_weight": 1.400042750373098,
+        "consistency_weight": 0.9362897381052424
+      },
+      "scores": {
+        "profit": -0.007161043975652648,
+        "sharpe": -0.7447233388647156,
+        "win_rate": 0.187,
+        "consistency": 0.9996451379015346,
+        "max_drawdown": -0.13106583704568478,
+        "volatility": -0.041173874443979463,
+        "profit_factor": 0.18657512061808185,
+        "calmar_ratio": -0.07748547385216299,
+        "sortino_ratio": 0.007134661003889583,
+        "recovery_factor": -0.07748547385216299
+      },
+      "timestamp": "2025-10-19T04:28:59.723300"
+    },
+    {
+      "trial_number": 5,
+      "parameters": {
+        "balance_penalty_tolerance": 0.03318726462050798,
+        "balance_penalty": 10.408361292114133,
+        "hold_penalty_rate": 0.001171593739230706,
+        "trading_bonus_multiplier": 4.637281608315128,
+        "trading_bonus": 0.0032927591344236173,
+        "profit_weight": 1.3587923402725657,
+        "risk_weight": 0.6922510445698807,
+        "consistency_weight": 1.0881292402378406
+      },
+      "scores": {
+        "profit": -0.02320798930228596,
+        "sharpe": -0.7379251918010847,
+        "win_rate": 0.5177750000000001,
+        "consistency": 0.9996402516286342,
+        "max_drawdown": -0.15068656086439167,
+        "volatility": -0.041353084000419336,
+        "profit_factor": 1.5911747848647884,
+        "calmar_ratio": -0.18384552804643794,
+        "sortino_ratio": -0.032794301307010734,
+        "recovery_factor": -0.18384552804643794
+      },
+      "timestamp": "2025-10-19T04:29:01.376742"
+    },
+    {
+      "trial_number": 6,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11387495307522313,
+        "balance_penalty": 4.512234654985013,
+        "hold_penalty_rate": 0.08692991511139551,
+        "trading_bonus_multiplier": 4.100531293444458,
+        "trading_bonus": 0.0756829206016762,
+        "profit_weight": 1.8001719658125328,
+        "risk_weight": 1.2360099597410619,
+        "consistency_weight": 1.851561046543922
+      },
+      "scores": {
+        "profit": 0.0018361194331980302,
+        "sharpe": -0.7016352110646785,
+        "win_rate": 0.241475,
+        "consistency": 0.9996215162781114,
+        "max_drawdown": -0.1503237833408125,
+        "volatility": -0.043515456861518455,
+        "profit_factor": 0.3124412848449104,
+        "calmar_ratio": 0.06772812714933467,
+        "sortino_ratio": 0.02938358832041595,
+        "recovery_factor": 0.06772812714933467
+      },
+      "timestamp": "2025-10-19T04:29:03.164259"
+    },
+    {
+      "trial_number": 7,
+      "parameters": {
+        "balance_penalty_tolerance": 0.026813575389864702,
+        "balance_penalty": 4.723674385963759,
+        "hold_penalty_rate": 0.0012315571723666018,
+        "trading_bonus_multiplier": 2.3013213230530574,
+        "trading_bonus": 0.0059890036722543005,
+        "profit_weight": 0.6155631603704022,
+        "risk_weight": 1.6746012673886657,
+        "consistency_weight": 0.7778313207178196
+      },
+      "scores": {
+        "profit": -0.0011545324024579695,
+        "sharpe": -0.7152624509203614,
+        "win_rate": 0.5039750000000001,
+        "consistency": 0.9996386568898958,
+        "max_drawdown": -0.15388849055303816,
+        "volatility": -0.0411797234216936,
+        "profit_factor": 1.2960011769785116,
+        "calmar_ratio": 0.00026496129993786033,
+        "sortino_ratio": 0.008963415745973124,
+        "recovery_factor": 0.00026496129993786033
+      },
+      "timestamp": "2025-10-19T04:29:04.851939"
+    },
+    {
+      "trial_number": 8,
+      "parameters": {
+        "balance_penalty_tolerance": 0.06337755684060234,
+        "balance_penalty": 11.31122558000672,
+        "hold_penalty_rate": 0.00191358804876923,
+        "trading_bonus_multiplier": 4.208787923016159,
+        "trading_bonus": 0.0014096175149815868,
+        "profit_weight": 1.975085179540983,
+        "risk_weight": 1.5672650616636492,
+        "consistency_weight": 0.4775597949149275
+      },
+      "scores": {
+        "profit": 0.011244786663923645,
+        "sharpe": -0.7004143573784012,
+        "win_rate": 0.501625,
+        "consistency": 0.9996365851974889,
+        "max_drawdown": -0.13626376147464414,
+        "volatility": -0.04110730198331383,
+        "profit_factor": 1.4534789031323891,
+        "calmar_ratio": 0.043060085830928005,
+        "sortino_ratio": 0.004093328749672559,
+        "recovery_factor": 0.043060085830928005
+      },
+      "timestamp": "2025-10-19T04:29:06.636696"
+    },
+    {
+      "trial_number": 9,
+      "parameters": {
+        "balance_penalty_tolerance": 0.011049202253484457,
+        "balance_penalty": 16.49376714064185,
+        "hold_penalty_rate": 0.025924756604751596,
+        "trading_bonus_multiplier": 3.9160286721639492,
+        "trading_bonus": 0.034877126245459314,
+        "profit_weight": 0.2406848382947717,
+        "risk_weight": 0.7810848842341179,
+        "consistency_weight": 0.3201512130977464
+      },
+      "scores": {
+        "profit": 0.010191295570670111,
+        "sharpe": -0.7700031245881266,
+        "win_rate": 0.2837,
+        "consistency": 0.999662397277004,
+        "max_drawdown": -0.12471852905750626,
+        "volatility": -0.039094795605401016,
+        "profit_factor": 0.6783816986026432,
+        "calmar_ratio": 0.1685518841557545,
+        "sortino_ratio": 0.00898390315490695,
+        "recovery_factor": 0.1685518841557545
+      },
+      "timestamp": "2025-10-19T04:29:08.307111"
+    },
+    {
+      "trial_number": 10,
+      "parameters": {
+        "balance_penalty_tolerance": 0.17919092342918047,
+        "balance_penalty": 1.11394647616053,
+        "hold_penalty_rate": 0.0054633314034851915,
+        "trading_bonus_multiplier": 1.07184750245928,
+        "trading_bonus": 0.09232673529912831,
+        "profit_weight": 0.9027330223985253,
+        "risk_weight": 0.1296301193510664,
+        "consistency_weight": 0.12338434072519688
+      },
+      "scores": {
+        "profit": -0.006397809663842707,
+        "sharpe": -0.7386103961440317,
+        "win_rate": 0.49892499999999995,
+        "consistency": 0.9996572673908346,
+        "max_drawdown": -0.15128615322370123,
+        "volatility": -0.03837539674387672,
+        "profit_factor": 1.9679081950508654,
+        "calmar_ratio": -0.10523322112891513,
+        "sortino_ratio": -0.013847400869232827,
+        "recovery_factor": -0.10523322112891513
+      },
+      "timestamp": "2025-10-19T04:29:10.010821"
+    },
+    {
+      "trial_number": 11,
+      "parameters": {
+        "balance_penalty_tolerance": 0.15148557089563977,
+        "balance_penalty": 11.48258691541505,
+        "hold_penalty_rate": 0.002827166743688736,
+        "trading_bonus_multiplier": 4.783238879894851,
+        "trading_bonus": 0.001391542225189727,
+        "profit_weight": 1.7920260567511948,
+        "risk_weight": 1.9039937630465884,
+        "consistency_weight": 0.5561265079634419
+      },
+      "scores": {
+        "profit": -0.026834358371918138,
+        "sharpe": -0.8384865828337604,
+        "win_rate": 0.49770000000000003,
+        "consistency": 0.9996757807982786,
+        "max_drawdown": -0.12330664167602938,
+        "volatility": -0.03748960139497416,
+        "profit_factor": 1.478182994752129,
+        "calmar_ratio": -0.20728106174375135,
+        "sortino_ratio": -0.04309347170456156,
+        "recovery_factor": -0.20728106174375135
+      },
+      "timestamp": "2025-10-19T04:29:11.790528"
+    },
+    {
+      "trial_number": 12,
+      "parameters": {
+        "balance_penalty_tolerance": 0.13471250942527163,
+        "balance_penalty": 13.445102826438138,
+        "hold_penalty_rate": 0.002652066727670516,
+        "trading_bonus_multiplier": 4.882175921905896,
+        "trading_bonus": 0.03827706807163491,
+        "profit_weight": 1.1730532540279044,
+        "risk_weight": 1.5789664470203069,
+        "consistency_weight": 1.340094280427464
+      },
+      "scores": {
+        "profit": 0.006588875561279239,
+        "sharpe": -0.7545031022527176,
+        "win_rate": 0.5431250000000001,
+        "consistency": 0.9996482590542951,
+        "max_drawdown": -0.13969333635992476,
+        "volatility": -0.039673764568681644,
+        "profit_factor": 2.2004890116538816,
+        "calmar_ratio": 0.0720982707833269,
+        "sortino_ratio": -0.019002746480311264,
+        "recovery_factor": 0.0720982707833269
+      },
+      "timestamp": "2025-10-19T04:29:13.505513"
+    },
+    {
+      "trial_number": 13,
+      "parameters": {
+        "balance_penalty_tolerance": 0.0760503517943507,
+        "balance_penalty": 7.85993510719257,
+        "hold_penalty_rate": 0.0010284877277722585,
+        "trading_bonus_multiplier": 3.6117190001639137,
+        "trading_bonus": 0.01067691650141012,
+        "profit_weight": 1.5327491806941524,
+        "risk_weight": 0.9324473182331552,
+        "consistency_weight": 0.10994279864465473
+      },
+      "scores": {
+        "profit": 0.0018983716199272027,
+        "sharpe": -0.8447380747667995,
+        "win_rate": 0.526,
+        "consistency": 0.9996613290881976,
+        "max_drawdown": -0.13479504564347844,
+        "volatility": -0.038525020234157506,
+        "profit_factor": 1.5683596696598319,
+        "calmar_ratio": -0.03468911178922215,
+        "sortino_ratio": -0.05473403365248952,
+        "recovery_factor": -0.03468911178922215
+      },
+      "timestamp": "2025-10-19T04:29:15.313474"
+    },
+    {
+      "trial_number": 14,
+      "parameters": {
+        "balance_penalty_tolerance": 0.05268791872895967,
+        "balance_penalty": 14.3939711371687,
+        "hold_penalty_rate": 0.00421182067227647,
+        "trading_bonus_multiplier": 4.990851371537367,
+        "trading_bonus": 0.0010623818229569288,
+        "profit_weight": 0.8045273232847018,
+        "risk_weight": 0.4259913954766036,
+        "consistency_weight": 0.5422870499593007
+      },
+      "scores": {
+        "profit": -0.043229628098305634,
+        "sharpe": -0.7745385588123787,
+        "win_rate": 0.480425,
+        "consistency": 0.9996710586857085,
+        "max_drawdown": -0.13931052755228224,
+        "volatility": -0.037073512420487655,
+        "profit_factor": 1.394950230855675,
+        "calmar_ratio": -0.29348030000657005,
+        "sortino_ratio": -0.047419411360521156,
+        "recovery_factor": -0.29348030000657005
+      },
+      "timestamp": "2025-10-19T04:29:17.156084"
+    },
+    {
+      "trial_number": 15,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12332780557099275,
+        "balance_penalty": 8.106430506674023,
+        "hold_penalty_rate": 0.013109833200274265,
+        "trading_bonus_multiplier": 4.316758203445646,
+        "trading_bonus": 0.030360322629674162,
+        "profit_weight": 0.6467999964385831,
+        "risk_weight": 1.8933849712921442,
+        "consistency_weight": 0.6748471716115794
+      },
+      "scores": {
+        "profit": -0.01162400678640746,
+        "sharpe": -0.816138747733886,
+        "win_rate": 0.395525,
+        "consistency": 0.99965814792988,
+        "max_drawdown": -0.1194832612703261,
+        "volatility": -0.039103098572004724,
+        "profit_factor": 1.1414287717801177,
+        "calmar_ratio": -0.08807661327213304,
+        "sortino_ratio": -0.007979144671259392,
+        "recovery_factor": -0.08807661327213304
+      },
+      "timestamp": "2025-10-19T04:29:18.946074"
+    },
+    {
+      "trial_number": 16,
+      "parameters": {
+        "balance_penalty_tolerance": 0.18813662027954425,
+        "balance_penalty": 13.16812931105586,
+        "hold_penalty_rate": 0.00185191916669119,
+        "trading_bonus_multiplier": 2.6337876182916604,
+        "trading_bonus": 0.008141866723780769,
+        "profit_weight": 1.9568062846306482,
+        "risk_weight": 1.0588162019209881,
+        "consistency_weight": 1.3149900859146677
+      },
+      "scores": {
+        "profit": -0.00021482734440497753,
+        "sharpe": -0.8402796623012836,
+        "win_rate": 0.498525,
+        "consistency": 0.9996732392443403,
+        "max_drawdown": -0.1339678199824244,
+        "volatility": -0.0375472402643683,
+        "profit_factor": 1.3156102982327484,
+        "calmar_ratio": -0.029175806380236577,
+        "sortino_ratio": -0.03300793365481508,
+        "recovery_factor": -0.029175806380236577
+      },
+      "timestamp": "2025-10-19T04:29:21.022584"
+    },
+    {
+      "trial_number": 17,
+      "parameters": {
+        "balance_penalty_tolerance": 0.1550122755931114,
+        "balance_penalty": 16.885383480761142,
+        "hold_penalty_rate": 0.013336003906909687,
+        "trading_bonus_multiplier": 3.6667015829266694,
+        "trading_bonus": 0.002447836198221041,
+        "profit_weight": 1.1632701968838886,
+        "risk_weight": 0.4258313341229127,
+        "consistency_weight": 0.2859432127328291
+      },
+      "scores": {
+        "profit": -0.00961166025077248,
+        "sharpe": -0.8543897876145984,
+        "win_rate": 0.35729999999999995,
+        "consistency": 0.9996633552740932,
+        "max_drawdown": -0.1367261294621463,
+        "volatility": -0.03837939119594777,
+        "profit_factor": 0.7968436303298293,
+        "calmar_ratio": -0.005712730267764088,
+        "sortino_ratio": -0.012769059736761693,
+        "recovery_factor": -0.005712730267764088
+      },
+      "timestamp": "2025-10-19T04:29:23.210176"
+    },
+    {
+      "trial_number": 18,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09868425484514431,
+        "balance_penalty": 8.725976300731611,
+        "hold_penalty_rate": 0.0017721366292267622,
+        "trading_bonus_multiplier": 4.444829983702475,
+        "trading_bonus": 0.06186821524659135,
+        "profit_weight": 1.5972370142070431,
+        "risk_weight": 1.6104850672581545,
+        "consistency_weight": 1.220121154798027
+      },
+      "scores": {
+        "profit": -0.01781187078638427,
+        "sharpe": -0.7332233459101072,
+        "win_rate": 0.5661750000000001,
+        "consistency": 0.9996557470623344,
+        "max_drawdown": -0.13262202138388327,
+        "volatility": -0.03959530526772705,
+        "profit_factor": 2.648939019668825,
+        "calmar_ratio": -0.16407695001971526,
+        "sortino_ratio": -0.026471318693947872,
+        "recovery_factor": -0.16407695001971526
+      },
+      "timestamp": "2025-10-19T04:29:24.886574"
+    },
+    {
+      "trial_number": 19,
+      "parameters": {
+        "balance_penalty_tolerance": 0.051643823487779225,
+        "balance_penalty": 6.017336962785036,
+        "hold_penalty_rate": 0.003866434477198589,
+        "trading_bonus_multiplier": 1.5338646848122597,
+        "trading_bonus": 0.018545949886396296,
+        "profit_weight": 0.6036102831652016,
+        "risk_weight": 0.38054452741299793,
+        "consistency_weight": 1.6498866908881311
+      },
+      "scores": {
+        "profit": -0.010892322890592665,
+        "sharpe": -0.7458939220713522,
+        "win_rate": 0.478925,
+        "consistency": 0.9996233495156378,
+        "max_drawdown": -0.14584015650726784,
+        "volatility": -0.042670307914143335,
+        "profit_factor": 1.1824545563998075,
+        "calmar_ratio": -0.057616802380502256,
+        "sortino_ratio": -0.0053168373226517435,
+        "recovery_factor": -0.057616802380502256
+      },
+      "timestamp": "2025-10-19T04:29:26.701348"
+    },
+    {
+      "trial_number": 20,
+      "parameters": {
+        "balance_penalty_tolerance": 0.1392889418391225,
+        "balance_penalty": 12.391189417191697,
+        "hold_penalty_rate": 0.0016131935720666252,
+        "trading_bonus_multiplier": 3.1109380863446487,
+        "trading_bonus": 0.005199724876777389,
+        "profit_weight": 0.8987440606905385,
+        "risk_weight": 1.0763741993193712,
+        "consistency_weight": 0.8925665669000118
+      },
+      "scores": {
+        "profit": 0.02477802032932841,
+        "sharpe": -0.7255086752904703,
+        "win_rate": 0.5099500000000001,
+        "consistency": 0.9996378928907129,
+        "max_drawdown": -0.14642947051189426,
+        "volatility": -0.04140523799547492,
+        "profit_factor": 1.429255300912662,
+        "calmar_ratio": 0.1299404213597643,
+        "sortino_ratio": 0.01728480829099651,
+        "recovery_factor": 0.1299404213597643
+      },
+      "timestamp": "2025-10-19T04:29:28.378489"
+    },
+    {
+      "trial_number": 21,
+      "parameters": {
+        "balance_penalty_tolerance": 0.14430392853416618,
+        "balance_penalty": 12.092828736771297,
+        "hold_penalty_rate": 0.0017048064997848863,
+        "trading_bonus_multiplier": 3.071269550661432,
+        "trading_bonus": 0.005083493765781723,
+        "profit_weight": 1.0593848342754946,
+        "risk_weight": 1.0829698739067268,
+        "consistency_weight": 0.877102035033615
+      },
+      "scores": {
+        "profit": -0.0002149684108217198,
+        "sharpe": -0.6944170925247675,
+        "win_rate": 0.508375,
+        "consistency": 0.9996512139630489,
+        "max_drawdown": -0.12969960506601075,
+        "volatility": -0.039927749978837086,
+        "profit_factor": 1.4023576809175515,
+        "calmar_ratio": 0.10643583066563653,
+        "sortino_ratio": 0.00418638173657146,
+        "recovery_factor": 0.10643583066563653
+      },
+      "timestamp": "2025-10-19T04:29:30.091104"
+    },
+    {
+      "trial_number": 22,
+      "parameters": {
+        "balance_penalty_tolerance": 0.17159716473489361,
+        "balance_penalty": 15.053968632570585,
+        "hold_penalty_rate": 0.0015904965771652922,
+        "trading_bonus_multiplier": 3.816650656503539,
+        "trading_bonus": 0.0021216907439465566,
+        "profit_weight": 0.9148280506338138,
+        "risk_weight": 1.381439501961678,
+        "consistency_weight": 0.5825026268743343
+      },
+      "scores": {
+        "profit": -0.0022240096898434036,
+        "sharpe": -0.8444089680578878,
+        "win_rate": 0.502375,
+        "consistency": 0.9996799688993196,
+        "max_drawdown": -0.12092687096064292,
+        "volatility": -0.03703685659027993,
+        "profit_factor": 1.3844277968496217,
+        "calmar_ratio": -0.05920236742491785,
+        "sortino_ratio": -0.017319269558210646,
+        "recovery_factor": -0.05920236742491785
+      },
+      "timestamp": "2025-10-19T04:29:31.846263"
+    },
+    {
+      "trial_number": 23,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12556959697220837,
+        "balance_penalty": 10.589571245808834,
+        "hold_penalty_rate": 0.0030886154780809722,
+        "trading_bonus_multiplier": 3.3912615387370577,
+        "trading_bonus": 0.008346489771885327,
+        "profit_weight": 0.4811434958243993,
+        "risk_weight": 0.8475656591090005,
+        "consistency_weight": 0.39034392988766436
+      },
+      "scores": {
+        "profit": -0.009570429041497797,
+        "sharpe": -0.8241276261962861,
+        "win_rate": 0.493275,
+        "consistency": 0.9996679397885504,
+        "max_drawdown": -0.12012288056960241,
+        "volatility": -0.03749981199784172,
+        "profit_factor": 1.3529498613811843,
+        "calmar_ratio": -0.012074418057781096,
+        "sortino_ratio": -0.004389090711599568,
+        "recovery_factor": -0.012074418057781096
+      },
+      "timestamp": "2025-10-19T04:29:33.562353"
+    },
+    {
+      "trial_number": 24,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10863076362678975,
+        "balance_penalty": 13.09527436107009,
+        "hold_penalty_rate": 0.006225894114976018,
+        "trading_bonus_multiplier": 4.588098510934357,
+        "trading_bonus": 0.0013844785409486637,
+        "profit_weight": 0.7408289989349199,
+        "risk_weight": 0.5925252566651059,
+        "consistency_weight": 1.0397829491574495
+      },
+      "scores": {
+        "profit": -0.009578253159119032,
+        "sharpe": -0.7417886535345379,
+        "win_rate": 0.44765,
+        "consistency": 0.9996657684686343,
+        "max_drawdown": -0.13280835103884542,
+        "volatility": -0.03858895673815363,
+        "profit_factor": 1.2098904061454432,
+        "calmar_ratio": -0.042298699798610964,
+        "sortino_ratio": -0.02285718782313654,
+        "recovery_factor": -0.042298699798610964
+      },
+      "timestamp": "2025-10-19T04:29:35.343194"
+    },
+    {
+      "trial_number": 25,
+      "parameters": {
+        "balance_penalty_tolerance": 0.19986576064591677,
+        "balance_penalty": 9.297609965947172,
+        "hold_penalty_rate": 0.0021395920272877776,
+        "trading_bonus_multiplier": 2.65836702637975,
+        "trading_bonus": 0.003240703021476794,
+        "profit_weight": 1.3517189867655026,
+        "risk_weight": 1.7295555357223764,
+        "consistency_weight": 0.6989298642430124
+      },
+      "scores": {
+        "profit": -0.0176328478093761,
+        "sharpe": -0.8288967065263491,
+        "win_rate": 0.492325,
+        "consistency": 0.9996627386032166,
+        "max_drawdown": -0.1203483405211694,
+        "volatility": -0.038039403888601185,
+        "profit_factor": 1.2184825700972648,
+        "calmar_ratio": -0.2130394567410101,
+        "sortino_ratio": -0.058937966244851724,
+        "recovery_factor": -0.2130394567410101
+      },
+      "timestamp": "2025-10-19T04:29:37.073237"
+    },
+    {
+      "trial_number": 26,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08854320531700266,
+        "balance_penalty": 17.865331183742818,
+        "hold_penalty_rate": 0.001297226296283938,
+        "trading_bonus_multiplier": 4.068657621448033,
+        "trading_bonus": 0.023172708313746654,
+        "profit_weight": 1.3483430964499536,
+        "risk_weight": 1.4429825645489325,
+        "consistency_weight": 0.2571290028480829
+      },
+      "scores": {
+        "profit": 0.029848238612943556,
+        "sharpe": -0.781686729048326,
+        "win_rate": 0.540925,
+        "consistency": 0.9996549782800256,
+        "max_drawdown": -0.13307704247200058,
+        "volatility": -0.039783452856246446,
+        "profit_factor": 1.8998526630045327,
+        "calmar_ratio": 0.2570670830563763,
+        "sortino_ratio": 0.025754147759110006,
+        "recovery_factor": 0.2570670830563763
+      },
+      "timestamp": "2025-10-19T04:29:38.869442"
+    },
+    {
+      "trial_number": 27,
+      "parameters": {
+        "balance_penalty_tolerance": 0.16134501465095805,
+        "balance_penalty": 14.43616857415134,
+        "hold_penalty_rate": 0.004105437244577732,
+        "trading_bonus_multiplier": 1.766420958896818,
+        "trading_bonus": 0.05616467521117216,
+        "profit_weight": 0.12640536054013185,
+        "risk_weight": 1.2235483978665687,
+        "consistency_weight": 1.5002115542301673
+      },
+      "scores": {
+        "profit": -0.005965331333302043,
+        "sharpe": -0.8107800354426529,
+        "win_rate": 0.5067,
+        "consistency": 0.9996486124371367,
+        "max_drawdown": -0.13944970415495211,
+        "volatility": -0.040389915068078,
+        "profit_factor": 1.6952153864907777,
+        "calmar_ratio": -0.09274390188559369,
+        "sortino_ratio": -0.021178807399260008,
+        "recovery_factor": -0.09274390188559369
+      },
+      "timestamp": "2025-10-19T04:29:40.599689"
+    },
+    {
+      "trial_number": 28,
+      "parameters": {
+        "balance_penalty_tolerance": 0.13618912900670688,
+        "balance_penalty": 12.430814029952991,
+        "hold_penalty_rate": 0.001420464752325649,
+        "trading_bonus_multiplier": 3.3827547556949034,
+        "trading_bonus": 0.012761892556850287,
+        "profit_weight": 0.998699413079381,
+        "risk_weight": 0.9951189086140109,
+        "consistency_weight": 0.4867951410949616
+      },
+      "scores": {
+        "profit": 0.01564086763533326,
+        "sharpe": -0.730271746453603,
+        "win_rate": 0.5231,
+        "consistency": 0.9996580391437482,
+        "max_drawdown": -0.134813815350941,
+        "volatility": -0.03893352564385956,
+        "profit_factor": 1.5692561224114054,
+        "calmar_ratio": 0.06892225677672396,
+        "sortino_ratio": -0.008930815996684403,
+        "recovery_factor": 0.06892225677672396
+      },
+      "timestamp": "2025-10-19T04:29:42.335450"
+    },
+    {
+      "trial_number": 29,
+      "parameters": {
+        "balance_penalty_tolerance": 0.06690750555339699,
+        "balance_penalty": 19.688319616937267,
+        "hold_penalty_rate": 0.02327748277184866,
+        "trading_bonus_multiplier": 2.7599369140142542,
+        "trading_bonus": 0.0070486939264880625,
+        "profit_weight": 0.39552013338012837,
+        "risk_weight": 0.5463708598913533,
+        "consistency_weight": 1.018990494057602
+      },
+      "scores": {
+        "profit": -0.020561093875959724,
+        "sharpe": -0.7968886052272097,
+        "win_rate": 0.263675,
+        "consistency": 0.9996636723523563,
+        "max_drawdown": -0.1274733771530384,
+        "volatility": -0.03954089609073906,
+        "profit_factor": 0.5219028080015605,
+        "calmar_ratio": -0.0994786858394867,
+        "sortino_ratio": -0.054323818838378585,
+        "recovery_factor": -0.0994786858394867
+      },
+      "timestamp": "2025-10-19T04:29:44.060927"
+    },
+    {
+      "trial_number": 30,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08860464847586005,
+        "balance_penalty": 9.739376809648965,
+        "hold_penalty_rate": 0.008485297886167526,
+        "trading_bonus_multiplier": 4.407328689835342,
+        "trading_bonus": 0.0015534094369525056,
+        "profit_weight": 0.5041730531434256,
+        "risk_weight": 0.22575671329729788,
+        "consistency_weight": 0.6602384046661292
+      },
+      "scores": {
+        "profit": 0.024887924561622254,
+        "sharpe": -0.7685040737361558,
+        "win_rate": 0.4216,
+        "consistency": 0.9996721998173013,
+        "max_drawdown": -0.11877307752953471,
+        "volatility": -0.03707583839314382,
+        "profit_factor": 1.055759622511166,
+        "calmar_ratio": 0.21993891651248212,
+        "sortino_ratio": 0.04073714005999857,
+        "recovery_factor": 0.21993891651248212
+      },
+      "timestamp": "2025-10-19T04:29:45.738022"
+    },
+    {
+      "trial_number": 31,
+      "parameters": {
+        "balance_penalty_tolerance": 0.14484981420763565,
+        "balance_penalty": 12.239005671813992,
+        "hold_penalty_rate": 0.0018836745624801047,
+        "trading_bonus_multiplier": 3.150672171191935,
+        "trading_bonus": 0.004987399902447054,
+        "profit_weight": 1.1416216567417128,
+        "risk_weight": 1.1520258432680326,
+        "consistency_weight": 0.8171371978720194
+      },
+      "scores": {
+        "profit": -0.016329831868473588,
+        "sharpe": -0.7969273584933901,
+        "win_rate": 0.5037499999999999,
+        "consistency": 0.9996440176981842,
+        "max_drawdown": -0.14079973364117038,
+        "volatility": -0.04113851773766916,
+        "profit_factor": 1.3548905314673145,
+        "calmar_ratio": -0.04101973026539666,
+        "sortino_ratio": -0.026678897665636993,
+        "recovery_factor": -0.04101973026539666
+      },
+      "timestamp": "2025-10-19T04:29:47.516105"
+    },
+    {
+      "trial_number": 32,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11942976004448078,
+        "balance_penalty": 11.540906313547962,
+        "hold_penalty_rate": 0.0010488101410479347,
+        "trading_bonus_multiplier": 2.1372686217910486,
+        "trading_bonus": 0.00461200370975609,
+        "profit_weight": 0.7993517205492882,
+        "risk_weight": 0.8748816569160072,
+        "consistency_weight": 0.9561131504035296
+      },
+      "scores": {
+        "profit": 0.007623113135725751,
+        "sharpe": -0.665077178409515,
+        "win_rate": 0.5062249999999999,
+        "consistency": 0.9996590620533095,
+        "max_drawdown": -0.13025534929223598,
+        "volatility": -0.03879257866736343,
+        "profit_factor": 1.2470843857663876,
+        "calmar_ratio": 0.035512224607348444,
+        "sortino_ratio": -0.023970359696683294,
+        "recovery_factor": 0.035512224607348444
+      },
+      "timestamp": "2025-10-19T04:29:49.198676"
+    },
+    {
+      "trial_number": 33,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11856053422840587,
+        "balance_penalty": 15.319704141105195,
+        "hold_penalty_rate": 0.0010056816682965336,
+        "trading_bonus_multiplier": 2.1658765540497584,
+        "trading_bonus": 0.0029675389967875184,
+        "profit_weight": 0.774188239684731,
+        "risk_weight": 0.8804693797164606,
+        "consistency_weight": 1.1828352949637284
+      },
+      "scores": {
+        "profit": 0.012480990159551314,
+        "sharpe": -0.724229871517694,
+        "win_rate": 0.505925,
+        "consistency": 0.9996539015099379,
+        "max_drawdown": -0.13813318260846932,
+        "volatility": -0.039425297234536846,
+        "profit_factor": 1.2685916604942051,
+        "calmar_ratio": 0.01794381524017058,
+        "sortino_ratio": -0.03460084101417327,
+        "recovery_factor": 0.01794381524017058
+      },
+      "timestamp": "2025-10-19T04:29:51.004716"
+    },
+    {
+      "trial_number": 34,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10306744304581357,
+        "balance_penalty": 13.966142556861556,
+        "hold_penalty_rate": 0.05060298896547404,
+        "trading_bonus_multiplier": 1.7020195820897022,
+        "trading_bonus": 0.004193959934288725,
+        "profit_weight": 0.8955775642668443,
+        "risk_weight": 0.7297577538528761,
+        "consistency_weight": 0.9533574451839568
+      },
+      "scores": {
+        "profit": 0.025597683451644176,
+        "sharpe": -0.7511393288066444,
+        "win_rate": 0.1714,
+        "consistency": 0.9996536498997823,
+        "max_drawdown": -0.1388290888450093,
+        "volatility": -0.04022892103574858,
+        "profit_factor": 0.2280179430676943,
+        "calmar_ratio": 0.27856637209564944,
+        "sortino_ratio": 0.03305196211767954,
+        "recovery_factor": 0.27856637209564944
+      },
+      "timestamp": "2025-10-19T04:29:52.660045"
+    },
+    {
+      "trial_number": 35,
+      "parameters": {
+        "balance_penalty_tolerance": 0.13145394961146828,
+        "balance_penalty": 10.966159335187388,
+        "hold_penalty_rate": 0.0022096134278915018,
+        "trading_bonus_multiplier": 2.2727529055053277,
+        "trading_bonus": 0.011170125976419887,
+        "profit_weight": 0.4886378493072907,
+        "risk_weight": 1.9966375029680372,
+        "consistency_weight": 0.8028606124926072
+      },
+      "scores": {
+        "profit": -0.012308518528273665,
+        "sharpe": -0.8167301168039507,
+        "win_rate": 0.496625,
+        "consistency": 0.9996568015560888,
+        "max_drawdown": -0.1415013189337969,
+        "volatility": -0.03868257332838155,
+        "profit_factor": 1.2678243460666432,
+        "calmar_ratio": -0.14456589063657166,
+        "sortino_ratio": -0.04660212695306276,
+        "recovery_factor": -0.14456589063657166
+      },
+      "timestamp": "2025-10-19T04:29:54.477006"
+    },
+    {
+      "trial_number": 36,
+      "parameters": {
+        "balance_penalty_tolerance": 0.05710400944032599,
+        "balance_penalty": 6.898985232363576,
+        "hold_penalty_rate": 0.0014079502295520783,
+        "trading_bonus_multiplier": 1.9448607579479045,
+        "trading_bonus": 0.0020097739268741346,
+        "profit_weight": 0.7515647808035866,
+        "risk_weight": 1.3265099684928034,
+        "consistency_weight": 0.4281471408259235
+      },
+      "scores": {
+        "profit": 0.03129695008968039,
+        "sharpe": -0.7490912597478838,
+        "win_rate": 0.502525,
+        "consistency": 0.9996441859356763,
+        "max_drawdown": -0.14015936214850572,
+        "volatility": -0.04008667556492142,
+        "profit_factor": 1.208258828958582,
+        "calmar_ratio": 0.25326895683195055,
+        "sortino_ratio": 0.003253891545671541,
+        "recovery_factor": 0.25326895683195055
+      },
+      "timestamp": "2025-10-19T04:29:56.175371"
+    },
+    {
+      "trial_number": 37,
+      "parameters": {
+        "balance_penalty_tolerance": 0.0416288315291497,
+        "balance_penalty": 18.04117423237431,
+        "hold_penalty_rate": 0.0031528297022154466,
+        "trading_bonus_multiplier": 1.3748565732030436,
+        "trading_bonus": 0.004148335061326009,
+        "profit_weight": 1.0264059162835668,
+        "risk_weight": 0.2948625765341607,
+        "consistency_weight": 1.1767477133643411
+      },
+      "scores": {
+        "profit": 0.002646491661486061,
+        "sharpe": -0.8381496819356624,
+        "win_rate": 0.4708,
+        "consistency": 0.9996682979724395,
+        "max_drawdown": -0.13029073582493217,
+        "volatility": -0.037991338827491034,
+        "profit_factor": 1.0425476325067669,
+        "calmar_ratio": 0.017683510646053172,
+        "sortino_ratio": -0.004360954016528975,
+        "recovery_factor": 0.017683510646053172
+      },
+      "timestamp": "2025-10-19T04:29:57.991401"
+    },
+    {
+      "trial_number": 38,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10889871288620506,
+        "balance_penalty": 10.28975799612901,
+        "hold_penalty_rate": 0.001060612513025417,
+        "trading_bonus_multiplier": 4.631012879293752,
+        "trading_bonus": 0.018465698103506425,
+        "profit_weight": 0.29336127672831913,
+        "risk_weight": 0.5876935443703463,
+        "consistency_weight": 0.9160139377430345
+      },
+      "scores": {
+        "profit": 0.021227840658696845,
+        "sharpe": -0.6726445414254945,
+        "win_rate": 0.5397,
+        "consistency": 0.9996261078690687,
+        "max_drawdown": -0.14567490251950443,
+        "volatility": -0.04203933469486502,
+        "profit_factor": 1.8637015442705196,
+        "calmar_ratio": 0.045678485715465914,
+        "sortino_ratio": 0.017316916931238557,
+        "recovery_factor": 0.045678485715465914
+      },
+      "timestamp": "2025-10-19T04:29:59.682431"
+    },
+    {
+      "trial_number": 39,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11119380606936903,
+        "balance_penalty": 9.407799197724602,
+        "hold_penalty_rate": 0.0010267841704331454,
+        "trading_bonus_multiplier": 4.588238127215202,
+        "trading_bonus": 0.043942594168220134,
+        "profit_weight": 0.32893261009123465,
+        "risk_weight": 0.6282127014778115,
+        "consistency_weight": 0.20872000175996774
+      },
+      "scores": {
+        "profit": 0.013756320117835868,
+        "sharpe": -0.6988699412225209,
+        "win_rate": 0.565575,
+        "consistency": 0.9996661027539713,
+        "max_drawdown": -0.1349785783580117,
+        "volatility": -0.038998984080130736,
+        "profit_factor": 2.4751444280709998,
+        "calmar_ratio": 0.11110631960532007,
+        "sortino_ratio": -0.012568688517203754,
+        "recovery_factor": 0.11110631960532007
+      },
+      "timestamp": "2025-10-19T04:30:01.379440"
+    },
+    {
+      "trial_number": 40,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11267862396154514,
+        "balance_penalty": 6.8494461819305466,
+        "hold_penalty_rate": 0.0010465222101272045,
+        "trading_bonus_multiplier": 4.6889689395945835,
+        "trading_bonus": 0.045552104051753244,
+        "profit_weight": 0.3052397918853065,
+        "risk_weight": 0.5634810226389302,
+        "consistency_weight": 0.221596663124819
+      },
+      "scores": {
+        "profit": -0.0193609228965288,
+        "sharpe": -0.8315827051819258,
+        "win_rate": 0.560375,
+        "consistency": 0.9996671122839005,
+        "max_drawdown": -0.13758460593260974,
+        "volatility": -0.037894793684662566,
+        "profit_factor": 2.428118515050611,
+        "calmar_ratio": -0.1564668722410472,
+        "sortino_ratio": -0.013919189150793166,
+        "recovery_factor": -0.1564668722410472
+      },
+      "timestamp": "2025-10-19T04:30:03.171544"
+    },
+    {
+      "trial_number": 41,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08967700205182967,
+        "balance_penalty": 9.693204367795737,
+        "hold_penalty_rate": 0.0012014431132324954,
+        "trading_bonus_multiplier": 4.14862542570661,
+        "trading_bonus": 0.027064334107007162,
+        "profit_weight": 0.1590342101107256,
+        "risk_weight": 0.6273844361776796,
+        "consistency_weight": 0.3532868858593063
+      },
+      "scores": {
+        "profit": 0.012549854435588925,
+        "sharpe": -0.6761497689929459,
+        "win_rate": 0.54675,
+        "consistency": 0.9996182505383393,
+        "max_drawdown": -0.14601965358813393,
+        "volatility": -0.044052547145036286,
+        "profit_factor": 1.9928415395842003,
+        "calmar_ratio": 0.06011963692327007,
+        "sortino_ratio": 0.015336352464333042,
+        "recovery_factor": 0.06011963692327007
+      },
+      "timestamp": "2025-10-19T04:30:04.871465"
+    },
+    {
+      "trial_number": 42,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09033275405415661,
+        "balance_penalty": 9.88116857098126,
+        "hold_penalty_rate": 0.001137052740406908,
+        "trading_bonus_multiplier": 4.615021577732073,
+        "trading_bonus": 0.027253103545259484,
+        "profit_weight": 0.17660409507314945,
+        "risk_weight": 0.621018473612593,
+        "consistency_weight": 0.18072846562144018
+      },
+      "scores": {
+        "profit": -0.020347112261009048,
+        "sharpe": -0.7368418429112077,
+        "win_rate": 0.551925,
+        "consistency": 0.9996519333197402,
+        "max_drawdown": -0.14380448707326904,
+        "volatility": -0.03971326436513865,
+        "profit_factor": 2.0999736534936346,
+        "calmar_ratio": -0.05767644437199148,
+        "sortino_ratio": -0.028661699236425628,
+        "recovery_factor": -0.05767644437199148
+      },
+      "timestamp": "2025-10-19T04:30:06.664177"
+    },
+    {
+      "trial_number": 43,
+      "parameters": {
+        "balance_penalty_tolerance": 0.07958516141422625,
+        "balance_penalty": 9.037205246867703,
+        "hold_penalty_rate": 0.0013054025503926316,
+        "trading_bonus_multiplier": 4.951811263627744,
+        "trading_bonus": 0.019421311233197465,
+        "profit_weight": 0.3109661720014336,
+        "risk_weight": 0.7704216092058302,
+        "consistency_weight": 0.4045650096645562
+      },
+      "scores": {
+        "profit": 0.03265462175413192,
+        "sharpe": -0.7075609401261012,
+        "win_rate": 0.540975,
+        "consistency": 0.9996359914284618,
+        "max_drawdown": -0.15922938209526982,
+        "volatility": -0.041966919412128795,
+        "profit_factor": 1.9698573412294234,
+        "calmar_ratio": 0.1945400183940567,
+        "sortino_ratio": 0.03061854869968189,
+        "recovery_factor": 0.1945400183940567
+      },
+      "timestamp": "2025-10-19T04:30:08.360084"
+    },
+    {
+      "trial_number": 44,
+      "parameters": {
+        "balance_penalty_tolerance": 0.07867743156674066,
+        "balance_penalty": 8.568542662087447,
+        "hold_penalty_rate": 0.0013048131589647545,
+        "trading_bonus_multiplier": 4.948114160221481,
+        "trading_bonus": 0.018613062431432466,
+        "profit_weight": 0.30374161996175564,
+        "risk_weight": 0.7392406487140569,
+        "consistency_weight": 0.33346812543802773
+      },
+      "scores": {
+        "profit": 0.0147172694110341,
+        "sharpe": -0.7755914422672164,
+        "win_rate": 0.5416249999999999,
+        "consistency": 0.9996660877201666,
+        "max_drawdown": -0.13791604968418755,
+        "volatility": -0.03746599370931222,
+        "profit_factor": 1.9652087000632958,
+        "calmar_ratio": -0.03541977725508398,
+        "sortino_ratio": -0.026150830199284998,
+        "recovery_factor": -0.03541977725508398
+      },
+      "timestamp": "2025-10-19T04:30:10.190986"
+    },
+    {
+      "trial_number": 45,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09631496604129464,
+        "balance_penalty": 7.278188418668201,
+        "hold_penalty_rate": 0.0023858302082849035,
+        "trading_bonus_multiplier": 4.08315448934757,
+        "trading_bonus": 0.022323921718421128,
+        "profit_weight": 0.226485353541727,
+        "risk_weight": 0.8143640016424204,
+        "consistency_weight": 1.9461260253298482
+      },
+      "scores": {
+        "profit": -0.0004904000509052819,
+        "sharpe": -0.6365714800854405,
+        "win_rate": 0.523925,
+        "consistency": 0.9996421957726153,
+        "max_drawdown": -0.13855027528768152,
+        "volatility": -0.041231745273040805,
+        "profit_factor": 1.724944599939872,
+        "calmar_ratio": -0.036992496371009986,
+        "sortino_ratio": -0.0034383469273830784,
+        "recovery_factor": -0.036992496371009986
+      },
+      "timestamp": "2025-10-19T04:30:11.876679"
+    },
+    {
+      "trial_number": 46,
+      "parameters": {
+        "balance_penalty_tolerance": 0.07441123828205846,
+        "balance_penalty": 3.4621718807015753,
+        "hold_penalty_rate": 0.0022707382000460284,
+        "trading_bonus_multiplier": 4.125996877765824,
+        "trading_bonus": 0.02354461804231955,
+        "profit_weight": 0.1101565120096445,
+        "risk_weight": 0.5110245079284601,
+        "consistency_weight": 1.7817571383807227
+      },
+      "scores": {
+        "profit": -0.0017214295421246195,
+        "sharpe": -0.7887361113223692,
+        "win_rate": 0.5265,
+        "consistency": 0.9996566972306636,
+        "max_drawdown": -0.11771704575402689,
+        "volatility": -0.0390030497639994,
+        "profit_factor": 1.86396669602437,
+        "calmar_ratio": 0.11990948139121901,
+        "sortino_ratio": 0.020185760475226758,
+        "recovery_factor": 0.11990948139121901
+      },
+      "timestamp": "2025-10-19T04:30:13.728366"
+    },
+    {
+      "trial_number": 47,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09827990630370156,
+        "balance_penalty": 5.320348200900237,
+        "hold_penalty_rate": 0.0013519221554524608,
+        "trading_bonus_multiplier": 4.513601615119907,
+        "trading_bonus": 0.014756710107196654,
+        "profit_weight": 0.23225613407607465,
+        "risk_weight": 0.6746029493439485,
+        "consistency_weight": 1.9891736607326926
+      },
+      "scores": {
+        "profit": 0.0011493559042191903,
+        "sharpe": -0.7390807482131434,
+        "win_rate": 0.53425,
+        "consistency": 0.9996291553439192,
+        "max_drawdown": -0.13441260342637007,
+        "volatility": -0.04295827414925319,
+        "profit_factor": 1.8249814548579082,
+        "calmar_ratio": -0.04340947586776249,
+        "sortino_ratio": 0.0007130744159673779,
+        "recovery_factor": -0.04340947586776249
+      },
+      "timestamp": "2025-10-19T04:30:15.446870"
+    },
+    {
+      "trial_number": 48,
+      "parameters": {
+        "balance_penalty_tolerance": 0.1064637346811344,
+        "balance_penalty": 7.271239500481924,
+        "hold_penalty_rate": 0.002684943841335362,
+        "trading_bonus_multiplier": 4.791399511922233,
+        "trading_bonus": 0.03746590112128941,
+        "profit_weight": 0.3779453487848732,
+        "risk_weight": 0.8053629934360501,
+        "consistency_weight": 1.5456610326982585
+      },
+      "scores": {
+        "profit": 0.012759986263990941,
+        "sharpe": -0.7898067393855649,
+        "win_rate": 0.537325,
+        "consistency": 0.9996420263201738,
+        "max_drawdown": -0.1503858344617186,
+        "volatility": -0.04075625365205932,
+        "profit_factor": 2.1456253202366256,
+        "calmar_ratio": 0.04937800670560217,
+        "sortino_ratio": -0.0232365761501101,
+        "recovery_factor": 0.04937800670560217
+      },
+      "timestamp": "2025-10-19T04:30:17.181630"
+    },
+    {
+      "trial_number": 49,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08691780873687843,
+        "balance_penalty": 9.282134404442736,
+        "hold_penalty_rate": 0.0015379177563333909,
+        "trading_bonus_multiplier": 4.240206523952288,
+        "trading_bonus": 0.023722731778918874,
+        "profit_weight": 0.1952798414035143,
+        "risk_weight": 0.48327593028755633,
+        "consistency_weight": 0.10373305832429591
+      },
+      "scores": {
+        "profit": 0.02896779551710757,
+        "sharpe": -0.7532522578039245,
+        "win_rate": 0.530625,
+        "consistency": 0.9996701002986754,
+        "max_drawdown": -0.1361267585184279,
+        "volatility": -0.03850890828702627,
+        "profit_factor": 1.829041356235629,
+        "calmar_ratio": 0.36145224554628486,
+        "sortino_ratio": 0.06833336790621562,
+        "recovery_factor": 0.36145224554628486
+      },
+      "timestamp": "2025-10-19T04:30:18.968352"
+    },
+    {
+      "trial_number": 50,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09397990302909015,
+        "balance_penalty": 5.997701502246874,
+        "hold_penalty_rate": 0.0034828729439270577,
+        "trading_bonus_multiplier": 3.8148169361899757,
+        "trading_bonus": 0.047395160005214404,
+        "profit_weight": 0.3038655747225761,
+        "risk_weight": 0.9589360273310741,
+        "consistency_weight": 0.4015987577408845
+      },
+      "scores": {
+        "profit": 0.024207203976050723,
+        "sharpe": -0.7895725942157558,
+        "win_rate": 0.531325,
+        "consistency": 0.999634065093836,
+        "max_drawdown": -0.14322540115702775,
+        "volatility": -0.04196573462949375,
+        "profit_factor": 2.02959500895073,
+        "calmar_ratio": 0.05269128897974003,
+        "sortino_ratio": -0.00800037182059499,
+        "recovery_factor": 0.05269128897974003
+      },
+      "timestamp": "2025-10-19T04:30:21.207152"
+    },
+    {
+      "trial_number": 51,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11987795181248351,
+        "balance_penalty": 10.056541198044046,
+        "hold_penalty_rate": 0.001180386363517539,
+        "trading_bonus_multiplier": 4.009105423540746,
+        "trading_bonus": 0.03021751196989322,
+        "profit_weight": 0.5585617880502562,
+        "risk_weight": 0.7828690428832257,
+        "consistency_weight": 1.3861586474663126
+      },
+      "scores": {
+        "profit": -0.005993774407348579,
+        "sharpe": -0.7805093528881574,
+        "win_rate": 0.549075,
+        "consistency": 0.9996300507339674,
+        "max_drawdown": -0.13694468384670805,
+        "volatility": -0.04209474280143402,
+        "profit_factor": 2.055369775954947,
+        "calmar_ratio": 0.043094564583580644,
+        "sortino_ratio": 0.028552721431172965,
+        "recovery_factor": 0.043094564583580644
+      },
+      "timestamp": "2025-10-19T04:30:23.549361"
+    },
+    {
+      "trial_number": 52,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11267500346917482,
+        "balance_penalty": 11.449022622250252,
+        "hold_penalty_rate": 0.0010412174070261126,
+        "trading_bonus_multiplier": 4.345079853829719,
+        "trading_bonus": 0.015522907424333576,
+        "profit_weight": 0.43544142566214233,
+        "risk_weight": 0.8779536512236215,
+        "consistency_weight": 0.190201005341058
+      },
+      "scores": {
+        "profit": 0.01983156909422934,
+        "sharpe": -0.8105663868441934,
+        "win_rate": 0.535825,
+        "consistency": 0.999639816416148,
+        "max_drawdown": -0.1505970487429128,
+        "volatility": -0.0415958634741794,
+        "profit_factor": 1.7916985664504674,
+        "calmar_ratio": 0.06304293875289062,
+        "sortino_ratio": 0.03492762241083745,
+        "recovery_factor": 0.06304293875289062
+      },
+      "timestamp": "2025-10-19T04:30:25.298932"
+    },
+    {
+      "trial_number": 53,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08260162207074438,
+        "balance_penalty": 8.020510574970729,
+        "hold_penalty_rate": 0.0012466735810959472,
+        "trading_bonus_multiplier": 4.771387471011264,
+        "trading_bonus": 0.018906432509557022,
+        "profit_weight": 0.33340140638100924,
+        "risk_weight": 0.6733157167458745,
+        "consistency_weight": 0.3301903199633239
+      },
+      "scores": {
+        "profit": 0.011177928326291664,
+        "sharpe": -0.8346589847516992,
+        "win_rate": 0.53655,
+        "consistency": 0.9996663788729704,
+        "max_drawdown": -0.1562524222612802,
+        "volatility": -0.038366544731033694,
+        "profit_factor": 1.8907520495794508,
+        "calmar_ratio": 0.030829644332292298,
+        "sortino_ratio": -0.009020451346597633,
+        "recovery_factor": 0.030829644332292298
+      },
+      "timestamp": "2025-10-19T04:30:27.080820"
+    },
+    {
+      "trial_number": 54,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10418524108421752,
+        "balance_penalty": 10.648228351291023,
+        "hold_penalty_rate": 0.001922938534776726,
+        "trading_bonus_multiplier": 4.528760507872058,
+        "trading_bonus": 0.07639295944557035,
+        "profit_weight": 0.2311224570221958,
+        "risk_weight": 0.3271054712561121,
+        "consistency_weight": 0.6256637006177724
+      },
+      "scores": {
+        "profit": -0.03319878096989273,
+        "sharpe": -0.61877018159126,
+        "win_rate": 0.570575,
+        "consistency": 0.9996228030873555,
+        "max_drawdown": -0.13870575826617754,
+        "volatility": -0.042680229564586294,
+        "profit_factor": 2.897283754791278,
+        "calmar_ratio": -0.22538471012776562,
+        "sortino_ratio": -0.018154192607016964,
+        "recovery_factor": -0.22538471012776562
+      },
+      "timestamp": "2025-10-19T04:30:28.809794"
+    },
+    {
+      "trial_number": 55,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10135888262994393,
+        "balance_penalty": 9.178427923671412,
+        "hold_penalty_rate": 0.0020351081655726752,
+        "trading_bonus_multiplier": 4.485146035654435,
+        "trading_bonus": 0.08209449045343148,
+        "profit_weight": 0.19031403184821324,
+        "risk_weight": 0.3208167220426478,
+        "consistency_weight": 0.5562047043056546
+      },
+      "scores": {
+        "profit": 0.010206710120266083,
+        "sharpe": -0.6085678653914754,
+        "win_rate": 0.566,
+        "consistency": 0.9996069495232023,
+        "max_drawdown": -0.1570214331725021,
+        "volatility": -0.044220984217554056,
+        "profit_factor": 2.972496444324747,
+        "calmar_ratio": 0.13116647368348772,
+        "sortino_ratio": 0.006303134443385712,
+        "recovery_factor": 0.13116647368348772
+      },
+      "timestamp": "2025-10-19T04:30:30.482818"
+    },
+    {
+      "trial_number": 56,
+      "parameters": {
+        "balance_penalty_tolerance": 0.07256461377784901,
+        "balance_penalty": 8.503574960935774,
+        "hold_penalty_rate": 0.0025117942112717786,
+        "trading_bonus_multiplier": 4.9829500217450065,
+        "trading_bonus": 0.08151904233489306,
+        "profit_weight": 0.24609679556988695,
+        "risk_weight": 0.32470737435327773,
+        "consistency_weight": 0.5151645088971857
+      },
+      "scores": {
+        "profit": 0.012696451493068861,
+        "sharpe": -0.7254758297839776,
+        "win_rate": 0.56325,
+        "consistency": 0.9996620135602955,
+        "max_drawdown": -0.13857290432635552,
+        "volatility": -0.03902062223463837,
+        "profit_factor": 2.988858523997576,
+        "calmar_ratio": 0.09519363426105651,
+        "sortino_ratio": -0.014001544166369116,
+        "recovery_factor": 0.09519363426105651
+      },
+      "timestamp": "2025-10-19T04:30:32.283461"
+    },
+    {
+      "trial_number": 57,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10416684546937795,
+        "balance_penalty": 10.611173818261477,
+        "hold_penalty_rate": 0.005570793012579086,
+        "trading_bonus_multiplier": 4.240447164919823,
+        "trading_bonus": 0.0879862938600457,
+        "profit_weight": 0.16386224213150802,
+        "risk_weight": 0.1090343243753831,
+        "consistency_weight": 0.621565453826037
+      },
+      "scores": {
+        "profit": 0.012057877022368574,
+        "sharpe": -0.7168198675332934,
+        "win_rate": 0.5196500000000001,
+        "consistency": 0.9996522329832926,
+        "max_drawdown": -0.13924135248205327,
+        "volatility": -0.04050567107257458,
+        "profit_factor": 2.5647686042442137,
+        "calmar_ratio": 0.09886441502056352,
+        "sortino_ratio": 0.04734703591373968,
+        "recovery_factor": 0.09886441502056352
+      },
+      "timestamp": "2025-10-19T04:30:34.011025"
+    },
+    {
+      "trial_number": 58,
+      "parameters": {
+        "balance_penalty_tolerance": 0.0604205610927732,
+        "balance_penalty": 7.416455299316045,
+        "hold_penalty_rate": 0.0020836889015788374,
+        "trading_bonus_multiplier": 4.470172250558122,
+        "trading_bonus": 0.06834892020902197,
+        "profit_weight": 0.10785673412769306,
+        "risk_weight": 0.2210174596600597,
+        "consistency_weight": 0.6917171200898411
+      },
+      "scores": {
+        "profit": 0.0017980703645886775,
+        "sharpe": -0.7284699084416122,
+        "win_rate": 0.5655,
+        "consistency": 0.9996659712998625,
+        "max_drawdown": -0.13557213875457724,
+        "volatility": -0.0384543316276849,
+        "profit_factor": 2.770426442523184,
+        "calmar_ratio": -0.04956108797508876,
+        "sortino_ratio": -0.0022754557887253056,
+        "recovery_factor": -0.04956108797508876
+      },
+      "timestamp": "2025-10-19T04:30:35.871504"
+    },
+    {
+      "trial_number": 59,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09468334061233849,
+        "balance_penalty": 3.286502440425296,
+        "hold_penalty_rate": 0.0017341383144443435,
+        "trading_bonus_multiplier": 3.5949085696653613,
+        "trading_bonus": 0.05608797984396929,
+        "profit_weight": 0.23428754323194317,
+        "risk_weight": 0.3680936980617563,
+        "consistency_weight": 0.3665878502762496
+      },
+      "scores": {
+        "profit": -0.004352389712193261,
+        "sharpe": -0.7403934194583158,
+        "win_rate": 0.553125,
+        "consistency": 0.9996502073171831,
+        "max_drawdown": -0.13529658617228058,
+        "volatility": -0.04013125941811509,
+        "profit_factor": 2.3272152324205377,
+        "calmar_ratio": -0.08095693877927482,
+        "sortino_ratio": -0.01854454858949772,
+        "recovery_factor": -0.08095693877927482
+      },
+      "timestamp": "2025-10-19T04:30:37.605026"
+    },
+    {
+      "trial_number": 60,
+      "parameters": {
+        "balance_penalty_tolerance": 0.1288586250662036,
+        "balance_penalty": 8.927549523799733,
+        "hold_penalty_rate": 0.002351653737141432,
+        "trading_bonus_multiplier": 4.820720653972749,
+        "trading_bonus": 0.012995464465224734,
+        "profit_weight": 0.687018439539766,
+        "risk_weight": 0.4507336111767928,
+        "consistency_weight": 0.7352633687320985
+      },
+      "scores": {
+        "profit": 0.011044144265372813,
+        "sharpe": -0.6782052497944207,
+        "win_rate": 0.514925,
+        "consistency": 0.9996391145278232,
+        "max_drawdown": -0.12661235041699667,
+        "volatility": -0.04072448444302096,
+        "profit_factor": 1.7052601903568474,
+        "calmar_ratio": 0.07997819848046017,
+        "sortino_ratio": 0.008081717639790672,
+        "recovery_factor": 0.07997819848046017
+      },
+      "timestamp": "2025-10-19T04:30:39.441843"
+    },
+    {
+      "trial_number": 61,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08091249173186385,
+        "balance_penalty": 9.564799474323806,
+        "hold_penalty_rate": 0.001517276465257551,
+        "trading_bonus_multiplier": 4.618778243248159,
+        "trading_bonus": 0.04417430311513378,
+        "profit_weight": 0.4093186167207721,
+        "risk_weight": 0.2771862945236382,
+        "consistency_weight": 0.5765967189858274
+      },
+      "scores": {
+        "profit": 0.012185229124827085,
+        "sharpe": -0.7113939767605806,
+        "win_rate": 0.5575,
+        "consistency": 0.9996201944150449,
+        "max_drawdown": -0.15970230942692004,
+        "volatility": -0.042862693954467,
+        "profit_factor": 2.4145621516097133,
+        "calmar_ratio": 0.03812752115972283,
+        "sortino_ratio": -0.018602417473953976,
+        "recovery_factor": 0.03812752115972283
+      },
+      "timestamp": "2025-10-19T04:30:41.108289"
+    },
+    {
+      "trial_number": 62,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10057220332017472,
+        "balance_penalty": 10.563356818143987,
+        "hold_penalty_rate": 0.0018912956066466442,
+        "trading_bonus_multiplier": 4.367824283024191,
+        "trading_bonus": 0.0716700227516257,
+        "profit_weight": 0.23472465183248703,
+        "risk_weight": 0.6385433403078752,
+        "consistency_weight": 0.4791962551082305
+      },
+      "scores": {
+        "profit": -0.02791435021011973,
+        "sharpe": -0.6558649558357462,
+        "win_rate": 0.564825,
+        "consistency": 0.9996417581444558,
+        "max_drawdown": -0.1413749101663354,
+        "volatility": -0.04074432770393657,
+        "profit_factor": 2.827495366760795,
+        "calmar_ratio": -0.12017994962042146,
+        "sortino_ratio": -0.03833901513362485,
+        "recovery_factor": -0.12017994962042146
+      },
+      "timestamp": "2025-10-19T04:30:42.824734"
+    },
+    {
+      "trial_number": 63,
+      "parameters": {
+        "balance_penalty_tolerance": 0.0698500017554485,
+        "balance_penalty": 6.228475643964738,
+        "hold_penalty_rate": 0.0015665324941068497,
+        "trading_bonus_multiplier": 3.952689966470839,
+        "trading_bonus": 0.03124010620615752,
+        "profit_weight": 0.3526333962090931,
+        "risk_weight": 0.3907245805828226,
+        "consistency_weight": 0.42679535231743415
+      },
+      "scores": {
+        "profit": 0.010241610763200626,
+        "sharpe": -0.7752348422907601,
+        "win_rate": 0.541425,
+        "consistency": 0.9996671965426167,
+        "max_drawdown": -0.14300342070307182,
+        "volatility": -0.038688259504763435,
+        "profit_factor": 1.9482321004984937,
+        "calmar_ratio": 0.12445972270036887,
+        "sortino_ratio": 0.017913906384233475,
+        "recovery_factor": 0.12445972270036887
+      },
+      "timestamp": "2025-10-19T04:30:44.624674"
+    },
+    {
+      "trial_number": 64,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11086144859293427,
+        "balance_penalty": 7.920358065563095,
+        "hold_penalty_rate": 0.0012315454905237554,
+        "trading_bonus_multiplier": 4.702829140331187,
+        "trading_bonus": 0.09437856957282678,
+        "profit_weight": 0.17728871682335748,
+        "risk_weight": 0.5318429698375193,
+        "consistency_weight": 0.2824043390049573
+      },
+      "scores": {
+        "profit": -0.032284659427799206,
+        "sharpe": -0.8258632750248057,
+        "win_rate": 0.59075,
+        "consistency": 0.9996833523712487,
+        "max_drawdown": -0.12860317301083293,
+        "volatility": -0.036036888764885144,
+        "profit_factor": 3.539423056243602,
+        "calmar_ratio": -0.18986046215303098,
+        "sortino_ratio": -0.050444252620132246,
+        "recovery_factor": -0.18986046215303098
+      },
+      "timestamp": "2025-10-19T04:30:46.361298"
+    },
+    {
+      "trial_number": 65,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08291887668071458,
+        "balance_penalty": 9.036465465793466,
+        "hold_penalty_rate": 0.004799681518559344,
+        "trading_bonus_multiplier": 4.509658208039734,
+        "trading_bonus": 0.05527586468360576,
+        "profit_weight": 0.5444106802956663,
+        "risk_weight": 0.1661870082847916,
+        "consistency_weight": 0.6228397554091263
+      },
+      "scores": {
+        "profit": -0.008082398426783599,
+        "sharpe": -0.7211586975869316,
+        "win_rate": 0.525175,
+        "consistency": 0.9996492278808657,
+        "max_drawdown": -0.1238224148803238,
+        "volatility": -0.04025802498799616,
+        "profit_factor": 2.2070409814872214,
+        "calmar_ratio": -0.0037690265959161723,
+        "sortino_ratio": -0.005325320084608986,
+        "recovery_factor": -0.0037690265959161723
+      },
+      "timestamp": "2025-10-19T04:30:48.142121"
+    },
+    {
+      "trial_number": 66,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09443324016448439,
+        "balance_penalty": 10.251353260491578,
+        "hold_penalty_rate": 0.018081806749062856,
+        "trading_bonus_multiplier": 4.124222053161449,
+        "trading_bonus": 0.02147762087712622,
+        "profit_weight": 0.44268750562666914,
+        "risk_weight": 0.7350827527661203,
+        "consistency_weight": 0.5421468206815422
+      },
+      "scores": {
+        "profit": -0.06686540685535669,
+        "sharpe": -0.7453954511065486,
+        "win_rate": 0.32865,
+        "consistency": 0.9996160611790708,
+        "max_drawdown": -0.16973153578755215,
+        "volatility": -0.043936161493887634,
+        "profit_factor": 0.8122974736872428,
+        "calmar_ratio": -0.3147594523130386,
+        "sortino_ratio": -0.026081110119814208,
+        "recovery_factor": -0.3147594523130386
+      },
+      "timestamp": "2025-10-19T04:30:49.851518"
+    },
+    {
+      "trial_number": 67,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10681581075642818,
+        "balance_penalty": 11.126334137238983,
+        "hold_penalty_rate": 0.002912629423333696,
+        "trading_bonus_multiplier": 4.883529367277146,
+        "trading_bonus": 0.04079745056144206,
+        "profit_weight": 0.2800644245751424,
+        "risk_weight": 0.4511463700020029,
+        "consistency_weight": 0.1949947978535766
+      },
+      "scores": {
+        "profit": 0.030128173239786615,
+        "sharpe": -0.6906082773316368,
+        "win_rate": 0.538975,
+        "consistency": 0.9996480395027858,
+        "max_drawdown": -0.1372713413136924,
+        "volatility": -0.0393079572238764,
+        "profit_factor": 2.253724347345196,
+        "calmar_ratio": 0.1728330952168195,
+        "sortino_ratio": 0.050666268055304775,
+        "recovery_factor": 0.1728330952168195
+      },
+      "timestamp": "2025-10-19T04:30:51.642518"
+    },
+    {
+      "trial_number": 68,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10322570891050749,
+        "balance_penalty": 12.939961299123496,
+        "hold_penalty_rate": 0.00305807327295456,
+        "trading_bonus_multiplier": 4.872554086372485,
+        "trading_bonus": 0.034492928863727956,
+        "profit_weight": 0.265047452924751,
+        "risk_weight": 0.44749941644696006,
+        "consistency_weight": 0.7724811785494328
+      },
+      "scores": {
+        "profit": 0.0197239130501895,
+        "sharpe": -0.8181771704752124,
+        "win_rate": 0.52905,
+        "consistency": 0.9996458567397849,
+        "max_drawdown": -0.1449913062676132,
+        "volatility": -0.04037040084917647,
+        "profit_factor": 2.091449202718658,
+        "calmar_ratio": 0.23030703658779622,
+        "sortino_ratio": 0.019560584895793064,
+        "recovery_factor": 0.23030703658779622
+      },
+      "timestamp": "2025-10-19T04:30:53.367442"
+    },
+    {
+      "trial_number": 69,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08581039494109846,
+        "balance_penalty": 11.184033661154217,
+        "hold_penalty_rate": 0.0019722410868918427,
+        "trading_bonus_multiplier": 3.8209090527631755,
+        "trading_bonus": 0.0266238417585142,
+        "profit_weight": 0.14428529793387715,
+        "risk_weight": 0.5863191925642243,
+        "consistency_weight": 0.8685000200870778
+      },
+      "scores": {
+        "profit": 0.019613544505089647,
+        "sharpe": -0.7311322002334689,
+        "win_rate": 0.5284500000000001,
+        "consistency": 0.9996647488878949,
+        "max_drawdown": -0.1264062341435632,
+        "volatility": -0.03862529752636395,
+        "profit_factor": 1.8228235627435168,
+        "calmar_ratio": 0.14230019543835015,
+        "sortino_ratio": 0.020889661317277913,
+        "recovery_factor": 0.14230019543835015
+      },
+      "timestamp": "2025-10-19T04:30:55.159340"
+    },
+    {
+      "trial_number": 70,
+      "parameters": {
+        "balance_penalty_tolerance": 0.124216921291726,
+        "balance_penalty": 11.818858766333728,
+        "hold_penalty_rate": 0.003571930994887751,
+        "trading_bonus_multiplier": 4.282128930890917,
+        "trading_bonus": 0.019852438695484555,
+        "profit_weight": 0.36784578585018324,
+        "risk_weight": 0.34746506630292634,
+        "consistency_weight": 0.4549201706811769
+      },
+      "scores": {
+        "profit": -0.004976504730642983,
+        "sharpe": -0.6540251768870979,
+        "win_rate": 0.5034000000000001,
+        "consistency": 0.9996404969587651,
+        "max_drawdown": -0.13947824524168234,
+        "volatility": -0.04121469460371468,
+        "profit_factor": 1.5907407608471913,
+        "calmar_ratio": -0.0004508879524105329,
+        "sortino_ratio": 0.011537069777586518,
+        "recovery_factor": -0.0004508879524105329
+      },
+      "timestamp": "2025-10-19T04:30:56.880660"
+    },
+    {
+      "trial_number": 71,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11545308498396022,
+        "balance_penalty": 8.402371052630693,
+        "hold_penalty_rate": 0.0013679789440401323,
+        "trading_bonus_multiplier": 4.555684870601883,
+        "trading_bonus": 0.06652738128249369,
+        "profit_weight": 0.3076606543098561,
+        "risk_weight": 0.2697039106337992,
+        "consistency_weight": 0.15784065259906893
+      },
+      "scores": {
+        "profit": -0.0027239311684291723,
+        "sharpe": -0.760716395888778,
+        "win_rate": 0.572775,
+        "consistency": 0.9996661378615914,
+        "max_drawdown": -0.142170889938795,
+        "volatility": -0.038423165691689805,
+        "profit_factor": 2.8206828225212712,
+        "calmar_ratio": 0.047649543883024975,
+        "sortino_ratio": -0.016571890328899778,
+        "recovery_factor": 0.047649543883024975
+      },
+      "timestamp": "2025-10-19T04:30:58.573693"
+    },
+    {
+      "trial_number": 72,
+      "parameters": {
+        "balance_penalty_tolerance": 0.1058089495639202,
+        "balance_penalty": 9.553329887597872,
+        "hold_penalty_rate": 0.0017715815674896114,
+        "trading_bonus_multiplier": 4.682291556108881,
+        "trading_bonus": 0.039529940172026115,
+        "profit_weight": 0.45242835885440624,
+        "risk_weight": 0.5141356800739929,
+        "consistency_weight": 0.23761867070242343
+      },
+      "scores": {
+        "profit": -0.004236736908471317,
+        "sharpe": -0.711359652636039,
+        "win_rate": 0.555975,
+        "consistency": 0.999637632459204,
+        "max_drawdown": -0.13534232119541117,
+        "volatility": -0.04154204068653761,
+        "profit_factor": 2.28679934413517,
+        "calmar_ratio": -0.06164696033444256,
+        "sortino_ratio": -0.04221821332439052,
+        "recovery_factor": -0.06164696033444256
+      },
+      "timestamp": "2025-10-19T04:31:00.366684"
+    },
+    {
+      "trial_number": 73,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09260257181807495,
+        "balance_penalty": 10.924185691335277,
+        "hold_penalty_rate": 0.0025566554910839956,
+        "trading_bonus_multiplier": 4.909011628000615,
+        "trading_bonus": 0.052388999885127435,
+        "profit_weight": 0.19382894383585997,
+        "risk_weight": 0.8173311069488669,
+        "consistency_weight": 0.3662264847428327
+      },
+      "scores": {
+        "profit": -0.008552288278336484,
+        "sharpe": -0.8689354191219661,
+        "win_rate": 0.545825,
+        "consistency": 0.9996926913363094,
+        "max_drawdown": -0.1143975776718567,
+        "volatility": -0.03546633095300626,
+        "profit_factor": 2.4359259293992195,
+        "calmar_ratio": -0.07384609285019139,
+        "sortino_ratio": -0.005872379466725893,
+        "recovery_factor": -0.07384609285019139
+      },
+      "timestamp": "2025-10-19T04:31:02.057967"
+    },
+    {
+      "trial_number": 74,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09788786533440115,
+        "balance_penalty": 10.022810807036745,
+        "hold_penalty_rate": 0.001136388798017837,
+        "trading_bonus_multiplier": 4.389908335831704,
+        "trading_bonus": 0.08021765834053869,
+        "profit_weight": 0.10110281310549482,
+        "risk_weight": 0.621773262081659,
+        "consistency_weight": 0.288391142532471
+      },
+      "scores": {
+        "profit": 0.025857013495708014,
+        "sharpe": -0.6847516228359315,
+        "win_rate": 0.5818,
+        "consistency": 0.9996309666610895,
+        "max_drawdown": -0.14382583280340955,
+        "volatility": -0.041893362126114754,
+        "profit_factor": 3.1641906575619365,
+        "calmar_ratio": 0.1331711103099923,
+        "sortino_ratio": 0.012326601413437104,
+        "recovery_factor": 0.1331711103099923
+      },
+      "timestamp": "2025-10-19T04:31:03.888819"
+    },
+    {
+      "trial_number": 75,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10040830626874345,
+        "balance_penalty": 10.156187771847904,
+        "hold_penalty_rate": 0.058503426961921776,
+        "trading_bonus_multiplier": 4.4172311625157175,
+        "trading_bonus": 0.09909560668378564,
+        "profit_weight": 0.26012676771715293,
+        "risk_weight": 0.702381739650415,
+        "consistency_weight": 0.3213921571823952
+      },
+      "scores": {
+        "profit": 0.007142555002068812,
+        "sharpe": -0.780002056497282,
+        "win_rate": 0.255725,
+        "consistency": 0.999662145247051,
+        "max_drawdown": -0.1232732880043728,
+        "volatility": -0.038740674240702044,
+        "profit_factor": 0.54687699177571,
+        "calmar_ratio": 0.07894158281128835,
+        "sortino_ratio": 0.014543339999935042,
+        "recovery_factor": 0.07894158281128835
+      },
+      "timestamp": "2025-10-19T04:31:05.590631"
+    },
+    {
+      "trial_number": 76,
+      "parameters": {
+        "balance_penalty_tolerance": 0.0776795577475177,
+        "balance_penalty": 7.5971458502272995,
+        "hold_penalty_rate": 0.001550191353418348,
+        "trading_bonus_multiplier": 4.1582977220374335,
+        "trading_bonus": 0.07712306117504159,
+        "profit_weight": 0.10833569638920132,
+        "risk_weight": 0.43105953418301035,
+        "consistency_weight": 0.2759784220570263
+      },
+      "scores": {
+        "profit": -0.008063343281567104,
+        "sharpe": -0.784972962216896,
+        "win_rate": 0.573825,
+        "consistency": 0.9997135292156468,
+        "max_drawdown": -0.12048600991211918,
+        "volatility": -0.033705090948568384,
+        "profit_factor": 2.887525589611719,
+        "calmar_ratio": 0.0054450228633421555,
+        "sortino_ratio": -0.04826046905485622,
+        "recovery_factor": 0.0054450228633421555
+      },
+      "timestamp": "2025-10-19T04:31:07.421790"
+    },
+    {
+      "trial_number": 77,
+      "parameters": {
+        "balance_penalty_tolerance": 0.0669114969443774,
+        "balance_penalty": 12.002433073651929,
+        "hold_penalty_rate": 0.01167145987364418,
+        "trading_bonus_multiplier": 4.746761815105428,
+        "trading_bonus": 0.01662800059352353,
+        "profit_weight": 0.19135575450213604,
+        "risk_weight": 0.4762624916744889,
+        "consistency_weight": 1.0786666512692458
+      },
+      "scores": {
+        "profit": -0.008780433392344605,
+        "sharpe": -0.811300770669914,
+        "win_rate": 0.39854999999999996,
+        "consistency": 0.9996538357968012,
+        "max_drawdown": -0.1401789147741291,
+        "volatility": -0.03968480045141631,
+        "profit_factor": 1.128738147559671,
+        "calmar_ratio": 0.0022997432425127876,
+        "sortino_ratio": 0.01664121917757513,
+        "recovery_factor": 0.0022997432425127876
+      },
+      "timestamp": "2025-10-19T04:31:09.117118"
+    },
+    {
+      "trial_number": 78,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11640587012863099,
+        "balance_penalty": 8.944609592757343,
+        "hold_penalty_rate": 0.0011728926778902104,
+        "trading_bonus_multiplier": 4.87536605464968,
+        "trading_bonus": 0.06209329778965856,
+        "profit_weight": 0.21050943698409375,
+        "risk_weight": 0.17987399548632846,
+        "consistency_weight": 0.5140969335517013
+      },
+      "scores": {
+        "profit": 0.05614894265339129,
+        "sharpe": -0.6995025363890366,
+        "win_rate": 0.578675,
+        "consistency": 0.9996304384993028,
+        "max_drawdown": -0.13976130626234196,
+        "volatility": -0.04172413395796796,
+        "profit_factor": 2.874051667537053,
+        "calmar_ratio": 0.3750470480754266,
+        "sortino_ratio": 0.023187492056487263,
+        "recovery_factor": 0.3750470480754266
+      },
+      "timestamp": "2025-10-19T04:31:10.903610"
+    },
+    {
+      "trial_number": 79,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11718551153118474,
+        "balance_penalty": 6.576462765761516,
+        "hold_penalty_rate": 0.002138993723583934,
+        "trading_bonus_multiplier": 4.350680322422107,
+        "trading_bonus": 0.0852906427242437,
+        "profit_weight": 0.15761839410934564,
+        "risk_weight": 0.18132780875471916,
+        "consistency_weight": 0.5058083700270354
+      },
+      "scores": {
+        "profit": 0.04840504666488116,
+        "sharpe": -0.7768250325522569,
+        "win_rate": 0.568775,
+        "consistency": 0.9996547788952701,
+        "max_drawdown": -0.1260104849309083,
+        "volatility": -0.039175989204237927,
+        "profit_factor": 3.0252709355358607,
+        "calmar_ratio": 0.2121442425132236,
+        "sortino_ratio": 0.01657972144230676,
+        "recovery_factor": 0.2121442425132236
+      },
+      "timestamp": "2025-10-19T04:31:12.654427"
+    },
+    {
+      "trial_number": 80,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12775917725353736,
+        "balance_penalty": 12.546837739956624,
+        "hold_penalty_rate": 0.0011397014797424334,
+        "trading_bonus_multiplier": 3.5067452822424174,
+        "trading_bonus": 0.06273873870699637,
+        "profit_weight": 0.20563941676424655,
+        "risk_weight": 0.2638093703728988,
+        "consistency_weight": 0.6298139733793214
+      },
+      "scores": {
+        "profit": 0.018025875250925555,
+        "sharpe": -0.623338313873625,
+        "win_rate": 0.5701499999999999,
+        "consistency": 0.9996239319857685,
+        "max_drawdown": -0.14756190797008906,
+        "volatility": -0.04323395724573868,
+        "profit_factor": 2.5381463900391337,
+        "calmar_ratio": 0.17408765907353752,
+        "sortino_ratio": 0.011532964397264861,
+        "recovery_factor": 0.17408765907353752
+      },
+      "timestamp": "2025-10-19T04:31:14.373872"
+    },
+    {
+      "trial_number": 81,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12995846221722013,
+        "balance_penalty": 12.728847312507094,
+        "hold_penalty_rate": 0.0011820961055959722,
+        "trading_bonus_multiplier": 3.5088570815052136,
+        "trading_bonus": 0.06385824004836863,
+        "profit_weight": 0.21990224796991892,
+        "risk_weight": 0.24832863215910056,
+        "consistency_weight": 0.7474572502385115
+      },
+      "scores": {
+        "profit": 0.01961036184706247,
+        "sharpe": -0.720986109453613,
+        "win_rate": 0.568875,
+        "consistency": 0.9996530440630033,
+        "max_drawdown": -0.1312961076428155,
+        "volatility": -0.039840415269206564,
+        "profit_factor": 2.5486857780377683,
+        "calmar_ratio": 0.09766157136244455,
+        "sortino_ratio": 0.020513953046610033,
+        "recovery_factor": 0.09766157136244455
+      },
+      "timestamp": "2025-10-19T04:31:16.145531"
+    },
+    {
+      "trial_number": 82,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12286259924652301,
+        "balance_penalty": 10.884977457076621,
+        "hold_penalty_rate": 0.0011425363165399685,
+        "trading_bonus_multiplier": 3.2686175822899433,
+        "trading_bonus": 0.06157022397148468,
+        "profit_weight": 0.1376075297860129,
+        "risk_weight": 0.31149342402918156,
+        "consistency_weight": 0.6026974315632265
+      },
+      "scores": {
+        "profit": 0.023888323568749786,
+        "sharpe": -0.731438268536863,
+        "win_rate": 0.567625,
+        "consistency": 0.9996435887170626,
+        "max_drawdown": -0.13733882616782378,
+        "volatility": -0.04003313555105528,
+        "profit_factor": 2.5349907657224513,
+        "calmar_ratio": 0.2511000749971132,
+        "sortino_ratio": 0.035360267409199904,
+        "recovery_factor": 0.2511000749971132
+      },
+      "timestamp": "2025-10-19T04:31:17.871933"
+    },
+    {
+      "trial_number": 83,
+      "parameters": {
+        "balance_penalty_tolerance": 0.1085442829500865,
+        "balance_penalty": 13.35992835867914,
+        "hold_penalty_rate": 0.0014005384033733928,
+        "trading_bonus_multiplier": 4.01841489273901,
+        "trading_bonus": 0.04923901245490368,
+        "profit_weight": 0.2719498584587918,
+        "risk_weight": 0.17377129306465877,
+        "consistency_weight": 0.6620979034897536
+      },
+      "scores": {
+        "profit": 0.01152454144333484,
+        "sharpe": -0.7679291193359246,
+        "win_rate": 0.559975,
+        "consistency": 0.9996548928304883,
+        "max_drawdown": -0.1383341363671632,
+        "volatility": -0.0391020992544218,
+        "profit_factor": 2.4005389518495006,
+        "calmar_ratio": -0.026352384046924526,
+        "sortino_ratio": -0.022968481417191385,
+        "recovery_factor": -0.026352384046924526
+      },
+      "timestamp": "2025-10-19T04:31:19.656334"
+    },
+    {
+      "trial_number": 84,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09752152233843689,
+        "balance_penalty": 11.593186231073037,
+        "hold_penalty_rate": 0.0017254554043464386,
+        "trading_bonus_multiplier": 2.885858575090068,
+        "trading_bonus": 0.0748490503832121,
+        "profit_weight": 0.3860074649157239,
+        "risk_weight": 0.1447333346109727,
+        "consistency_weight": 0.5577187248550859
+      },
+      "scores": {
+        "profit": 0.005661410499245123,
+        "sharpe": -0.707410442632271,
+        "win_rate": 0.556775,
+        "consistency": 0.999663576538469,
+        "max_drawdown": -0.12941743052813898,
+        "volatility": -0.038507582757435835,
+        "profit_factor": 2.445771772342586,
+        "calmar_ratio": -0.015103356063411608,
+        "sortino_ratio": -0.03878502494107691,
+        "recovery_factor": -0.015103356063411608
+      },
+      "timestamp": "2025-10-19T04:31:22.169649"
+    },
+    {
+      "trial_number": 85,
+      "parameters": {
+        "balance_penalty_tolerance": 0.1411463306903005,
+        "balance_penalty": 10.171695819285953,
+        "hold_penalty_rate": 0.0019853638359367603,
+        "trading_bonus_multiplier": 3.734079967353806,
+        "trading_bonus": 0.0423784459050283,
+        "profit_weight": 0.10250704901606991,
+        "risk_weight": 0.4135031367028847,
+        "consistency_weight": 0.9925957491919971
+      },
+      "scores": {
+        "profit": -0.03699691938736985,
+        "sharpe": -0.7152184039845907,
+        "win_rate": 0.541075,
+        "consistency": 0.9996258723711222,
+        "max_drawdown": -0.14268361970637133,
+        "volatility": -0.04240916229749738,
+        "profit_factor": 2.0689133432207627,
+        "calmar_ratio": -0.283736769807695,
+        "sortino_ratio": -0.038429511535110206,
+        "recovery_factor": -0.283736769807695
+      },
+      "timestamp": "2025-10-19T04:31:24.029936"
+    },
+    {
+      "trial_number": 86,
+      "parameters": {
+        "balance_penalty_tolerance": 0.13563343167659897,
+        "balance_penalty": 13.92682845590629,
+        "hold_penalty_rate": 0.0028009776901104125,
+        "trading_bonus_multiplier": 4.481480115664618,
+        "trading_bonus": 0.06002621971654206,
+        "profit_weight": 1.5912348071771052,
+        "risk_weight": 0.3487933832266601,
+        "consistency_weight": 0.84861139872521
+      },
+      "scores": {
+        "profit": 0.005789418634133459,
+        "sharpe": -0.678477876754144,
+        "win_rate": 0.55155,
+        "consistency": 0.999650054426983,
+        "max_drawdown": -0.13435934431964727,
+        "volatility": -0.03981811368439146,
+        "profit_factor": 2.500506871738615,
+        "calmar_ratio": 0.0932315306509737,
+        "sortino_ratio": 0.008736559550078717,
+        "recovery_factor": 0.0932315306509737
+      },
+      "timestamp": "2025-10-19T04:31:25.724488"
+    },
+    {
+      "trial_number": 87,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11348879585857244,
+        "balance_penalty": 12.562115506077769,
+        "hold_penalty_rate": 0.0014634903257596634,
+        "trading_bonus_multiplier": 3.8790831307852445,
+        "trading_bonus": 0.026323824348382176,
+        "profit_weight": 0.2111876182451179,
+        "risk_weight": 0.5911390215051622,
+        "consistency_weight": 1.9158439687769464
+      },
+      "scores": {
+        "profit": 0.012831404739202273,
+        "sharpe": -0.7514084491108034,
+        "win_rate": 0.536625,
+        "consistency": 0.9996723720734109,
+        "max_drawdown": -0.13075283794831818,
+        "volatility": -0.03806332854902461,
+        "profit_factor": 1.850348432738653,
+        "calmar_ratio": -0.002116755133368675,
+        "sortino_ratio": -0.00926056591107928,
+        "recovery_factor": -0.002116755133368675
+      },
+      "timestamp": "2025-10-19T04:31:27.524511"
+    },
+    {
+      "trial_number": 88,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10784725392801167,
+        "balance_penalty": 9.777354994280245,
+        "hold_penalty_rate": 0.0011245818712590364,
+        "trading_bonus_multiplier": 4.805344514754801,
+        "trading_bonus": 0.03636494606622048,
+        "profit_weight": 0.2789582453294826,
+        "risk_weight": 0.21280797105180066,
+        "consistency_weight": 0.16183332119164978
+      },
+      "scores": {
+        "profit": -0.009280090799024782,
+        "sharpe": -0.786866373716606,
+        "win_rate": 0.559625,
+        "consistency": 0.9996399904489242,
+        "max_drawdown": -0.147612404923146,
+        "volatility": -0.04000465062532069,
+        "profit_factor": 2.371070249554776,
+        "calmar_ratio": -0.001416367444049764,
+        "sortino_ratio": -0.013031524767946702,
+        "recovery_factor": -0.001416367444049764
+      },
+      "timestamp": "2025-10-19T04:31:29.220226"
+    },
+    {
+      "trial_number": 89,
+      "parameters": {
+        "balance_penalty_tolerance": 0.14899618783862703,
+        "balance_penalty": 8.52366181492704,
+        "hold_penalty_rate": 0.0016994758037752527,
+        "trading_bonus_multiplier": 4.214526343830808,
+        "trading_bonus": 0.03208912739364818,
+        "profit_weight": 0.3448428328670847,
+        "risk_weight": 0.3896646016622144,
+        "consistency_weight": 1.6994884313218692
+      },
+      "scores": {
+        "profit": 0.03508467220482403,
+        "sharpe": -0.7312090643543064,
+        "win_rate": 0.5453749999999999,
+        "consistency": 0.9996499454117844,
+        "max_drawdown": -0.14799195978427823,
+        "volatility": -0.03987236885273729,
+        "profit_factor": 2.0212782875859525,
+        "calmar_ratio": 0.28588617129560995,
+        "sortino_ratio": 0.03120631361881529,
+        "recovery_factor": 0.28588617129560995
+      },
+      "timestamp": "2025-10-19T04:31:30.946031"
+    },
+    {
+      "trial_number": 90,
+      "parameters": {
+        "balance_penalty_tolerance": 0.10195789953026949,
+        "balance_penalty": 10.668935186954632,
+        "hold_penalty_rate": 0.0010003381350082378,
+        "trading_bonus_multiplier": 4.6408455735338645,
+        "trading_bonus": 0.07883408960314893,
+        "profit_weight": 0.144853346105205,
+        "risk_weight": 0.48895361097829304,
+        "consistency_weight": 0.9066961120953407
+      },
+      "scores": {
+        "profit": -0.017627426746915725,
+        "sharpe": -0.7596015430377717,
+        "win_rate": 0.58575,
+        "consistency": 0.9996202710759301,
+        "max_drawdown": -0.1456563806948194,
+        "volatility": -0.04315073043045261,
+        "profit_factor": 3.2446546188607175,
+        "calmar_ratio": -0.1255855272795402,
+        "sortino_ratio": -0.003888748741466925,
+        "recovery_factor": -0.1255855272795402
+      },
+      "timestamp": "2025-10-19T04:31:32.732112"
+    },
+    {
+      "trial_number": 91,
+      "parameters": {
+        "balance_penalty_tolerance": 0.13520590460837323,
+        "balance_penalty": 13.783427134741984,
+        "hold_penalty_rate": 0.0028988276428288883,
+        "trading_bonus_multiplier": 4.505805510339917,
+        "trading_bonus": 0.061453141853070575,
+        "profit_weight": 1.6430553309306506,
+        "risk_weight": 0.3518527286207499,
+        "consistency_weight": 0.859510091617753
+      },
+      "scores": {
+        "profit": 0.03618451355849894,
+        "sharpe": -0.7343821215566442,
+        "win_rate": 0.55035,
+        "consistency": 0.999659720557776,
+        "max_drawdown": -0.13674431003259607,
+        "volatility": -0.039605649615630116,
+        "profit_factor": 2.501708852038247,
+        "calmar_ratio": 0.1920042501055667,
+        "sortino_ratio": 0.022268055471743577,
+        "recovery_factor": 0.1920042501055667
+      },
+      "timestamp": "2025-10-19T04:31:34.480048"
+    },
+    {
+      "trial_number": 92,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12097341816334493,
+        "balance_penalty": 13.950614393911854,
+        "hold_penalty_rate": 0.0024426411852205504,
+        "trading_bonus_multiplier": 4.446289800681062,
+        "trading_bonus": 0.04919860882191481,
+        "profit_weight": 1.2395663263686896,
+        "risk_weight": 0.30578186725148604,
+        "consistency_weight": 0.8396986244251514
+      },
+      "scores": {
+        "profit": -0.010222737939158094,
+        "sharpe": -0.787224863022808,
+        "win_rate": 0.5444,
+        "consistency": 0.9996674467301844,
+        "max_drawdown": -0.13472108070298064,
+        "volatility": -0.03840830160516007,
+        "profit_factor": 2.278005895729793,
+        "calmar_ratio": -0.07496997754062856,
+        "sortino_ratio": -0.033470587188002464,
+        "recovery_factor": -0.07496997754062856
+      },
+      "timestamp": "2025-10-19T04:31:36.263098"
+    },
+    {
+      "trial_number": 93,
+      "parameters": {
+        "balance_penalty_tolerance": 0.12845292576760453,
+        "balance_penalty": 15.45023900945085,
+        "hold_penalty_rate": 0.003869103412051497,
+        "trading_bonus_multiplier": 4.573219697455539,
+        "trading_bonus": 0.056909616313291,
+        "profit_weight": 1.931125948951502,
+        "risk_weight": 0.550897898701931,
+        "consistency_weight": 1.131152888570538
+      },
+      "scores": {
+        "profit": 0.016834405733669677,
+        "sharpe": -0.7978815055436501,
+        "win_rate": 0.5332,
+        "consistency": 0.9996954922755976,
+        "max_drawdown": -0.1297996537807572,
+        "volatility": -0.03469342411023416,
+        "profit_factor": 2.2559787880223596,
+        "calmar_ratio": 0.057932701269125954,
+        "sortino_ratio": 0.026880107338671272,
+        "recovery_factor": 0.057932701269125954
+      },
+      "timestamp": "2025-10-19T04:31:37.989651"
+    },
+    {
+      "trial_number": 94,
+      "parameters": {
+        "balance_penalty_tolerance": 0.08846222030738253,
+        "balance_penalty": 11.186918206062993,
+        "hold_penalty_rate": 0.0026928681179955467,
+        "trading_bonus_multiplier": 4.298520258597916,
+        "trading_bonus": 0.08763389394787703,
+        "profit_weight": 0.26994860162095335,
+        "risk_weight": 0.10754542112846266,
+        "consistency_weight": 0.7156166694315178
+      },
+      "scores": {
+        "profit": -0.0014122049549272486,
+        "sharpe": -0.7308881390334767,
+        "win_rate": 0.5627249999999999,
+        "consistency": 0.9996706141662072,
+        "max_drawdown": -0.1441702333789484,
+        "volatility": -0.037717257413485694,
+        "profit_factor": 2.981470079349088,
+        "calmar_ratio": 0.04649272211188299,
+        "sortino_ratio": -0.015193531734147428,
+        "recovery_factor": 0.04649272211188299
+      },
+      "timestamp": "2025-10-19T04:31:39.866570"
+    },
+    {
+      "trial_number": 95,
+      "parameters": {
+        "balance_penalty_tolerance": 0.11627155469720503,
+        "balance_penalty": 14.927755003789372,
+        "hold_penalty_rate": 0.00335957401578242,
+        "trading_bonus_multiplier": 4.714670432668547,
+        "trading_bonus": 0.07040128538066931,
+        "profit_weight": 1.616321638171581,
+        "risk_weight": 0.2505186273808643,
+        "consistency_weight": 0.9252512166832745
+      },
+      "scores": {
+        "profit": 0.013669421423996297,
+        "sharpe": -0.7720884271578822,
+        "win_rate": 0.5522,
+        "consistency": 0.9996428788627992,
+        "max_drawdown": -0.14600943309034914,
+        "volatility": -0.04049855899846698,
+        "profit_factor": 2.729486144317004,
+        "calmar_ratio": 0.09432279128217039,
+        "sortino_ratio": -0.0018453017140603375,
+        "recovery_factor": 0.09432279128217039
+      },
+      "timestamp": "2025-10-19T04:31:41.973712"
+    },
+    {
+      "trial_number": 96,
+      "parameters": {
+        "balance_penalty_tolerance": 0.09659163622772557,
+        "balance_penalty": 12.119430719903429,
+        "hold_penalty_rate": 0.0012554872988945263,
+        "trading_bonus_multiplier": 4.896909123496788,
+        "trading_bonus": 0.09913295256490842,
+        "profit_weight": 1.4525076673875574,
+        "risk_weight": 0.36454700047460853,
+        "consistency_weight": 1.2652154055596658
+      },
+      "scores": {
+        "profit": -0.02094561235584691,
+        "sharpe": -0.8003897997783015,
+        "win_rate": 0.586675,
+        "consistency": 0.9996611065547507,
+        "max_drawdown": -0.1289768474065053,
+        "volatility": -0.039216975599526846,
+        "profit_factor": 3.6295340115574954,
+        "calmar_ratio": -0.16270856806009543,
+        "sortino_ratio": -0.041232795023740304,
+        "recovery_factor": -0.16270856806009543
+      },
+      "timestamp": "2025-10-19T04:31:43.800170"
+    },
+    {
+      "trial_number": 97,
+      "parameters": {
+        "balance_penalty_tolerance": 0.13349908159233442,
+        "balance_penalty": 9.13580875706765,
+        "hold_penalty_rate": 0.002275076664002325,
+        "trading_bonus_multiplier": 4.048590471879898,
+        "trading_bonus": 0.04103050042849698,
+        "profit_weight": 0.18100895131808542,
+        "risk_weight": 0.3203407893857505,
+        "consistency_weight": 0.6405834294862793
+      },
+      "scores": {
+        "profit": -0.002190484415478644,
+        "sharpe": -0.7471416550279232,
+        "win_rate": 0.5401499999999999,
+        "consistency": 0.9996627372016635,
+        "max_drawdown": -0.13306635530797348,
+        "volatility": -0.03848390917823439,
+        "profit_factor": 2.0904375046768027,
+        "calmar_ratio": -0.04148822422982723,
+        "sortino_ratio": -0.024221971096691396,
+        "recovery_factor": -0.04148822422982723
+      },
+      "timestamp": "2025-10-19T04:31:45.496695"
+    },
+    {
+      "trial_number": 98,
+      "parameters": {
+        "balance_penalty_tolerance": 0.13869970179320104,
+        "balance_penalty": 10.428822330003426,
+        "hold_penalty_rate": 0.004672189234697541,
+        "trading_bonus_multiplier": 4.394826315246903,
+        "trading_bonus": 0.05099078954674404,
+        "profit_weight": 0.21708690920181245,
+        "risk_weight": 0.2052028969820071,
+        "consistency_weight": 0.4514542802333139
+      },
+      "scores": {
+        "profit": -0.01077916632683576,
+        "sharpe": -0.8166617994638403,
+        "win_rate": 0.514525,
+        "consistency": 0.9996602281799298,
+        "max_drawdown": -0.1335604117915478,
+        "volatility": -0.03818773123730471,
+        "profit_factor": 2.0576622066937342,
+        "calmar_ratio": -0.0940230875483546,
+        "sortino_ratio": -0.0147955044208664,
+        "recovery_factor": -0.0940230875483546
+      },
+      "timestamp": "2025-10-19T04:31:47.200470"
+    },
+    {
+      "trial_number": 99,
+      "parameters": {
+        "balance_penalty_tolerance": 0.15662689650790917,
+        "balance_penalty": 8.200639275791186,
+        "hold_penalty_rate": 0.0011152737288636697,
+        "trading_bonus_multiplier": 4.836824712160124,
+        "trading_bonus": 0.06019027706989348,
+        "profit_weight": 1.8480547646883891,
+        "risk_weight": 0.6381617741594261,
+        "consistency_weight": 0.7625928374224034
+      },
+      "scores": {
+        "profit": -0.0014704283049780387,
+        "sharpe": -0.7916842507145057,
+        "win_rate": 0.5777,
+        "consistency": 0.9996684382939982,
+        "max_drawdown": -0.12482613284567719,
+        "volatility": -0.03745656230457628,
+        "profit_factor": 2.889647916045571,
+        "calmar_ratio": 0.05171653794096834,
+        "sortino_ratio": 0.014633224592922104,
+        "recovery_factor": 0.05171653794096834
+      },
+      "timestamp": "2025-10-19T04:31:48.967473"
+    }
+  ],
+  "timestamp": "2025-10-19T04:31:50.679124"
+}

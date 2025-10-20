@@ -4,18 +4,26 @@ Unit tests for Safety Mechanisms and Fallback System
 """
 
 import unittest
-import time
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock, call
+from datetime import datetime
+from unittest.mock import patch
+
 import numpy as np
 
 from ztb.adaptation.monitoring.safety import (
-    SafetyManager, AnomalyDetector, SafetyChecker, FallbackHandler, RecoveryManager, SafetyConfig
+    AnomalyDetector,
+    FallbackHandler,
+    RecoveryManager,
+    SafetyChecker,
+    SafetyConfig,
+    SafetyManager,
 )
 from ztb.adaptation.monitoring.types import (
-    SafetyLevel, AnomalyType, FallbackType, AnomalyDetection,
-    SafetyCheck, FallbackAction, SafetyStatus, RecoveryPlan,
-    MetricType, MetricValue
+    AnomalyType,
+    FallbackType,
+    MetricType,
+    MetricValue,
+    SafetyLevel,
+    SafetyStatus,
 )
 
 
@@ -42,7 +50,7 @@ class TestAnomalyDetector(unittest.TestCase):
                 name=metric_name,
                 value=value,
                 timestamp=datetime.now(),
-                metric_type=MetricType.PERFORMANCE
+                metric_type=MetricType.PERFORMANCE,
             )
             self.detector.metric_history[metric_name].append(value)
 
@@ -54,7 +62,7 @@ class TestAnomalyDetector(unittest.TestCase):
             name=metric_name,
             value=52.0,
             timestamp=datetime.now(),
-            metric_type=MetricType.PERFORMANCE
+            metric_type=MetricType.PERFORMANCE,
         )
         anomalies = self.detector.detect_anomalies({metric_name: normal_metric})
         self.assertEqual(len(anomalies), 0)
@@ -62,9 +70,9 @@ class TestAnomalyDetector(unittest.TestCase):
         # 異常値のテスト（3σ以上）
         anomaly_metric = MetricValue(
             name=metric_name,
-            value=70.0,  # 平均+10σ
+            value=70.0,
             timestamp=datetime.now(),
-            metric_type=MetricType.PERFORMANCE
+            metric_type=MetricType.PERFORMANCE,  # 平均+10σ
         )
         anomalies = self.detector.detect_anomalies({metric_name: anomaly_metric})
         self.assertEqual(len(anomalies), 1)
@@ -92,14 +100,14 @@ class TestSafetyChecker(unittest.TestCase):
                 name="cpu_usage_percent",
                 value=50.0,
                 timestamp=datetime.now(),
-                metric_type=MetricType.SYSTEM
+                metric_type=MetricType.SYSTEM,
             ),
             "memory_usage_percent": MetricValue(
                 name="memory_usage_percent",
                 value=60.0,
                 timestamp=datetime.now(),
-                metric_type=MetricType.SYSTEM
-            )
+                metric_type=MetricType.SYSTEM,
+            ),
         }
 
         check = self.checker._check_system_health(normal_metrics, [])
@@ -112,7 +120,7 @@ class TestSafetyChecker(unittest.TestCase):
             name="cpu_usage_percent",
             value=95.0,
             timestamp=datetime.now(),
-            metric_type=MetricType.SYSTEM
+            metric_type=MetricType.SYSTEM,
         )
 
         check = self.checker._check_system_health(high_cpu_metrics, [])
@@ -127,14 +135,14 @@ class TestSafetyChecker(unittest.TestCase):
                 name="win_rate",
                 value=0.6,
                 timestamp=datetime.now(),
-                metric_type=MetricType.PERFORMANCE
+                metric_type=MetricType.PERFORMANCE,
             ),
             "max_drawdown": MetricValue(
                 name="max_drawdown",
                 value=0.1,
                 timestamp=datetime.now(),
-                metric_type=MetricType.PERFORMANCE
-            )
+                metric_type=MetricType.PERFORMANCE,
+            ),
         }
 
         check = self.checker._check_performance_stability(normal_metrics, [])
@@ -147,7 +155,7 @@ class TestSafetyChecker(unittest.TestCase):
             name="win_rate",
             value=0.3,
             timestamp=datetime.now(),
-            metric_type=MetricType.PERFORMANCE
+            metric_type=MetricType.PERFORMANCE,
         )
 
         check = self.checker._check_performance_stability(low_winrate_metrics, [])
@@ -215,7 +223,9 @@ class TestRecoveryManager(unittest.TestCase):
         steps = ["Step 1", "Step 2", "Step 3"]
         success_criteria = ["Criteria 1", "Criteria 2"]
 
-        plan_id = self.manager.create_recovery_plan(trigger_reason, steps, success_criteria)
+        plan_id = self.manager.create_recovery_plan(
+            trigger_reason, steps, success_criteria
+        )
 
         self.assertIn(plan_id, self.manager.recovery_plans)
         plan = self.manager.recovery_plans[plan_id]
@@ -223,13 +233,11 @@ class TestRecoveryManager(unittest.TestCase):
         self.assertEqual(plan.steps, steps)
         self.assertEqual(plan.success_criteria, success_criteria)
 
-    @patch('ztb.adaptation.monitoring.safety.time.sleep')
+    @patch("ztb.adaptation.monitoring.safety.time.sleep")
     def test_recovery_execution_success(self, mock_sleep):
         """回復実行成功テスト"""
         plan_id = self.manager.create_recovery_plan(
-            "Test recovery",
-            ["Step 1", "Step 2"],
-            ["Success criteria"]
+            "Test recovery", ["Step 1", "Step 2"], ["Success criteria"]
         )
 
         result = self.manager.execute_recovery(plan_id)
@@ -242,9 +250,7 @@ class TestRecoveryManager(unittest.TestCase):
         """回復試行回数制限テスト"""
         trigger_reason = "Test failure"
         plan_id = self.manager.create_recovery_plan(
-            trigger_reason,
-            ["Recovery step"],
-            ["Success criteria"]
+            trigger_reason, ["Recovery step"], ["Success criteria"]
         )
 
         # 回復が成功するはず
@@ -263,7 +269,10 @@ class TestSafetyManager(unittest.TestCase):
         self.manager = SafetyManager(self.config)
 
     def tearDown(self):
-        if hasattr(self.manager, 'monitoring_thread') and self.manager.monitoring_thread:
+        if (
+            hasattr(self.manager, "monitoring_thread")
+            and self.manager.monitoring_thread
+        ):
             self.manager.stop_safety_monitoring()
 
     def test_safety_manager_initialization(self):
@@ -272,13 +281,14 @@ class TestSafetyManager(unittest.TestCase):
         self.assertIsInstance(self.manager.safety_checker, SafetyChecker)
         self.assertIsInstance(self.manager.fallback_handler, FallbackHandler)
         self.assertIsInstance(self.manager.recovery_manager, RecoveryManager)
-        self.assertEqual(self.manager.current_status.overall_safety_level, SafetyLevel.NORMAL)
+        self.assertEqual(
+            self.manager.current_status.overall_safety_level, SafetyLevel.NORMAL
+        )
 
     def test_manual_fallback_initiation(self):
         """手動フォールバック開始テスト"""
         action_id = self.manager.initiate_manual_fallback(
-            FallbackType.CONSERVATIVE,
-            "Manual test fallback"
+            FallbackType.CONSERVATIVE, "Manual test fallback"
         )
 
         self.assertIsInstance(action_id, str)
@@ -289,7 +299,7 @@ class TestSafetyManager(unittest.TestCase):
         plan_id = self.manager.create_recovery_plan(
             "Test recovery",
             ["Recovery step 1", "Recovery step 2"],
-            ["Recovery criteria"]
+            ["Recovery criteria"],
         )
 
         result = self.manager.execute_recovery(plan_id)
@@ -306,5 +316,5 @@ class TestSafetyManager(unittest.TestCase):
         self.assertLessEqual(status.system_health_score, 1.0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

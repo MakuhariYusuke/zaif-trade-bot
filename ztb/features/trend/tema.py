@@ -8,15 +8,14 @@ Output columns:
   - tema_{period}
 """
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
+from ztb.features.base import BaseFeature
 from ztb.features.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
-
-from typing import Any
-
-from ztb.features.base import BaseFeature
 
 
 @FeatureRegistry.register("TEMA")

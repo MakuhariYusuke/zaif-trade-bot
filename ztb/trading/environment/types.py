@@ -18,6 +18,7 @@ class InfoDict(TypedDict, total=False):
 
     Extends gymnasium's standard info dict with trading-specific information.
     """
+
     # Gymnasium standard fields (inherited)
     # current_step: int
     # total_steps: int
@@ -39,6 +40,7 @@ class InfoDict(TypedDict, total=False):
 
 class StatisticsDict(TypedDict, total=False):
     """Statistics dictionary returned by get_statistics."""
+
     total_reward: float
     mean_reward: float
     std_reward: float

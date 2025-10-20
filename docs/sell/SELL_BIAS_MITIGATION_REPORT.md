@@ -1,7 +1,7 @@
 # SELL Bias Mitigation - Final Implementation Report
 
-**Date**: 2025-10-06  
-**Project**: Zaif Trade Bot - SELL Action Bias Elimination  
+**Date**: 2025-10-06
+**Project**: Zaif Trade Bot - SELL Action Bias Elimination
 **Status**: ✅ IMPLEMENTATION COMPLETE - READY FOR INTEGRATION TESTING
 
 ---
@@ -180,7 +180,7 @@ constrained_loss.backward()
 
 **Failsafe Trigger**:
 ```
-IF (grad_norm_ma < 1e-6 OR advantage_ma ≤ 0) 
+IF (grad_norm_ma < 1e-6 OR advantage_ma ≤ 0)
    FOR 200 consecutive updates:
     → Stop training, dump diagnostics
 ```
@@ -262,22 +262,22 @@ if not is_healthy:
 ## Testing & Validation
 
 ### Unit Tests
-✅ **Lagrange Constraint**: Self-test with synthetic scenarios  
-- Low SELL → λ increases  
-- Good SELL → λ stabilizes  
+✅ **Lagrange Constraint**: Self-test with synthetic scenarios
+- Low SELL → λ increases
+- Good SELL → λ stabilizes
 
-✅ **Gradient Probes**: Synthetic gradient test  
-- Healthy gradients → no trigger  
-- Dead gradients → failsafe activates at step 12  
+✅ **Gradient Probes**: Synthetic gradient test
+- Healthy gradients → no trigger
+- Dead gradients → failsafe activates at step 12
 
-✅ **Mirror Augmentation**: Test dataset  
-- 1,000 rows → 1,300 rows (+30%)  
-- SELL 9.0% → 11.7% (+2.7pp)  
+✅ **Mirror Augmentation**: Test dataset
+- 1,000 rows → 1,300 rows (+30%)
+- SELL 9.0% → 11.7% (+2.7pp)
 
 ### Integration Status
-⏳ **Pending**: Full integration into `unified_trainer.py`  
-⏳ **Pending**: 50k×3seed smoke training  
-⏳ **Pending**: Long Paper evaluation (≥500 steps)  
+⏳ **Pending**: Full integration into `unified_trainer.py`
+⏳ **Pending**: 50k×3seed smoke training
+⏳ **Pending**: Long Paper evaluation (≥500 steps)
 
 ---
 
@@ -410,7 +410,7 @@ The SELL bias mitigation system represents a **comprehensive, production-ready s
 
 ---
 
-**Report Generated**: 2025-10-06  
-**Commit**: 9079ef2  
-**Repository**: https://github.com/MakuhariYusuke/zaif-trade-bot  
+**Report Generated**: 2025-10-06
+**Commit**: 9079ef2
+**Repository**: https://github.com/MakuhariYusuke/zaif-trade-bot
 **Status**: ✅ READY FOR INTEGRATION TESTING

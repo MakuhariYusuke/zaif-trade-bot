@@ -4,14 +4,17 @@ Simple reward function training test
 """
 
 
-from ztb.training.utils.training_utils import (
-    setup_project_path, create_ppo_model, 
-    load_training_data, save_model_with_path, 
-    print_training_results, print_training_start
-)
 from ztb.trading.environment.environment import HeavyTradingEnv
-from ztb.training.config.ppo_config import DEFAULT_INITIAL_PORTFOLIO_VALUE
 from ztb.training.callbacks.callbacks import SimpleTrainingCallback
+from ztb.training.config.ppo_config import DEFAULT_INITIAL_PORTFOLIO_VALUE
+from ztb.training.utils.training_utils import (
+    create_ppo_model,
+    load_training_data,
+    print_training_results,
+    print_training_start,
+    save_model_with_path,
+    setup_project_path,
+)
 
 
 def train_simple_reward(
@@ -29,16 +32,19 @@ def train_simple_reward(
     df = load_training_data()
 
     # Get trading environment config from common configuration
-    from ztb.trading.env_config import get_trading_env_config
-    from typing import cast, Any
+    from typing import Any, cast
 
-    env_config = get_trading_env_config({
-        "reward_scaling": reward_scaling,  # Override with parameter
-        "risk_free_rate": 0.02,
-        "feature_set": "full",
-        "initial_portfolio_value": DEFAULT_INITIAL_PORTFOLIO_VALUE,
-        "curriculum_stage": "simple_portfolio",  # Use simple reward
-    })
+    from ztb.trading.env_config import get_trading_env_config
+
+    env_config = get_trading_env_config(
+        {
+            "reward_scaling": reward_scaling,  # Override with parameter
+            "risk_free_rate": 0.02,
+            "feature_set": "full",
+            "initial_portfolio_value": DEFAULT_INITIAL_PORTFOLIO_VALUE,
+            "curriculum_stage": "simple_portfolio",  # Use simple reward
+        }
+    )
 
     env = HeavyTradingEnv(
         df=df,

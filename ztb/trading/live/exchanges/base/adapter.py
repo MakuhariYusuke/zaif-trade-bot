@@ -12,7 +12,11 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 
-from ztb.utils.errors import InsufficientFundsError, MinimumSizeError, OrderNotFoundError, TradingBotError
+from ztb.utils.errors import (
+    InsufficientFundsError,
+    MinimumSizeError,
+    OrderNotFoundError,
+)
 from ztb.utils.rate_limiter import RateLimitConfig, RateLimiter
 
 from .broker_interfaces import Balance, IBroker, Order, Position
@@ -23,6 +27,7 @@ logger = logging.getLogger(__name__)
 # Type definitions for better type safety
 class BaseOrderResponse(TypedDict, total=False):
     """Base response structure for order operations."""
+
     order_id: str
     symbol: str
     side: Union[Literal["buy"], Literal["sell"]]
@@ -36,6 +41,7 @@ class BaseOrderResponse(TypedDict, total=False):
 
 class BaseBalanceResponse(TypedDict, total=False):
     """Base response structure for balance operations."""
+
     currency: str
     free: float
     locked: float
@@ -44,6 +50,7 @@ class BaseBalanceResponse(TypedDict, total=False):
 
 class BasePositionResponse(TypedDict, total=False):
     """Base response structure for position operations."""
+
     symbol: str
     quantity: float
     avg_price: float
@@ -196,7 +203,9 @@ class BaseExchangeAdapter(IBroker, ABC):
                     symbol not in self._positions
                     or self._positions[symbol].quantity < quantity
                 ):
-                    available_qty = self._positions.get(symbol, Position(symbol, 0, 0, 0, 0)).quantity
+                    available_qty = self._positions.get(
+                        symbol, Position(symbol, 0, 0, 0, 0)
+                    ).quantity
                     raise InsufficientFundsError(
                         f"Insufficient {symbol} position for sell order. Required: {quantity}, Available: {available_qty}"
                     )

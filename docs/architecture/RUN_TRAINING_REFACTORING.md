@@ -1,6 +1,6 @@
 # run_training.py リファクタリング - v3.6.2
 
-**日時:** 2025-10-08  
+**日時:** 2025-10-08
 **目的:** `--timesteps`引数の追加と、`run_training.py`の薄層化
 
 ---
@@ -96,7 +96,7 @@ def __init__(
 ):
     """
     Args:
-        total_timesteps: Override total_timesteps from config 
+        total_timesteps: Override total_timesteps from config
                         (for quick validation runs)
     """
     # Override total_timesteps if specified
@@ -104,7 +104,7 @@ def __init__(
         config = config.copy()  # Don't modify original
         config["total_timesteps"] = total_timesteps
         logger.info(f"Overriding total_timesteps: {total_timesteps:,}")
-    
+
     # ... 既存の処理
 ```
 

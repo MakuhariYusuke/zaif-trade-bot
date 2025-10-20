@@ -7,12 +7,13 @@ from enum import Enum
 
 class Timeframe(Enum):
     """Enumeration of supported timeframes for feature calculations."""
-    M1 = "1min"      # 1-minute equivalent
-    M5 = "5min"      # 5-minute equivalent
-    M15 = "15min"    # 15-minute equivalent
-    H1 = "1hour"     # 1-hour equivalent
-    H4 = "4hour"     # 4-hour equivalent
-    D1 = "1day"      # 1-day equivalent
+
+    M1 = "1min"  # 1-minute equivalent
+    M5 = "5min"  # 5-minute equivalent
+    M15 = "15min"  # 15-minute equivalent
+    H1 = "1hour"  # 1-hour equivalent
+    H4 = "4hour"  # 4-hour equivalent
+    D1 = "1day"  # 1-day equivalent
 
 
 def get_timeframe_params(timeframe: Timeframe) -> dict:

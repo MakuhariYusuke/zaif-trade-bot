@@ -173,7 +173,7 @@ def main():
     result = experiment.run()
 
     # Print summary
-    print(f"\nSmoke Test Results:")
+    print("\nSmoke Test Results:")
     print(f"Status: {result.status}")
     print(f"Steps: {result.metrics.get('total_steps', 0)}")
     print(f"Pass Rate: {result.metrics.get('avg_feature_pass_rate', 0):.2%}")

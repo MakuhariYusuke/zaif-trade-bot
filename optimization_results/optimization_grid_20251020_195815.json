@@ -1,0 +1,17 @@
+{
+  "method": "grid",
+  "best_params": {
+    "learning_rate": 0.0001,
+    "batch_size": 128,
+    "gamma": 0.98675
+  },
+  "best_score": -1.1372499999999839e-05,
+  "optimization_time": 0.5112271308898926,
+  "n_trials": 5,
+  "convergence_info": {
+    "method": "grid_search",
+    "total_combinations": 5
+  },
+  "cross_validation_scores": [],
+  "timestamp": "20251020_195815"
+}

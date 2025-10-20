@@ -9,9 +9,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from apscheduler.schedulers.blocking import (
-    BlockingScheduler,
-)
+from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from ztb.data.binance_data import (

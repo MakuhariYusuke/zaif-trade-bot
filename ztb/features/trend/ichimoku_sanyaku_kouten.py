@@ -79,33 +79,44 @@ class IchimokuSanyakuKouten(BaseFeature):
         # Price-cloud distance normalized
         cloud_center = (senkou_a + senkou_b) / 2
         cloud_thickness = abs(senkou_a - senkou_b)
-        price_cloud_distance = (current_price - cloud_center) / (cloud_thickness + 0.001)
+        price_cloud_distance = (current_price - cloud_center) / (
+            cloud_thickness + 0.001
+        )
         price_strength = np.clip(price_cloud_distance, -2, 2) / 2  # -1 to 1
 
         # Tenkan-Kijun distance normalized
-        tk_distance = (tenkan - kijun) / (kijun * 0.01 + 0.001)  # 1% of Kijun as reference
+        tk_distance = (tenkan - kijun) / (
+            kijun * 0.01 + 0.001
+        )  # 1% of Kijun as reference
         tk_strength = np.clip(tk_distance, -2, 2) / 2
 
         # Chikou momentum strength
-        chikou_momentum = chikou.diff(5) / (current_price * 0.005 + 0.001)  # 0.5% of price
+        chikou_momentum = chikou.diff(5) / (
+            current_price * 0.005 + 0.001
+        )  # 0.5% of price
         chikou_strength = np.clip(chikou_momentum, -2, 2) / 2
 
         # Composite Sanyaku Kouten score
         # Base score from pattern completion
-        base_score = np.where(bullish_kouten, 1,
-                            np.where(bearish_gyaku, -1, 0))
+        base_score = np.where(bullish_kouten, 1, np.where(bearish_gyaku, -1, 0))
 
         # Strength multiplier
-        strength_multiplier = (abs(price_strength) + abs(tk_strength) + abs(chikou_strength)) / 3
+        strength_multiplier = (
+            abs(price_strength) + abs(tk_strength) + abs(chikou_strength)
+        ) / 3
 
         # Final Sanyaku Kouten score
         sanyaku_kouten_score = base_score * (0.5 + 0.5 * strength_multiplier)
 
         # Add trend confirmation (recent crosses strengthen the signal)
-        recent_tk_cross = (tenkan > kijun).rolling(5).mean()  # % of time TK was bullish recently
+        recent_tk_cross = (
+            (tenkan > kijun).rolling(5).mean()
+        )  # % of time TK was bullish recently
         trend_confirmation = (recent_tk_cross - 0.5) * 2  # -1 to 1 scale
 
         sanyaku_kouten_score = sanyaku_kouten_score * (1 + 0.2 * trend_confirmation)
 
-        result_df = pd.DataFrame({"ichimoku_sanyaku_kouten": sanyaku_kouten_score}, index=df.index)
+        result_df = pd.DataFrame(
+            {"ichimoku_sanyaku_kouten": sanyaku_kouten_score}, index=df.index
+        )
         return result_df

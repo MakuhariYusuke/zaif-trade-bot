@@ -12,8 +12,8 @@ from typing import Any, Dict, Optional, Protocol
 
 from stable_baselines3.common.callbacks import BaseCallback
 
-from ztb.training.evaluation.eval_gates import EvalGates, GateResult, GateStatus
 from ztb.training.config.trainer_params import TrainerParams
+from ztb.training.evaluation.eval_gates import EvalGates, GateResult, GateStatus
 from ztb.types.generics import ConfigurableMixin, StatisticsTracker
 from ztb.utils.logging_utils import get_logger
 
@@ -135,7 +135,9 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
             "step": step,
             "reward": reward,
             "mean_reward": self.reward_mean,
-            "reward_std": (self.reward_m2 / self.reward_count)**0.5 if self.reward_count > 1 else 0.0
+            "reward_std": (self.reward_m2 / self.reward_count) ** 0.5
+            if self.reward_count > 1
+            else 0.0,
         }
         self.stats_tracker.update_statistics("training_progress", stats)
 
@@ -277,8 +279,12 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
 
         checkpoint_data = safe_json_load(Path(checkpoint_path))
         self.current_step = checkpoint_data.get("current_step", 0)
-        self.rewards_history = deque(checkpoint_data.get("rewards_history", []), maxlen=50000)
-        self.steps_history = deque(checkpoint_data.get("steps_history", []), maxlen=50000)
+        self.rewards_history = deque(
+            checkpoint_data.get("rewards_history", []), maxlen=50000
+        )
+        self.steps_history = deque(
+            checkpoint_data.get("steps_history", []), maxlen=50000
+        )
         self.consecutive_failures = checkpoint_data.get("consecutive_failures", 0)
         self.last_gate_check_step = checkpoint_data.get("last_gate_check_step", 0)
         self.halt_reason = checkpoint_data.get("halt_reason")
@@ -317,7 +323,7 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
 class CheckpointMixin:
     """
     Mixin class providing checkpoint functionality.
-    
+
     DEPRECATED: This functionality is now integrated into BaseTrainer.
     This class is kept for backward compatibility only.
     """
@@ -325,9 +331,13 @@ class CheckpointMixin:
     def save_checkpoint(self, checkpoint_path: str) -> None:
         """Save training state to checkpoint file."""
         # This method should be overridden by BaseTrainer
-        raise NotImplementedError("save_checkpoint should be implemented by BaseTrainer")
+        raise NotImplementedError(
+            "save_checkpoint should be implemented by BaseTrainer"
+        )
 
     def load_checkpoint(self, checkpoint_path: str) -> None:
         """Load training state from checkpoint file."""
         # This method should be overridden by BaseTrainer
-        raise NotImplementedError("load_checkpoint should be implemented by BaseTrainer")
+        raise NotImplementedError(
+            "load_checkpoint should be implemented by BaseTrainer"
+        )

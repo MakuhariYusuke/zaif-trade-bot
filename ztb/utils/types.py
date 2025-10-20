@@ -5,16 +5,16 @@ Type definitions and protocols for ZTB system.
 This module provides type hints and protocols used across the codebase.
 """
 
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Union, TypeVar
-from typing_extensions import TypedDict
-import numpy as np
 import os
-import pandas as pd
+from typing import Any, Dict, List, Optional, Protocol, Tuple, TypeVar, Union
 
+import numpy as np
+import pandas as pd
+from typing_extensions import TypedDict
 
 # Type variables for generic types
-T = TypeVar('T', bound=np.floating)
-U = TypeVar('U', bound=np.integer)
+T = TypeVar("T", bound=np.floating)
+U = TypeVar("U", bound=np.integer)
 
 # Generic array types
 NDArrayFloat = np.ndarray[Any, Any]
@@ -31,24 +31,28 @@ ActionType = int  # 0: HOLD, 1: BUY, 2: SELL
 ActionMask = NDArrayBool  # Boolean array for valid actions
 
 # Market data types
-PriceData = TypedDict('PriceData', {
-    'open': ArrayLike,
-    'high': ArrayLike,
-    'low': ArrayLike,
-    'close': ArrayLike,
-    'volume': Optional[ArrayLike]
-}, total=False)
+PriceData = TypedDict(
+    "PriceData",
+    {
+        "open": ArrayLike,
+        "high": ArrayLike,
+        "low": ArrayLike,
+        "close": ArrayLike,
+        "volume": Optional[ArrayLike],
+    },
+    total=False,
+)
 
-OHLCData = TypedDict('OHLCData', {
-    'open': ArrayLike,
-    'high': ArrayLike,
-    'low': ArrayLike,
-    'close': ArrayLike
-})
+OHLCData = TypedDict(
+    "OHLCData",
+    {"open": ArrayLike, "high": ArrayLike, "low": ArrayLike, "close": ArrayLike},
+)
+
 
 # Configuration types
 class TrainingConfig(TypedDict, total=False):
     """Training configuration dictionary."""
+
     total_timesteps: int
     learning_rate: float
     batch_size: int
@@ -63,8 +67,10 @@ class TrainingConfig(TypedDict, total=False):
     verbose: int
     seed: Optional[int]
 
+
 class EnvironmentConfig(TypedDict, total=False):
     """Environment configuration dictionary."""
+
     max_steps: int
     initial_balance: float
     transaction_fee: float
@@ -73,23 +79,32 @@ class EnvironmentConfig(TypedDict, total=False):
     reward_scaling: float
     position_penalty: float
 
+
 class ModelConfig(TypedDict, total=False):
     """Model configuration dictionary."""
+
     policy: str
     features_dim: int
     action_space_size: int
     hidden_layers: List[int]
     activation_fn: str
 
+
 # Protocol definitions
 class TradingEnvironment(Protocol):
     """Protocol for trading environments."""
 
-    def reset(self: "TradingEnvironment", **kwargs: Any) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], Dict[str, Any]]:
+    def reset(
+        self: "TradingEnvironment", **kwargs: Any
+    ) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], Dict[str, Any]]:
         """Reset environment and return initial observation and info."""
         ...
 
-    def step(self: "TradingEnvironment", action: ActionType) -> Tuple[np.ndarray[Any, np.dtype[np.floating[Any]]], float, bool, bool, Dict[str, Any]]:
+    def step(
+        self: "TradingEnvironment", action: ActionType
+    ) -> Tuple[
+        np.ndarray[Any, np.dtype[np.floating[Any]]], float, bool, bool, Dict[str, Any]
+    ]:
         """Execute action and return next observation, reward, terminated, truncated, info."""
         ...
 
@@ -107,6 +122,7 @@ class TradingEnvironment(Protocol):
         """Get observation space."""
         ...
 
+
 class FeatureCalculator(Protocol):
     """Protocol for feature calculators."""
 
@@ -119,6 +135,7 @@ class FeatureCalculator(Protocol):
         """Get list of feature names."""
         ...
 
+
 class CallbackProtocol(Protocol):
     """Protocol for training callbacks."""
 
@@ -126,9 +143,11 @@ class CallbackProtocol(Protocol):
         """Callback function."""
         ...
 
+
 # Result types
 class TrainingResult(TypedDict):
     """Training result dictionary."""
+
     model_path: str
     total_timesteps: int
     final_reward: float
@@ -136,8 +155,10 @@ class TrainingResult(TypedDict):
     training_time: float
     config: TrainingConfig
 
+
 class BacktestResult(TypedDict):
     """Backtest result dictionary."""
+
     total_return: float
     sharpe_ratio: float
     max_drawdown: float
@@ -146,13 +167,16 @@ class BacktestResult(TypedDict):
     final_portfolio_value: float
     action_distribution: Dict[str, int]
 
+
 class ValidationResult(TypedDict):
     """Validation result dictionary."""
+
     is_valid: bool
     errors: List[str]
     warnings: List[str]
     metrics: Optional[Dict[str, float]]
 
+
 # Utility type aliases
-PathLike = Union[str, 'os.PathLike[str]']
+PathLike = Union[str, "os.PathLike[str]"]
 JSONSerializable = Union[Dict[str, Any], List[Any], str, int, float, bool, None]

@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """Extract and compare action distribution metrics from short training runs."""
 
-from pathlib import Path
-from typing import Dict, Any
 import json
+from pathlib import Path
+from typing import Any, Dict
 
 from tensorboard.backend.event_processing import event_accumulator
 
 RUNS = {
-    "v378_scale_short": Path("checkpoints/ppo_reward_v378_scale_short/ppo_reward_v378_scale_short_1"),
-    "v379_dynamic_short": Path("checkpoints/ppo_reward_v379_dynamic_short/ppo_reward_v379_dynamic_short_1"),
-    "v380_aggressive_short": Path("checkpoints/ppo_reward_v380_aggressive_short/ppo_reward_v380_aggressive_short_1"),
+    "v378_scale_short": Path(
+        "checkpoints/ppo_reward_v378_scale_short/ppo_reward_v378_scale_short_1"
+    ),
+    "v379_dynamic_short": Path(
+        "checkpoints/ppo_reward_v379_dynamic_short/ppo_reward_v379_dynamic_short_1"
+    ),
+    "v380_aggressive_short": Path(
+        "checkpoints/ppo_reward_v380_aggressive_short/ppo_reward_v380_aggressive_short_1"
+    ),
 }
 
 
@@ -47,9 +53,13 @@ def extract_action_metrics(run_dir: Path) -> Dict[str, Any]:
 
     # Calculate total actions and ratios
     if all(f"{action}_count_final" in metrics for action in ["hold", "buy", "sell"]):
-        total_final = sum(metrics[f"{action}_count_final"] for action in ["hold", "buy", "sell"])
+        total_final = sum(
+            metrics[f"{action}_count_final"] for action in ["hold", "buy", "sell"]
+        )
         for action in ["hold", "buy", "sell"]:
-            metrics[f"{action}_ratio_final"] = metrics[f"{action}_count_final"] / total_final
+            metrics[f"{action}_ratio_final"] = (
+                metrics[f"{action}_count_final"] / total_final
+            )
 
     return metrics
 
@@ -69,7 +79,7 @@ def main() -> None:
 
     # Save results
     output_file = Path("action_distribution_comparison.json")
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
     print(f"\n📊 Results saved to {output_file}")

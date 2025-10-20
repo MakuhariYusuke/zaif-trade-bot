@@ -8,69 +8,70 @@ import sys
 from datetime import datetime
 
 # Add the project root to the Python path
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Zaif Trade Bot'
-copyright = f'{datetime.now().year}, MakuhariYusuke'
-author = 'MakuhariYusuke'
+project = "Zaif Trade Bot"
+copyright = f"{datetime.now().year}, MakuhariYusuke"
+author = "MakuhariYusuke"
 
 # Read version from package
 try:
     from ztb.__version__ import __version__
+
     release = __version__
-    version = '.'.join(release.split('.')[:2])
+    version = ".".join(release.split(".")[:2])
 except ImportError:
-    release = '4.2.0'
-    version = '4.2'
+    release = "4.2.0"
+    version = "4.2"
 
 # -- General configuration ---------------------------------------------------
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
-    'sphinx.ext.coverage',
-    'sphinx.ext.mathjax',
-    'myst_parser',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
+    "sphinx.ext.coverage",
+    "sphinx.ext.mathjax",
+    "myst_parser",
 ]
 
 # MyST Parser settings
 myst_enable_extensions = [
-    'colon_fence',
-    'deflist',
-    'dollarmath',
-    'fieldlist',
-    'html_admonition',
-    'html_image',
-    'linkify',
-    'replacements',
-    'smartquotes',
-    'strikethrough',
-    'substitution',
-    'tasklist',
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "fieldlist",
+    "html_admonition",
+    "html_image",
+    "linkify",
+    "replacements",
+    "smartquotes",
+    "strikethrough",
+    "substitution",
+    "tasklist",
 ]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output -------------------------------------------------
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]
 
 # -- Extension configuration --------------------------------------------------
 
 # Autodoc settings
 autodoc_default_options = {
-    'members': True,
-    'undoc-members': True,
-    'show-inheritance': True,
-    'member-order': 'bysource',
+    "members": True,
+    "undoc-members": True,
+    "show-inheritance": True,
+    "member-order": "bysource",
 }
 
 # Napoleon settings for Google/NumPy style docstrings
@@ -89,21 +90,21 @@ napoleon_type_aliases = None
 
 # Intersphinx mapping
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
-    'pandas': ('https://pandas.pydata.org/docs/', None),
-    'matplotlib': ('https://matplotlib.org/stable/', None),
-    'sklearn': ('https://scikit-learn.org/stable/', None),
-    'gymnasium': ('https://gymnasium.farama.org/', None),
-    'stable_baselines3': ('https://stable-baselines3.readthedocs.io/en/master/', None),
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "gymnasium": ("https://gymnasium.farama.org/", None),
+    "stable_baselines3": ("https://stable-baselines3.readthedocs.io/en/master/", None),
 }
 
 # Todo settings
 todo_include_todos = True
 
 # Coverage settings
-coverage_modules = ['ztb']
+coverage_modules = ["ztb"]
 coverage_ignore_modules = [
-    'ztb.tests',
-    'ztb.scripts',
+    "ztb.tests",
+    "ztb.scripts",
 ]

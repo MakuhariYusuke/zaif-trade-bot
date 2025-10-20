@@ -5,34 +5,36 @@ Comprehensive tests for SAC v421 advanced features: Anomaly Detection, Meta Lear
 
 import sys
 import unittest
+from unittest.mock import Mock, patch
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from unittest.mock import Mock, patch, MagicMock
-sys.path.append('.')
 
-from ztb.data.anomaly_detection import (
-    ComprehensiveAnomalyDetector,
-    StatisticalAnomalyDetector,
-    MLAnomalyDetector,
-    AutoencoderAnomalyDetector
-)
-from ztb.adaptation.meta_learning import MarketMetaLearner, MetaLearner, MAML, Reptile
-from ztb.training.federated_learning import (
-    MarketFederatedLearner,
-    FedAvgServer,
-    FederatedClient,
-    FederatedConfig
-)
-from ztb.training.unified_trainer.config import UnifiedTrainerConfig, UnifiedAlgorithm
+sys.path.append(".")
+
 from ztb.adaptation.continual_learning import (
     ContinualLearner,
-    ElasticWeightConsolidation,
-    RehearsalBuffer,
-    ProgressiveNetwork,
     ContinualLearningConfig,
-    TaskData
+    ElasticWeightConsolidation,
+    ProgressiveNetwork,
+    RehearsalBuffer,
+    TaskData,
 )
+from ztb.adaptation.meta_learning import MarketMetaLearner
+from ztb.data.anomaly_detection import (
+    AutoencoderAnomalyDetector,
+    ComprehensiveAnomalyDetector,
+    MLAnomalyDetector,
+    StatisticalAnomalyDetector,
+)
+from ztb.training.federated_learning import (
+    FedAvgServer,
+    FederatedClient,
+    FederatedConfig,
+    MarketFederatedLearner,
+)
+from ztb.training.unified_trainer.config import UnifiedAlgorithm
 
 
 class TestAnomalyDetection(unittest.TestCase):
@@ -45,7 +47,7 @@ class TestAnomalyDetection(unittest.TestCase):
 
     def test_statistical_anomaly_detector(self):
         """Test statistical anomaly detection."""
-        detector = StatisticalAnomalyDetector(method='zscore', threshold=3.0)
+        detector = StatisticalAnomalyDetector(method="zscore", threshold=3.0)
 
         # Test normal data
         result = detector.detect(self.test_data[0])
@@ -58,7 +60,7 @@ class TestAnomalyDetection(unittest.TestCase):
 
     def test_ml_anomaly_detector(self):
         """Test ML-based anomaly detection."""
-        detector = MLAnomalyDetector(method='isolation_forest')
+        detector = MLAnomalyDetector(method="isolation_forest")
 
         # Fit detector
         success = detector.fit(self.test_data)
@@ -85,9 +87,9 @@ class TestAnomalyDetection(unittest.TestCase):
     def test_comprehensive_anomaly_detector(self):
         """Test comprehensive anomaly detection system."""
         detector = ComprehensiveAnomalyDetector(
-            statistical_methods=['zscore'],
-            ml_methods=['isolation_forest'],
-            voting_threshold=0.5
+            statistical_methods=["zscore"],
+            ml_methods=["isolation_forest"],
+            voting_threshold=0.5,
         )
 
         # Fit ML detectors
@@ -98,8 +100,8 @@ class TestAnomalyDetection(unittest.TestCase):
         is_anomaly, results = detector.detect_anomalies(self.test_data[0])
         self.assertIsInstance(is_anomaly, bool)
         self.assertIsInstance(results, dict)
-        self.assertIn('anomaly_score', results)
-        self.assertIn('method_results', results)
+        self.assertIn("anomaly_score", results)
+        self.assertIn("method_results", results)
 
     def test_anomaly_stats(self):
         """Test anomaly detection statistics."""
@@ -127,7 +129,7 @@ class TestMetaLearning(unittest.TestCase):
             nn.Linear(self.state_dim, 32),
             nn.ReLU(),
             nn.Linear(32, self.action_dim),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
     def test_maml_algorithm(self):
@@ -159,7 +161,7 @@ class TestMetaLearning(unittest.TestCase):
 
     def test_reptile_algorithm(self):
         """Test Reptile algorithm."""
-        from ztb.adaptation.meta_learning import Reptile, MetaLearningConfig
+        from ztb.adaptation.meta_learning import MetaLearningConfig, Reptile
 
         config = MetaLearningConfig()
         reptile = Reptile(self.base_model, config)
@@ -178,38 +180,37 @@ class TestMetaLearning(unittest.TestCase):
         # Test adaptation
         adapted_model, task_info = reptile.adapt_to_task(task_data, dummy_loss)
         self.assertIsInstance(adapted_model, nn.Module)
-        self.assertIn('adaptation_losses', task_info)
+        self.assertIn("adaptation_losses", task_info)
 
     def test_market_meta_learner(self):
         """Test market-specific meta learning."""
         meta_learner = MarketMetaLearner(
-            state_dim=self.state_dim,
-            action_dim=self.action_dim
+            state_dim=self.state_dim, action_dim=self.action_dim
         )
 
         # Add market data
         market_data = {
-            'states': np.random.randn(50, self.state_dim),
-            'actions': np.random.randn(50, self.action_dim),
-            'rewards': np.random.randn(50, 1),
-            'next_states': np.random.randn(50, self.state_dim),
-            'dones': np.random.randint(0, 2, (50, 1))
+            "states": np.random.randn(50, self.state_dim),
+            "actions": np.random.randn(50, self.action_dim),
+            "rewards": np.random.randn(50, 1),
+            "next_states": np.random.randn(50, self.state_dim),
+            "dones": np.random.randint(0, 2, (50, 1)),
         }
 
-        meta_learner.add_market_data('test_market', **market_data)
+        meta_learner.add_market_data("test_market", **market_data)
 
         # Test training
         history = meta_learner.train_on_markets(num_epochs=2)
         self.assertIsInstance(history, dict)
-        self.assertIn('meta_losses', history)
+        self.assertIn("meta_losses", history)
 
         # Test adaptation
-        adapted_model = meta_learner.adapt_to_market('test_market', market_data)
+        adapted_model = meta_learner.adapt_to_market("test_market", market_data)
         self.assertIsInstance(adapted_model, nn.Module)
 
         # Test prediction
         state = np.random.randn(self.state_dim)
-        action = meta_learner.predict_market_action('test_market', state)
+        action = meta_learner.predict_market_action("test_market", state)
         self.assertEqual(action.shape, (self.action_dim,))
 
 
@@ -218,17 +219,13 @@ class TestFederatedLearning(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.base_model = nn.Sequential(
-            nn.Linear(10, 32),
-            nn.ReLU(),
-            nn.Linear(32, 4)
-        )
+        self.base_model = nn.Sequential(nn.Linear(10, 32), nn.ReLU(), nn.Linear(32, 4))
 
         self.config = FederatedConfig(
             num_clients=3,
             num_rounds=2,
             local_epochs=1,
-            enable_privacy=False  # Disable for testing
+            enable_privacy=False,  # Disable for testing
         )
 
     def test_federated_client(self):
@@ -286,15 +283,12 @@ class TestFederatedLearning(unittest.TestCase):
 
     def test_market_federated_learner(self):
         """Test market-based federated learning."""
-        market_configs = {
-            'market1': self.config,
-            'market2': self.config
-        }
+        market_configs = {"market1": self.config, "market2": self.config}
 
         federated_learner = MarketFederatedLearner(self.base_model, market_configs)
 
         # Add clients to markets
-        for market in ['market1', 'market2']:
+        for market in ["market1", "market2"]:
             for i in range(2):
                 data = torch.randn(20, 10)
                 targets = torch.randn(20, 4)
@@ -309,8 +303,8 @@ class TestFederatedLearning(unittest.TestCase):
         # Test training
         results = federated_learner.train_all_markets(dummy_loss)
         self.assertIsInstance(results, dict)
-        self.assertIn('market1', results)
-        self.assertIn('market2', results)
+        self.assertIn("market1", results)
+        self.assertIn("market2", results)
 
         # Test cross-market aggregation
         aggregated_model = federated_learner.aggregate_cross_market_knowledge()
@@ -327,17 +321,17 @@ class TestAdvancedFeaturesIntegration(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.config = {
-            'algorithm': 'ppo',
-            'total_timesteps': 100,
-            'model_name': 'test_advanced',
-            'enable_anomaly_detection': True,
-            'enable_meta_learning': True,
-            'enable_federated': True,
-            'federated_markets': True,
-            'markets': ['market1', 'market2']
+            "algorithm": "ppo",
+            "total_timesteps": 100,
+            "model_name": "test_advanced",
+            "enable_anomaly_detection": True,
+            "enable_meta_learning": True,
+            "enable_federated": True,
+            "federated_markets": True,
+            "markets": ["market1", "market2"],
         }
 
-    @patch('ztb.training.unified_trainer.trainer.create_algorithm_trainer')
+    @patch("ztb.training.unified_trainer.trainer.create_algorithm_trainer")
     def test_advanced_features_setup(self, mock_create_trainer):
         """Test advanced features setup in UnifiedTrainer."""
         from ztb.training.unified_trainer.trainer import UnifiedTrainer
@@ -367,14 +361,14 @@ class TestAdvancedFeaturesIntegration(unittest.TestCase):
             enable_anomaly_detection=True,
             enable_meta_learning=True,
             federated_markets=True,
-            markets=['test_market']
+            markets=["test_market"],
         )
 
         # Check config attributes
         self.assertTrue(config.enable_anomaly_detection)
         self.assertTrue(config.enable_meta_learning)
         self.assertTrue(config.federated_markets)
-        self.assertEqual(config.markets, ['test_market'])
+        self.assertEqual(config.markets, ["test_market"])
 
 
 class TestContinualLearning(unittest.TestCase):
@@ -382,28 +376,24 @@ class TestContinualLearning(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.model = nn.Sequential(
-            nn.Linear(10, 32),
-            nn.ReLU(),
-            nn.Linear(32, 4)
-        )
+        self.model = nn.Sequential(nn.Linear(10, 32), nn.ReLU(), nn.Linear(32, 4))
 
         self.config = ContinualLearningConfig(
-            method='ewc',
+            method="ewc",
             ewc_lambda=0.1,
             rehearsal_buffer_size=100,
-            max_tasks_in_memory=3
+            max_tasks_in_memory=3,
         )
 
         # Create sample task data
         self.task_data = TaskData(
-            task_id='test_task',
+            task_id="test_task",
             states=torch.randn(50, 10),
             actions=torch.randn(50, 4),
             rewards=torch.randn(50, 1),
             next_states=torch.randn(50, 10),
             dones=torch.randint(0, 2, (50,)).float(),
-            num_samples=50
+            num_samples=50,
         )
 
     def test_elastic_weight_consolidation(self):
@@ -416,7 +406,7 @@ class TestContinualLearning(unittest.TestCase):
         # Consolidate task
         stats = ewc.consolidate_task(self.task_data, dummy_loss)
         self.assertIsInstance(stats, dict)
-        self.assertIn('task_id', stats)
+        self.assertIn("task_id", stats)
 
         # Test regularization loss
         current_params = {name: param for name, param in self.model.named_parameters()}
@@ -433,24 +423,24 @@ class TestContinualLearning(unittest.TestCase):
         # Get rehearsal batch
         batch = buffer.get_rehearsal_batch(batch_size=10)
         self.assertIsNotNone(batch)
-        self.assertIn('states', batch)
+        self.assertIn("states", batch)
 
         # Get buffer stats
         stats = buffer.get_buffer_stats()
         self.assertIsInstance(stats, dict)
-        self.assertIn('total_samples', stats)
+        self.assertIn("total_samples", stats)
 
     def test_progressive_network(self):
         """Test progressive network functionality."""
         progressive_net = ProgressiveNetwork(self.model, self.config)
 
         # Add task network
-        task_net = progressive_net.add_task_network('task1')
+        task_net = progressive_net.add_task_network("task1")
         self.assertIsInstance(task_net, nn.Module)
 
         # Test forward with lateral connections
         x = torch.randn(5, 10)
-        output = progressive_net.forward_with_lateral('task1', x)
+        output = progressive_net.forward_with_lateral("task1", x)
         self.assertEqual(output.shape, (5, 4))
 
         # Get network stats
@@ -469,7 +459,7 @@ class TestContinualLearning(unittest.TestCase):
         # Learn task
         stats = learner.learn_task(self.task_data, dummy_loss, optimizer, num_epochs=2)
         self.assertIsInstance(stats, dict)
-        self.assertIn('final_loss', stats)
+        self.assertIn("final_loss", stats)
 
         # Test prediction
         state = torch.randn(1, 10)
@@ -482,7 +472,7 @@ class TestContinualLearning(unittest.TestCase):
 
     def test_continual_learner_rehearsal(self):
         """Test continual learner with rehearsal."""
-        config = ContinualLearningConfig(method='rehearsal', rehearsal_buffer_size=50)
+        config = ContinualLearningConfig(method="rehearsal", rehearsal_buffer_size=50)
         learner = ContinualLearner(self.model, config)
 
         def dummy_loss(outputs, actions, rewards, next_outputs, dones):
@@ -496,11 +486,11 @@ class TestContinualLearning(unittest.TestCase):
 
         # Check rehearsal buffer
         learner_stats = learner.get_continual_stats()
-        self.assertIn('rehearsal_stats', learner_stats)
+        self.assertIn("rehearsal_stats", learner_stats)
 
     def test_continual_learner_progressive(self):
         """Test continual learner with progressive networks."""
-        config = ContinualLearningConfig(method='progressive')
+        config = ContinualLearningConfig(method="progressive")
         learner = ContinualLearner(self.model, config)
 
         def dummy_loss(outputs, actions, rewards, next_outputs, dones):
@@ -514,7 +504,7 @@ class TestContinualLearning(unittest.TestCase):
 
         # Check progressive stats
         learner_stats = learner.get_continual_stats()
-        self.assertIn('progressive_stats', learner_stats)
+        self.assertIn("progressive_stats", learner_stats)
 
 
 class TestContinualLearningIntegration(unittest.TestCase):
@@ -523,16 +513,16 @@ class TestContinualLearningIntegration(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.config = {
-            'algorithm': 'ppo',
-            'total_timesteps': 100,
-            'model_name': 'test_continual',
-            'enable_continual_learning': True,
-            'continual_method': 'ewc',
-            'continual_ewc_lambda': 0.1,
-            'continual_buffer_size': 100
+            "algorithm": "ppo",
+            "total_timesteps": 100,
+            "model_name": "test_continual",
+            "enable_continual_learning": True,
+            "continual_method": "ewc",
+            "continual_ewc_lambda": 0.1,
+            "continual_buffer_size": 100,
         }
 
-    @patch('ztb.training.unified_trainer.trainer.create_algorithm_trainer')
+    @patch("ztb.training.unified_trainer.trainer.create_algorithm_trainer")
     def test_continual_learning_setup(self, mock_create_trainer):
         """Test continual learning setup in UnifiedTrainer."""
         from ztb.training.unified_trainer.trainer import UnifiedTrainer
@@ -560,12 +550,12 @@ class TestContinualLearningIntegration(unittest.TestCase):
         config = UnifiedTrainerConfig(
             algorithm=UnifiedAlgorithm.PPO,
             enable_continual_learning=True,
-            continual_method='ewc',
+            continual_method="ewc",
             continual_ewc_lambda=0.1,
-            continual_buffer_size=1000
+            continual_buffer_size=1000,
         )
 
         # Check config attributes
         self.assertTrue(config.enable_continual_learning)
-        self.assertEqual(config.continual_method, 'ewc')
+        self.assertEqual(config.continual_method, "ewc")
         self.assertEqual(config.continual_ewc_lambda, 0.1)

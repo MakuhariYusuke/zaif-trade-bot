@@ -22,9 +22,9 @@ ztb/optimization/
 ## 🎯 利用可能な最適化手法
 
 ### 1. Grid Search（グリッドサーチ）
-**特徴**: 全組み合わせを網羅的に探索  
-**利点**: 最適解を見逃さない、体系的  
-**欠点**: 組み合わせ爆発、計算コスト大  
+**特徴**: 全組み合わせを網羅的に探索
+**利点**: 最適解を見逃さない、体系的
+**欠点**: 組み合わせ爆発、計算コスト大
 **推奨**: パラメータ数が少ない（2-3個）、確実に最適解を見つけたい場合
 
 ```python
@@ -44,9 +44,9 @@ result = optimizer.optimize()
 ```
 
 ### 2. Random Search（ランダムサーチ）
-**特徴**: ランダムサンプリングで探索  
-**利点**: Grid Searchより効率的、高次元に強い  
-**欠点**: 運に左右される  
+**特徴**: ランダムサンプリングで探索
+**利点**: Grid Searchより効率的、高次元に強い
+**欠点**: 運に左右される
 **推奨**: パラメータ数が多い（3個以上）、計算リソースが限られている場合
 
 ```python
@@ -61,9 +61,9 @@ result = optimizer.optimize()
 ```
 
 ### 3. Bayesian Optimization（ベイズ最適化）
-**特徴**: ガウス過程で効率的に探索  
-**利点**: 少ない試行回数で良い結果、過去の結果を活用  
-**欠点**: 高次元では性能低下、要scikit-optimize  
+**特徴**: ガウス過程で効率的に探索
+**利点**: 少ない試行回数で良い結果、過去の結果を活用
+**欠点**: 高次元では性能低下、要scikit-optimize
 **推奨**: 評価コストが高い、中次元（~10次元）の探索
 
 ```python
@@ -80,9 +80,9 @@ result = optimizer.optimize()
 ```
 
 ### 4. Binary Search（二分探索）
-**特徴**: 黄金分割探索で単一パラメータを最適化  
-**利点**: 非常に効率的（O(log n)）  
-**欠点**: 単一パラメータのみ、単峰性の仮定  
+**特徴**: 黄金分割探索で単一パラメータを最適化
+**利点**: 非常に効率的（O(log n)）
+**欠点**: 単一パラメータのみ、単峰性の仮定
 **推奨**: Learning Rateなど単一パラメータの微調整
 
 ```python
@@ -90,9 +90,9 @@ from ztb.optimization.methods.binary_search import BinarySearchOptimizer
 from ztb.optimization.base import ParameterSpace, ParameterType
 
 param_space = ParameterSpace(
-    'learning_rate', 
-    ParameterType.LOG_UNIFORM, 
-    low=1e-5, 
+    'learning_rate',
+    ParameterType.LOG_UNIFORM,
+    low=1e-5,
     high=1e-2
 )
 
@@ -216,7 +216,7 @@ result.print_summary()
 ## 📝 依存関係
 
 - **必須**: numpy
-- **オプション**: 
+- **オプション**:
   - `scikit-optimize` - Bayesian Optimizationに必要
   - `matplotlib` - 結果の可視化に使用可能
 
@@ -229,7 +229,7 @@ pip install scikit-optimize matplotlib
 
 1. **まずはRandom Searchから**: 手軽で効果的
 2. **essential プリセットを使用**: 重要なパラメータに絞る
-3. **段階的に探索**: 
+3. **段階的に探索**:
    - Phase 1: Random Search（20試行）で大まかな範囲を把握
    - Phase 2: Binary Searchで微調整
    - Phase 3: Bayesian Optimizationで仕上げ

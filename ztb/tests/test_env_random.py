@@ -4,10 +4,11 @@ Test HeavyTradingEnv with random policy for 100 steps
 """
 
 import sys
-from pathlib import Path
-import pandas as pd
-import numpy as np
 from collections import Counter
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent
@@ -15,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from ztb.trading.environment import HeavyTradingEnv
+
 
 def test_random_policy():
     """Test environment with random policy for 100 steps"""
@@ -38,12 +40,12 @@ def test_random_policy():
         config=env_config,
         streaming_pipeline=None,
         stream_batch_size=1000,
-        max_features=68
+        max_features=68,
     )
 
     # Reset environment
     obs, info = env.reset()
-    initial_portfolio_value = info.get('portfolio_value', 1000000.0)
+    initial_portfolio_value = info.get("portfolio_value", 1000000.0)
 
     print(f"Initial portfolio value: {initial_portfolio_value}")
     print("Testing random policy for 100 steps...")
@@ -59,20 +61,26 @@ def test_random_policy():
 
         # Step
         obs, reward, done, truncated, info = env.step(action)
-        portfolio_value = info.get('portfolio_value', portfolio_values[-1])
+        portfolio_value = info.get("portfolio_value", portfolio_values[-1])
 
         portfolio_values.append(portfolio_value)
         rewards.append(reward)
 
         if step < 10 or step % 20 == 0:  # Log first 10 and every 20th step
-            print(f"Step {step}: Action={action}, Reward={reward:.6f}, Portfolio={portfolio_value:.2f}, Position={info.get('position', 0)}")
+            print(
+                f"Step {step}: Action={action}, Reward={reward:.6f}, Portfolio={portfolio_value:.2f}, Position={info.get('position', 0)}"
+            )
 
         if done:
             break
 
     # Final statistics
     final_portfolio_value = portfolio_values[-1]
-    total_return = (final_portfolio_value - initial_portfolio_value) / initial_portfolio_value * 100
+    total_return = (
+        (final_portfolio_value - initial_portfolio_value)
+        / initial_portfolio_value
+        * 100
+    )
 
     action_counts = Counter(actions_taken)
     action_distribution = {
@@ -85,12 +93,15 @@ def test_random_policy():
     print(f"Initial Portfolio: {initial_portfolio_value:.2f}")
     print(f"Final Portfolio: {final_portfolio_value:.2f}")
     print(f"Total Return: {total_return:.4f}%")
-    print(f"Action Distribution: Hold={action_distribution[0]}, Buy={action_distribution[1]}, Sell={action_distribution[2]}")
+    print(
+        f"Action Distribution: Hold={action_distribution[0]}, Buy={action_distribution[1]}, Sell={action_distribution[2]}"
+    )
     print(f"Total Steps: {len(actions_taken)}")
     print(f"Average Reward: {np.mean(rewards):.6f}")
     print(f"Reward Std: {np.std(rewards):.6f}")
 
     env.close()
+
 
 if __name__ == "__main__":
     test_random_policy()

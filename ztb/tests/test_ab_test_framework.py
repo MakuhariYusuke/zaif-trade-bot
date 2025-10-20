@@ -3,20 +3,28 @@ Comprehensive Unit Tests for A/B Testing Framework
 Tests focus on processing time reduction and memory efficiency
 """
 
-import unittest
 import time
-import psutil
-import threading
-from unittest.mock import Mock, patch, MagicMock
+import unittest
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from unittest.mock import patch
+
 import numpy as np
-from datetime import datetime, timedelta
+import psutil
 
 from ztb.adaptation.ab_test import (
-    ABTestExecutor, ABTestConfig, ABTestAnalyzer,
-    ModelSelector, TrafficManager, ABTestVariant,
-    ABTestConfiguration, ABTestState, ABTestMetrics,
-    ABTestResult, ABTestResultSummary, StatisticalResult
+    ABTestAnalyzer,
+    ABTestConfig,
+    ABTestConfiguration,
+    ABTestExecutor,
+    ABTestMetrics,
+    ABTestResult,
+    ABTestResultSummary,
+    ABTestState,
+    ABTestVariant,
+    ModelSelector,
+    StatisticalResult,
+    TrafficManager,
 )
 
 
@@ -37,10 +45,7 @@ class TestABTestConfig(unittest.TestCase):
     def test_performance_optimized_config(self):
         """パフォーマンス最適化設定の検証"""
         config = ABTestConfig(
-            min_sample_size=500,
-            max_memory_mb=200,
-            processing_threads=8,
-            batch_size=50
+            min_sample_size=500, max_memory_mb=200, processing_threads=8, batch_size=50
         )
 
         self.assertEqual(config.min_sample_size, 500)
@@ -66,11 +71,11 @@ class TestABTestAnalyzer(unittest.TestCase):
 
         # ストリーミング処理
         for i in range(0, len(data_a), 100):
-            batch_a = data_a[i:i+100]
-            batch_b = data_b[i:i+100]
+            batch_a = data_a[i : i + 100]
+            batch_b = data_b[i : i + 100]
 
-            self.analyzer.update_streaming_stats('test_a', batch_a)
-            self.analyzer.update_streaming_stats('test_b', batch_b)
+            self.analyzer.update_streaming_stats("test_a", batch_a)
+            self.analyzer.update_streaming_stats("test_b", batch_b)
 
         end_memory = psutil.Process().memory_info().rss / 1024 / 1024
         memory_used = end_memory - start_memory
@@ -145,17 +150,17 @@ class TestABTestExecutor(unittest.TestCase):
                     variant_id=f"variant_a_{i}",
                     model_path=f"/path/to/model_a_{i}",
                     model_version="1.0",
-                    description=f"Test variant A {i}"
+                    description=f"Test variant A {i}",
                 ),
                 variant_b=ABTestVariant(
                     variant_id=f"variant_b_{i}",
                     model_path=f"/path/to/model_b_{i}",
                     model_version="1.0",
-                    description=f"Test variant B {i}"
+                    description=f"Test variant B {i}",
                 ),
                 minimum_sample_size=100,
                 minimum_effect_size=0.1,
-                confidence_level=0.95
+                confidence_level=0.95,
             )
             test_configs.append(config)
 
@@ -164,7 +169,10 @@ class TestABTestExecutor(unittest.TestCase):
         # 並列実行
         results = []
         with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(self.executor.run_test, config) for config in test_configs]
+            futures = [
+                executor.submit(self.executor.run_test, config)
+                for config in test_configs
+            ]
             for future in results:
                 results.append(future.result())
 
@@ -183,14 +191,14 @@ class TestABTestExecutor(unittest.TestCase):
             variant_b=ABTestVariant("b", "/path/b", "1.0", "B"),
             minimum_sample_size=100,
             minimum_effect_size=0.1,
-            confidence_level=0.95
+            confidence_level=0.95,
         )
 
         # リスク検出が機能することを確認
         risk_detected = self.executor.detect_risk(config, {})
         self.assertIsInstance(risk_detected, bool)
 
-    @patch('ztb.adaptation.ab_test.executor.ABTestExecutor.get_memory_usage')
+    @patch("ztb.adaptation.ab_test.executor.ABTestExecutor.get_memory_usage")
     def test_memory_threshold_enforcement(self, mock_memory):
         """メモリしきい値適用テスト"""
         # メモリ使用量がしきい値を超えた場合の動作をテスト
@@ -216,7 +224,7 @@ class TestModelSelector(unittest.TestCase):
             variant_b=ABTestVariant("b", "/path/b", "1.0", "B"),
             minimum_sample_size=1000,
             minimum_effect_size=0.1,
-            confidence_level=0.95
+            confidence_level=0.95,
         )
 
         test_state = ABTestState(
@@ -228,16 +236,16 @@ class TestModelSelector(unittest.TestCase):
                 mean_reward=10.5,
                 std_reward=2.1,
                 total_trades=150,
-                win_rate=0.65
+                win_rate=0.65,
             ),
             metrics_b=ABTestMetrics(
                 sample_count=1500,
                 mean_reward=11.2,
                 std_reward=2.0,
                 total_trades=160,
-                win_rate=0.68
+                win_rate=0.68,
             ),
-            regression_detected=False
+            regression_detected=False,
         )
 
         result_summary = ABTestResultSummary(
@@ -249,10 +257,10 @@ class TestModelSelector(unittest.TestCase):
                 confidence_interval=(0.5, 1.1),
                 sample_size_a=1500,
                 sample_size_b=1500,
-                test_type="t-test"
+                test_type="t-test",
             ),
             confidence_level=0.95,
-            analysis_time=datetime.now()
+            analysis_time=datetime.now(),
         )
 
         # モデル選択を実行
@@ -272,16 +280,28 @@ class TestModelSelector(unittest.TestCase):
             variant_b=ABTestVariant("b", "/path/b", "1.0", "B"),
             minimum_sample_size=100,
             minimum_effect_size=0.1,
-            confidence_level=0.95
+            confidence_level=0.95,
         )
 
         test_state = ABTestState(
             test_id="risk_test",
             status="running",
             start_time=datetime.now(),
-            metrics_a=ABTestMetrics(sample_count=50, mean_reward=10, std_reward=1, total_trades=10, win_rate=0.6),
-            metrics_b=ABTestMetrics(sample_count=50, mean_reward=10.1, std_reward=1, total_trades=10, win_rate=0.61),
-            regression_detected=False
+            metrics_a=ABTestMetrics(
+                sample_count=50,
+                mean_reward=10,
+                std_reward=1,
+                total_trades=10,
+                win_rate=0.6,
+            ),
+            metrics_b=ABTestMetrics(
+                sample_count=50,
+                mean_reward=10.1,
+                std_reward=1,
+                total_trades=10,
+                win_rate=0.61,
+            ),
+            regression_detected=False,
         )
 
         result_summary = ABTestResultSummary(
@@ -293,14 +313,16 @@ class TestModelSelector(unittest.TestCase):
                 confidence_interval=(-0.1, 0.2),
                 sample_size_a=50,
                 sample_size_b=50,
-                test_type="t-test"
+                test_type="t-test",
             ),
             confidence_level=0.95,
-            analysis_time=datetime.now()
+            analysis_time=datetime.now(),
         )
 
         # リスク評価を実行
-        risks = self.selector._assess_deployment_risks(test_config, test_state, result_summary)
+        risks = self.selector._assess_deployment_risks(
+            test_config, test_state, result_summary
+        )
 
         # 高リスクが検出されていることを確認
         self.assertEqual(risks["sample_size_risk"], "high")
@@ -312,7 +334,9 @@ class TestModelSelector(unittest.TestCase):
         variant = ABTestVariant("test_variant", "/path", "1.0", "Test")
 
         # ロールバックトリガーを設定
-        self.selector._setup_rollback_triggers(test_id, variant, {"overall_risk": "high"})
+        self.selector._setup_rollback_triggers(
+            test_id, variant, {"overall_risk": "high"}
+        )
 
         # トリガーが設定されていることを確認
         self.assertIn(test_id, self.selector.rollback_triggers)
@@ -321,7 +345,9 @@ class TestModelSelector(unittest.TestCase):
         metrics = {"error_rate": 0.15}  # しきい値を超える
         timestamp = datetime.now()
 
-        rollback_triggered = self.selector.check_rollback_conditions(test_id, metrics, timestamp)
+        rollback_triggered = self.selector.check_rollback_conditions(
+            test_id, metrics, timestamp
+        )
 
         # 高リスク設定なのでロールバックがトリガーされるはず
         # （実際の動作はトリガー条件による）
@@ -332,7 +358,9 @@ class TestModelSelector(unittest.TestCase):
         variant = ABTestVariant("test_variant", "/path", "1.0", "Test")
 
         # まずトリガーを設定
-        self.selector._setup_rollback_triggers(test_id, variant, {"overall_risk": "low"})
+        self.selector._setup_rollback_triggers(
+            test_id, variant, {"overall_risk": "low"}
+        )
 
         # 強制ロールバックを実行
         success = self.selector.force_rollback(test_id, "Manual test rollback")
@@ -364,7 +392,9 @@ class TestTrafficManager(unittest.TestCase):
         percentage = 25.0
 
         # トラフィックを割り当て
-        allocation = self.manager.allocate_traffic(test_id, variant_a, variant_b, percentage)
+        allocation = self.manager.allocate_traffic(
+            test_id, variant_a, variant_b, percentage
+        )
 
         # 割り当てが正しいことを確認
         expected_a = (100 - percentage) / 100
@@ -383,7 +413,9 @@ class TestTrafficManager(unittest.TestCase):
         self.manager.allocate_traffic(test_id, variant_a, variant_b, 10.0)
 
         # 段階増加スケジュールを生成
-        schedule = self.manager.ramp_up_traffic(test_id, 50.0, steps=5, interval_minutes=30)
+        schedule = self.manager.ramp_up_traffic(
+            test_id, 50.0, steps=5, interval_minutes=30
+        )
 
         # スケジュールが正しく生成されていることを確認
         self.assertEqual(len(schedule), 5)
@@ -438,11 +470,11 @@ class TestPerformanceBenchmarks(unittest.TestCase):
 
         # ストリーミング処理
         for i in range(0, len(data_a), 1000):
-            batch_a = data_a[i:i+1000]
-            batch_b = data_b[i:i+1000]
+            batch_a = data_a[i : i + 1000]
+            batch_b = data_b[i : i + 1000]
 
-            self.analyzer.update_streaming_stats('bench_a', batch_a)
-            self.analyzer.update_streaming_stats('bench_b', batch_b)
+            self.analyzer.update_streaming_stats("bench_a", batch_a)
+            self.analyzer.update_streaming_stats("bench_b", batch_b)
 
         # 統計解析を実行
         result = self.analyzer.analyze_parallel(data_a, data_b)
@@ -472,7 +504,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
                 variant_b=ABTestVariant(f"b_{i}", f"/path/b_{i}", "1.0", f"B_{i}"),
                 minimum_sample_size=1000,
                 minimum_effect_size=0.1,
-                confidence_level=0.95
+                confidence_level=0.95,
             )
             test_configs.append(config)
 
@@ -481,7 +513,9 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         # 並列実行
         results = []
         with ThreadPoolExecutor(max_workers=self.config.processing_threads) as executor:
-            futures = [executor.submit(self._run_test_mock, config) for config in test_configs]
+            futures = [
+                executor.submit(self._run_test_mock, config) for config in test_configs
+            ]
             for future in futures:
                 results.append(future.result())
 
@@ -502,5 +536,5 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         return {"test_id": config.test_id, "status": "completed"}
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -3,8 +3,9 @@ Configuration management for Automatic Retraining Triggers
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from .types import TriggerType, TriggerPriority, TriggerCondition
+from typing import Any, Dict, List
+
+from .types import TriggerCondition, TriggerPriority, TriggerType
 
 
 @dataclass
@@ -30,24 +31,30 @@ class RetrainingConfig:
     distribution_drift_threshold: float = 0.1
 
     # 時間ベース設定
-    time_based_schedules: List[Dict[str, Any]] = field(default_factory=lambda: [
-        {"interval_hours": 24, "description": "Daily retraining"},
-        {"interval_hours": 168, "description": "Weekly retraining"}
-    ])
+    time_based_schedules: List[Dict[str, Any]] = field(
+        default_factory=lambda: [
+            {"interval_hours": 24, "description": "Daily retraining"},
+            {"interval_hours": 168, "description": "Weekly retraining"},
+        ]
+    )
 
     # 出来高ベース設定
-    volume_based_thresholds: Dict[str, int] = field(default_factory=lambda: {
-        "min_new_samples": 1000,
-        "max_samples_without_retraining": 10000
-    })
+    volume_based_thresholds: Dict[str, int] = field(
+        default_factory=lambda: {
+            "min_new_samples": 1000,
+            "max_samples_without_retraining": 10000,
+        }
+    )
 
     # リソース管理設定
-    resource_limits: Dict[str, Any] = field(default_factory=lambda: {
-        "max_cpu_percent": 80.0,
-        "max_memory_mb": 4096,
-        "max_gpu_memory_mb": 8192,
-        "max_concurrent_jobs": 1
-    })
+    resource_limits: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "max_cpu_percent": 80.0,
+            "max_memory_mb": 4096,
+            "max_gpu_memory_mb": 8192,
+            "max_concurrent_jobs": 1,
+        }
+    )
 
     # メモリ管理設定（メモリリーク防止）
     max_history_size: int = 1000  # 履歴データの最大サイズ
@@ -55,19 +62,23 @@ class RetrainingConfig:
     compression_enabled: bool = True  # 古いデータの圧縮
 
     # 優先度設定
-    priority_weights: Dict[TriggerPriority, float] = field(default_factory=lambda: {
-        TriggerPriority.LOW: 1.0,
-        TriggerPriority.MEDIUM: 2.0,
-        TriggerPriority.HIGH: 3.0,
-        TriggerPriority.CRITICAL: 5.0
-    })
+    priority_weights: Dict[TriggerPriority, float] = field(
+        default_factory=lambda: {
+            TriggerPriority.LOW: 1.0,
+            TriggerPriority.MEDIUM: 2.0,
+            TriggerPriority.HIGH: 3.0,
+            TriggerPriority.CRITICAL: 5.0,
+        }
+    )
 
     # 通知設定
     notifications_enabled: bool = True
-    alert_thresholds: Dict[str, Any] = field(default_factory=lambda: {
-        "failed_retraining_rate": 0.1,
-        "average_retraining_time_hours": 12
-    })
+    alert_thresholds: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "failed_retraining_rate": 0.1,
+            "average_retraining_time_hours": 12,
+        }
+    )
 
     def __post_init__(self) -> None:
         """設定の検証と初期化"""
@@ -90,7 +101,7 @@ class RetrainingConfig:
                     threshold=0.45,
                     duration_minutes=60,
                     cooldown_minutes=240,
-                    priority=TriggerPriority.HIGH
+                    priority=TriggerPriority.HIGH,
                 ),
                 TriggerCondition(
                     trigger_type=TriggerType.PERFORMANCE,
@@ -99,7 +110,7 @@ class RetrainingConfig:
                     threshold=1.0,
                     duration_minutes=120,
                     cooldown_minutes=480,
-                    priority=TriggerPriority.MEDIUM
+                    priority=TriggerPriority.MEDIUM,
                 ),
                 TriggerCondition(
                     trigger_type=TriggerType.DATA_DISTRIBUTION,
@@ -108,8 +119,8 @@ class RetrainingConfig:
                     threshold=0.15,
                     duration_minutes=30,
                     cooldown_minutes=180,
-                    priority=TriggerPriority.MEDIUM
-                )
+                    priority=TriggerPriority.MEDIUM,
+                ),
             ]
 
 

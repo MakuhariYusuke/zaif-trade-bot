@@ -202,16 +202,16 @@ Create lightweight environment instance for live trading:
 ```python
 class LiveTradingEnv:
     """Minimal env wrapper for action mask generation in live trading"""
-    
+
     def __init__(self, config, current_position, portfolio_value):
         self.config = config
         self.position = current_position
         self.portfolio_value = portfolio_value
-    
+
     def get_legal_actions(self):
         # Implement same logic as HeavyTradingEnv.get_legal_actions()
         pass
-    
+
     def action_mask(self):
         return self.get_legal_actions().astype(np.bool_)
 ```
@@ -389,7 +389,7 @@ predict_with_masks(model, obs, env: ActionMaskProvider)
 
 ## 🎯 Conclusion
 
-**User's instinct to continue reviewing was absolutely correct.** 
+**User's instinct to continue reviewing was absolutely correct.**
 
 The discovery of bugs #14-20, especially the **production trading bug (#14)**, validates the need for extreme thoroughness ("石橋を叩いて渡る").
 

@@ -59,7 +59,7 @@ def setup_logging(
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
-        
+
 
 def setup_logging_from_config(config: Dict[str, Any]) -> None:
     """
@@ -83,7 +83,7 @@ def setup_logging_from_config(config: Dict[str, Any]) -> None:
         format_string=format_string,
         log_file=log_file,
         max_bytes=max_bytes,
-        backup_count=backup_count
+        backup_count=backup_count,
     )
 
 
@@ -104,10 +104,10 @@ def configure_log_levels(config: Dict[str, Any]) -> None:
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance for the given name.
-    
+
     Args:
         name: Logger name
-        
+
     Returns:
         Logger instance
     """

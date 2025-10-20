@@ -1,0 +1,31 @@
+{
+  "regime_performance": {
+    "sideways": "RegimePerformanceMetrics(regime=<MarketRegime.SIDEWAYS: 'sideways'>, volatility=<VolatilityLevel.VERY_LOW: 'very_low'>, total_return=81787.41767647593, sharpe_ratio=0.09084459012442267, max_drawdown=85709.90080167195, win_rate=0.58, profit_factor=1.2494233740399965, total_trades=100, avg_trade_duration=0, calmar_ratio=0.9542353556764414, sortino_ratio=0.13693075299068633, alpha=0, beta=0, confidence_interval=(-788.8591540565787, 2655.078267011129), sample_size=100)"
+  },
+  "volatility_performance": {
+    "very_low": "RegimePerformanceMetrics(regime=<MarketRegime.SIDEWAYS: 'sideways'>, volatility=<VolatilityLevel.VERY_LOW: 'very_low'>, total_return=81787.41767647593, sharpe_ratio=0.09084459012442267, max_drawdown=85709.90080167195, win_rate=0.58, profit_factor=1.2494233740399965, total_trades=100, avg_trade_duration=0, calmar_ratio=0.9542353556764414, sortino_ratio=0.13693075299068633, alpha=0, beta=0, confidence_interval=(-912.5080164802232, 2719.025623585627), sample_size=100)"
+  },
+  "trend_correlations": {
+    "trend_strength_pnl": -0.23979302696626761,
+    "trend_strength_abs_pnl": 0.0634026741787459
+  },
+  "transition_impacts": {
+    "sideways_to_sideways": {
+      "avg_pnl": 779.7675288202561,
+      "std_pnl": 9040.331362625891,
+      "total_trades": 99,
+      "win_rate": 0.5757575757575758
+    }
+  },
+  "statistical_comparisons": [],
+  "summary_statistics": {
+    "total_trades": 100,
+    "total_pnl": 81787.41767647593,
+    "win_rate": 0.58,
+    "regime_coverage": 1,
+    "volatility_coverage": 1
+  },
+  "recommendations": [
+    "Best performance in sideways market conditions"
+  ]
+}

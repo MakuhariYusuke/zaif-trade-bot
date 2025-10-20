@@ -33,10 +33,10 @@ class ConfigValidator:
             return False, self.errors, self.warnings
 
         # Algorithm-specific validation
-        algorithm = config.get('algorithm', '').lower()
-        if algorithm == 'sac':
+        algorithm = config.get("algorithm", "").lower()
+        if algorithm == "sac":
             self._validate_sac_config(config)
-        elif algorithm == 'ppo':
+        elif algorithm == "ppo":
             self._validate_ppo_config(config)
         else:
             self.errors.append(f"Unsupported algorithm: {algorithm}")
@@ -50,14 +50,21 @@ class ConfigValidator:
 
     def _validate_basic_structure(self, config: Dict[str, Any]) -> bool:
         """Validate basic configuration structure."""
-        required_keys = ['algorithm']
+        required_keys = ["algorithm"]
         for key in required_keys:
             if key not in config:
                 self.errors.append(f"Missing required key: {key}")
                 return False
 
-        algorithm = config.get('algorithm', '').lower()
-        if algorithm not in ['sac', 'ppo', 'base_ml', 'iterative', 'ensemble', 'curriculum']:
+        algorithm = config.get("algorithm", "").lower()
+        if algorithm not in [
+            "sac",
+            "ppo",
+            "base_ml",
+            "iterative",
+            "ensemble",
+            "curriculum",
+        ]:
             self.errors.append(f"Invalid algorithm: {algorithm}")
             return False
 
@@ -65,14 +72,14 @@ class ConfigValidator:
 
     def _validate_sac_config(self, config: Dict[str, Any]):
         """Validate SAC-specific configuration."""
-        sac_config = config.get('sac_hyperparameters', {})
+        sac_config = config.get("sac_hyperparameters", {})
 
         # Required hyperparameters
         required_params = {
-            'learning_rate': (float, (0, 1)),
-            'buffer_size': (int, (1000, 1000000)),
-            'learning_starts': (int, (100, 100000)),
-            'batch_size': (int, (32, 1024))
+            "learning_rate": (float, (0, 1)),
+            "buffer_size": (int, (1000, 1000000)),
+            "learning_starts": (int, (100, 100000)),
+            "batch_size": (int, (32, 1024)),
         }
 
         for param, (param_type, value_range) in required_params.items():
@@ -82,19 +89,23 @@ class ConfigValidator:
 
             value = sac_config[param]
             if not isinstance(value, param_type):
-                self.errors.append(f"SAC {param} must be {param_type.__name__}, got {type(value).__name__}")
+                self.errors.append(
+                    f"SAC {param} must be {param_type.__name__}, got {type(value).__name__}"
+                )
                 continue
 
             if isinstance(value_range, tuple) and len(value_range) == 2:
                 min_val, max_val = value_range
                 if not (min_val <= value <= max_val):
-                    self.warnings.append(f"SAC {param}={value} is outside recommended range [{min_val}, {max_val}]")
+                    self.warnings.append(
+                        f"SAC {param}={value} is outside recommended range [{min_val}, {max_val}]"
+                    )
 
         # Optional hyperparameters with defaults
         optional_params = {
-            'tau': (0.005, (0.001, 0.1)),
-            'gamma': (0.99, (0.8, 0.999)),
-            'ent_coef': (0.01, (0.001, 0.1))
+            "tau": (0.005, (0.001, 0.1)),
+            "gamma": (0.99, (0.8, 0.999)),
+            "ent_coef": (0.01, (0.001, 0.1)),
         }
 
         for param, (default, value_range) in optional_params.items():
@@ -103,7 +114,9 @@ class ConfigValidator:
                 if isinstance(value_range, tuple) and len(value_range) == 2:
                     min_val, max_val = value_range
                     if not (min_val <= value <= max_val):
-                        self.warnings.append(f"SAC {param}={value} is outside recommended range [{min_val}, {max_val}]")
+                        self.warnings.append(
+                            f"SAC {param}={value} is outside recommended range [{min_val}, {max_val}]"
+                        )
 
     def _validate_ppo_config(self, config: Dict[str, Any]):
         """Validate PPO-specific configuration."""
@@ -112,7 +125,7 @@ class ConfigValidator:
 
     def _validate_data_config(self, config: Dict[str, Any]):
         """Validate data configuration."""
-        data_path = config.get('data_path', 'btc_jpy_real_dataset.csv')
+        data_path = config.get("data_path", "btc_jpy_real_dataset.csv")
 
         # Check if data file exists
         if not os.path.exists(data_path):
@@ -120,26 +133,28 @@ class ConfigValidator:
             return
 
         # Check if it's a CSV file
-        if not data_path.endswith('.csv'):
+        if not data_path.endswith(".csv"):
             self.warnings.append(f"Data file should be CSV format: {data_path}")
 
         # Try to get file size
         try:
             file_size = os.path.getsize(data_path)
             if file_size < 1024:  # Less than 1KB
-                self.warnings.append(f"Data file seems very small ({file_size} bytes): {data_path}")
+                self.warnings.append(
+                    f"Data file seems very small ({file_size} bytes): {data_path}"
+                )
         except OSError:
             self.warnings.append(f"Cannot access data file: {data_path}")
 
     def _validate_environment_config(self, config: Dict[str, Any]):
         """Validate environment configuration."""
-        env_config = config.get('environment', {})
+        env_config = config.get("environment", {})
 
         # Required environment parameters
         required_params = {
-            'initial_balance': (float, (1000, 10000000)),
-            'transaction_cost': (float, (0, 0.01)),
-            'max_position_size': (float, (0.1, 2.0))
+            "initial_balance": (float, (1000, 10000000)),
+            "transaction_cost": (float, (0, 0.01)),
+            "max_position_size": (float, (0.1, 2.0)),
         }
 
         for param, (param_type, value_range) in required_params.items():
@@ -149,29 +164,39 @@ class ConfigValidator:
 
             value = env_config[param]
             if not isinstance(value, param_type):
-                self.errors.append(f"Environment {param} must be {param_type.__name__}, got {type(value).__name__}")
+                self.errors.append(
+                    f"Environment {param} must be {param_type.__name__}, got {type(value).__name__}"
+                )
                 continue
 
             if isinstance(value_range, tuple) and len(value_range) == 2:
                 min_val, max_val = value_range
                 if not (min_val <= value <= max_val):
-                    self.warnings.append(f"Environment {param}={value} is outside recommended range [{min_val}, {max_val}]")
+                    self.warnings.append(
+                        f"Environment {param}={value} is outside recommended range [{min_val}, {max_val}]"
+                    )
 
     def _validate_training_config(self, config: Dict[str, Any]):
         """Validate training configuration."""
         # Total timesteps
-        total_timesteps = config.get('total_timesteps', 50000)
+        total_timesteps = config.get("total_timesteps", 50000)
         if not isinstance(total_timesteps, int) or total_timesteps <= 0:
-            self.errors.append(f"total_timesteps must be positive integer, got {total_timesteps}")
+            self.errors.append(
+                f"total_timesteps must be positive integer, got {total_timesteps}"
+            )
         elif total_timesteps < 10000:
-            self.warnings.append(f"total_timesteps={total_timesteps} is quite small, consider increasing for better training")
+            self.warnings.append(
+                f"total_timesteps={total_timesteps} is quite small, consider increasing for better training"
+            )
 
         # Model name
-        model_name = config.get('model_name', '')
+        model_name = config.get("model_name", "")
         if not model_name:
             self.warnings.append("model_name not specified, using default")
         elif not isinstance(model_name, str):
-            self.errors.append(f"model_name must be string, got {type(model_name).__name__}")
+            self.errors.append(
+                f"model_name must be string, got {type(model_name).__name__}"
+            )
 
 
 class ConfigManager:
@@ -181,7 +206,9 @@ class ConfigManager:
         self.logger = logger or get_logger(__name__)
         self.validator = ConfigValidator(logger)
 
-    def load_and_validate(self, config_path: str) -> Tuple[Optional[Dict[str, Any]], bool, List[str], List[str]]:
+    def load_and_validate(
+        self, config_path: str
+    ) -> Tuple[Optional[Dict[str, Any]], bool, List[str], List[str]]:
         """
         Load configuration from file and validate it.
 
@@ -190,7 +217,8 @@ class ConfigManager:
         """
         try:
             import json
-            with open(config_path, 'r', encoding='utf-8') as f:
+
+            with open(config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
 
             self.logger.info(f"Loaded configuration from {config_path}")
@@ -204,7 +232,9 @@ class ConfigManager:
                     self.logger.warning(f"  - {warning}")
 
             if not is_valid:
-                self.logger.error(f"Configuration validation failed: {len(errors)} errors")
+                self.logger.error(
+                    f"Configuration validation failed: {len(errors)} errors"
+                )
                 for error in errors:
                     self.logger.error(f"  - {error}")
                 return None, False, errors, warnings
@@ -232,18 +262,18 @@ class ConfigManager:
         enhanced = config.copy()
 
         # Ensure algorithm is lowercase
-        if 'algorithm' in enhanced:
-            enhanced['algorithm'] = enhanced['algorithm'].lower()
+        if "algorithm" in enhanced:
+            enhanced["algorithm"] = enhanced["algorithm"].lower()
 
         # Add default model name if not specified
-        if 'model_name' not in enhanced:
-            algorithm = enhanced.get('algorithm', 'unknown')
+        if "model_name" not in enhanced:
+            algorithm = enhanced.get("algorithm", "unknown")
             timestamp = str(int(time.time()))  # Import time at top if needed
-            enhanced['model_name'] = f"{algorithm}_{timestamp}"
+            enhanced["model_name"] = f"{algorithm}_{timestamp}"
 
         # Add default total_timesteps if not specified
-        if 'total_timesteps' not in enhanced:
-            enhanced['total_timesteps'] = 50000
+        if "total_timesteps" not in enhanced:
+            enhanced["total_timesteps"] = 50000
 
         return enhanced
 
@@ -251,7 +281,8 @@ class ConfigManager:
         """Save configuration to file."""
         try:
             import json
-            with open(file_path, 'w', encoding='utf-8') as f:
+
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
             self.logger.info(f"Configuration saved to {file_path}")

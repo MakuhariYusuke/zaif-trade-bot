@@ -17,11 +17,7 @@ from typing import Any, Dict, List, Union
 
 import psutil
 
-from ztb.experiments.base import (
-    ExperimentMetrics,
-    ExperimentResult,
-    ScalingExperiment,
-)
+from ztb.experiments.base import ExperimentMetrics, ExperimentResult, ScalingExperiment
 from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.parallel_experiments import ResourceMonitor
@@ -88,7 +84,9 @@ class MLReinforcementExperiment(ScalingExperiment):
         # 実験状態
         self.best_reward = float("-inf")
         # Memory optimized: Limit step_results history to prevent unbounded growth
-        self.step_results: deque[StepResult] = deque(maxlen=1000)  # Keep last 1000 steps only
+        self.step_results: deque[StepResult] = deque(
+            maxlen=1000
+        )  # Keep last 1000 steps only
 
     def run(self) -> ExperimentResult:
         """実験実行"""
@@ -176,7 +174,9 @@ class MLReinforcementExperiment(ScalingExperiment):
             best_reward=self.best_reward,
             model_state={"dummy": "model"},
             optimizer_state={"dummy": "optimizer"},
-            step_results=list(self.step_results)[-100:],  # Convert deque to list, last 100 steps
+            step_results=list(self.step_results)[
+                -100:
+            ],  # Convert deque to list, last 100 steps
         )
         self.checkpoint_manager.save_async(
             asdict(checkpoint_data),

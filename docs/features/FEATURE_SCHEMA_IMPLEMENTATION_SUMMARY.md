@@ -188,14 +188,14 @@ env = create_env_from_schema(
 def run_backtest_with_schema(model_path: str, data_path: str):
     """スキーマを考慮したバックテスト"""
     model_name = Path(model_path).stem
-    
+
     # スキーマ読み込み
     manager = FeatureSchemaManager(model_name)
     metadata = manager.load_schema()
-    
+
     # 環境作成（スキーマに基づく）
     env = create_env_from_schema(model_name, df)
-    
+
     # バックテスト実行
     # （次元不一致エラーなし！）
 ```
@@ -278,14 +278,14 @@ FeatureSchemaManager.print_schema_summary()
 
 ## まとめ
 
-✅ **実装完了**: FeatureSchemaManager + UnifiedTrainer統合  
-⏳ **次フェーズ**: Environment統合（バックテスト修正）  
+✅ **実装完了**: FeatureSchemaManager + UnifiedTrainer統合
+⏳ **次フェーズ**: Environment統合（バックテスト修正）
 📊 **効果**: モデルごとの特徴量情報を永続化、管理の自動化
 
 これにより、**特徴量を増やしたり減らしたりする際の手間が大幅に削減**され、モデルの管理と再現性が向上しました。
 
 ---
 
-**実装日**: 2025-10-10  
-**ステータス**: Phase 2完了、Phase 3へ移行準備中  
+**実装日**: 2025-10-10
+**ステータス**: Phase 2完了、Phase 3へ移行準備中
 **影響**: 今後の訓練で自動的にスキーマ保存される

@@ -6,24 +6,25 @@ Market-Aware Hyperparameter Adaptation Manager
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 from .dynamic_hyperparameter_adapter import (
+    AdaptationResult,
+    AdaptationStrategy,
     DynamicHyperparameterAdapter,
     HyperparameterConfig,
-    AdaptationResult,
     HyperparameterType,
-    AdaptationStrategy
 )
-from .online_learning.pipeline import OnlineLearningPipeline
 from .monitoring.evaluation_manager import ContinuousEvaluationManager
+from .online_learning.pipeline import OnlineLearningPipeline
+
 # from .monitoring.market_regime_detector import MarketRegimeDetector  # Optional component
 
 
@@ -79,18 +80,20 @@ class MarketCondition:
 
     def to_features(self) -> np.ndarray:
         """特徴量ベクトルに変換"""
-        return np.array([
-            self.volatility,
-            self.trend_strength,
-            self.volume_profile,
-            self.liquidity_score,
-            self.sentiment_score,
-            # 市場レジームをワンホットエンコーディング
-            1.0 if self.market_regime == 'bull' else 0.0,
-            1.0 if self.market_regime == 'bear' else 0.0,
-            1.0 if self.market_regime == 'sideways' else 0.0,
-            1.0 if self.market_regime == 'volatile' else 0.0
-        ])
+        return np.array(
+            [
+                self.volatility,
+                self.trend_strength,
+                self.volume_profile,
+                self.liquidity_score,
+                self.sentiment_score,
+                # 市場レジームをワンホットエンコーディング
+                1.0 if self.market_regime == "bull" else 0.0,
+                1.0 if self.market_regime == "bear" else 0.0,
+                1.0 if self.market_regime == "sideways" else 0.0,
+                1.0 if self.market_regime == "volatile" else 0.0,
+            ]
+        )
 
 
 @dataclass
@@ -107,11 +110,13 @@ class PerformancePrediction:
 class MarketAwareHyperparameterManager:
     """市場対応ハイパーパラメータマネージャー"""
 
-    def __init__(self,
-                 online_learning_pipeline: OnlineLearningPipeline,
-                 evaluation_manager: ContinuousEvaluationManager,
-                 market_regime_detector: Optional[Any] = None,  # Optional component
-                 config: Optional[MarketAwareConfig] = None):
+    def __init__(
+        self,
+        online_learning_pipeline: OnlineLearningPipeline,
+        evaluation_manager: ContinuousEvaluationManager,
+        market_regime_detector: Optional[Any] = None,  # Optional component
+        config: Optional[MarketAwareConfig] = None,
+    ):
         self.online_learning = online_learning_pipeline
         self.evaluation_manager = evaluation_manager
         self.market_detector = market_regime_detector
@@ -119,15 +124,16 @@ class MarketAwareHyperparameterManager:
 
         # 動的適応アダプター
         self.hyperparameter_adapter = DynamicHyperparameterAdapter(
-            online_learning_pipeline,
-            evaluation_manager
+            online_learning_pipeline, evaluation_manager
         )
 
         # 市場条件履歴
         self.market_conditions: List[MarketCondition] = []
 
         # パフォーマンス予測モデル
-        self.performance_predictors: Dict[HyperparameterType, RandomForestRegressor] = {}
+        self.performance_predictors: Dict[
+            HyperparameterType, RandomForestRegressor
+        ] = {}
         self.scalers: Dict[HyperparameterType, StandardScaler] = {}
 
         # 適応履歴と学習データ
@@ -161,10 +167,7 @@ class MarketAwareHyperparameterManager:
             for param_type in HyperparameterType:
                 # ランダムフォレスト回帰モデル
                 self.performance_predictors[param_type] = RandomForestRegressor(
-                    n_estimators=100,
-                    max_depth=10,
-                    random_state=42,
-                    n_jobs=-1
+                    n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
                 )
 
                 # 特徴量スケーラー
@@ -200,8 +203,7 @@ class MarketAwareHyperparameterManager:
 
             self.is_active = True
             self.worker_thread = threading.Thread(
-                target=self._adaptation_worker,
-                daemon=True
+                target=self._adaptation_worker, daemon=True
             )
             self.worker_thread.start()
 
@@ -222,9 +224,9 @@ class MarketAwareHyperparameterManager:
 
         logger.info("Market-aware hyperparameter adaptation stopped")
 
-    def adapt_hyperparameters_market_aware(self,
-                                         market_data: Optional[pd.DataFrame] = None,
-                                         force_adaptation: bool = False) -> AdaptationResult:
+    def adapt_hyperparameters_market_aware(
+        self, market_data: Optional[pd.DataFrame] = None, force_adaptation: bool = False
+    ) -> AdaptationResult:
         """市場対応ハイパーパラメータ適応"""
         try:
             current_time = datetime.now()
@@ -243,20 +245,26 @@ class MarketAwareHyperparameterManager:
                     overall_performance_improvement=0.0,
                     adaptation_confidence=0.0,
                     timestamp=current_time,
-                    recommendations=["No adaptation needed at this time"]
+                    recommendations=["No adaptation needed at this time"],
                 )
 
             # パフォーマンス予測を取得
             performance_predictions = self._predict_optimal_parameters(market_condition)
 
             # 適応戦略を選択
-            selected_strategies = self._select_adaptation_strategies(market_condition, performance_predictions)
+            selected_strategies = self._select_adaptation_strategies(
+                market_condition, performance_predictions
+            )
 
             # ハイパーパラメータ設定を更新
-            updated_config = self._create_adaptive_config(market_condition, selected_strategies)
+            updated_config = self._create_adaptive_config(
+                market_condition, selected_strategies
+            )
 
             # 動的適応を実行
-            adaptation_result = self.hyperparameter_adapter.adapt_hyperparameters(market_data)
+            adaptation_result = self.hyperparameter_adapter.adapt_hyperparameters(
+                market_data
+            )
 
             # 結果を学習データに追加
             if market_condition:
@@ -267,11 +275,15 @@ class MarketAwareHyperparameterManager:
             self._update_strategy_performance(adaptation_result)
 
             # モデルを更新（定期的に）
-            if (current_time - self.last_model_training).total_seconds() >= self.config.model_retraining_interval * 60:
+            if (
+                current_time - self.last_model_training
+            ).total_seconds() >= self.config.model_retraining_interval * 60:
                 self._retrain_prediction_models()
                 self.last_model_training = current_time
 
-            logger.info(f"Market-aware adaptation completed with {len(adaptation_result.adaptations)} parameter changes")
+            logger.info(
+                f"Market-aware adaptation completed with {len(adaptation_result.adaptations)} parameter changes"
+            )
             return adaptation_result
 
         except Exception as e:
@@ -281,17 +293,19 @@ class MarketAwareHyperparameterManager:
                 overall_performance_improvement=0.0,
                 adaptation_confidence=0.0,
                 timestamp=datetime.now(),
-                recommendations=["Adaptation failed due to error"]
+                recommendations=["Adaptation failed due to error"],
             )
 
-    def _get_current_market_condition(self, market_data: Optional[pd.DataFrame] = None) -> Optional[MarketCondition]:
+    def _get_current_market_condition(
+        self, market_data: Optional[pd.DataFrame] = None
+    ) -> Optional[MarketCondition]:
         """現在の市場条件を取得"""
         try:
             # 市場データから条件を抽出
             if market_data is not None and len(market_data) > 10:
                 # ボラティリティ計算
-                if 'close' in market_data.columns:
-                    prices = market_data['close'].values
+                if "close" in market_data.columns:
+                    prices = market_data["close"].values
                     returns = np.diff(prices) / prices[:-1]
                     volatility = np.std(returns)
                 else:
@@ -301,13 +315,15 @@ class MarketAwareHyperparameterManager:
                 if len(prices) > 20:
                     sma_short = pd.Series(prices).rolling(10).mean()
                     sma_long = pd.Series(prices).rolling(20).mean()
-                    trend_strength = abs(sma_short.iloc[-1] - sma_long.iloc[-1]) / sma_long.iloc[-1]
+                    trend_strength = (
+                        abs(sma_short.iloc[-1] - sma_long.iloc[-1]) / sma_long.iloc[-1]
+                    )
                 else:
                     trend_strength = 0.0
 
                 # 出来高プロファイル
-                if 'volume' in market_data.columns:
-                    volume_profile = market_data['volume'].mean()
+                if "volume" in market_data.columns:
+                    volume_profile = market_data["volume"].mean()
                 else:
                     volume_profile = 1000.0
 
@@ -326,7 +342,7 @@ class MarketAwareHyperparameterManager:
             if self.market_detector:
                 try:
                     regime_info = self.market_detector.detect_regime(market_data)
-                    market_regime = regime_info.get('regime', 'neutral')
+                    market_regime = regime_info.get("regime", "neutral")
                 except Exception:
                     pass
 
@@ -336,7 +352,7 @@ class MarketAwareHyperparameterManager:
                 trend_strength=float(trend_strength),
                 market_regime=market_regime,
                 volume_profile=float(volume_profile),
-                liquidity_score=float(liquidity_score)
+                liquidity_score=float(liquidity_score),
             )
 
         except Exception as e:
@@ -352,16 +368,25 @@ class MarketAwareHyperparameterManager:
             # 最終適応からの時間をチェック
             last_adaptation = self.hyperparameter_adapter.last_adaptation_time
             if last_adaptation:
-                time_since_adaptation = (datetime.now() - last_adaptation).total_seconds() / 60
-                if time_since_adaptation < self.hyperparameter_adapter.config.min_adaptation_interval_minutes:
+                time_since_adaptation = (
+                    datetime.now() - last_adaptation
+                ).total_seconds() / 60
+                if (
+                    time_since_adaptation
+                    < self.hyperparameter_adapter.config.min_adaptation_interval_minutes
+                ):
                     return False
 
             # 市場条件の大きな変化をチェック
             if len(self.market_conditions) >= 2:
                 prev_condition = self.market_conditions[-2]
 
-                volatility_change = abs(market_condition.volatility - prev_condition.volatility)
-                trend_change = abs(market_condition.trend_strength - prev_condition.trend_strength)
+                volatility_change = abs(
+                    market_condition.volatility - prev_condition.volatility
+                )
+                trend_change = abs(
+                    market_condition.trend_strength - prev_condition.trend_strength
+                )
 
                 # 閾値を超える変化があれば適応
                 if volatility_change > 0.01 or trend_change > 0.05:
@@ -373,7 +398,9 @@ class MarketAwareHyperparameterManager:
         except Exception:
             return False
 
-    def _predict_optimal_parameters(self, market_condition: Optional[MarketCondition]) -> Dict[HyperparameterType, PerformancePrediction]:
+    def _predict_optimal_parameters(
+        self, market_condition: Optional[MarketCondition]
+    ) -> Dict[HyperparameterType, PerformancePrediction]:
         """最適パラメータを予測"""
         predictions = {}
 
@@ -395,16 +422,27 @@ class MarketAwareHyperparameterManager:
                     predicted_performance = predictor.predict(scaled_features)[0]
 
                     # 最適値を推定（予測モデルに基づく）
-                    optimal_value = self._estimate_optimal_value(param_type, predicted_performance, market_condition)
+                    optimal_value = self._estimate_optimal_value(
+                        param_type, predicted_performance, market_condition
+                    )
 
                     # 特徴量重要度を取得
                     feature_importance = {}
-                    if hasattr(predictor, 'feature_importances_'):
+                    if hasattr(predictor, "feature_importances_"):
                         feature_names = [
-                            'volatility', 'trend_strength', 'volume_profile', 'liquidity_score', 'sentiment_score',
-                            'regime_bull', 'regime_bear', 'regime_sideways', 'regime_volatile'
+                            "volatility",
+                            "trend_strength",
+                            "volume_profile",
+                            "liquidity_score",
+                            "sentiment_score",
+                            "regime_bull",
+                            "regime_bear",
+                            "regime_sideways",
+                            "regime_volatile",
                         ]
-                        for name, importance in zip(feature_names, predictor.feature_importances_):
+                        for name, importance in zip(
+                            feature_names, predictor.feature_importances_
+                        ):
                             feature_importance[name] = float(importance)
 
                     predictions[param_type] = PerformancePrediction(
@@ -412,7 +450,7 @@ class MarketAwareHyperparameterManager:
                         predicted_performance=float(predicted_performance),
                         confidence=0.8,  # 仮定値
                         optimal_value=float(optimal_value),
-                        feature_importance=feature_importance
+                        feature_importance=feature_importance,
                     )
 
                 except Exception as e:
@@ -424,11 +462,18 @@ class MarketAwareHyperparameterManager:
             logger.error(f"Parameter prediction failed: {e}")
             return predictions
 
-    def _estimate_optimal_value(self, param_type: HyperparameterType, predicted_performance: float, market_condition: MarketCondition) -> float:
+    def _estimate_optimal_value(
+        self,
+        param_type: HyperparameterType,
+        predicted_performance: float,
+        market_condition: MarketCondition,
+    ) -> float:
         """最適値を推定"""
         try:
             current_value = self.hyperparameter_adapter.current_parameters[param_type]
-            param_range = self.hyperparameter_adapter.config.parameter_ranges[param_type]
+            param_range = self.hyperparameter_adapter.config.parameter_ranges[
+                param_type
+            ]
 
             # 市場条件に基づいて調整
             if market_condition.volatility > 0.05:  # 高ボラティリティ
@@ -462,9 +507,11 @@ class MarketAwareHyperparameterManager:
         except Exception:
             return float(current_value)
 
-    def _select_adaptation_strategies(self,
-                                    market_condition: Optional[MarketCondition],
-                                    predictions: Dict[HyperparameterType, PerformancePrediction]) -> List[AdaptationStrategy]:
+    def _select_adaptation_strategies(
+        self,
+        market_condition: Optional[MarketCondition],
+        predictions: Dict[HyperparameterType, PerformancePrediction],
+    ) -> List[AdaptationStrategy]:
         """適応戦略を選択"""
         try:
             if not self.config.adaptive_strategy_selection:
@@ -485,7 +532,10 @@ class MarketAwareHyperparameterManager:
 
             # デフォルト戦略
             if not strategies:
-                strategies = [AdaptationStrategy.PERFORMANCE_BASED, AdaptationStrategy.VOLATILITY_BASED]
+                strategies = [
+                    AdaptationStrategy.PERFORMANCE_BASED,
+                    AdaptationStrategy.VOLATILITY_BASED,
+                ]
 
             return strategies
 
@@ -493,9 +543,11 @@ class MarketAwareHyperparameterManager:
             logger.error(f"Strategy selection failed: {e}")
             return [AdaptationStrategy.PERFORMANCE_BASED]
 
-    def _create_adaptive_config(self,
-                              market_condition: Optional[MarketCondition],
-                              strategies: List[AdaptationStrategy]) -> HyperparameterConfig:
+    def _create_adaptive_config(
+        self,
+        market_condition: Optional[MarketCondition],
+        strategies: List[AdaptationStrategy],
+    ) -> HyperparameterConfig:
         """適応設定を作成"""
         try:
             config = HyperparameterConfig()
@@ -505,11 +557,15 @@ class MarketAwareHyperparameterManager:
                 # 市場条件に基づいて設定を調整
                 if market_condition.volatility > 0.05:
                     # 高ボラティリティ時はより頻繁に適応
-                    config.adaptation_interval_minutes = max(10, config.adaptation_interval_minutes // 2)
+                    config.adaptation_interval_minutes = max(
+                        10, config.adaptation_interval_minutes // 2
+                    )
                     config.max_parameter_change_rate = 0.15  # 変更率を制限
                 elif market_condition.volatility < 0.01:
                     # 低ボラティリティ時は安定した適応
-                    config.adaptation_interval_minutes = config.adaptation_interval_minutes * 2
+                    config.adaptation_interval_minutes = (
+                        config.adaptation_interval_minutes * 2
+                    )
                     config.max_parameter_change_rate = 0.25  # 変更率を緩和
 
             return config
@@ -517,7 +573,9 @@ class MarketAwareHyperparameterManager:
         except Exception:
             return HyperparameterConfig()
 
-    def _update_training_data(self, market_condition: MarketCondition, adaptation_result: AdaptationResult) -> None:
+    def _update_training_data(
+        self, market_condition: MarketCondition, adaptation_result: AdaptationResult
+    ) -> None:
         """学習データを更新"""
         try:
             features = market_condition.to_features()
@@ -526,11 +584,18 @@ class MarketAwareHyperparameterManager:
                 param_type = adaptation.parameter_type
                 performance_score = adaptation_result.overall_performance_improvement
 
-                self.training_data[param_type].append((features.copy(), performance_score))
+                self.training_data[param_type].append(
+                    (features.copy(), performance_score)
+                )
 
                 # データサイズを制限
-                if len(self.training_data[param_type]) > self.config.prediction_history_window:
-                    self.training_data[param_type] = self.training_data[param_type][-self.config.prediction_history_window:]
+                if (
+                    len(self.training_data[param_type])
+                    > self.config.prediction_history_window
+                ):
+                    self.training_data[param_type] = self.training_data[param_type][
+                        -self.config.prediction_history_window :
+                    ]
 
         except Exception as e:
             logger.error(f"Failed to update training data: {e}")
@@ -550,7 +615,9 @@ class MarketAwareHyperparameterManager:
 
                 # 履歴サイズを制限
                 if len(self.strategy_performance[strategy]) > 100:
-                    self.strategy_performance[strategy] = self.strategy_performance[strategy][-100:]
+                    self.strategy_performance[strategy] = self.strategy_performance[
+                        strategy
+                    ][-100:]
 
         except Exception as e:
             logger.error(f"Failed to update strategy performance: {e}")
@@ -577,7 +644,9 @@ class MarketAwareHyperparameterManager:
                 # モデルを学習
                 self.performance_predictors[param_type].fit(X_scaled, y)
 
-                logger.info(f"Retrained prediction model for {param_type.value} with {len(training_samples)} samples")
+                logger.info(
+                    f"Retrained prediction model for {param_type.value} with {len(training_samples)} samples"
+                )
 
             self.last_model_training = datetime.now()
 
@@ -593,7 +662,9 @@ class MarketAwareHyperparameterManager:
 
                 # 予測モデル更新をチェック
                 current_time = datetime.now()
-                if (current_time - self.last_prediction_update).total_seconds() >= self.config.prediction_model_update_interval * 60:
+                if (
+                    current_time - self.last_prediction_update
+                ).total_seconds() >= self.config.prediction_model_update_interval * 60:
                     self._retrain_prediction_models()
                     self.last_prediction_update = current_time
 
@@ -603,7 +674,9 @@ class MarketAwareHyperparameterManager:
                 logger.error(f"Adaptation worker error: {e}")
                 time.sleep(600)  # エラー時は10分待機
 
-    def get_adaptation_recommendations(self, market_condition: Optional[MarketCondition] = None) -> List[str]:
+    def get_adaptation_recommendations(
+        self, market_condition: Optional[MarketCondition] = None
+    ) -> List[str]:
         """適応推奨を取得"""
         recommendations = []
 
@@ -614,27 +687,41 @@ class MarketAwareHyperparameterManager:
             if market_condition:
                 # ボラティリティに基づく推奨
                 if market_condition.volatility > 0.05:
-                    recommendations.append("High volatility detected - consider reducing learning rate and increasing regularization")
+                    recommendations.append(
+                        "High volatility detected - consider reducing learning rate and increasing regularization"
+                    )
                 elif market_condition.volatility < 0.01:
-                    recommendations.append("Low volatility detected - consider increasing learning rate for faster adaptation")
+                    recommendations.append(
+                        "Low volatility detected - consider increasing learning rate for faster adaptation"
+                    )
 
                 # トレンドに基づく推奨
                 if market_condition.trend_strength > 0.1:
-                    recommendations.append("Strong trend detected - performance-based adaptation recommended")
+                    recommendations.append(
+                        "Strong trend detected - performance-based adaptation recommended"
+                    )
 
                 # 市場レジームに基づく推奨
-                if market_condition.market_regime == 'volatile':
-                    recommendations.append("Volatile market regime - focus on stability and risk management")
-                elif market_condition.market_regime == 'bull':
-                    recommendations.append("Bull market regime - consider more aggressive parameter updates")
+                if market_condition.market_regime == "volatile":
+                    recommendations.append(
+                        "Volatile market regime - focus on stability and risk management"
+                    )
+                elif market_condition.market_regime == "bull":
+                    recommendations.append(
+                        "Bull market regime - consider more aggressive parameter updates"
+                    )
 
             # 戦略パフォーマンスに基づく推奨
             best_strategy = self._get_best_performing_strategy()
             if best_strategy:
-                recommendations.append(f"Best performing strategy: {best_strategy.value}")
+                recommendations.append(
+                    f"Best performing strategy: {best_strategy.value}"
+                )
 
             if not recommendations:
-                recommendations.append("Market conditions stable - no specific recommendations")
+                recommendations.append(
+                    "Market conditions stable - no specific recommendations"
+                )
 
             return recommendations
 
@@ -673,17 +760,17 @@ class MarketAwareHyperparameterManager:
                     "volatility": market_condition.volatility,
                     "trend_strength": market_condition.trend_strength,
                     "market_regime": market_condition.market_regime,
-                    "timestamp": market_condition.timestamp.isoformat()
+                    "timestamp": market_condition.timestamp.isoformat(),
                 },
                 "predictions": {
                     param.value: {
                         "predicted_performance": pred.predicted_performance,
                         "optimal_value": pred.optimal_value,
                         "confidence": pred.confidence,
-                        "feature_importance": pred.feature_importance
+                        "feature_importance": pred.feature_importance,
                     }
                     for param, pred in predictions.items()
-                }
+                },
             }
 
         except Exception as e:
@@ -697,7 +784,7 @@ class MarketAwareHyperparameterManager:
                 "total_adaptations": len(self.adaptation_history),
                 "market_conditions_count": len(self.market_conditions),
                 "strategy_performance": {},
-                "parameter_adaptation_count": {}
+                "parameter_adaptation_count": {},
             }
 
             # 戦略パフォーマンス
@@ -707,7 +794,7 @@ class MarketAwareHyperparameterManager:
                         "average_performance": float(np.mean(performances)),
                         "total_adaptations": len(performances),
                         "best_performance": float(np.max(performances)),
-                        "worst_performance": float(np.min(performances))
+                        "worst_performance": float(np.min(performances)),
                     }
 
             # パラメータ適応数

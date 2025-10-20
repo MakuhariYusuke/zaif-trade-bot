@@ -1,6 +1,6 @@
 # 🐛 Bug #49: profit_bonus_multipliers の順番エラー
 
-**発見日時**: 2025-10-08 12:30  
+**発見日時**: 2025-10-08 12:30
 **重要度**: **CRITICAL** 🔴🔴🔴
 
 ---
@@ -46,7 +46,7 @@ multipliers[1] = 1.0 → SELL用 (❌ 3.0であるべき!)
 multipliers[2] = 3.0 → HOLD用 (❌ 1.0であるべき!)
 ```
 
-**結果**: 
+**結果**:
 - ✅ BUY報酬: 1.0倍 (正常)
 - ❌ **SELL報酬: 1.0倍** (3.0倍のつもりが無強化!)
 - ❌ **HOLD報酬: 3.0倍** (意図せず強化!)
@@ -148,7 +148,7 @@ def test_profit_bonus_multipliers_order():
     """profit_bonus_multipliersの順番が正しいことを確認"""
     config = {"profit_bonus_multipliers": [1.0, 3.0, 1.0]}
     calc = RewardCalculator(reward_settings=config)
-    
+
     # SELLアクションで3倍の報酬が適用されるか
     assert calc.get_multiplier(ACTION_SELL) == 3.0
     assert calc.get_multiplier(ACTION_BUY) == 1.0
@@ -200,6 +200,6 @@ elif isinstance(multipliers_raw, list):
 
 ---
 
-**修正ファイル**: `configs/training/ppo_balanced_mem_optimized.json` (1行修正)  
-**ステータス**: 修正準備中 → 緊急再検証が必要  
+**修正ファイル**: `configs/training/ppo_balanced_mem_optimized.json` (1行修正)
+**ステータス**: 修正準備中 → 緊急再検証が必要
 **次のアクション**: 配列順序を修正 → 10,000ステップ検証 → SELL率15%達成確認

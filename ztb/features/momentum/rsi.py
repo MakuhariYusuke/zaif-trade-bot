@@ -3,9 +3,9 @@ RSI (Relative Strength Index) implementation with multi-timeframe support.
 RSIの実装 - 複数時間軸対応
 """
 
-import numpy as np
-import pandas as pd
 from typing import Optional
+
+import pandas as pd
 
 from ztb.features.feature_cache import feature_cache
 from ztb.features.registry import FeatureRegistry
@@ -14,13 +14,20 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("RSI")
-def compute_rsi(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optional[Timeframe] = None) -> pd.Series:
+def compute_rsi(
+    df: pd.DataFrame,
+    period: Optional[int] = None,
+    timeframe: Optional[Timeframe] = None,
+) -> pd.Series:
     """Compute RSI (Relative Strength Index) - Optimized version with Ta-Lib support"""
     # Determine period based on timeframe
     if timeframe is not None:
         from ztb.features.timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
-        period = period or (tf_params["short_period"] // 2)  # RSI typically uses shorter periods
+        period = period or (
+            tf_params["short_period"] // 2
+        )  # RSI typically uses shorter periods
     else:
         period = period or 14
 
@@ -36,6 +43,7 @@ def compute_rsi(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optio
 
 
 # === Multi-Timeframe RSI Features ===
+
 
 @FeatureRegistry.register("RSI_M1")
 def compute_rsi_m1(df: pd.DataFrame) -> pd.Series:

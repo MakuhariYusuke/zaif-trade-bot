@@ -37,7 +37,7 @@
 }
 ```
 
-**メモリ削減効果**: 
+**メモリ削減効果**:
 - バッチメモリ: 512×32 = 16,384 → 256×16 = 4,096 (**75%削減**)
 - チェックポイント頻度: 33%削減
 
@@ -266,7 +266,7 @@ def calculate_diversity_bonus(self, action, target_dist=[0.33, 0.33, 0.34]):
 ```python
 # 推論時のサンプリング温度を上げる
 action, _states = model.predict(
-    obs, 
+    obs,
     deterministic=False,  # 確率的サンプリング
     temperature=1.5       # より多様な行動
 )

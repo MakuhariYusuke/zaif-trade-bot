@@ -3,27 +3,27 @@ Recovery Manager
 リカバリーマネージャー
 """
 
+import json
 import logging
+import os
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, field
-import json
-import os
+from typing import Any, Callable, Dict, List, Optional
 
 from ..monitoring.safety import SafetyManager
+from .anomaly_manager import AnomalyDetectionManager
 from .fallback_manager import FallbackManager, FallbackMode
-from .anomaly_manager import AnomalyDetectionManager, AnomalyResult
-from .types import RecoveryStatus, RecoveryStrategy, SafetyLevel
-
+from .types import RecoveryStatus, RecoveryStrategy
 
 logger = logging.getLogger(__name__)
 
 
 class RecoveryPhase(Enum):
     """リカバリーフェーズ"""
+
     ASSESSMENT = "assessment"  # 評価
     PREPARATION = "preparation"  # 準備
     EXECUTION = "execution"  # 実行
@@ -37,11 +37,13 @@ class RecoveryConfig:
     """リカバリー設定"""
 
     # リカバリー戦略設定
-    enabled_strategies: List[RecoveryStrategy] = field(default_factory=lambda: [
-        RecoveryStrategy.GRADUAL_RECOVERY,
-        RecoveryStrategy.ROLLBACK_RECOVERY,
-        RecoveryStrategy.COLD_START_RECOVERY
-    ])
+    enabled_strategies: List[RecoveryStrategy] = field(
+        default_factory=lambda: [
+            RecoveryStrategy.GRADUAL_RECOVERY,
+            RecoveryStrategy.ROLLBACK_RECOVERY,
+            RecoveryStrategy.COLD_START_RECOVERY,
+        ]
+    )
 
     # タイムアウト設定
     assessment_timeout_seconds: int = 300  # 評価タイムアウト
@@ -90,11 +92,13 @@ class RecoveryAttempt:
 class RecoveryManager:
     """リカバリーマネージャー"""
 
-    def __init__(self,
-                 safety_manager: SafetyManager,
-                 fallback_manager: FallbackManager,
-                 anomaly_manager: AnomalyDetectionManager,
-                 config: Optional[RecoveryConfig] = None):
+    def __init__(
+        self,
+        safety_manager: SafetyManager,
+        fallback_manager: FallbackManager,
+        anomaly_manager: AnomalyDetectionManager,
+        config: Optional[RecoveryConfig] = None,
+    ):
         self.safety_manager = safety_manager
         self.fallback_manager = fallback_manager
         self.anomaly_manager = anomaly_manager
@@ -111,10 +115,10 @@ class RecoveryManager:
 
         # コールバック
         self.recovery_callbacks: Dict[str, List[Callable]] = {
-            'recovery_started': [],
-            'recovery_completed': [],
-            'recovery_failed': [],
-            'phase_changed': []
+            "recovery_started": [],
+            "recovery_completed": [],
+            "recovery_failed": [],
+            "phase_changed": [],
         }
 
         # スレッド管理
@@ -127,10 +131,12 @@ class RecoveryManager:
 
         logger.info("RecoveryManager initialized")
 
-    def initiate_recovery(self,
-                         strategy: RecoveryStrategy,
-                         triggered_by: str,
-                         affected_components: List[str]) -> bool:
+    def initiate_recovery(
+        self,
+        strategy: RecoveryStrategy,
+        triggered_by: str,
+        affected_components: List[str],
+    ) -> bool:
         """リカバリーを開始"""
         try:
             if self.is_recovery_active:
@@ -146,7 +152,7 @@ class RecoveryManager:
                 phase=RecoveryPhase.ASSESSMENT,
                 status=RecoveryStatus.IN_PROGRESS,
                 triggered_by=triggered_by,
-                affected_components=affected_components
+                affected_components=affected_components,
             )
 
             self.current_recovery = recovery_attempt
@@ -161,16 +167,16 @@ class RecoveryManager:
 
             # リカバリースレッドを開始
             self.recovery_thread = threading.Thread(
-                target=self._recovery_worker,
-                args=(recovery_attempt,),
-                daemon=True
+                target=self._recovery_worker, args=(recovery_attempt,), daemon=True
             )
             self.recovery_thread.start()
 
             # コールバックを実行
-            self._trigger_callbacks('recovery_started', recovery_attempt)
+            self._trigger_callbacks("recovery_started", recovery_attempt)
 
-            logger.info(f"Recovery initiated: {attempt_id} with strategy {strategy.value}")
+            logger.info(
+                f"Recovery initiated: {attempt_id} with strategy {strategy.value}"
+            )
             return True
 
         except Exception as e:
@@ -216,7 +222,7 @@ class RecoveryManager:
         try:
             logger.info("Starting assessment phase")
             recovery_attempt.phase = RecoveryPhase.ASSESSMENT
-            self._trigger_callbacks('phase_changed', recovery_attempt)
+            self._trigger_callbacks("phase_changed", recovery_attempt)
 
             start_time = time.time()
 
@@ -225,8 +231,10 @@ class RecoveryManager:
                 # 現在のシステム状態を評価
                 system_health = self._assess_system_health()
 
-                if system_health['can_recover']:
-                    recovery_attempt.actions_taken.append("System health assessment completed")
+                if system_health["can_recover"]:
+                    recovery_attempt.actions_taken.append(
+                        "System health assessment completed"
+                    )
                     logger.info("Assessment phase completed successfully")
                     return True
 
@@ -244,7 +252,7 @@ class RecoveryManager:
         try:
             logger.info("Starting preparation phase")
             recovery_attempt.phase = RecoveryPhase.PREPARATION
-            self._trigger_callbacks('phase_changed', recovery_attempt)
+            self._trigger_callbacks("phase_changed", recovery_attempt)
 
             start_time = time.time()
 
@@ -252,7 +260,9 @@ class RecoveryManager:
             while time.time() - start_time < self.config.preparation_timeout_seconds:
                 # リカバリーのための準備
                 if self._prepare_for_recovery(recovery_attempt):
-                    recovery_attempt.actions_taken.append("Recovery preparation completed")
+                    recovery_attempt.actions_taken.append(
+                        "Recovery preparation completed"
+                    )
                     logger.info("Preparation phase completed successfully")
                     return True
 
@@ -270,7 +280,7 @@ class RecoveryManager:
         try:
             logger.info("Starting execution phase")
             recovery_attempt.phase = RecoveryPhase.EXECUTION
-            self._trigger_callbacks('phase_changed', recovery_attempt)
+            self._trigger_callbacks("phase_changed", recovery_attempt)
 
             start_time = time.time()
 
@@ -285,7 +295,9 @@ class RecoveryManager:
 
             if success:
                 recovery_attempt.duration_seconds = time.time() - start_time
-                recovery_attempt.actions_taken.append(f"Recovery executed with strategy {recovery_attempt.strategy.value}")
+                recovery_attempt.actions_taken.append(
+                    f"Recovery executed with strategy {recovery_attempt.strategy.value}"
+                )
                 logger.info("Execution phase completed successfully")
                 return True
 
@@ -301,7 +313,7 @@ class RecoveryManager:
         try:
             logger.info("Starting verification phase")
             recovery_attempt.phase = RecoveryPhase.VERIFICATION
-            self._trigger_callbacks('phase_changed', recovery_attempt)
+            self._trigger_callbacks("phase_changed", recovery_attempt)
 
             start_time = time.time()
 
@@ -311,8 +323,7 @@ class RecoveryManager:
 
             # 監視スレッドを開始
             self.monitoring_thread = threading.Thread(
-                target=self._stability_monitor,
-                daemon=True
+                target=self._stability_monitor, daemon=True
             )
             self.monitoring_thread.start()
 
@@ -346,14 +357,18 @@ class RecoveryManager:
             self.fallback_manager.deactivate_fallback()
 
             # コールバックを実行
-            self._trigger_callbacks('recovery_completed', recovery_attempt)
+            self._trigger_callbacks("recovery_completed", recovery_attempt)
 
-            logger.info(f"Recovery completed successfully: {recovery_attempt.attempt_id}")
+            logger.info(
+                f"Recovery completed successfully: {recovery_attempt.attempt_id}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to complete recovery: {e}")
 
-    def _fail_recovery(self, recovery_attempt: RecoveryAttempt, error_message: str) -> None:
+    def _fail_recovery(
+        self, recovery_attempt: RecoveryAttempt, error_message: str
+    ) -> None:
         """リカバリーを失敗としてマーク"""
         try:
             recovery_attempt.phase = RecoveryPhase.FAILED
@@ -365,9 +380,11 @@ class RecoveryManager:
             self.recovery_history.append(recovery_attempt)
 
             # コールバックを実行
-            self._trigger_callbacks('recovery_failed', recovery_attempt)
+            self._trigger_callbacks("recovery_failed", recovery_attempt)
 
-            logger.error(f"Recovery failed: {recovery_attempt.attempt_id} - {error_message}")
+            logger.error(
+                f"Recovery failed: {recovery_attempt.attempt_id} - {error_message}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to mark recovery as failed: {e}")
@@ -383,29 +400,25 @@ class RecoveryManager:
             issues = []
 
             # CPU使用率チェック
-            if metrics.get('cpu_usage', 0) > 95:
+            if metrics.get("cpu_usage", 0) > 95:
                 can_recover = False
                 issues.append("High CPU usage")
 
             # メモリ使用率チェック
-            if metrics.get('memory_usage', 0) > 95:
+            if metrics.get("memory_usage", 0) > 95:
                 can_recover = False
                 issues.append("High memory usage")
 
             # エラーレートチェック
-            if metrics.get('error_rate', 0) > 0.1:
+            if metrics.get("error_rate", 0) > 0.1:
                 can_recover = False
                 issues.append("High error rate")
 
-            return {
-                'can_recover': can_recover,
-                'issues': issues,
-                'metrics': metrics
-            }
+            return {"can_recover": can_recover, "issues": issues, "metrics": metrics}
 
         except Exception as e:
             logger.error(f"Failed to assess system health: {e}")
-            return {'can_recover': False, 'issues': [str(e)], 'metrics': {}}
+            return {"can_recover": False, "issues": [str(e)], "metrics": {}}
 
     def _prepare_for_recovery(self, recovery_attempt: RecoveryAttempt) -> bool:
         """リカバリーの準備"""
@@ -489,7 +502,7 @@ class RecoveryManager:
                 return False
 
             # メトリクスの変動をチェック
-            for metric_name in ['cpu_usage', 'memory_usage', 'error_rate']:
+            for metric_name in ["cpu_usage", "memory_usage", "error_rate"]:
                 values = [m.get(metric_name, 0) for m in self.stability_metrics]
                 if not values:
                     continue
@@ -528,10 +541,10 @@ class RecoveryManager:
         try:
             # SafetyManagerからメトリクスを取得
             return {
-                'cpu_usage': 45.5,
-                'memory_usage': 67.8,
-                'error_rate': 0.02,
-                'response_time': 150.0
+                "cpu_usage": 45.5,
+                "memory_usage": 67.8,
+                "error_rate": 0.02,
+                "response_time": 150.0,
             }
 
         except Exception as e:
@@ -542,18 +555,17 @@ class RecoveryManager:
         """バックアップを作成"""
         try:
             backup_path = os.path.join(
-                self.backup_directory,
-                f"backup_{recovery_attempt.attempt_id}.json"
+                self.backup_directory, f"backup_{recovery_attempt.attempt_id}.json"
             )
 
             backup_data = {
-                'timestamp': recovery_attempt.timestamp.isoformat(),
-                'triggered_by': recovery_attempt.triggered_by,
-                'affected_components': recovery_attempt.affected_components,
-                'system_state': self._get_current_metrics()
+                "timestamp": recovery_attempt.timestamp.isoformat(),
+                "triggered_by": recovery_attempt.triggered_by,
+                "affected_components": recovery_attempt.affected_components,
+                "system_state": self._get_current_metrics(),
             }
 
-            with open(backup_path, 'w') as f:
+            with open(backup_path, "w") as f:
                 json.dump(backup_data, f, indent=2)
 
             logger.info(f"Backup created: {backup_path}")
@@ -567,15 +579,14 @@ class RecoveryManager:
         """バックアップから復元"""
         try:
             backup_path = os.path.join(
-                self.backup_directory,
-                f"backup_{recovery_attempt.attempt_id}.json"
+                self.backup_directory, f"backup_{recovery_attempt.attempt_id}.json"
             )
 
             if not os.path.exists(backup_path):
                 logger.error(f"Backup not found: {backup_path}")
                 return False
 
-            with open(backup_path, 'r') as f:
+            with open(backup_path, "r") as f:
                 backup_data = json.load(f)
 
             # バックアップから状態を復元
@@ -595,13 +606,20 @@ class RecoveryManager:
                 return False
 
             # 最近のバックアップを検索
-            backup_files = [f for f in os.listdir(self.backup_directory) if f.startswith('backup_')]
+            backup_files = [
+                f for f in os.listdir(self.backup_directory) if f.startswith("backup_")
+            ]
             if not backup_files:
                 return False
 
             # 最新のバックアップが1時間以内かチェック
-            latest_backup = max(backup_files, key=lambda x: os.path.getctime(os.path.join(self.backup_directory, x)))
-            backup_time = datetime.fromtimestamp(os.path.getctime(os.path.join(self.backup_directory, latest_backup)))
+            latest_backup = max(
+                backup_files,
+                key=lambda x: os.path.getctime(os.path.join(self.backup_directory, x)),
+            )
+            backup_time = datetime.fromtimestamp(
+                os.path.getctime(os.path.join(self.backup_directory, latest_backup))
+            )
             return (datetime.now() - backup_time).total_seconds() < 3600
 
         except Exception as e:
@@ -615,8 +633,9 @@ class RecoveryManager:
             metrics = self._get_current_metrics()
 
             # 最低限のリソースが必要
-            return (metrics.get('cpu_usage', 0) < 80 and
-                    metrics.get('memory_usage', 0) < 80)
+            return (
+                metrics.get("cpu_usage", 0) < 80 and metrics.get("memory_usage", 0) < 80
+            )
 
         except Exception as e:
             logger.error(f"Failed to check recovery resources: {e}")
@@ -640,8 +659,7 @@ class RecoveryManager:
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_recoveries = [
-                r for r in self.recovery_history
-                if r.timestamp > cutoff_time
+                r for r in self.recovery_history if r.timestamp > cutoff_time
             ]
 
             return [
@@ -655,7 +673,7 @@ class RecoveryManager:
                     "affected_components": r.affected_components,
                     "actions_taken": r.actions_taken,
                     "error_message": r.error_message,
-                    "duration_seconds": r.duration_seconds
+                    "duration_seconds": r.duration_seconds,
                 }
                 for r in recent_recoveries
             ]
@@ -681,19 +699,30 @@ class RecoveryManager:
                 strategy = recovery["strategy"]
                 strategy_counts[strategy] = strategy_counts.get(strategy, 0) + 1
 
-            avg_duration = np.mean([
-                r["duration_seconds"] for r in history
-                if r["duration_seconds"] is not None
-            ]) if any(r["duration_seconds"] for r in history) else 0
+            avg_duration = (
+                np.mean(
+                    [
+                        r["duration_seconds"]
+                        for r in history
+                        if r["duration_seconds"] is not None
+                    ]
+                )
+                if any(r["duration_seconds"] for r in history)
+                else 0
+            )
 
             return {
                 "period_hours": hours,
                 "total_recoveries": total_recoveries,
-                "success_rate": success_count / total_recoveries if total_recoveries > 0 else 0,
-                "failure_rate": failure_count / total_recoveries if total_recoveries > 0 else 0,
+                "success_rate": success_count / total_recoveries
+                if total_recoveries > 0
+                else 0,
+                "failure_rate": failure_count / total_recoveries
+                if total_recoveries > 0
+                else 0,
                 "strategy_distribution": strategy_counts,
                 "average_duration_seconds": float(avg_duration),
-                "recoveries_per_hour": total_recoveries / hours
+                "recoveries_per_hour": total_recoveries / hours,
             }
 
         except Exception as e:

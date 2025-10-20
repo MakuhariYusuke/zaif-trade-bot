@@ -5,13 +5,12 @@ Unit tests for circuit_breaker.py
 import asyncio
 import time
 import unittest
-from unittest.mock import AsyncMock, patch
 
 from ztb.utils.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
-    CircuitState,
     CircuitBreakerOpenException,
+    CircuitState,
     get_circuit_breaker,
     reset_all_circuit_breakers,
 )
@@ -23,10 +22,7 @@ class TestCircuitBreaker(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.config = CircuitBreakerConfig(
-            failure_threshold=3,
-            recovery_timeout=1.0,
-            success_threshold=2,
-            timeout=0.5
+            failure_threshold=3, recovery_timeout=1.0, success_threshold=2, timeout=0.5
         )
         self.breaker = CircuitBreaker("test_breaker", self.config)
 
@@ -40,6 +36,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_successful_call(self):
         """Test successful function call."""
+
         async def success_func():
             return "success"
 
@@ -50,6 +47,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_failed_call(self):
         """Test failed function call."""
+
         async def fail_func():
             raise ValueError("Test error")
 
@@ -62,6 +60,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_open_circuit_after_failures(self):
         """Test circuit opens after reaching failure threshold."""
+
         async def fail_func():
             raise ValueError("Test error")
 
@@ -75,6 +74,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_open_circuit_blocks_calls(self):
         """Test that open circuit blocks subsequent calls."""
+
         async def fail_func():
             raise ValueError("Test error")
 
@@ -89,6 +89,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_half_open_after_timeout(self):
         """Test circuit enters half-open state after recovery timeout."""
+
         async def fail_func():
             raise ValueError("Test error")
 
@@ -112,6 +113,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_half_open_failure(self):
         """Test circuit reopens on failure in half-open state."""
+
         async def fail_func():
             raise ValueError("Test error")
 
@@ -130,6 +132,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_half_open_success_recovery(self):
         """Test circuit closes after successful calls in half-open state."""
+
         async def fail_func():
             raise ValueError("Test error")
 
@@ -155,6 +158,7 @@ class TestCircuitBreaker(unittest.TestCase):
 
     async def test_timeout_handling(self):
         """Test timeout handling."""
+
         async def slow_func():
             await asyncio.sleep(1.0)  # Longer than timeout
             return "slow"
@@ -211,6 +215,7 @@ class TestCircuitBreaker(unittest.TestCase):
         """Test circuit breaker registry."""
         # Clear registry
         from ztb.utils.circuit_breaker import _circuit_breakers
+
         _circuit_breakers.clear()
 
         # Get new breaker
@@ -228,6 +233,7 @@ class TestCircuitBreaker(unittest.TestCase):
         """Test resetting all circuit breakers."""
         # Clear registry
         from ztb.utils.circuit_breaker import _circuit_breakers
+
         _circuit_breakers.clear()
 
         # Create breakers
@@ -244,5 +250,5 @@ class TestCircuitBreaker(unittest.TestCase):
         self.assertEqual(breaker2.state, CircuitState.CLOSED)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -44,13 +44,13 @@ python run_training.py --config configs/training/ppo_100k_optimized.json --force
   "algorithm": "ppo",
   "total_timesteps": 100000,
   "data_path": "ml-dataset-enhanced.csv",
-  
+
   "_comment": "最適化されたPPOハイパーパラメータ",
   "learning_rate": 0.009375625,
   "gamma": 0.895,
   "n_steps": 1408,
   "ent_coef": 0.02575,
-  
+
   "_comment": "SELL bias mitigation",
   "enable_sell_mitigation": true,
   "enable_lagrange": true,
@@ -59,7 +59,7 @@ python run_training.py --config configs/training/ppo_100k_optimized.json --force
   "lagrange_eta": 0.062875,
   "lagrange_lambda_max": 3.875,
   "lagrange_warmup_steps": 3874,
-  
+
   "checkpoint_dir": "checkpoints/ppo_100k_optimized",
   "model_dir": "models"
 }

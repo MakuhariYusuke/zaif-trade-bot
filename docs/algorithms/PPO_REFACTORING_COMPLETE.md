@@ -4,7 +4,7 @@
 
 ### Phase 1: PPO整理と共通インターフェース実装 ✅
 
-**日時**: 2025年10月11日  
+**日時**: 2025年10月11日
 **目的**: いきなりSACを追加せず、まず既存PPOを整理して差し替え可能な設計にする
 
 ---
@@ -29,16 +29,16 @@ ztb/training/algorithms/              🆕 アルゴリズム統合ディレク�
 ```python
 class BaseRLAlgorithm(ABC):
     """全てのRLアルゴリズムの基底クラス"""
-    
+
     @abstractmethod
     def create_model(env, config, tensorboard_log) -> BaseAlgorithm
-    
+
     @abstractmethod
     def train(model, total_timesteps, callback) -> BaseAlgorithm
-    
+
     @abstractmethod
     def get_default_config() -> Dict[str, Any]
-    
+
     @property
     @abstractmethod
     def algorithm_name() -> str
@@ -53,13 +53,13 @@ class BaseRLAlgorithm(ABC):
 ```python
 class AlgorithmFactory:
     """Registry PatternでアルゴリズムDI"""
-    
+
     @classmethod
     def register(algorithm_name, algorithm_class)
-    
+
     @classmethod
     def create(algorithm_name, **kwargs) -> BaseRLAlgorithm
-    
+
     @classmethod
     def list_algorithms() -> list[str]
 ```
@@ -74,7 +74,7 @@ class AlgorithmFactory:
 ```python
 class PPOAlgorithm(BaseRLAlgorithm):
     """既存PPOTrainerのラッパー"""
-    
+
     def create_model(env, config, tensorboard_log)
     def train(model, total_timesteps, callback)
     def get_default_config()
@@ -235,7 +235,7 @@ class UnifiedTrainer:
         # 🆕 アルゴリズムを動的に選択
         algorithm_name = config.get("algorithm", "ppo")
         self.algorithm = AlgorithmFactory.create(algorithm_name)
-        
+
     def train(self):
         model = self.algorithm.create_model(...)
         self.algorithm.train(model, ...)
@@ -361,6 +361,6 @@ PPOAlgorithm --> UnifiedTrainer: trained_model
 
 ---
 
-**作成日**: 2025年10月11日  
-**ステータス**: Phase 1 完了 ✅  
+**作成日**: 2025年10月11日
+**ステータス**: Phase 1 完了 ✅
 **次のPhase**: unified_trainer.py 更新

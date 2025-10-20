@@ -10,7 +10,8 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union, Callable
+from typing import Callable, Dict, List, Optional, Union
+
 import numpy as np
 import pandas as pd
 from scipy import interpolate
@@ -44,7 +45,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         augmentations: List[Dict[str, Union[str, float, int]]],
-        probability: float = 1.0
+        probability: float = 1.0,
     ) -> pd.DataFrame:
         """
         指定された拡張をデータに適用。
@@ -75,37 +76,37 @@ class DataAugmentation:
                         augmented_data = self._add_gaussian_noise(
                             augmented_data,
                             std=aug_config.get("std", 0.01),
-                            columns=aug_config.get("columns")
+                            columns=aug_config.get("columns"),
                         )
                     elif aug_type == "salt_pepper_noise":
                         augmented_data = self._add_salt_pepper_noise(
                             augmented_data,
                             prob=aug_config.get("prob", 0.01),
-                            columns=aug_config.get("columns")
+                            columns=aug_config.get("columns"),
                         )
                     elif aug_type == "time_warping":
                         augmented_data = self._apply_time_warping(
                             augmented_data,
                             sigma=aug_config.get("sigma", 0.2),
-                            columns=aug_config.get("columns")
+                            columns=aug_config.get("columns"),
                         )
                     elif aug_type == "feature_mixing":
                         augmented_data = self._apply_feature_mixing(
                             augmented_data,
                             mix_ratio=aug_config.get("mix_ratio", 0.1),
-                            columns=aug_config.get("columns")
+                            columns=aug_config.get("columns"),
                         )
                     elif aug_type == "scaling":
                         augmented_data = self._apply_scaling(
                             augmented_data,
                             scale_factor=aug_config.get("scale_factor", 1.1),
-                            columns=aug_config.get("columns")
+                            columns=aug_config.get("columns"),
                         )
                     elif aug_type == "missing_values":
                         augmented_data = self._simulate_missing_values(
                             augmented_data,
                             missing_prob=aug_config.get("missing_prob", 0.05),
-                            columns=aug_config.get("columns")
+                            columns=aug_config.get("columns"),
                         )
                     else:
                         logger.warning(f"Unknown augmentation type: {aug_type}")
@@ -117,10 +118,7 @@ class DataAugmentation:
         return augmented_data
 
     def _add_gaussian_noise(
-        self,
-        data: pd.DataFrame,
-        std: float = 0.01,
-        columns: Optional[List[str]] = None
+        self, data: pd.DataFrame, std: float = 0.01, columns: Optional[List[str]] = None
     ) -> pd.DataFrame:
         """
         ガウスノイズを追加。
@@ -150,7 +148,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         prob: float = 0.01,
-        columns: Optional[List[str]] = None
+        columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         Salt-and-pepperノイズを追加。
@@ -172,18 +170,22 @@ class DataAugmentation:
             if col in augmented_data.columns:
                 mask = np.random.random(len(augmented_data)) < prob
                 # Salt (最大値) と Pepper (最小値) をランダムに選択
-                salt_pepper = np.random.choice([augmented_data[col].max(), augmented_data[col].min()],
-                                              size=mask.sum())
+                salt_pepper = np.random.choice(
+                    [augmented_data[col].max(), augmented_data[col].min()],
+                    size=mask.sum(),
+                )
                 augmented_data.loc[mask, col] = salt_pepper
 
-        logger.debug(f"Applied salt-pepper noise (prob={prob}) to {len(columns)} columns")
+        logger.debug(
+            f"Applied salt-pepper noise (prob={prob}) to {len(columns)} columns"
+        )
         return augmented_data
 
     def _apply_time_warping(
         self,
         data: pd.DataFrame,
         sigma: float = 0.2,
-        columns: Optional[List[str]] = None
+        columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         時間軸ワーピングを適用。
@@ -211,9 +213,11 @@ class DataAugmentation:
         for col in columns:
             if col in augmented_data.columns:
                 interp_func = interpolate.interp1d(
-                    time_indices, augmented_data[col].values,
-                    kind='linear', bounds_error=False,
-                    fill_value='extrapolate'
+                    time_indices,
+                    augmented_data[col].values,
+                    kind="linear",
+                    bounds_error=False,
+                    fill_value="extrapolate",
                 )
                 augmented_data[col] = interp_func(warp_function)
 
@@ -224,7 +228,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         mix_ratio: float = 0.1,
-        columns: Optional[List[str]] = None
+        columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         特徴量ミキシングを適用。
@@ -254,19 +258,21 @@ class DataAugmentation:
 
         # 特徴量をミキシング
         mixed_values = (
-            augmented_data.loc[mix_mask, col1] * (1 - mix_ratio) +
-            augmented_data.loc[mix_mask, col2] * mix_ratio
+            augmented_data.loc[mix_mask, col1] * (1 - mix_ratio)
+            + augmented_data.loc[mix_mask, col2] * mix_ratio
         )
         augmented_data.loc[mix_mask, col1] = mixed_values
 
-        logger.debug(f"Applied feature mixing (ratio={mix_ratio}) between {col1} and {col2}")
+        logger.debug(
+            f"Applied feature mixing (ratio={mix_ratio}) between {col1} and {col2}"
+        )
         return augmented_data
 
     def _apply_scaling(
         self,
         data: pd.DataFrame,
         scale_factor: float = 1.1,
-        columns: Optional[List[str]] = None
+        columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         スケーリング変換を適用。
@@ -288,14 +294,16 @@ class DataAugmentation:
             if col in augmented_data.columns:
                 augmented_data[col] = augmented_data[col] * scale_factor
 
-        logger.debug(f"Applied scaling (factor={scale_factor}) to {len(columns)} columns")
+        logger.debug(
+            f"Applied scaling (factor={scale_factor}) to {len(columns)} columns"
+        )
         return augmented_data
 
     def _simulate_missing_values(
         self,
         data: pd.DataFrame,
         missing_prob: float = 0.05,
-        columns: Optional[List[str]] = None
+        columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         欠損値をシミュレーション。
@@ -318,12 +326,13 @@ class DataAugmentation:
                 missing_mask = np.random.random(len(augmented_data)) < missing_prob
                 augmented_data.loc[missing_mask, col] = np.nan
 
-        logger.debug(f"Simulated missing values (prob={missing_prob}) in {len(columns)} columns")
+        logger.debug(
+            f"Simulated missing values (prob={missing_prob}) in {len(columns)} columns"
+        )
         return augmented_data
 
     def create_augmentation_pipeline(
-        self,
-        pipeline_config: List[Dict[str, Union[str, float, int]]]
+        self, pipeline_config: List[Dict[str, Union[str, float, int]]]
     ) -> Callable[[pd.DataFrame], pd.DataFrame]:
         """
         拡張パイプラインを作成。
@@ -342,6 +351,7 @@ class DataAugmentation:
             >>> augment_func = augmenter.create_augmentation_pipeline(pipeline_config)
             >>> augmented_data = augment_func(original_data)
         """
+
         def augment_function(data: pd.DataFrame) -> pd.DataFrame:
             return self.apply_augmentations(data, pipeline_config)
 

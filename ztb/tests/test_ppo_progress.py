@@ -3,7 +3,6 @@
 Test PPO Trainer with progress bar.
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -13,6 +12,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.training.ppo_trainer import PPOTrainer
 from ztb.utils.config import TypedConfig
+
 
 def main() -> None:
     # Simple config for testing
@@ -35,7 +35,7 @@ def main() -> None:
     )
 
     model = trainer.train(session_id="progress_bar_test")
-    
+
     # Save the model
     if model is not None:
         config = TypedConfig()
@@ -44,6 +44,7 @@ def main() -> None:
         print(f"Model saved to {model_path}")
 
     print("Training completed successfully!")
+
 
 if __name__ == "__main__":
     main()

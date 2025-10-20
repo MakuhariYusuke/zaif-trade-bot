@@ -6,20 +6,17 @@ pruning, quantization, low-rank approximation, and knowledge distillation
 for optimal model compression with minimal accuracy loss.
 """
 
+import logging
+import time
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.utils.prune as prune
-from typing import Dict, List, Optional, Tuple, Union, Callable, Any
-import logging
-from pathlib import Path
-import numpy as np
-from scipy.linalg import svd
-import time
-from functools import partial
 
-from ztb.training.quantization.quantizer import SACQuantizer
+from ztb.training.compression.compressor import LowRankApproximator, SACPruner
 from ztb.training.distillation.distiller import SACDistiller
-from ztb.training.compression.compressor import SACPruner, LowRankApproximator
+from ztb.training.quantization.quantizer import SACQuantizer
 
 logger = logging.getLogger(__name__)
 
@@ -69,41 +66,32 @@ class CompositeCompressor:
         self.metrics = CompressionMetrics()
 
         # Initialize compression components
-        self.quantizer = SACQuantizer(self.config.get('quantization', {}))
-        self.distiller = SACDistiller(self.config.get('distillation', {}))
-        self.pruner = SACPruner(self.config.get('pruning', {}))
-        self.low_rank = LowRankApproximator(self.config.get('low_rank', {}))
+        self.quantizer = SACQuantizer(self.config.get("quantization", {}))
+        self.distiller = SACDistiller(self.config.get("distillation", {}))
+        self.pruner = SACPruner(self.config.get("pruning", {}))
+        self.low_rank = LowRankApproximator(self.config.get("low_rank", {}))
 
     def _get_default_config(self) -> Dict:
         """Get default compression configuration."""
         return {
-            'pipeline': ['pruning', 'quantization', 'low_rank', 'distillation'],
-            'target_compression_ratio': 0.5,
-            'max_accuracy_drop': 0.05,
-            'pruning': {
-                'method': 'l1_unstructured',
-                'amount': 0.3,
-                'target_modules': [nn.Linear]
+            "pipeline": ["pruning", "quantization", "low_rank", "distillation"],
+            "target_compression_ratio": 0.5,
+            "max_accuracy_drop": 0.05,
+            "pruning": {
+                "method": "l1_unstructured",
+                "amount": 0.3,
+                "target_modules": [nn.Linear],
             },
-            'quantization': {
-                'method': 'dynamic',
-                'dtype': torch.qint8
-            },
-            'low_rank': {
-                'rank_ratio': 0.8,
-                'target_modules': [nn.Linear]
-            },
-            'distillation': {
-                'temperature': 2.0,
-                'alpha': 0.5
-            }
+            "quantization": {"method": "dynamic", "dtype": torch.qint8},
+            "low_rank": {"rank_ratio": 0.8, "target_modules": [nn.Linear]},
+            "distillation": {"temperature": 2.0, "alpha": 0.5},
         }
 
     def compress_model(
         self,
         model: nn.Module,
         teacher_model: Optional[nn.Module] = None,
-        calibration_data: Optional[torch.Tensor] = None
+        calibration_data: Optional[torch.Tensor] = None,
     ) -> nn.Module:
         """
         Compress model using composite pipeline.
@@ -123,24 +111,30 @@ class CompositeCompressor:
         compressed_model = self._copy_model(model)
 
         # Apply compression pipeline
-        pipeline = self.config['pipeline']
+        pipeline = self.config["pipeline"]
         for technique in pipeline:
             logger.info(f"Applying {technique} compression")
-            if technique == 'pruning':
+            if technique == "pruning":
                 compressed_model = self._apply_pruning(compressed_model)
-            elif technique == 'quantization':
-                compressed_model = self._apply_quantization(compressed_model, calibration_data)
-            elif technique == 'low_rank':
+            elif technique == "quantization":
+                compressed_model = self._apply_quantization(
+                    compressed_model, calibration_data
+                )
+            elif technique == "low_rank":
                 compressed_model = self._apply_low_rank(compressed_model)
-            elif technique == 'distillation' and teacher_model is not None:
-                compressed_model = self._apply_distillation(compressed_model, teacher_model)
+            elif technique == "distillation" and teacher_model is not None:
+                compressed_model = self._apply_distillation(
+                    compressed_model, teacher_model
+                )
 
         # Calculate metrics
         self.metrics.calculate_metrics(original_model, compressed_model)
         self.metrics.compression_time = time.time() - start_time
 
-        logger.info(f"Compression completed. Ratio: {self.metrics.compression_ratio:.2f}x, "
-                   f"Size reduction: {self.metrics.memory_savings:.1f}%")
+        logger.info(
+            f"Compression completed. Ratio: {self.metrics.compression_ratio:.2f}x, "
+            f"Size reduction: {self.metrics.memory_savings:.1f}%"
+        )
 
         return compressed_model
 
@@ -153,7 +147,9 @@ class CompositeCompressor:
             logger.warning(f"Pruning failed: {e}, skipping")
             return model
 
-    def _apply_quantization(self, model: nn.Module, calibration_data: Optional[torch.Tensor]) -> nn.Module:
+    def _apply_quantization(
+        self, model: nn.Module, calibration_data: Optional[torch.Tensor]
+    ) -> nn.Module:
         """Apply quantization compression."""
         try:
             quantized_model = self.quantizer.quantize_model(model, calibration_data)
@@ -171,7 +167,9 @@ class CompositeCompressor:
             logger.warning(f"Low-rank approximation failed: {e}, skipping")
             return model
 
-    def _apply_distillation(self, model: nn.Module, teacher_model: nn.Module) -> nn.Module:
+    def _apply_distillation(
+        self, model: nn.Module, teacher_model: nn.Module
+    ) -> nn.Module:
         """Apply knowledge distillation."""
         try:
             distilled_model = self.distiller.distill_model(model, teacher_model)
@@ -183,17 +181,18 @@ class CompositeCompressor:
     def _copy_model(self, model: nn.Module) -> nn.Module:
         """Create a deep copy of the model."""
         import copy
+
         return copy.deepcopy(model)
 
     def get_compression_report(self) -> Dict:
         """Get compression performance report."""
         return {
-            'compression_ratio': self.metrics.compression_ratio,
-            'original_size_mb': self.metrics.original_size,
-            'compressed_size_mb': self.metrics.compressed_size,
-            'memory_savings_percent': self.metrics.memory_savings,
-            'compression_time_seconds': self.metrics.compression_time,
-            'accuracy_drop': self.metrics.accuracy_drop
+            "compression_ratio": self.metrics.compression_ratio,
+            "original_size_mb": self.metrics.original_size,
+            "compressed_size_mb": self.metrics.compressed_size,
+            "memory_savings_percent": self.metrics.memory_savings,
+            "compression_time_seconds": self.metrics.compression_time,
+            "accuracy_drop": self.metrics.accuracy_drop,
         }
 
 
@@ -237,19 +236,25 @@ class AdaptiveCompressor:
     def _analyze_model(self, model: nn.Module) -> Dict:
         """Analyze model characteristics for compression."""
         analysis = {
-            'num_parameters': sum(p.numel() for p in model.parameters()),
-            'num_layers': len(list(model.modules())),
-            'layer_types': {},
-            'parameter_distribution': {}
+            "num_parameters": sum(p.numel() for p in model.parameters()),
+            "num_layers": len(list(model.modules())),
+            "layer_types": {},
+            "parameter_distribution": {},
         }
 
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
-                analysis['layer_types']['linear'] = analysis['layer_types'].get('linear', 0) + 1
+                analysis["layer_types"]["linear"] = (
+                    analysis["layer_types"].get("linear", 0) + 1
+                )
             elif isinstance(module, nn.Conv2d):
-                analysis['layer_types']['conv2d'] = analysis['layer_types'].get('conv2d', 0) + 1
+                analysis["layer_types"]["conv2d"] = (
+                    analysis["layer_types"].get("conv2d", 0) + 1
+                )
             elif isinstance(module, nn.LSTM):
-                analysis['layer_types']['lstm'] = analysis['layer_types'].get('lstm', 0) + 1
+                analysis["layer_types"]["lstm"] = (
+                    analysis["layer_types"].get("lstm", 0) + 1
+                )
 
         return analysis
 
@@ -258,29 +263,26 @@ class AdaptiveCompressor:
         pipeline = []
 
         # Always include pruning for parameter reduction
-        pipeline.append('pruning')
+        pipeline.append("pruning")
 
         # Add quantization for inference speedup
-        pipeline.append('quantization')
+        pipeline.append("quantization")
 
         # Add low-rank for linear layers
-        if analysis['layer_types'].get('linear', 0) > 0:
-            pipeline.append('low_rank')
+        if analysis["layer_types"].get("linear", 0) > 0:
+            pipeline.append("low_rank")
 
         # Distillation can be added later with teacher model
         # pipeline.append('distillation')
 
-        return {
-            'pipeline': pipeline,
-            'target_compression_ratio': self.target_ratio
-        }
+        return {"pipeline": pipeline, "target_compression_ratio": self.target_ratio}
 
 
 # Utility functions
 def compress_model_pipeline(
     model: nn.Module,
     compression_ratio: float = 0.5,
-    techniques: Optional[List[str]] = None
+    techniques: Optional[List[str]] = None,
 ) -> Tuple[nn.Module, Dict]:
     """
     Convenience function for model compression.
@@ -294,7 +296,7 @@ def compress_model_pipeline(
         Tuple of (compressed_model, compression_report)
     """
     if techniques:
-        config = {'pipeline': techniques, 'target_compression_ratio': compression_ratio}
+        config = {"pipeline": techniques, "target_compression_ratio": compression_ratio}
         compressor = CompositeCompressor(config)
     else:
         compressor = AdaptiveCompressor(compression_ratio)
@@ -312,7 +314,7 @@ def benchmark_compression(
     original_model: nn.Module,
     compressed_model: nn.Module,
     test_data: torch.Tensor,
-    num_runs: int = 10
+    num_runs: int = 10,
 ) -> Dict:
     """
     Benchmark compression performance.
@@ -340,7 +342,7 @@ def benchmark_compression(
         for _ in range(num_runs):
             start = time.time()
             _ = original_model(test_data)
-            torch.cuda.synchronize() if device.type == 'cuda' else None
+            torch.cuda.synchronize() if device.type == "cuda" else None
             original_times.append(time.time() - start)
 
     # Benchmark compressed model
@@ -349,13 +351,13 @@ def benchmark_compression(
         for _ in range(num_runs):
             start = time.time()
             _ = compressed_model(test_data)
-            torch.cuda.synchronize() if device.type == 'cuda' else None
+            torch.cuda.synchronize() if device.type == "cuda" else None
             compressed_times.append(time.time() - start)
 
     return {
-        'original_avg_time': np.mean(original_times),
-        'compressed_avg_time': np.mean(compressed_times),
-        'speedup_ratio': np.mean(original_times) / np.mean(compressed_times),
-        'original_std': np.std(original_times),
-        'compressed_std': np.std(compressed_times)
+        "original_avg_time": np.mean(original_times),
+        "compressed_avg_time": np.mean(compressed_times),
+        "speedup_ratio": np.mean(original_times) / np.mean(compressed_times),
+        "original_std": np.std(original_times),
+        "compressed_std": np.std(compressed_times),
     }

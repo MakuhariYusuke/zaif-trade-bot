@@ -12,16 +12,14 @@ Tests cover:
 
 # mypy: disable-error-code="no-untyped-def,arg-type,attr-defined,var-annotated,union-attr,import-untyped,no-any-return,misc"
 
-import pytest
 import tempfile
-import os
-from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
-import numpy as np
+from unittest.mock import Mock, patch
 
-from ztb.training.ppo_trainer import PPOTrainerAutoHalt, PPOTrainer, TrainingConfig
+import pytest
+
+from ztb.training.ppo_trainer import PPOTrainer, PPOTrainerAutoHalt, TrainingConfig
 from ztb.training.trainer_params import TrainerParams
-from ztb.training.ppo_config import PPOConfig
 
 
 class TestPPOTrainerAutoHalt:
@@ -59,9 +57,7 @@ class TestPPOTrainerAutoHalt:
     def trainer_params(self, temp_dir, sample_config):
         """Create trainer parameters for testing."""
         return TrainerParams(
-            data_path="dummy_path.csv",
-            config=sample_config,
-            checkpoint_dir=temp_dir
+            data_path="dummy_path.csv", config=sample_config, checkpoint_dir=temp_dir
         )
 
     def test_initialization_validation_success(self, trainer_params):
@@ -70,16 +66,14 @@ class TestPPOTrainerAutoHalt:
         assert trainer.params == trainer_params
         assert trainer.data_path == "dummy_path.csv"
         assert str(trainer.checkpoint_dir) == str(trainer_params.checkpoint_dir)
-        assert hasattr(trainer, 'training_config')
+        assert hasattr(trainer, "training_config")
         assert isinstance(trainer.training_config, TrainingConfig)
         assert trainer.eval_gates.enabled == False  # Should be disabled from config
 
     def test_initialization_validation_missing_data_path(self, temp_dir, sample_config):
         """Test initialization fails with missing data_path."""
         params = TrainerParams(
-            data_path="",
-            config=sample_config,
-            checkpoint_dir=temp_dir
+            data_path="", config=sample_config, checkpoint_dir=temp_dir
         )
         with pytest.raises(ValueError, match="data_path is required"):
             PPOTrainerAutoHalt(params)
@@ -87,9 +81,7 @@ class TestPPOTrainerAutoHalt:
     def test_initialization_validation_missing_checkpoint_dir(self, sample_config):
         """Test initialization fails with missing checkpoint_dir."""
         params = TrainerParams(
-            data_path="dummy_path.csv",
-            config=sample_config,
-            checkpoint_dir=""
+            data_path="dummy_path.csv", config=sample_config, checkpoint_dir=""
         )
         with pytest.raises(ValueError, match="checkpoint_dir is required"):
             PPOTrainerAutoHalt(params)
@@ -98,23 +90,36 @@ class TestPPOTrainerAutoHalt:
         """Test initialization fails with invalid config type."""
         params = TrainerParams(
             data_path="dummy_path.csv",
-            config="invalid_config",  # Should be dict
-            checkpoint_dir=temp_dir
+            config="invalid_config",
+            checkpoint_dir=temp_dir,  # Should be dict
         )
         with pytest.raises(ValueError, match="config must be a dictionary"):
             PPOTrainerAutoHalt(params)
 
-    @patch('ztb.training.ppo_trainer.load_csv_data_optimized')
-    @patch('ztb.training.ppo_trainer.HeavyTradingEnv')
-    @patch('ztb.training.ppo_trainer.ActionMasker')
-    def test_create_environment(self, mock_action_masker, mock_env, mock_load_data, trainer_params):
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    def test_create_environment(
+        self, mock_action_masker, mock_env, mock_load_data, trainer_params
+    ):
         """Test environment creation."""
         # Setup mocks
         mock_df = Mock()
         mock_df.shape = (1000, 10)
         mock_df.index.min.return_value = "2020-01-01"
         mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = ["col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "col9", "col10"]
+        mock_df.columns = [
+            "col1",
+            "col2",
+            "col3",
+            "col4",
+            "col5",
+            "col6",
+            "col7",
+            "col8",
+            "col9",
+            "col10",
+        ]
         mock_load_data.return_value = mock_df
 
         mock_env_instance = Mock()
@@ -134,9 +139,11 @@ class TestPPOTrainerAutoHalt:
 
         assert env == mock_action_masker_instance
 
-    @patch('ztb.training.ppo_trainer.CustomPPO')
-    @patch('ztb.training.ppo_trainer.MaskablePPO')
-    def test_create_model_custom_ppo(self, mock_maskable_ppo, mock_custom_ppo, trainer_params):
+    @patch("ztb.training.ppo_trainer.CustomPPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    def test_create_model_custom_ppo(
+        self, mock_maskable_ppo, mock_custom_ppo, trainer_params
+    ):
         """Test model creation with custom PPO enabled."""
         # Setup trainer with custom PPO enabled
         trainer_params.config["ppo"]["use_custom_ppo"] = True
@@ -146,7 +153,7 @@ class TestPPOTrainerAutoHalt:
         trainer.env = Mock()
 
         # Configure mock to have __name__ attribute
-        mock_custom_ppo.configure_mock(**{'__name__': 'CustomPPO'})
+        mock_custom_ppo.configure_mock(**{"__name__": "CustomPPO"})
 
         # Create model
         model = trainer._create_model()
@@ -156,9 +163,11 @@ class TestPPOTrainerAutoHalt:
         mock_maskable_ppo.assert_not_called()
         assert model == mock_custom_ppo.return_value
 
-    @patch('ztb.training.ppo_trainer.CustomPPO')
-    @patch('ztb.training.ppo_trainer.MaskablePPO')
-    def test_create_model_standard_ppo(self, mock_maskable_ppo, mock_custom_ppo, trainer_params):
+    @patch("ztb.training.ppo_trainer.CustomPPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    def test_create_model_standard_ppo(
+        self, mock_maskable_ppo, mock_custom_ppo, trainer_params
+    ):
         """Test model creation with standard PPO."""
         # Setup trainer with custom PPO disabled
         trainer_params.config["ppo"]["use_custom_ppo"] = False
@@ -168,8 +177,8 @@ class TestPPOTrainerAutoHalt:
         trainer.env = Mock()
 
         # Configure mocks to have __name__ attribute
-        mock_maskable_ppo.configure_mock(**{'__name__': 'MaskablePPO'})
-        mock_custom_ppo.configure_mock(**{'__name__': 'CustomPPO'})
+        mock_maskable_ppo.configure_mock(**{"__name__": "MaskablePPO"})
+        mock_custom_ppo.configure_mock(**{"__name__": "CustomPPO"})
 
         # Create model
         model = trainer._create_model()
@@ -179,7 +188,7 @@ class TestPPOTrainerAutoHalt:
         mock_custom_ppo.assert_not_called()
         assert model == mock_maskable_ppo.return_value
 
-    @patch('ztb.training.ppo_trainer.CompositeTrainingCallback')
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
     def test_create_callback(self, mock_callback, trainer_params):
         """Test callback creation."""
         trainer = PPOTrainerAutoHalt(trainer_params)
@@ -188,7 +197,7 @@ class TestPPOTrainerAutoHalt:
         mock_callback.assert_called_once()
         assert callback == mock_callback.return_value
 
-    @patch('ztb.training.ppo_trainer.neutralize_policy_bias')
+    @patch("ztb.training.ppo_trainer.neutralize_policy_bias")
     def test_neutralize_policy_bias_with_model(self, mock_neutralize, trainer_params):
         """Test policy bias neutralization when model exists."""
         trainer = PPOTrainerAutoHalt(trainer_params)
@@ -198,8 +207,10 @@ class TestPPOTrainerAutoHalt:
 
         mock_neutralize.assert_called_once_with(trainer.model)
 
-    @patch('ztb.training.ppo_trainer.neutralize_policy_bias')
-    def test_neutralize_policy_bias_without_model(self, mock_neutralize, trainer_params):
+    @patch("ztb.training.ppo_trainer.neutralize_policy_bias")
+    def test_neutralize_policy_bias_without_model(
+        self, mock_neutralize, trainer_params
+    ):
         """Test policy bias neutralization when no model exists."""
         trainer = PPOTrainerAutoHalt(trainer_params)
         trainer.model = None
@@ -208,20 +219,38 @@ class TestPPOTrainerAutoHalt:
 
         mock_neutralize.assert_not_called()
 
-    @patch('ztb.training.ppo_trainer.load_csv_data_optimized')
-    @patch('ztb.training.ppo_trainer.HeavyTradingEnv')
-    @patch('ztb.training.ppo_trainer.ActionMasker')
-    @patch('ztb.training.ppo_trainer.MaskablePPO')
-    @patch('ztb.training.ppo_trainer.CompositeTrainingCallback')
-    def test_train_success_path(self, mock_callback, mock_ppo, mock_action_masker,
-                               mock_env, mock_load_data, trainer_params):
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
+    def test_train_success_path(
+        self,
+        mock_callback,
+        mock_ppo,
+        mock_action_masker,
+        mock_env,
+        mock_load_data,
+        trainer_params,
+    ):
         """Test training initialization (simplified test)."""
         # Setup mocks
         mock_df = Mock()
         mock_df.shape = (1000, 10)
         mock_df.index.min.return_value = "2020-01-01"
         mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = ["col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "col9", "col10"]
+        mock_df.columns = [
+            "col1",
+            "col2",
+            "col3",
+            "col4",
+            "col5",
+            "col6",
+            "col7",
+            "col8",
+            "col9",
+            "col10",
+        ]
         mock_load_data.return_value = mock_df
 
         mock_env_instance = Mock()
@@ -238,7 +267,7 @@ class TestPPOTrainerAutoHalt:
         mock_callback.return_value = mock_callback_instance
 
         # Configure mock to have __name__ attribute
-        mock_ppo.configure_mock(**{'__name__': 'MaskablePPO'})
+        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
 
         # Create trainer and attempt training
         trainer = PPOTrainerAutoHalt(trainer_params)
@@ -247,13 +276,20 @@ class TestPPOTrainerAutoHalt:
         result = trainer.train("test_session")
         assert result is None  # Training was interrupted
 
-    @patch('ztb.training.ppo_trainer.load_csv_data_optimized')
-    @patch('ztb.training.ppo_trainer.HeavyTradingEnv')
-    @patch('ztb.training.ppo_trainer.ActionMasker')
-    @patch('ztb.training.ppo_trainer.MaskablePPO')
-    @patch('ztb.training.ppo_trainer.CompositeTrainingCallback')
-    def test_train_with_exception(self, mock_callback, mock_ppo, mock_action_masker,
-                                 mock_env, mock_load_data, trainer_params):
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
+    def test_train_with_exception(
+        self,
+        mock_callback,
+        mock_ppo,
+        mock_action_masker,
+        mock_env,
+        mock_load_data,
+        trainer_params,
+    ):
         """Test training with exception handling (simplified test)."""
         # Setup mocks to cause early failure
         mock_df = Mock()
@@ -279,20 +315,38 @@ class TestPPOTrainerAutoHalt:
         with pytest.raises(ValueError, match="Mock environment error"):
             trainer.train("test_session")
 
-    @patch('ztb.training.ppo_trainer.load_csv_data_optimized')
-    @patch('ztb.training.ppo_trainer.HeavyTradingEnv')
-    @patch('ztb.training.ppo_trainer.ActionMasker')
-    @patch('ztb.training.ppo_trainer.MaskablePPO')
-    @patch('ztb.training.ppo_trainer.CompositeTrainingCallback')
-    def test_train_complete_success_path(self, mock_callback, mock_ppo, mock_action_masker,
-                                        mock_env, mock_load_data, trainer_params):
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
+    def test_train_complete_success_path(
+        self,
+        mock_callback,
+        mock_ppo,
+        mock_action_masker,
+        mock_env,
+        mock_load_data,
+        trainer_params,
+    ):
         """Test complete training success path with logging."""
         # Setup mocks
         mock_df = Mock()
         mock_df.shape = (1000, 10)
         mock_df.index.min.return_value = "2020-01-01"
         mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = ["col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "col9", "col10"]
+        mock_df.columns = [
+            "col1",
+            "col2",
+            "col3",
+            "col4",
+            "col5",
+            "col6",
+            "col7",
+            "col8",
+            "col9",
+            "col10",
+        ]
         mock_load_data.return_value = mock_df
 
         mock_env_instance = Mock()
@@ -302,14 +356,16 @@ class TestPPOTrainerAutoHalt:
         mock_action_masker.return_value = mock_action_masker_instance
 
         mock_model = Mock()
-        mock_model.learn.side_effect = lambda *args, **kwargs: None  # Training completes successfully
+        mock_model.learn.side_effect = (
+            lambda *args, **kwargs: None
+        )  # Training completes successfully
         mock_ppo.return_value = mock_model
 
         mock_callback_instance = Mock()
         mock_callback.return_value = mock_callback_instance
 
         # Configure mock to have __name__ attribute
-        mock_ppo.configure_mock(**{'__name__': 'MaskablePPO'})
+        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
 
         # Create trainer and run training
         trainer = PPOTrainerAutoHalt(trainer_params)
@@ -318,20 +374,38 @@ class TestPPOTrainerAutoHalt:
         result = trainer.train("test_session")
         assert result == mock_model  # Training completed successfully
 
-    @patch('ztb.training.ppo_trainer.load_csv_data_optimized')
-    @patch('ztb.training.ppo_trainer.HeavyTradingEnv')
-    @patch('ztb.training.ppo_trainer.ActionMasker')
-    @patch('ztb.training.ppo_trainer.MaskablePPO')
-    @patch('ztb.training.ppo_trainer.CompositeTrainingCallback')
-    def test_train_with_exception_logging(self, mock_callback, mock_ppo, mock_action_masker,
-                                         mock_env, mock_load_data, trainer_params):
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
+    def test_train_with_exception_logging(
+        self,
+        mock_callback,
+        mock_ppo,
+        mock_action_masker,
+        mock_env,
+        mock_load_data,
+        trainer_params,
+    ):
         """Test training exception handling with logging."""
         # Setup mocks
         mock_df = Mock()
         mock_df.shape = (1000, 10)
         mock_df.index.min.return_value = "2020-01-01"
         mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = ["col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "col9", "col10"]
+        mock_df.columns = [
+            "col1",
+            "col2",
+            "col3",
+            "col4",
+            "col5",
+            "col6",
+            "col7",
+            "col8",
+            "col9",
+            "col10",
+        ]
         mock_load_data.return_value = mock_df
 
         mock_env_instance = Mock()
@@ -348,7 +422,7 @@ class TestPPOTrainerAutoHalt:
         mock_callback.return_value = mock_callback_instance
 
         # Configure mock to have __name__ attribute
-        mock_ppo.configure_mock(**{'__name__': 'MaskablePPO'})
+        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
 
         # Create trainer and run training
         trainer = PPOTrainerAutoHalt(trainer_params)
@@ -357,7 +431,7 @@ class TestPPOTrainerAutoHalt:
         with pytest.raises(ValueError, match="Test error"):
             trainer.train("test_session")
 
-    @patch('ztb.training.ppo_trainer.load_csv_data_optimized')
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
     def test_create_environment_data_loading(self, mock_load_data, trainer_params):
         """Test environment creation data loading path."""
         # Setup mock data
@@ -365,14 +439,25 @@ class TestPPOTrainerAutoHalt:
         mock_df.shape = (1000, 10)
         mock_df.index.min.return_value = "2020-01-01"
         mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = ["col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "col9", "col10"]
+        mock_df.columns = [
+            "col1",
+            "col2",
+            "col3",
+            "col4",
+            "col5",
+            "col6",
+            "col7",
+            "col8",
+            "col9",
+            "col10",
+        ]
         mock_load_data.return_value = mock_df
 
         trainer = PPOTrainerAutoHalt(trainer_params)
 
-        with patch('ztb.training.ppo_trainer.HeavyTradingEnv') as mock_env, \
-             patch('ztb.training.ppo_trainer.ActionMasker') as mock_action_masker:
-
+        with patch("ztb.training.ppo_trainer.HeavyTradingEnv") as mock_env, patch(
+            "ztb.training.ppo_trainer.ActionMasker"
+        ) as mock_action_masker:
             mock_env_instance = Mock()
             mock_env.return_value = mock_env_instance
 
@@ -418,14 +503,12 @@ class TestPPOTrainerBasic:
     def test_ppo_trainer_initialization(self, temp_dir, sample_config):
         """Test PPOTrainer initialization."""
         trainer = PPOTrainer(
-            data_path="dummy_path.csv",
-            config=sample_config,
-            checkpoint_dir=temp_dir
+            data_path="dummy_path.csv", config=sample_config, checkpoint_dir=temp_dir
         )
 
         assert trainer.data_path == "dummy_path.csv"
         assert str(trainer.checkpoint_dir) == str(Path(temp_dir))
-        assert hasattr(trainer, 'training_config')
+        assert hasattr(trainer, "training_config")
         assert isinstance(trainer.training_config, TrainingConfig)
 
 
@@ -523,9 +606,7 @@ class TestPPOTrainerBasic:
     def trainer_params(self, temp_dir, sample_config):
         """Create trainer parameters for testing."""
         return TrainerParams(
-            data_path="dummy_path.csv",
-            config=sample_config,
-            checkpoint_dir=temp_dir
+            data_path="dummy_path.csv", config=sample_config, checkpoint_dir=temp_dir
         )
 
     def test_ppo_trainer_initialization(self, temp_dir, sample_config):
@@ -549,9 +630,7 @@ class TestPPOTrainerBasic:
         }
 
         trainer = PPOTrainer(
-            data_path="dummy_path.csv",
-            config=config,
-            checkpoint_dir=temp_dir
+            data_path="dummy_path.csv", config=config, checkpoint_dir=temp_dir
         )
 
         assert trainer.data_path == "dummy_path.csv"
@@ -568,7 +647,9 @@ class TestPPOTrainerBasic:
         assert trainer.training_config.max_grad_norm == 0.5
         assert trainer.training_config.use_custom_ppo == False
 
-    def test_ppo_trainer_initialization_missing_data_path(self, temp_dir, sample_config):
+    def test_ppo_trainer_initialization_missing_data_path(
+        self, temp_dir, sample_config
+    ):
         """Test PPOTrainer initialization with missing data path."""
         config = {
             "ppo": {
@@ -588,12 +669,12 @@ class TestPPOTrainerBasic:
             }
         }
 
-        with pytest.raises(ValueError, match="data_path is required and cannot be empty"):
+        with pytest.raises(
+            ValueError, match="data_path is required and cannot be empty"
+        ):
             PPOTrainer(
-                data_path="",  # Empty data path
-                config=config,
-                checkpoint_dir=temp_dir
-            )
+                data_path="", config=config, checkpoint_dir=temp_dir
+            )  # Empty data path
 
     def test_ppo_trainer_initialization_missing_checkpoint_dir(self, sample_config):
         """Test PPOTrainer initialization with missing checkpoint directory."""
@@ -615,23 +696,25 @@ class TestPPOTrainerBasic:
             }
         }
 
-        with pytest.raises(ValueError, match="checkpoint_dir is required and cannot be empty"):
+        with pytest.raises(
+            ValueError, match="checkpoint_dir is required and cannot be empty"
+        ):
             PPOTrainer(
-                data_path="dummy_path.csv",
-                config=config,
-                checkpoint_dir=""  # Empty checkpoint dir
-            )
+                data_path="dummy_path.csv", config=config, checkpoint_dir=""
+            )  # Empty checkpoint dir
 
     def test_ppo_trainer_initialization_invalid_config_type(self, temp_dir):
         """Test PPOTrainer initialization with invalid config type."""
         with pytest.raises(ValueError, match="config must be a dictionary"):
             PPOTrainer(
                 data_path="dummy_path.csv",
-                config="invalid_config",  # Not a dict
-                checkpoint_dir=temp_dir
-            )
+                config="invalid_config",
+                checkpoint_dir=temp_dir,
+            )  # Not a dict
 
-    def test_ppo_trainer_initialization_eval_gates_disabled(self, temp_dir, sample_config):
+    def test_ppo_trainer_initialization_eval_gates_disabled(
+        self, temp_dir, sample_config
+    ):
         """Test PPOTrainer initialization with eval gates disabled."""
         config = {
             "ppo": {
@@ -653,15 +736,15 @@ class TestPPOTrainerBasic:
         }
 
         trainer = PPOTrainer(
-            data_path="dummy_path.csv",
-            config=config,
-            checkpoint_dir=temp_dir
+            data_path="dummy_path.csv", config=config, checkpoint_dir=temp_dir
         )
 
         assert trainer.eval_gates is not None
         # The initialization logging should have taken the else branch
 
-    def test_ppo_trainer_initialization_missing_data_path_in_ppo_trainer(self, temp_dir):
+    def test_ppo_trainer_initialization_missing_data_path_in_ppo_trainer(
+        self, temp_dir
+    ):
         """Test PPOTrainer initialization with missing data path in PPOTrainer."""
         config = {
             "learning_rate": 3e-4,
@@ -679,14 +762,16 @@ class TestPPOTrainerBasic:
             "use_custom_ppo": False,
         }
 
-        with pytest.raises(ValueError, match="data_path is required and cannot be empty"):
+        with pytest.raises(
+            ValueError, match="data_path is required and cannot be empty"
+        ):
             PPOTrainer(
-                data_path="",  # Empty data path
-                config=config,
-                checkpoint_dir=temp_dir
-            )
+                data_path="", config=config, checkpoint_dir=temp_dir
+            )  # Empty data path
 
-    def test_ppo_trainer_initialization_missing_checkpoint_dir_in_ppo_trainer(self, temp_dir):
+    def test_ppo_trainer_initialization_missing_checkpoint_dir_in_ppo_trainer(
+        self, temp_dir
+    ):
         """Test PPOTrainer initialization with missing checkpoint directory in PPOTrainer."""
         config = {
             "learning_rate": 3e-4,
@@ -704,9 +789,9 @@ class TestPPOTrainerBasic:
             "use_custom_ppo": False,
         }
 
-        with pytest.raises(ValueError, match="checkpoint_dir is required and cannot be empty"):
+        with pytest.raises(
+            ValueError, match="checkpoint_dir is required and cannot be empty"
+        ):
             PPOTrainer(
-                data_path="dummy_path.csv",
-                config=config,
-                checkpoint_dir=""  # Empty checkpoint dir
-            )
+                data_path="dummy_path.csv", config=config, checkpoint_dir=""
+            )  # Empty checkpoint dir

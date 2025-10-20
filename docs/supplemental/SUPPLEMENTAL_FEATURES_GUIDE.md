@@ -1,6 +1,6 @@
 # 補足機能実装ガイド - Gradient Probe Guard & Enhanced Ensemble
 
-**実装日**: 2025年10月7日  
+**実装日**: 2025年10月7日
 **機能**: grad_probesゼロ張り付き検出 + アンサンブル強化
 
 ---
@@ -69,13 +69,13 @@ CompositeTrainingCallback
 for each step:
     if step % check_interval == 0:
         grad_stats = extract_gradient_norms()
-        
+
         for action in critical_actions:
             if grad_norm[action] < zero_threshold:
                 consecutive_zeros[action] += 1
             else:
                 consecutive_zeros[action] = 0
-            
+
             if consecutive_zeros[action] >= threshold:
                 # 停止トリガー
                 halt_training()
@@ -215,7 +215,7 @@ for model in models:
     sharpe = evaluate_sharpe(model, eval_env)
     confidence = evaluate_confidence(model, eval_env)
     masked_rate = evaluate_masked_rate(model, eval_env)
-    
+
     # 2. 失格判定
     if sharpe < min_sharpe_threshold or masked_rate >= disqualification_threshold:
         weight = 0.0

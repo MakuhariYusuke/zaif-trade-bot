@@ -1,9 +1,9 @@
 # 🐛 Bug #25: Live Trading PnL Calculation Always Returns Zero
 
-**Discovered By:** External Reviewer B (Fifth Review Cycle)  
-**Discovery Date:** 2024 (Fifth Review)  
-**Status:** 🔴 OPEN - Not Yet Fixed  
-**Severity:** CRITICAL - PRODUCTION BLOCKER  
+**Discovered By:** External Reviewer B (Fifth Review Cycle)
+**Discovery Date:** 2024 (Fifth Review)
+**Status:** 🔴 OPEN - Not Yet Fixed
+**Severity:** CRITICAL - PRODUCTION BLOCKER
 **Category:** Financial Calculation, Position Management, PnL Accounting
 
 ---
@@ -18,8 +18,8 @@ This makes all risk controls based on PnL completely non-functional and renders 
 
 ## Location
 
-**File:** `live_trade.py`  
-**Lines:** 880-905 (in `_update_position` method)  
+**File:** `live_trade.py`
+**Lines:** 880-905 (in `_update_position` method)
 **Function:** `LiveTrader._update_position()`
 
 ---
@@ -33,14 +33,14 @@ if action == 1:  # BUY
     if self.current_position == "short":
         # Step 1: Calculate using self.entry_price
         realized_pnl_value = (self.entry_price - current_price) * abs(size)
-        
+
         # Step 2: ❌ IMMEDIATELY OVERWRITE entry_price
         self.entry_price = current_price
-        
+
         # Step 3: Update position
         self.current_position = "long"
         self.position_size = size
-        
+
         # Step 4: Use the PnL value
         realized_pnl = realized_pnl_value
         # BUT entry_price was already destroyed in Step 2!
@@ -69,7 +69,7 @@ def _update_position(self, action: int, current_price: float) -> float:
     """Update position based on action."""
     size = self.portfolio_value * 0.01 / current_price
     realized_pnl = 0.0
-    
+
     if action == 1:  # BUY
         if self.current_position == "short":
             # Close short position
@@ -84,7 +84,7 @@ def _update_position(self, action: int, current_price: float) -> float:
             self.entry_price = current_price
             self.current_position = "long"
             self.position_size = size
-    
+
     elif action == 2:  # SELL
         if self.current_position == "long":
             # Close long position
@@ -99,7 +99,7 @@ def _update_position(self, action: int, current_price: float) -> float:
             self.entry_price = current_price
             self.current_position = "short"
             self.position_size = -size
-    
+
     return realized_pnl
 ```
 
@@ -226,13 +226,13 @@ def _update_position(self, action: int, current_price: float) -> float:
     """Update position based on action."""
     size = self.portfolio_value * 0.01 / current_price
     realized_pnl = 0.0
-    
+
     if action == 1:  # BUY
         if self.current_position == "short":
             # ✅ Save old entry price BEFORE calculating
             old_entry_price = self.entry_price
             realized_pnl_value = (old_entry_price - current_price) * abs(size)
-            
+
             # Now safe to update state
             self.entry_price = current_price
             self.current_position = "long"
@@ -242,13 +242,13 @@ def _update_position(self, action: int, current_price: float) -> float:
             self.entry_price = current_price
             self.current_position = "long"
             self.position_size = size
-    
+
     elif action == 2:  # SELL
         if self.current_position == "long":
             # ✅ Save old entry price BEFORE calculating
             old_entry_price = self.entry_price
             realized_pnl_value = (current_price - old_entry_price) * abs(size)
-            
+
             # Now safe to update state
             self.entry_price = current_price
             self.current_position = "short"
@@ -258,7 +258,7 @@ def _update_position(self, action: int, current_price: float) -> float:
             self.entry_price = current_price
             self.current_position = "short"
             self.position_size = -size
-    
+
     return realized_pnl
 ```
 
@@ -281,38 +281,38 @@ See Bug #26 documentation for complete implementation of reusing PositionManager
 ```python
 def test_live_trader_pnl_calculation():
     """Regression test for Bug #25: Live trading PnL calculation.
-    
+
     Verifies that closing positions calculates correct PnL.
     """
     config = create_test_config()
     trader = LiveTrader(config)
-    
+
     # Test 1: Short position close with profit
     trader._update_position(action=2, current_price=100.0)  # Open short at 100
     realized_pnl = trader._update_position(action=1, current_price=95.0)  # Close at 95
-    
+
     # Should profit: (100 - 95) * size
     expected_pnl = 5.0 * (trader.portfolio_value * 0.01 / 95.0)
     assert abs(realized_pnl - expected_pnl) < 0.01, \
         f"Expected PnL ~{expected_pnl:.2f}, got {realized_pnl:.2f}"
     assert realized_pnl > 0, "Closing profitable short should yield positive PnL"
-    
+
     # Test 2: Long position close with profit
     trader = LiveTrader(config)  # Fresh trader
     trader._update_position(action=1, current_price=100.0)  # Open long at 100
     realized_pnl = trader._update_position(action=2, current_price=105.0)  # Close at 105
-    
+
     # Should profit: (105 - 100) * size
     expected_pnl = 5.0 * (trader.portfolio_value * 0.01 / 105.0)
     assert abs(realized_pnl - expected_pnl) < 0.01, \
         f"Expected PnL ~{expected_pnl:.2f}, got {realized_pnl:.2f}"
     assert realized_pnl > 0, "Closing profitable long should yield positive PnL"
-    
+
     # Test 3: Long position close with loss
     trader = LiveTrader(config)  # Fresh trader
     trader._update_position(action=1, current_price=100.0)  # Open long at 100
     realized_pnl = trader._update_position(action=2, current_price=95.0)  # Close at 95
-    
+
     # Should lose: (95 - 100) * size
     expected_pnl = -5.0 * (trader.portfolio_value * 0.01 / 95.0)
     assert abs(realized_pnl - expected_pnl) < 0.01, \
@@ -325,11 +325,11 @@ def test_live_trader_pnl_calculation():
 ```python
 def test_live_trader_pnl_matches_position_manager():
     """Verify LiveTrader PnL matches PositionManager PnL.
-    
+
     Both should calculate identical PnL for same trades.
     """
     config = create_test_config()
-    
+
     # Create both implementations
     trader = LiveTrader(config)
     position_manager = PositionManager(
@@ -337,26 +337,26 @@ def test_live_trader_pnl_matches_position_manager():
         get_current_price=lambda: 0.0,
         get_portfolio_value=lambda: config.initial_capital
     )
-    
+
     # Execute same trades
     test_scenarios = [
         (2, 100.0, 1, 95.0),   # Short at 100, close at 95
         (1, 100.0, 2, 105.0),  # Long at 100, close at 105
         (1, 100.0, 2, 95.0),   # Long at 100, close at 95 (loss)
     ]
-    
+
     for open_action, open_price, close_action, close_price in test_scenarios:
         # Reset both
         trader = LiveTrader(config)
         position_manager = PositionManager(...)
-        
+
         # Execute on both
         trader._update_position(open_action, open_price)
         position_manager.execute_action(open_action, open_price, config.initial_capital)
-        
+
         trader_pnl = trader._update_position(close_action, close_price)
         pm_pnl = position_manager.execute_action(close_action, close_price, config.initial_capital)
-        
+
         # PnL should match
         assert abs(trader_pnl - pm_pnl) < 0.01, \
             f"LiveTrader PnL ({trader_pnl:.2f}) != PositionManager PnL ({pm_pnl:.2f})"

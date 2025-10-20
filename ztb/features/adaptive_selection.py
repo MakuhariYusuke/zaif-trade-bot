@@ -10,13 +10,10 @@ Adaptive Feature Selection for SAC v422
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 
 from ztb.features.attention_trainer import AttentionTrainer, FeatureAttentionLayer
@@ -28,7 +25,9 @@ logger = logging.getLogger(__name__)
 class MarketRegimeClassifier:
     """市場状態分類器"""
 
-    def __init__(self, adx_threshold: float = 25.0, volatility_percentile: float = 70.0):
+    def __init__(
+        self, adx_threshold: float = 25.0, volatility_percentile: float = 70.0
+    ):
         """
         Args:
             adx_threshold: ADXトレンド判定閾値
@@ -48,40 +47,48 @@ class MarketRegimeClassifier:
             - "high_volatility": 高ボラティリティ
             - "low_volatility": 低ボラティリティ
         """
-        if 'ADX' not in df.columns:
+        if "ADX" not in df.columns:
             # ADXがない場合はATRベースで判定
-            if 'ATR' in df.columns:
-                current_atr = df['ATR'].iloc[-1]
+            if "ATR" in df.columns:
+                current_atr = df["ATR"].iloc[-1]
                 self.volatility_history.append(current_atr)
 
                 if len(self.volatility_history) > 100:
                     self.volatility_history = self.volatility_history[-100:]
 
                 if len(self.volatility_history) >= 20:
-                    volatility_threshold = np.percentile(self.volatility_history, self.volatility_percentile)
+                    volatility_threshold = np.percentile(
+                        self.volatility_history, self.volatility_percentile
+                    )
                     if current_atr > volatility_threshold:
                         return "high_volatility"
-                    elif current_atr < np.percentile(self.volatility_history, 100 - self.volatility_percentile):
+                    elif current_atr < np.percentile(
+                        self.volatility_history, 100 - self.volatility_percentile
+                    ):
                         return "low_volatility"
 
             return "ranging"  # デフォルト
 
         # ADXベースの判定
-        adx = df['ADX'].iloc[-1]
+        adx = df["ADX"].iloc[-1]
 
         # ボラティリティ判定
-        if 'ATR' in df.columns:
-            current_atr = df['ATR'].iloc[-1]
+        if "ATR" in df.columns:
+            current_atr = df["ATR"].iloc[-1]
             self.volatility_history.append(current_atr)
 
             if len(self.volatility_history) > 100:
                 self.volatility_history = self.volatility_history[-100:]
 
             if len(self.volatility_history) >= 20:
-                volatility_threshold = np.percentile(self.volatility_history, self.volatility_percentile)
+                volatility_threshold = np.percentile(
+                    self.volatility_history, self.volatility_percentile
+                )
                 if current_atr > volatility_threshold:
                     return "high_volatility"
-                elif current_atr < np.percentile(self.volatility_history, 100 - self.volatility_percentile):
+                elif current_atr < np.percentile(
+                    self.volatility_history, 100 - self.volatility_percentile
+                ):
                     return "low_volatility"
 
         # トレンド判定
@@ -105,26 +112,47 @@ class AdaptiveFeatureSelector:
         if feature_groups is None:
             self.feature_groups = {
                 "trending": [
-                    "ADX", "MACD", "MACD_SIGNAL", "MACD_HIST",
-                    "EMA_5", "EMA_10", "EMA_20", "EMA_50",
-                    "SMA_20", "SMA_50",
-                    "TREND_STRENGTH", "MOMENTUM"
+                    "ADX",
+                    "MACD",
+                    "MACD_SIGNAL",
+                    "MACD_HIST",
+                    "EMA_5",
+                    "EMA_10",
+                    "EMA_20",
+                    "EMA_50",
+                    "SMA_20",
+                    "SMA_50",
+                    "TREND_STRENGTH",
+                    "MOMENTUM",
                 ],
                 "ranging": [
-                    "RSI", "STOCH_K", "STOCH_D", "CCI",
-                    "WILLR", "ROC", "MFI",
-                    "BB_UPPER", "BB_LOWER", "BB_MIDDLE",
-                    "OSCILLATOR_STRENGTH"
+                    "RSI",
+                    "STOCH_K",
+                    "STOCH_D",
+                    "CCI",
+                    "WILLR",
+                    "ROC",
+                    "MFI",
+                    "BB_UPPER",
+                    "BB_LOWER",
+                    "BB_MIDDLE",
+                    "OSCILLATOR_STRENGTH",
                 ],
                 "high_volatility": [
-                    "ATR", "NATR", "TRANGE",
-                    "BB_WIDTH", "KC_WIDTH",
-                    "VOLATILITY_RATIO", "PRICE_CHANGE"
+                    "ATR",
+                    "NATR",
+                    "TRANGE",
+                    "BB_WIDTH",
+                    "KC_WIDTH",
+                    "VOLATILITY_RATIO",
+                    "PRICE_CHANGE",
                 ],
                 "low_volatility": [
-                    "PRICE_CHANGE", "VOLUME_RATIO",
-                    "MICRO_TREND", "PRECISION_SIGNALS"
-                ]
+                    "PRICE_CHANGE",
+                    "VOLUME_RATIO",
+                    "MICRO_TREND",
+                    "PRECISION_SIGNALS",
+                ],
             }
         else:
             self.feature_groups = feature_groups
@@ -161,7 +189,9 @@ class AdaptiveFeatureSelector:
 
         return weights
 
-    def select_features_adaptive(self, df: pd.DataFrame, all_features: List[str]) -> Tuple[List[str], np.ndarray]:
+    def select_features_adaptive(
+        self, df: pd.DataFrame, all_features: List[str]
+    ) -> Tuple[List[str], np.ndarray]:
         """
         適応型特徴量選択
 
@@ -209,7 +239,7 @@ class AdaptiveFeatureSelector:
         df: pd.DataFrame,
         all_features: List[str],
         use_causal: bool = False,
-        outcome_feature: str = "reward"
+        outcome_feature: str = "reward",
     ) -> Tuple[List[str], Dict[str, Any]]:
         """
         統合された特徴量選択（適応型 + 因果推論）
@@ -225,7 +255,9 @@ class AdaptiveFeatureSelector:
         """
         if use_causal and self.causal_engine is not None:
             # 因果推論ベースの選択
-            selected_features, stats = self.select_features_causal(df, all_features, outcome_feature)
+            selected_features, stats = self.select_features_causal(
+                df, all_features, outcome_feature
+            )
             stats["selection_method"] = "causal"
             return selected_features, stats
         else:
@@ -234,7 +266,7 @@ class AdaptiveFeatureSelector:
             stats = {
                 "selection_method": "adaptive",
                 "weights": weights.tolist(),
-                "n_selected": len(selected_features)
+                "n_selected": len(selected_features),
             }
             return selected_features, stats
 
@@ -242,7 +274,7 @@ class AdaptiveFeatureSelector:
         self,
         n_features: int,
         config: Optional[Dict[str, Any]] = None,
-        memory_manager=None
+        memory_manager=None,
     ) -> None:
         """
         注意モデルトレーナーを初期化
@@ -255,24 +287,24 @@ class AdaptiveFeatureSelector:
         from ztb.features.attention_trainer import create_attention_trainer
 
         self.attention_trainer = create_attention_trainer(
-            n_features=n_features,
-            config=config,
-            memory_manager=memory_manager
+            n_features=n_features, config=config, memory_manager=memory_manager
         )
 
         # Attention layerも初期化
-        if config and config.get('enabled', False):
-            hidden_dim = config.get('hidden_dim', 64)
+        if config and config.get("enabled", False):
+            hidden_dim = config.get("hidden_dim", 64)
             self.attention_layer = FeatureAttentionLayer(n_features, hidden_dim)
 
         # Causal inference engine
-        if config and config.get('causal_enabled', False):
-            causal_config = config.get('causal_config', {})
+        if config and config.get("causal_enabled", False):
+            causal_config = config.get("causal_config", {})
             self.causal_engine = CausalInferenceEngine(causal_config, memory_manager)
 
         logger.info("Initialized attention trainer and layer")
 
-    def add_training_sample(self, features: np.ndarray, reward: float, regime: str) -> None:
+    def add_training_sample(
+        self, features: np.ndarray, reward: float, regime: str
+    ) -> None:
         """
         トレーニングサンプルを追加
 
@@ -312,10 +344,7 @@ class AdaptiveFeatureSelector:
         return self.attention_trainer.load_model(model_path)
 
     def select_features_causal(
-        self,
-        df: pd.DataFrame,
-        features: List[str],
-        outcome_feature: str = "reward"
+        self, df: pd.DataFrame, features: List[str], outcome_feature: str = "reward"
     ) -> Tuple[List[str], Dict[str, Any]]:
         """
         因果推論による特徴量選択
@@ -329,7 +358,9 @@ class AdaptiveFeatureSelector:
             (選択された特徴量リスト, 分析結果)
         """
         if self.causal_engine is None:
-            logger.warning("Causal engine not initialized, falling back to regime-based selection")
+            logger.warning(
+                "Causal engine not initialized, falling back to regime-based selection"
+            )
             return self.select_features_adaptive(df, features)
 
         try:
@@ -341,14 +372,20 @@ class AdaptiveFeatureSelector:
             selected_features = analysis_result.get("selected_features", [])
             causal_effects = analysis_result.get("causal_effects", {})
 
-            logger.info(f"Causal feature selection: {len(selected_features)} features selected")
+            logger.info(
+                f"Causal feature selection: {len(selected_features)} features selected"
+            )
             return selected_features, analysis_result
 
         except Exception as e:
-            logger.error(f"Causal feature selection failed: {e}, falling back to regime-based")
+            logger.error(
+                f"Causal feature selection failed: {e}, falling back to regime-based"
+            )
             return self.select_features_adaptive(df, features)
 
-    def update_causal_model(self, new_data: pd.DataFrame, outcome_feature: str = "reward"):
+    def update_causal_model(
+        self, new_data: pd.DataFrame, outcome_feature: str = "reward"
+    ):
         """
         因果モデルを更新
 
@@ -359,7 +396,9 @@ class AdaptiveFeatureSelector:
         if self.causal_engine is not None:
             self.causal_engine.update_model(new_data, outcome_feature)
 
-    def _apply_attention_weights(self, df: pd.DataFrame, features: List[str], base_weights: np.ndarray) -> np.ndarray:
+    def _apply_attention_weights(
+        self, df: pd.DataFrame, features: List[str], base_weights: np.ndarray
+    ) -> np.ndarray:
         """
         Attention mechanismによる重み調整
 
@@ -383,16 +422,22 @@ class AdaptiveFeatureSelector:
             scaled_features = self.feature_scaler.fit_transform(latest_features)
 
             # 注意重みを取得
-            attention_weights = self.attention_trainer.get_attention_weights(scaled_features[0])
+            attention_weights = self.attention_trainer.get_attention_weights(
+                scaled_features[0]
+            )
 
             # 基本重みと注意重みを組み合わせ
             combined_weights = 0.7 * base_weights + 0.3 * attention_weights
 
-            logger.debug(f"Applied attention weights, mean: {attention_weights.mean():.3f}")
+            logger.debug(
+                f"Applied attention weights, mean: {attention_weights.mean():.3f}"
+            )
             return combined_weights
 
         except Exception as e:
-            logger.warning(f"Failed to apply attention weights: {e}, using base weights")
+            logger.warning(
+                f"Failed to apply attention weights: {e}, using base weights"
+            )
             return base_weights
 
     def update_attention_model(self, feature_data: np.ndarray, rewards: np.ndarray):
@@ -419,30 +464,46 @@ def test_market_regime_classification():
     dates = pd.date_range("2024-01-01", periods=100, freq="1H")
     np.random.seed(42)
 
-    df = pd.DataFrame({
-        'ts': dates,
-        'close': 100 + np.cumsum(np.random.normal(0, 1, 100)),
-        'high': 100 + np.cumsum(np.random.normal(0, 1, 100)) + 0.5,
-        'low': 100 + np.cumsum(np.random.normal(0, 1, 100)) - 0.5,
-        'volume': np.random.uniform(1000, 10000, 100)
-    })
+    df = pd.DataFrame(
+        {
+            "ts": dates,
+            "close": 100 + np.cumsum(np.random.normal(0, 1, 100)),
+            "high": 100 + np.cumsum(np.random.normal(0, 1, 100)) + 0.5,
+            "low": 100 + np.cumsum(np.random.normal(0, 1, 100)) - 0.5,
+            "volume": np.random.uniform(1000, 10000, 100),
+        }
+    )
 
     # ATR計算 (簡易)
-    df['TR'] = np.maximum(
-        df['high'] - df['low'],
+    df["TR"] = np.maximum(
+        df["high"] - df["low"],
         np.maximum(
-            abs(df['high'] - df['close'].shift(1)),
-            abs(df['low'] - df['close'].shift(1))
-        )
+            abs(df["high"] - df["close"].shift(1)),
+            abs(df["low"] - df["close"].shift(1)),
+        ),
     )
-    df['ATR'] = df['TR'].rolling(14).mean()
+    df["ATR"] = df["TR"].rolling(14).mean()
 
     # ADX計算 (簡易)
-    df['DM_plus'] = np.where(df['high'] - df['high'].shift(1) > df['low'].shift(1) - df['low'],
-                           np.maximum(df['high'] - df['high'].shift(1), 0), 0)
-    df['DM_minus'] = np.where(df['low'].shift(1) - df['low'] > df['high'] - df['high'].shift(1),
-                            np.maximum(df['low'].shift(1) - df['low'], 0), 0)
-    df['ADX'] = 100 * (abs(df['DM_plus'] - df['DM_minus']) / (df['DM_plus'] + df['DM_minus'] + 1e-10)).rolling(14).mean()
+    df["DM_plus"] = np.where(
+        df["high"] - df["high"].shift(1) > df["low"].shift(1) - df["low"],
+        np.maximum(df["high"] - df["high"].shift(1), 0),
+        0,
+    )
+    df["DM_minus"] = np.where(
+        df["low"].shift(1) - df["low"] > df["high"] - df["high"].shift(1),
+        np.maximum(df["low"].shift(1) - df["low"], 0),
+        0,
+    )
+    df["ADX"] = (
+        100
+        * (
+            abs(df["DM_plus"] - df["DM_minus"])
+            / (df["DM_plus"] + df["DM_minus"] + 1e-10)
+        )
+        .rolling(14)
+        .mean()
+    )
 
     classifier = MarketRegimeClassifier()
     regime = classifier.classify_market_regime(df)

@@ -3,17 +3,16 @@ Concept Drift Detection Algorithms
 市場変化検知のための統計的・機械学習ベースのアルゴリズム実装
 """
 
-import numpy as np
-import pandas as pd
-from scipy import stats
-from typing import List, Optional, Tuple, Dict, Any
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import List, Optional, Tuple
 
-from .drift_types import DriftType, DriftSeverity, DriftDetectionResult
+import numpy as np
+from scipy import stats
+
 from .config import ConceptDriftConfig
+from .drift_types import DriftDetectionResult, DriftSeverity, DriftType
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,9 @@ class DriftDetector(ABC):
         self.timestamps: List[datetime] = []
 
     @abstractmethod
-    def detect_drift(self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None) -> DriftDetectionResult:
+    def detect_drift(
+        self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None
+    ) -> DriftDetectionResult:
         """ドリフトを検知"""
         # 空のデータチェック
         if len(new_data) == 0:
@@ -47,7 +48,9 @@ class DriftDetector(ABC):
 class KolmogorovSmirnovDetector(DriftDetector):
     """Kolmogorov-Smirnov検定によるドリフト検知"""
 
-    def detect_drift(self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None) -> DriftDetectionResult:
+    def detect_drift(
+        self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None
+    ) -> DriftDetectionResult:
         if self.reference_data is None:
             self.update_reference(new_data)
             return DriftDetectionResult(
@@ -57,7 +60,7 @@ class KolmogorovSmirnovDetector(DriftDetector):
                 confidence=1.0,
                 p_value=1.0,
                 statistic=0.0,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
         try:
@@ -73,12 +76,14 @@ class KolmogorovSmirnovDetector(DriftDetector):
 
             result = DriftDetectionResult(
                 drift_detected=drift_detected,
-                drift_type=DriftType.CONCEPT_DRIFT if drift_detected else DriftType.NONE,
+                drift_type=DriftType.CONCEPT_DRIFT
+                if drift_detected
+                else DriftType.NONE,
                 severity=severity,
                 confidence=confidence,
                 p_value=p_value,
                 statistic=statistic,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
             # 履歴を更新
@@ -102,7 +107,7 @@ class KolmogorovSmirnovDetector(DriftDetector):
                 p_value=1.0,
                 statistic=0.0,
                 timestamp=datetime.now(),
-                error=str(e)
+                error=str(e),
             )
 
     def _calculate_severity(self, statistic: float, p_value: float) -> DriftSeverity:
@@ -155,7 +160,7 @@ class ADWINDetector(DriftDetector):
             confidence=0.8 if drift_detected else 1.0,
             p_value=0.0 if drift_detected else 1.0,
             statistic=float(cut_point) if cut_point >= 0 else 0.0,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 履歴を更新
@@ -185,7 +190,7 @@ class ADWINDetector(DriftDetector):
             return -1
 
         min_cut = -1
-        min_epsilon = float('inf')
+        min_epsilon = float("inf")
 
         for i in range(1, self.window_size):
             epsilon = self._calculate_epsilon(i)
@@ -205,7 +210,7 @@ class ADWINDetector(DriftDetector):
         n1 = self.window_size - cut_point
 
         if n0 == 0 or n1 == 0:
-            return float('inf')
+            return float("inf")
 
         # 平均の計算
         sum0 = sum(self.window_data[:cut_point])
@@ -219,11 +224,15 @@ class ADWINDetector(DriftDetector):
         var1 = np.var(self.window_data[cut_point:]) if n1 > 1 else 0
 
         # ADWINのイプシロン計算
-        epsilon = abs(mu0 - mu1) - self._calculate_confidence_interval(n0, n1, var0, var1)
+        epsilon = abs(mu0 - mu1) - self._calculate_confidence_interval(
+            n0, n1, var0, var1
+        )
 
         return epsilon
 
-    def _calculate_confidence_interval(self, n0: int, n1: int, var0: float, var1: float) -> float:
+    def _calculate_confidence_interval(
+        self, n0: int, n1: int, var0: float, var1: float
+    ) -> float:
         """信頼区間を計算"""
         m = 1.0 / (1.0 / n0 + 1.0 / n1)
         delta_prime = self.delta / (self.window_size * np.log(self.window_size))
@@ -236,7 +245,9 @@ class ADWINDetector(DriftDetector):
         self.window_size = len(self.window_data)
         self.total = sum(self.window_data)
         # 分散の再計算
-        self.variance = np.var(self.window_data) * self.window_size if self.window_size > 1 else 0.0
+        self.variance = (
+            np.var(self.window_data) * self.window_size if self.window_size > 1 else 0.0
+        )
 
 
 class DDMDetector(DriftDetector):
@@ -244,13 +255,15 @@ class DDMDetector(DriftDetector):
 
     def __init__(self, config: ConceptDriftConfig):
         super().__init__(config)
-        self.min_error_rate = float('inf')
+        self.min_error_rate = float("inf")
         self.error_count = 0
         self.sample_count = 0
         self.warning_level = 0
         self.drift_level = 0
 
-    def detect_drift(self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None) -> DriftDetectionResult:
+    def detect_drift(
+        self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None
+    ) -> DriftDetectionResult:
         """
         DDM検知
         new_data: 予測値または特徴量
@@ -290,9 +303,13 @@ class DDMDetector(DriftDetector):
                 elif error_rate > self.warning_level:
                     warning_detected = True
 
-        severity = (DriftSeverity.HIGH if drift_detected
-                   else DriftSeverity.MEDIUM if warning_detected
-                   else DriftSeverity.NONE)
+        severity = (
+            DriftSeverity.HIGH
+            if drift_detected
+            else DriftSeverity.MEDIUM
+            if warning_detected
+            else DriftSeverity.NONE
+        )
 
         result = DriftDetectionResult(
             drift_detected=drift_detected,
@@ -301,7 +318,7 @@ class DDMDetector(DriftDetector):
             confidence=0.9 if drift_detected else 0.5 if warning_detected else 1.0,
             p_value=0.0 if drift_detected else 0.5 if warning_detected else 1.0,
             statistic=self.drift_level,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 履歴を更新
@@ -328,7 +345,9 @@ class EDDMDetector(DriftDetector):
         self.warning_level = 0.0
         self.distance_list: List[float] = []
 
-    def detect_drift(self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None) -> DriftDetectionResult:
+    def detect_drift(
+        self, new_data: np.ndarray, error_data: Optional[np.ndarray] = None
+    ) -> DriftDetectionResult:
         """
         EDDM検知
         error_data: エラー指標（1: エラー, 0: 正解）
@@ -347,7 +366,9 @@ class EDDMDetector(DriftDetector):
 
                 if len(self.distance_list) >= 2:
                     # 距離の平均と標準偏差を計算
-                    distances = np.array(self.distance_list[-self.config.eddm_window_size:])
+                    distances = np.array(
+                        self.distance_list[-self.config.eddm_window_size :]
+                    )
                     if len(distances) >= 2:
                         mean_distance = np.mean(distances)
                         std_distance = np.std(distances)
@@ -365,9 +386,13 @@ class EDDMDetector(DriftDetector):
                             elif relative_distance < self.warning_distance:
                                 warning_detected = True
 
-        severity = (DriftSeverity.HIGH if drift_detected
-                   else DriftSeverity.MEDIUM if warning_detected
-                   else DriftSeverity.NONE)
+        severity = (
+            DriftSeverity.HIGH
+            if drift_detected
+            else DriftSeverity.MEDIUM
+            if warning_detected
+            else DriftSeverity.NONE
+        )
 
         result = DriftDetectionResult(
             drift_detected=drift_detected,
@@ -376,7 +401,7 @@ class EDDMDetector(DriftDetector):
             confidence=0.9 if drift_detected else 0.6 if warning_detected else 1.0,
             p_value=0.0 if drift_detected else 0.4 if warning_detected else 1.0,
             statistic=self.max_distance,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 履歴を更新

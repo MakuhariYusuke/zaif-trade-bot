@@ -7,7 +7,7 @@ SAC v420の設定修正により、v418 baseline比で**20-25倍のパフォー�
 以下の設定をv418 baselineに合わせて修正：
 
 - **buffer_size**: 50000 → 20000
-- **learning_starts**: 1000 → 500  
+- **learning_starts**: 1000 → 500
 - **reward_scale**: 1.0 → 500.0
 - **transaction_cost**: 0.001 → 0.00001
 

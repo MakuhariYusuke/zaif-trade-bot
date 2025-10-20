@@ -11,12 +11,12 @@ and the model learns to predict the masked values, similar to BERT's masked lang
 - 金融時系列データの文脈理解
 """
 
+from typing import Dict, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any
-import numpy as np
-from ..core.encoders import PriceEncoder
+
 from ztb.trading.environment.components.memory_manager import MemoryManager
 
 
@@ -26,14 +26,16 @@ class MaskedPriceModel(nn.Module):
     金融時系列データ向けマスク価格モデリングモデル
     """
 
-    def __init__(self,
-                 input_dim: int = 156,
-                 hidden_dim: int = 512,
-                 num_layers: int = 6,
-                 num_heads: int = 8,
-                 dropout: float = 0.1,
-                 max_seq_len: int = 100,
-                 mask_prob: float = 0.15):
+    def __init__(
+        self,
+        input_dim: int = 156,
+        hidden_dim: int = 512,
+        num_layers: int = 6,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+        max_seq_len: int = 100,
+        mask_prob: float = 0.15,
+    ):
         """
         Initialize Masked Price Model
 
@@ -57,9 +59,7 @@ class MaskedPriceModel(nn.Module):
         self.input_projection = nn.Linear(input_dim, hidden_dim)
 
         # Positional encoding
-        self.positional_encoding = nn.Parameter(
-            torch.randn(1, max_seq_len, hidden_dim)
-        )
+        self.positional_encoding = nn.Parameter(torch.randn(1, max_seq_len, hidden_dim))
 
         # Transformer encoder layers
         encoder_layer = nn.TransformerEncoderLayer(
@@ -67,7 +67,7 @@ class MaskedPriceModel(nn.Module):
             nhead=num_heads,
             dim_feedforward=hidden_dim * 4,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer, num_layers=num_layers
@@ -95,9 +95,9 @@ class MaskedPriceModel(nn.Module):
         mask = torch.rand(batch_size, seq_len) < self.mask_prob
         return mask
 
-    def forward(self,
-                x: torch.Tensor,
-                mask_indices: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor, mask_indices: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass with optional masking
 
@@ -135,10 +135,12 @@ class MaskedPriceModel(nn.Module):
 
         return predictions, mask_indices
 
-    def compute_loss(self,
-                    predictions: torch.Tensor,
-                    targets: torch.Tensor,
-                    mask_indices: torch.Tensor) -> torch.Tensor:
+    def compute_loss(
+        self,
+        predictions: torch.Tensor,
+        targets: torch.Tensor,
+        mask_indices: torch.Tensor,
+    ) -> torch.Tensor:
         """
         Compute masked prediction loss
         マスク予測損失を計算
@@ -169,11 +171,13 @@ class MaskedPriceModelingTrainer:
     マスク価格モデリングのトレーナー
     """
 
-    def __init__(self,
-                 model: MaskedPriceModel,
-                 optimizer: torch.optim.Optimizer,
-                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
-                 memory_manager: Optional[MemoryManager] = None):
+    def __init__(
+        self,
+        model: MaskedPriceModel,
+        optimizer: torch.optim.Optimizer,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        memory_manager: Optional[MemoryManager] = None,
+    ):
         """
         Initialize trainer
 
@@ -186,7 +190,9 @@ class MaskedPriceModelingTrainer:
         self.model = model.to(device)
         self.optimizer = optimizer
         self.device = device
-        self.memory_manager = memory_manager or MemoryManager(memory_logging_enabled=False)
+        self.memory_manager = memory_manager or MemoryManager(
+            memory_logging_enabled=False
+        )
         self.step_counter = 0
 
     def train_step(self, batch: torch.Tensor) -> Dict[str, float]:
@@ -218,12 +224,11 @@ class MaskedPriceModelingTrainer:
         if self.step_counter % 100 == 0 and torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        return {
-            'loss': loss.item(),
-            'masked_ratio': mask_indices.float().mean().item()
-        }
+        return {"loss": loss.item(), "masked_ratio": mask_indices.float().mean().item()}
 
-    def validate(self, val_data: torch.Tensor, batch_size: int = 32) -> Dict[str, float]:
+    def validate(
+        self, val_data: torch.Tensor, batch_size: int = 32
+    ) -> Dict[str, float]:
         """
         Validation on dataset
 
@@ -241,7 +246,7 @@ class MaskedPriceModelingTrainer:
 
         with torch.no_grad():
             for i in range(0, len(val_data), batch_size):
-                batch = val_data[i:i+batch_size].to(self.device)
+                batch = val_data[i : i + batch_size].to(self.device)
 
                 predictions, mask_indices = self.model(batch)
                 loss = self.model.compute_loss(predictions, batch, mask_indices)
@@ -251,19 +256,22 @@ class MaskedPriceModelingTrainer:
                 num_batches += 1
 
         return {
-            'val_loss': total_loss / num_batches,
-            'val_masked_ratio': total_masked / (len(val_data) * val_data.shape[1])
+            "val_loss": total_loss / num_batches,
+            "val_masked_ratio": total_masked / (len(val_data) * val_data.shape[1]),
         }
 
     def save_checkpoint(self, path: str):
         """Save model checkpoint"""
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+            },
+            path,
+        )
 
     def load_checkpoint(self, path: str):
         """Load model checkpoint"""
         checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

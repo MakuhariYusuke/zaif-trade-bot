@@ -6,8 +6,9 @@ This module provides common data validation functions used across the codebase.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union, Callable
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
+
 import numpy as np
 import pandas as pd
 
@@ -18,7 +19,7 @@ def validate_dataframe(
     df: pd.DataFrame,
     required_columns: List[str],
     column_types: Optional[Dict[str, str]] = None,
-    min_rows: int = 1
+    min_rows: int = 1,
 ) -> bool:
     """
     Validate DataFrame structure and content for trading data.
@@ -66,7 +67,9 @@ def validate_dataframe(
             if col in df.columns:
                 actual_type = str(df[col].dtype)
                 if expected_type not in actual_type:
-                    logger.warning(f"Column {col} has type {actual_type}, expected {expected_type}")
+                    logger.warning(
+                        f"Column {col} has type {actual_type}, expected {expected_type}"
+                    )
 
     return True
 
@@ -76,7 +79,7 @@ def validate_numeric_array(
     name: str = "data",
     allow_nan: bool = True,
     min_value: Optional[float] = None,
-    max_value: Optional[float] = None
+    max_value: Optional[float] = None,
 ) -> bool:
     """
     Validate numeric array data.
@@ -115,7 +118,7 @@ def validate_numeric_array(
 def validate_config_dict(
     config: Dict[str, Any],
     required_keys: List[str],
-    validators: Optional[Dict[str, Callable[[Any], bool]]] = None
+    validators: Optional[Dict[str, Callable[[Any], bool]]] = None,
 ) -> bool:
     """
     Validate configuration dictionary.
@@ -146,7 +149,7 @@ def sanitize_numeric_value(
     value: Any,
     default: float = 0.0,
     min_val: Optional[float] = None,
-    max_val: Optional[float] = None
+    max_val: Optional[float] = None,
 ) -> float:
     """
     Sanitize a numeric value with bounds checking.

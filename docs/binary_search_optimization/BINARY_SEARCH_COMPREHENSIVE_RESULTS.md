@@ -21,10 +21,10 @@ OPTIMIZED_PPO_PARAMS = {
     "n_steps": 1024,              # ±10以上の改善 (高信頼度)
     "gamma": 0.8475,              # ±2程度の改善 (中信頼度、再検証推奨)
     "vf_coef": 0.1,               # デフォルト>0.5から大幅改善 (高信頼度)
-    
+
     # 報酬スケーリング
     "reward_multipliers": 5.0,    # 平均報酬-194.12達成 (劇的改善)
-    
+
     # リスク・コスト系
     "risk_free_rate": 0.0,        # 完全収束確認 (高信頼度)
     "transaction_cost": 0.0001,   # 低コスト側で安定
@@ -44,7 +44,7 @@ PRELIMINARY_PARAMS = {
     "target_kl": 0.001,           # 同上
     "ent_coef": 0.001,            # 同上
     "normalize_advantage": True,  # Boolean比較でも差分なし
-    
+
     # 未検証パラメータ
     "n_epochs": 16,               # 差分<1でノイズレベル、100k再走推奨
 }
@@ -55,7 +55,7 @@ PRELIMINARY_PARAMS = {
 ## 📈 Phase 1-2: 短期探索結果 (2048ステップ)
 
 ### 実行構成
-- **コマンド例**: 
+- **コマンド例**:
   ```bash
   python -m ztb.training.binary_search.n_steps_optimized --mode binary --max_iterations 2 --timesteps 2048
   python -m ztb.training.binary_search.batch_size_optimized --mode binary --max_iterations 2 --timesteps 2048 --no-deviation-probes --no-refinement
@@ -377,7 +377,7 @@ tensorboard/binary_search/
 
 ---
 
-**最終更新**: 2025年10月10日  
-**総探索パラメータ数**: 15+  
-**総訓練時間**: 短期 (2048×12) + 長期 (50k×8) ≈ 424,576ステップ  
+**最終更新**: 2025年10月10日
+**総探索パラメータ数**: 15+
+**総訓練時間**: 短期 (2048×12) + 長期 (50k×8) ≈ 424,576ステップ
 **統計的信頼度**: 差分≥10で高信頼、差分<5で要追加検証

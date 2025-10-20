@@ -3,13 +3,15 @@ Statistical Analysis Engine for A/B Testing
 処理時間短縮・メモリ効率を考慮したストリーミング統計計算
 """
 
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, Optional, Tuple
+
 import numpy as np
 import scipy.stats as stats
-from typing import List, Tuple, Optional, Dict, Any
-from concurrent.futures import ThreadPoolExecutor
-import logging
-from .types import StatisticalResult, ABTestMetrics, StatisticalTest
+
 from .config import ABTestConfig
+from .types import ABTestMetrics, StatisticalResult, StatisticalTest
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +21,13 @@ class ABTestAnalyzer:
 
     def __init__(self, config: Optional[ABTestConfig] = None):
         self.config = config or ABTestConfig()
-        self.executor = ThreadPoolExecutor(max_workers=self.config.performance.max_workers)
+        self.executor = ThreadPoolExecutor(
+            max_workers=self.config.performance.max_workers
+        )
 
-    def analyze_parallel(self, data_a: np.ndarray, data_b: np.ndarray) -> StatisticalResult:
+    def analyze_parallel(
+        self, data_a: np.ndarray, data_b: np.ndarray
+    ) -> StatisticalResult:
         """並列統計分析"""
         # 並列で統計計算を実行
         future_a = self.executor.submit(self._calculate_stats, data_a)
@@ -40,10 +46,10 @@ class ABTestAnalyzer:
         ci_lower, ci_upper = self._calculate_confidence_interval(data_a, data_b)
 
         # 基本統計量を取得
-        mean_a = stats_a['mean']
-        mean_b = stats_b['mean']
-        std_a = stats_a['std']
-        std_b = stats_b['std']
+        mean_a = stats_a["mean"]
+        mean_b = stats_b["mean"]
+        std_a = stats_a["std"]
+        std_b = stats_b["std"]
 
         return StatisticalResult(
             test_type="t-test",
@@ -55,16 +61,12 @@ class ABTestAnalyzer:
             mean_a=mean_a,
             mean_b=mean_b,
             std_a=std_a,
-            std_b=std_b
+            std_b=std_b,
         )
 
     def _calculate_stats(self, data: np.ndarray) -> Dict[str, float]:
         """基本統計量を計算"""
-        return {
-            'mean': np.mean(data),
-            'std': np.std(data, ddof=1),
-            'count': len(data)
-        }
+        return {"mean": np.mean(data), "std": np.std(data, ddof=1), "count": len(data)}
 
     def _calculate_effect_size(self, data_a: np.ndarray, data_b: np.ndarray) -> float:
         """効果量を計算（Cohen's d）"""
@@ -73,7 +75,9 @@ class ABTestAnalyzer:
         pooled_std = np.sqrt((std_a**2 + std_b**2) / 2)
         return (mean_b - mean_a) / pooled_std if pooled_std > 0 else 0.0
 
-    def _calculate_confidence_interval(self, data_a: np.ndarray, data_b: np.ndarray, confidence: float = 0.95) -> Tuple[float, float]:
+    def _calculate_confidence_interval(
+        self, data_a: np.ndarray, data_b: np.ndarray, confidence: float = 0.95
+    ) -> Tuple[float, float]:
         """効果量の信頼区間を計算"""
         effect_size = self._calculate_effect_size(data_a, data_b)
         # 簡易的な信頼区間計算（実際にはより複雑な計算が必要）
@@ -81,7 +85,9 @@ class ABTestAnalyzer:
         margin = se * 1.96  # 95%信頼区間
         return effect_size - margin, effect_size + margin
 
-    def calculate_bootstrap_ci(self, data_a: np.ndarray, data_b: np.ndarray, n_bootstrap: int = 1000) -> StatisticalResult:
+    def calculate_bootstrap_ci(
+        self, data_a: np.ndarray, data_b: np.ndarray, n_bootstrap: int = 1000
+    ) -> StatisticalResult:
         """ブートストラップ法による信頼区間計算"""
         effect_sizes = []
 
@@ -101,7 +107,11 @@ class ABTestAnalyzer:
         mean_effect = np.mean(effect_sizes)
 
         # p値を計算（効果量が0をまたぐ確率）
-        p_value = np.mean(effect_sizes <= 0) if mean_effect > 0 else np.mean(effect_sizes >= 0)
+        p_value = (
+            np.mean(effect_sizes <= 0)
+            if mean_effect > 0
+            else np.mean(effect_sizes >= 0)
+        )
 
         return StatisticalResult(
             test_type=StatisticalTest.T_TEST,
@@ -113,7 +123,7 @@ class ABTestAnalyzer:
             mean_a=np.mean(data_a),
             mean_b=np.mean(data_b),
             std_a=np.std(data_a, ddof=1),
-            std_b=np.std(data_b, ddof=1)
+            std_b=np.std(data_b, ddof=1),
         )
 
     def update_streaming_stats(self, variant_id: str, batch_data: np.ndarray) -> None:
@@ -122,15 +132,24 @@ class ABTestAnalyzer:
         # （実際の実装では、variant_idごとにStreamingStatisticsインスタンスを管理）
         pass
 
-    def analyze_comparison(self, metrics_a: ABTestMetrics, metrics_b: ABTestMetrics, test_type: str = "t-test") -> StatisticalResult:
+    def analyze_comparison(
+        self,
+        metrics_a: ABTestMetrics,
+        metrics_b: ABTestMetrics,
+        test_type: str = "t-test",
+    ) -> StatisticalResult:
         """メトリクス比較分析"""
         # 簡易的な実装 - 実際にはより複雑な分析が必要
-        data_a = np.random.normal(metrics_a.mean_reward, metrics_a.std_reward, 100)  # 仮定
-        data_b = np.random.normal(metrics_b.mean_reward, metrics_b.std_reward, 100)  # 仮定
+        data_a = np.random.normal(
+            metrics_a.mean_reward, metrics_a.std_reward, 100
+        )  # 仮定
+        data_b = np.random.normal(
+            metrics_b.mean_reward, metrics_b.std_reward, 100
+        )  # 仮定
 
         return self.analyze_parallel(data_a, data_b)
 
     def __del__(self):
         """クリーンアップ"""
-        if hasattr(self, 'executor'):
+        if hasattr(self, "executor"):
             self.executor.shutdown(wait=False)

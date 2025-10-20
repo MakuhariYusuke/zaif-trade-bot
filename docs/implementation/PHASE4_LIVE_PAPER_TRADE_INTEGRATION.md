@@ -1,7 +1,7 @@
 # Phase 4: Live & Paper Trade Schema Integration
 
-**完了日**: 2025年10月10日  
-**バージョン**: v1.0  
+**完了日**: 2025年10月10日
+**バージョン**: v1.0
 **ステータス**: ✅ 完了
 
 ## 📋 概要
@@ -103,7 +103,7 @@ if self.schema_available and self.expected_features is not None:
         if col not in exclude_cols
         and pd.api.types.is_numeric_dtype(self.test_df[col])
     ]
-    
+
     if len(feature_columns) != self.expected_features:
         self.logger.error(
             "❌ Feature count mismatch! Dataset has %d features, "
